@@ -2,9 +2,9 @@
 {
     internal enum AddressType : byte
     {
-        Absolute,
-        Code,
-        Data,
-        Common
+        ASEG,
+        CSEG,
+        DSEG,
+        COMMON
     }
 }
