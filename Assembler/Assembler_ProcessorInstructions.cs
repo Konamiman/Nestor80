@@ -8,6 +8,13 @@ namespace Konamiman.Nestor80.Assembler
 {
     public partial class Assembler
     {
+        /* Instructions that need to be handled as special cases:
+         * 
+         * JR, DJNZ: Argument is an address, but generated opcode contains a 1 byte offset from current location pointer
+         * LD (IX/Y+n),n: There's a second argument (placed at the last byte)
+         * BIT/SET/RES n,R: n must evaluate to a number between 1 and 7
+         * RST n: n must evaluate to one of 00h, 08h, 10h, 18h, 20h, 28h, 30h, 38h
+         */
         Dictionary<string, ProcessorInstruction[]> Z80Instructions = new Dictionary<string, ProcessorInstruction[]> {
             { "ADC", new ProcessorInstruction[] {
                 new ProcessorInstruction( "ADC", "A", "(HL)", new byte[] { 0x8e } ),

@@ -1,29 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
 {
     public class AssemblyConfiguration
     {
-        public string DefaultProgramName { get; set; }
+        public string DefaultProgramName { get; init; }
 
-        public Stream SourceStream { get; set; }
+        public Stream SourceStream { get; init; }
 
-        public Stream TargetStream { get; set; }
+        public Encoding SourceStreamEncoding { get; init; } = Encoding.ASCII;
 
-        public Stream ListingStream { get; set; }
+        public int MaxLineLength { get; init; } = 131;
 
-        public bool ListingAsCrossReference { get; set; }
+        public Stream TargetStream { get; init; }
 
-        public bool OctalListing { get; set; }
+        public Stream ListingStream { get; init; }
 
-        public bool ListFalseConditionals { get; set; }
+        public bool ListingAsCrossReference { get; init; }
 
-        public bool Support8bitChars { get; set; }
+        public bool OctalListing { get; init; }
 
-        public Func<string, Stream> GetStreamForInclude { get; set; }
+        public bool ListFalseConditionals { get; init; }
+
+        public bool Support8bitChars { get; init; }
+
+        public Func<string, Stream> GetStreamForInclude { get; init; }
+
+        public Action<string> Print { get; init; }
     }
 }
