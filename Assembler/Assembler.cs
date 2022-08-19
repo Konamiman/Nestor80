@@ -45,7 +45,6 @@ namespace Konamiman.Nestor80.Assembler
         {
             var sourceStream = new StreamReader(configuration.SourceStream, configuration.SourceStreamEncoding, true, 4096);
 
-            var lines = new List<string>();
             int lineLength;
 
             while(true) {
@@ -58,9 +57,16 @@ namespace Konamiman.Nestor80.Assembler
                         $"Line is too long ({lineLength} bytes), actual line processed: {sourceLine.Trim()}"
                     );
                 }
-                lines.Add(sourceLine); //TODO: Process line
+
+                ProcessSourceLine(sourceLine);
                 state.IncreaseLineNumber();
             }
+        }
+
+        List<string> lines = new List<string>();
+        private void ProcessSourceLine(string line)
+        {
+            lines.Add(line);
         }
     }
 }
