@@ -29,5 +29,7 @@
         }
 
         protected abstract Address OperateCore(Address value1, Address value2);
+
+        public override string ToString() => Name;
     }
 }

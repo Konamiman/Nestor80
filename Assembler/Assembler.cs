@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
+
+[assembly: InternalsVisibleTo("AssemblerTests")]
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -15,6 +18,16 @@ namespace Konamiman.Nestor80.Assembler
 
         public AssemblyError[] Assemble()
         {
+            Expression.OutputStringEncoding = Encoding.ASCII;
+            var s = @"""A""""B""""C""";
+            var e = Expression.Parse(s);
+            s = "'A''B''C'";
+            e= Expression.Parse(s);
+            s = "''";
+            e = Expression.Parse(s);
+            s=@"''+3";
+            e = Expression.Parse(s);
+
             try {
                 state = new AssemblyState { Configuration = configuration };
 
