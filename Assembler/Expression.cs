@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
+using System.Linq;
 using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
@@ -47,6 +48,11 @@ namespace Konamiman.Nestor80.Assembler
             { '*', "*" },
             { '/', "/" }
         };
+
+        public static Expression FromParts(IEnumerable<IExpressionPart> parts)
+        {
+            return new Expression(parts.ToArray());
+        }
 
         /// <summary>
         /// Parse a string representing an expression.
@@ -187,12 +193,37 @@ namespace Konamiman.Nestor80.Assembler
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Extract a number from the current parsed string pointer.
+        /// </summary>
+        /// <remarks>
+        /// Input state:
+        /// If isXDelimited = true lastExtractedChar is the opening ' of x'nnnn'
+        /// If isXDelimited = false lastExtractedChar is the first digit of the number
+        /// 
+        /// There's a gotcha with the 'b' and 'd' suffixes when the default radix is 16:
+        /// 
+        /// .radix 10
+        /// ld hl,4096d --> same as ld hl,4096
+        /// 
+        /// .radix 16
+        /// ld hl,4096d --> same as ld hl,096d
+        /// </remarks>
+        /// <param name="isXDelimited"></param>
+        /// <exception cref="InvalidExpressionException"></exception>
         private static void ExtractNumber(bool isXDelimited = false)
         {
             var radix = DefaultRadix;
             extractedChars.Clear();
 
-            while(IsValidHexDigit(lastExtractedChar)) {
+            if(isXDelimited) {
+                if(AtEndOfString) {
+                    Throw ("Unterminated x'nnnn' number");
+                }
+                ExtractCharFromParsedString();
+            }
+
+            while(IsValidHexChar(lastExtractedChar)) {
                 extractedChars.Add(lastExtractedChar);
                 if(AtEndOfString) {
                     break;
@@ -202,11 +233,11 @@ namespace Konamiman.Nestor80.Assembler
 
             if(isXDelimited) {
                 if(AtEndOfString || lastExtractedChar != '\'') {
-                    Throw("Hex number in the form x'nnnn' is unterminated or has invalid characters");
+                    Throw("x'nnnn' number is unterminated or has invalid characters");
                 }
                 radix = 16;
             }
-            else if(!AtEndOfString) {
+            else if(!IsValidNumericChar(lastExtractedChar)) {
                 if(lastExtractedChar is ' ' or '\t' or '+' or '-' or '*' or '/') {
                     RewindToPreviousChar();
                 }
@@ -218,6 +249,7 @@ namespace Konamiman.Nestor80.Assembler
                         'o' or 'O' or 'q' or 'Q' => 8,
                         _ => throw new InvalidExpressionException($"Unexpected character found: {lastExtractedChar}")
                     };
+                    extractedChars.RemoveAt(extractedChars.Count - 1);
                 }
             }
 
@@ -239,9 +271,18 @@ namespace Konamiman.Nestor80.Assembler
             lastExtractedPart = part;
         }
 
-        private static bool IsValidHexDigit(char theChar)
+        private static bool IsValidNumericChar(char theChar)
         {
-            return char.IsDigit(theChar) || theChar is >= 'a' and <= 'f' || theChar is >= 'A' and <= 'F';
+            return char.IsDigit(theChar) ||
+                (theChar >= 'a' && theChar < lastValidNumericCharLower) ||
+                (theChar >= 'A' && theChar < lastValidNumericCharUpper);
+        }
+
+        private static bool IsValidHexChar(char theChar)
+        {
+            return char.IsDigit(theChar) ||
+                (theChar >= 'a' && theChar < 'f') ||
+                (theChar >= 'A' && theChar < 'F');
         }
 
         private static Expression ParseNonString(string expressionString)
@@ -295,7 +336,21 @@ namespace Konamiman.Nestor80.Assembler
 
         public static Encoding OutputStringEncoding { get; set; }
 
-        public static int DefaultRadix { get; set; } = 10;
+        private static char lastValidNumericCharUpper = '9';
+        private static char lastValidNumericCharLower = '9';
+        private static int _DefaultRadix = 10;
+        public static int DefaultRadix {
+            get => _DefaultRadix;
+            set {
+                if(value is < 2 or > 16) {
+                    throw new InvalidOperationException($"{nameof(Expression)}.{nameof(DefaultRadix)}: value must be between 2 and 16");
+                }
+
+                _DefaultRadix = value;
+                lastValidNumericCharLower = (char)('a' - 11 + DefaultRadix);
+                lastValidNumericCharUpper = (char)('A' - 11 + DefaultRadix);
+            }
+        }
 
         public IExpressionPart[] Parts { get; private set; }
 
@@ -327,5 +382,50 @@ namespace Konamiman.Nestor80.Assembler
             new UnaryPlusOperator(),
             new XorOperator()
         }.ToDictionary(x => x.Name);
+
+        public static bool operator ==(Expression expression1, Expression expression2)
+        {
+            if(expression1 is null)
+                return expression2 is null;
+
+            return expression1.Equals(expression2);
+        }
+
+        public static bool operator !=(Expression expression1, Expression expression2)
+        {
+            return !(expression1 == expression2);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if(obj == null || GetType() != obj.GetType())
+                return false;
+
+            var b2 = (Expression)obj;
+
+            if(Parts.Length != b2.Parts.Length) {
+                return false;
+            }
+
+            for(int i = 0; i < Parts.Length; i++) {
+                if(!Parts[i].Equals(b2.Parts[i])) return false;
+            }
+
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            int result = 0;
+            foreach(var part in Parts) {
+                result ^= part.GetHashCode();
+            }
+            return result;
+        }
+
+        public override string ToString()
+        {
+            return String.Join(", ", Parts.Select(p => p.ToString()));
+        }
     }
 }
