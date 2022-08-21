@@ -204,10 +204,12 @@ namespace Konamiman.Nestor80.Assembler
         /// There's a gotcha with the 'b' and 'd' suffixes when the default radix is 16:
         /// 
         /// .radix 10
-        /// ld hl,4096d --> same as ld hl,4096
+        /// dw 4096d --> same as dw 4096
+        /// dw 100b  --> same as dw 4
         /// 
         /// .radix 16
-        /// ld hl,4096d --> same as ld hl,096d
+        /// dw 4096d --> same as dw 096dH (overflow is ignored)
+        /// dw 100b  --> same as dw 100bH
         /// </remarks>
         /// <param name="isXDelimited"></param>
         /// <exception cref="InvalidExpressionException"></exception>
@@ -237,7 +239,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 radix = 16;
             }
-            else if(!IsValidNumericChar(lastExtractedChar)) {
+            else if(!IsValidNumericChar(lastExtractedChar, radix)) {
                 if(lastExtractedChar is ' ' or '\t' or '+' or '-' or '*' or '/') {
                     RewindToPreviousChar();
                 }
@@ -249,7 +251,9 @@ namespace Konamiman.Nestor80.Assembler
                         'o' or 'O' or 'q' or 'Q' => 8,
                         _ => throw new InvalidExpressionException($"Unexpected character found: {lastExtractedChar}")
                     };
-                    extractedChars.RemoveAt(extractedChars.Count - 1);
+                    if(!IsValidNumericChar(extractedChars[extractedChars.Count - 1], radix)) {
+                        extractedChars.RemoveAt(extractedChars.Count - 1);
+                    }
                 }
             }
 
@@ -271,18 +275,18 @@ namespace Konamiman.Nestor80.Assembler
             lastExtractedPart = part;
         }
 
-        private static bool IsValidNumericChar(char theChar)
+        private static bool IsValidNumericChar(char theChar, int radix)
         {
+            theChar = char.ToUpper(theChar);
             return char.IsDigit(theChar) ||
-                (theChar >= 'a' && theChar < lastValidNumericCharLower) ||
-                (theChar >= 'A' && theChar < lastValidNumericCharUpper);
+                ((theChar = char.ToUpper(theChar)) >= 'A' && theChar <= 'A' + radix - 11);
         }
 
         private static bool IsValidHexChar(char theChar)
         {
             return char.IsDigit(theChar) ||
-                (theChar >= 'a' && theChar < 'f') ||
-                (theChar >= 'A' && theChar < 'F');
+                (theChar >= 'a' && theChar <= 'f') ||
+                (theChar >= 'A' && theChar <= 'F');
         }
 
         private static Expression ParseNonString(string expressionString)
@@ -336,8 +340,6 @@ namespace Konamiman.Nestor80.Assembler
 
         public static Encoding OutputStringEncoding { get; set; }
 
-        private static char lastValidNumericCharUpper = '9';
-        private static char lastValidNumericCharLower = '9';
         private static int _DefaultRadix = 10;
         public static int DefaultRadix {
             get => _DefaultRadix;
@@ -347,8 +349,6 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 _DefaultRadix = value;
-                lastValidNumericCharLower = (char)('a' - 11 + DefaultRadix);
-                lastValidNumericCharUpper = (char)('A' - 11 + DefaultRadix);
             }
         }
 
