@@ -234,8 +234,11 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(isXDelimited) {
-                if(AtEndOfString || lastExtractedChar != '\'') {
+                if(lastExtractedChar != '\'') {
                     Throw("x'nnnn' number is unterminated or has invalid characters");
+                }
+                if(extractedChars.Count == 0) {
+                    extractedChars.Add('0');
                 }
                 radix = 16;
             }

@@ -103,8 +103,15 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { 14, "201d", 2*14*14*14 + 1*14 + 13 },
             new object[] { 15, "201d", 2*15*15*15 + 1*15 + 13 },
 
+            // The x'nnnn' syntax
+
+            new object[] {10, "x'12eF'", 0x12ef },
+            new object[] {10, "x''", 0 },
+
             // Overflow
             new object[] { 10, "99999", 0x869F }, // 99999 = 1869F
+            new object[] { 10, "99999h", 0x9999 },
+            new object[] { 10, "X'1234ABCD'", 0xabcd },
         };
 
         [TestCaseSource(nameof(TestNumberCases))]
