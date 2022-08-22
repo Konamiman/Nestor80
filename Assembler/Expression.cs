@@ -260,13 +260,35 @@ namespace Konamiman.Nestor80.Assembler
             int value = 0;
             var extractedString = new string(extractedChars.ToArray());
             try {
-                value = Convert.ToInt32(extractedString, radix);
+                value = ParseNumber(extractedString, radix);
             } catch {
                 Throw($"{extractedString} is not a valid base {radix} number");
             }
 
             var address = new Address(AddressType.ASEG, (ushort)(value & 0xFFFF));
             AddExpressionPart(address);
+        }
+
+        private static Dictionary<char, int> hexDigitValues = new() {
+            { '0', 0 }, { '1', 1 }, { '2', 2 }, { '3', 3 }, { '4', 4 }, 
+            { '5', 5 }, { '6', 6 }, { '7', 7 }, { '8', 8 }, { '9', 9 },
+            { 'a', 10 }, { 'b', 11 }, { 'c', 12 }, { 'd', 13 }, { 'e', 14 },
+            { 'A', 10 }, { 'B', 11 }, { 'C', 12 }, { 'D', 13 }, { 'E', 14 }
+        };
+
+        private static int ParseNumber(string number, int radix)
+        {
+            if(radix is 2 or 8 or 10 or 16) {
+                return Convert.ToInt32(number, radix);
+            }
+
+            var result = 0;
+            var power = number.Length - 1;
+            for(int i = 0; i < number.Length; i++) {
+                result += hexDigitValues[number[i]] * (int)Math.Pow(radix, power--);
+            }
+
+            return result;
         }
     
         private static void AddExpressionPart(IExpressionPart part)

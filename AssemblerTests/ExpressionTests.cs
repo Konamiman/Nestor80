@@ -7,6 +7,7 @@ namespace Konamiman.Nestor80.AssemblerTests
     public class ExpressionTests
     {
         static object[] TestNumberCases = {
+
             // Radix 10, no suffix
             new object[] { 10, "0", 0 },
             new object[] { 10, "01", 1 },
@@ -90,20 +91,24 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { 16, "12EFh", 0x12EF },
             new object[] { 16, "12efH", 0x12EF },
 
-            // Edge cases for radixes
-            new object[] { 11, "1010b", 0b1010 },
-            //new object[] { 12, "1010b", Convert.ToInt32("1010b", 12) },
+            // Arbitrary radixes, including suffixes
 
-
-            // The x'nnnn' syntax
-            //new object[] {10, "x'1234'", 0x1234},
+            new object[] { 5, "20101", 2*5*5*5*5 + 1*5*5 + 1 },
+            new object[] { 11, "101b", 0b101 },
+            new object[] { 12, "201b", 2*12*12*12 + 1*12 + 11 },
+            new object[] { 13, "201b", 2*13*13*13 + 1*13 + 11 },
+            new object[] { 14, "201b", 2*14*14*14 + 1*14 + 11 },
+            new object[] { 15, "201b", 2*15*15*15 + 1*15 + 11 },
+            new object[] { 13, "201d", 201 },
+            new object[] { 14, "201d", 2*14*14*14 + 1*14 + 13 },
+            new object[] { 15, "201d", 2*15*15*15 + 1*15 + 13 },
 
             // Overflow
             new object[] { 10, "99999", 0x869F }, // 99999 = 1869F
         };
 
         [TestCaseSource(nameof(TestNumberCases))]
-        public void TestFoo(int radix, string input, int output)
+        public void TestParsingNumber(int radix, string input, int output)
         {
             Expression.DefaultRadix = radix;
             AssertParsesToNumber(input, (ushort)output);
