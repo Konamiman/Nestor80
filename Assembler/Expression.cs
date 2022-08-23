@@ -129,12 +129,15 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void ExtractNextPart()
         {
+            while(parsedString[parsedStringPointer] is ' ' or '\t')
+                IncreaseParsedStringPointer();
+
             var currentChar = parsedString[parsedStringPointer];
 
             if(char.IsDigit(currentChar)) {
                 ExtractNumber();
             }
-            else if(currentChar is 'x' or 'X' && parsedStringPointer < parsedStringLength - 1 && parsedString[parsedStringPointer + 1] == '\'') {
+            else if(currentChar is 'x' or 'X' && parsedStringPointer < parsedStringLength - 2 && parsedString[parsedStringPointer + 1] == '\'') {
                 ExtractXNumber();
             }
             else if(currentChar is '"' or '\'') {
@@ -202,19 +205,7 @@ namespace Konamiman.Nestor80.Assembler
                 _ => throw new InvalidOperationException($"Something weird happened in {nameof(Expression)}.{nameof(ExtractNumber)}: got unknown regex group name, {matchKey}")
             };
 
-            int value = 0;
-            try {
-                value = ParseNumber(extractedNumber, radix);
-            }
-            catch {
-                Throw($"Invalid base {radix} number");
-            }
-
-            //TODO: Warning if truncated value
-            var address = Address.Absolute((ushort)(value & 0xFFFF));
-            AddExpressionPart(address);
-
-            IncreaseParsedStringPointer(match.Length);
+            ParseAndRegisterNumber(extractedNumber, radix, increaseStringPointerBy: match.Length);
         }
 
         private static void ExtractXNumber()
@@ -227,23 +218,37 @@ namespace Konamiman.Nestor80.Assembler
                 Throw("Invalid X'' number");
             }
 
-            var extractedNumber = match.Value;
+            if(!match.Success) {
+                Throw("Invalid X'' number");
+            }
 
+            var extractedNumber = match.Value;
+            ParseAndRegisterNumber(
+                extractedNumber, 
+                radix: 16,
+                increaseStringPointerBy: match.Length + 3); //+3 to include the opening X' and the closing ' that were excluded from the match
+        }
+
+        private static void ParseAndRegisterNumber(string numberString, int radix, int increaseStringPointerBy)
+        {
             int value = 0;
-            if(extractedNumber.Length > 0) {
+            if(numberString.Length > 0) {
                 try {
-                    value = ParseNumber(extractedNumber, 16);
+                    value = ParseNumber(numberString, radix);
                 }
                 catch {
-                    Throw($"Invalid X'' number");
+                    Throw($"Invalid number");
                 }
+            }
+
+            IncreaseParsedStringPointer(increaseStringPointerBy);
+            if(!AtEndOfString && parsedString[parsedStringPointer] is not ' ' or '\t' or '+' or '-' or '*' or '/' or ')') {
+                Throw($"Unexpected character found after number: {parsedString[parsedStringPointer]}");
             }
 
             //TODO: Warning if truncated value
             var address = Address.Absolute((ushort)(value & 0xFFFF));
             AddExpressionPart(address);
-
-            IncreaseParsedStringPointer(match.Length + 3); //+3 to include the opening X' and the closing ' that were excluded from the match
         }
 
         private static int ParseNumber(string number, int radix)

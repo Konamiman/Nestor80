@@ -122,6 +122,25 @@ namespace Konamiman.Nestor80.AssemblerTests
             AssertParsesToNumber(input, (ushort)output);
         }
 
+        static object[] TestWrongNumberCases = {
+            new object[] { 10, "123x", "Unexpected character found after number: x" },
+            new object[] { 10, "102b", "Invalid number" },
+            new object[] { 10, "x'12", "Invalid X'' number" },
+            new object[] { 10, "x'12h'", "Invalid X'' number" },
+            new object[] { 10, "x'12'h", "Unexpected character found after number: h" },
+            new object[] { 2, "111x", "Unexpected character found after number: x" },
+            new object[] { 2, "102", "Unexpected character found after number: 2" },
+            new object[] { 8, "111x", "Unexpected character found after number: x" },
+            new object[] { 8, "5678", "Unexpected character found after number: 8" },
+
+        };
+
+        [TestCaseSource(nameof(TestWrongNumberCases))]
+        public void TestParsingInvalidNumber(int radix, string input, string exceptionMessage)
+        {
+            AssertThrowsExpressionError(radix, input, exceptionMessage);
+        }
+
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
             AssertIsNumber(Expression.Parse(expressionString), number);
 
@@ -130,5 +149,15 @@ namespace Konamiman.Nestor80.AssemblerTests
 
         private static void AssertExpressionIs(Expression expression, params IExpressionPart[] parts) =>
             Assert.AreEqual(Expression.FromParts(parts), expression);
+
+        private static void AssertThrowsExpressionError(int radix, string input, string? message = null) =>
+            AssertThrowsExpressionError(() => { Expression.DefaultRadix = radix; Expression.Parse(input); }, message);
+
+        private static void AssertThrowsExpressionError(Action code, string? message = null)
+        {
+            var ex = Assert.Throws<InvalidExpressionException>(new TestDelegate(code));
+            if(message is not null)
+                Assert.AreEqual(message, ex.Message);
+        }
     }
 }
