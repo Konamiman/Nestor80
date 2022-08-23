@@ -190,6 +190,10 @@ namespace Konamiman.Nestor80.Assembler
                 Throw("Invalid number");
             }
 
+            if(!match.Success) {
+                Throw("Invalid number");
+            }
+
             var matchKey = match.Groups.Keys.FirstOrDefault(k => k[0] == 'n' && match.Groups[k].Success);
             if(matchKey is null) {
                 Throw("Invalid number");
