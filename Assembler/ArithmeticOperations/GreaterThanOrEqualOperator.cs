@@ -2,6 +2,8 @@
 {
     internal class GreaterThanOrEqualOperator : ArithmeticOperator
     {
+        public static GreaterThanOrEqualOperator Instance = new();
+
         public override int Precedence => 5;
 
         public override string Name => "GE";

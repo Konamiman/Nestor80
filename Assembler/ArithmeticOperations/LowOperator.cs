@@ -2,6 +2,8 @@
 {
     internal class LowOperator : ArithmeticOperator
     {
+        public static LowOperator Instance = new();
+
         public override int Precedence => 1;
 
         public override string Name => "LOW";

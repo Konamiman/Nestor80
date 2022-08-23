@@ -2,6 +2,8 @@
 {
     internal class NulOperator : ArithmeticOperator
     {
+        public static NulOperator Instance = new();
+
         public override int Precedence => 0;
 
         public override string Name => "NUL";

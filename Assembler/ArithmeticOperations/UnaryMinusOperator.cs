@@ -2,6 +2,8 @@
 {
     internal class UnaryMinusOperator : ArithmeticOperator
     {
+        public static UnaryMinusOperator Instance = new();
+
         public override int Precedence => 3;
 
         public override string Name => "u-";

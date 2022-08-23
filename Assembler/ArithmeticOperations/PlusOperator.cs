@@ -2,6 +2,8 @@
 {
     internal class PlusOperator : ArithmeticOperator
     {
+        public static PlusOperator Instance = new();
+
         public override int Precedence => 4;
 
         public override string Name => "+";

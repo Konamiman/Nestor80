@@ -2,6 +2,8 @@
 {
     internal class NotOperator : ArithmeticOperator
     {
+        public static NotOperator Instance = new();
+
         public override int Precedence => 6;
 
         public override string Name => "NOT";

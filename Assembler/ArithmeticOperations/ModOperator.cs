@@ -2,6 +2,8 @@
 {
     internal class ModOperator : ArithmeticOperator
     {
+        public static ModOperator Instance = new();
+
         public override int Precedence => 2;
 
         public override string Name => "MOD";

@@ -2,6 +2,8 @@
 {
     internal class AndOperator : ArithmeticOperator
     {
+        public static AndOperator Instance = new();
+
         public override int Precedence => 7;
 
         public override string Name => "AND";

@@ -2,6 +2,8 @@
 {
     internal class ShiftRightOperator : ArithmeticOperator
     {
+        public static ShiftRightOperator Instance = new();
+
         public override int Precedence => 2;
 
         public override string Name => "SHR";

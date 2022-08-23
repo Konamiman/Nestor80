@@ -2,6 +2,8 @@
 {
     internal class HighOperator : ArithmeticOperator
     {
+        public static HighOperator Instance = new();
+
         public override int Precedence => 1;
 
         public override string Name => "HIGH";

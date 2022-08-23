@@ -2,6 +2,8 @@
 {
     internal class EqualsOperator : ArithmeticOperator
     {
+        public static EqualsOperator Instance = new();
+
         public override int Precedence => 5;
 
         public override string Name => "EQ";

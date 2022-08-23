@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal class ClosingParenthesis
+    internal class ClosingParenthesis : IExpressionPart
     {
         private ClosingParenthesis()
         {

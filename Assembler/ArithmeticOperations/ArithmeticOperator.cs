@@ -2,6 +2,8 @@
 {
     internal abstract class ArithmeticOperator : IExpressionPart, IAssemblyOutputPart
     {
+        protected ArithmeticOperator() { }
+
         public abstract int Precedence { get; }
 
         public abstract string Name { get; }

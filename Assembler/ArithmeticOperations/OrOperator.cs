@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
+﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
     internal class OrOperator : ArithmeticOperator
     {
+        public static OrOperator Instance = new();
+
         public override int Precedence => 8;
 
         public override string Name => "OR";

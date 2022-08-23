@@ -13,7 +13,8 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         private static Dictionary<int, Regex> numberRegexes = new();
-        private static Regex xNumberRegex = new Regex("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static Regex symbolRegex = new("(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private static Regex currentRadixRegex;
         private static string parsedString = null;
@@ -64,10 +65,17 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         private static Dictionary<char, string> OperatorsAsStrings = new() {
+            { '+', "+" },
+            { '-', "-" },
             { '*', "*" },
             { '/', "/" },
             { '(', "(" },
             { ')', ")" }
+        };
+
+        private static Dictionary<char, string> UnaryOperatorsAsStrings = new() {
+            { '+', "u+" },
+            { '-', "u-" },
         };
 
         public static Expression FromParts(params IExpressionPart[] parts)
@@ -143,11 +151,8 @@ namespace Konamiman.Nestor80.Assembler
             else if(currentChar is '"' or '\'') {
                 ExtractString();
             }
-            else if(currentChar == '-') {
-                ProcessMinus();
-            }
-            else if(currentChar == '+') {
-                ProcessPlus();
+            else if(currentChar is '+' or '-') {
+                ProcessPlusOrMinus(currentChar);
             }
             else if(currentChar is '*' or '/' or '(' or ')') {
                 ProcessOperator(OperatorsAsStrings[currentChar]);
@@ -270,6 +275,14 @@ namespace Konamiman.Nestor80.Assembler
             return result;
         }
 
+        private static void ProcessPlusOrMinus(char currentChar)
+        {
+            if(lastExtractedPart is null or ArithmeticOperator or OpeningParenthesis)
+                ProcessOperator(UnaryOperatorsAsStrings[currentChar]);
+            else
+                ProcessOperator(OperatorsAsStrings[currentChar]);
+        }
+
         private static bool IsValidSymbolChar(char theChar)
         {
             return char.IsLetter(theChar) || theChar is '?' or '_' or '@' or '.' or '$';
@@ -282,7 +295,17 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void ProcessOperator(string theOperator)
         {
-            throw new NotImplementedException();
+            if(theOperator is "(") {
+                AddExpressionPart(OpeningParenthesis.Value);
+            }
+            else if(theOperator is ")") {
+                AddExpressionPart(ClosingParenthesis.Value);
+            }
+            else {
+                AddExpressionPart(operators[theOperator]);
+            }
+            
+            IncreaseParsedStringPointer(theOperator is "u+" or "u-" ? 1 : theOperator.Length);
         }
 
         private static void ProcessMinus()
@@ -297,10 +320,33 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void ExtractSymbolOrOperator()
         {
-            throw new NotImplementedException();
+            Match match = null;
+            try {
+                match = symbolRegex.Match(parsedString, parsedStringPointer);
+            }
+            catch {
+                Throw("Invalid symbol");
+            }
+
+            if(!match.Success) {
+                Throw("Invalid symbol");
+            }
+
+            var symbol = match.Groups["symbol"].Value;
+            var isExternalRef = match.Groups["external"].Length > 0;
+
+            var theOperator = operators.GetValueOrDefault(symbol);
+            if(theOperator is null) {
+                var part = new SymbolReference() { SymbolName = symbol, IsExternal = isExternalRef };
+                AddExpressionPart(part);
+                IncreaseParsedStringPointer(match.Length);
+            }
+            else if(isExternalRef) {
+                Throw($"{symbol.ToUpper()} is an operator, can't be used as external reference");
+            } else { 
+                ProcessOperator(symbol);
+            }
         }
-
-
 
         private static Dictionary<char, int> hexDigitValues = new() {
             { '0', 0 }, { '1', 1 }, { '2', 2 }, { '3', 3 }, { '4', 4 }, 
@@ -398,28 +444,28 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         private static Dictionary<string, ArithmeticOperator> operators = new ArithmeticOperator[] {
-            new AndOperator(),
-            new DivideOperator(),
-            new EqualsOperator(),
-            new GreaterThanOperator(),
-            new GreaterThanOrEqualOperator(),
-            new HighOperator(),
-            new LessThanOperator(),
-            new LessThanOrEqualOperator(),
-            new LowOperator(),
-            new MinusOperator(),
-            new ModOperator(),
-            new MultiplyOperator(),
-            new NotEqualsOperator(),
-            new NotOperator(),
-            new OrOperator(),
-            new PlusOperator(),
-            new ShiftLeftOperator(),
-            new ShiftRightOperator(),
-            new UnaryMinusOperator(),
-            new UnaryPlusOperator(),
-            new XorOperator()
-        }.ToDictionary(x => x.Name);
+            AndOperator.Instance,
+            DivideOperator.Instance,
+            EqualsOperator.Instance,
+            GreaterThanOperator.Instance,
+            GreaterThanOrEqualOperator.Instance,
+            HighOperator.Instance,
+            LessThanOperator.Instance,
+            LessThanOrEqualOperator.Instance,
+            LowOperator.Instance,
+            MinusOperator.Instance,
+            ModOperator.Instance,
+            MultiplyOperator.Instance,
+            NotEqualsOperator.Instance,
+            NotOperator.Instance,
+            OrOperator.Instance,
+            PlusOperator.Instance,
+            ShiftLeftOperator.Instance,
+            ShiftRightOperator.Instance,
+            UnaryMinusOperator.Instance,
+            UnaryPlusOperator.Instance,
+            XorOperator.Instance
+        }.ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
 
         public static bool operator ==(Expression expression1, Expression expression2)
         {

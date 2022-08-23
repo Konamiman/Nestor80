@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
+﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
     internal class GreaterThanOperator : ArithmeticOperator
     {
+        public static GreaterThanOperator Instance = new();
+
         public override int Precedence => 5;
 
         public override string Name => "GT";

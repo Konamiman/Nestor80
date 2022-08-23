@@ -2,6 +2,8 @@
 {
     internal class MultiplyOperator : ArithmeticOperator
     {
+        public static MultiplyOperator Instance = new();
+
         public override int Precedence => 2;
 
         public override string Name => "*";

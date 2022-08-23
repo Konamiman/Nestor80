@@ -3,6 +3,8 @@ namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
     internal class XorOperator : ArithmeticOperator
     {
+        public static XorOperator Instance = new();
+
         public override int Precedence => 8;
 
         public override string Name => "XOR";
