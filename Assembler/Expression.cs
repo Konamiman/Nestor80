@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -11,45 +12,65 @@ namespace Konamiman.Nestor80.Assembler
             this.Parts = parts ?? Array.Empty<IExpressionPart>();
         }
 
+        private static Dictionary<int, Regex> numberRegexes = new();
+        private static Regex xNumberRegex = new Regex("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static Regex currentRadixRegex;
         private static string parsedString = null;
         private static int parsedStringLength = 0;
         private static int parsedStringPointer = 0;
-        private static char lastExtractedChar = '\0';
+        private static bool extractingForDb = false;
         private static List<IExpressionPart> parts = new();
         private static IExpressionPart lastExtractedPart = null;
-        private static List<char> extractedChars = new();
-
-        private static char ExtractCharFromParsedString()
-        {
-            if(AtEndOfString) {
-                Throw("End of expression reached unexpectedly");
-            }
-
-            lastExtractedChar = parsedString[parsedStringPointer++];
-            if(parsedStringPointer == parsedStringLength) {
-                AtEndOfString = true;
-            }
-            return lastExtractedChar;
-        }
-
-        private static void RewindToPreviousChar()
-        {
-            if(parsedStringPointer == 0) {
-                throw new Exception($"{nameof(Expression)}.{nameof(RewindToPreviousChar)} invoked with {nameof(parsedStringPointer)} = 0, expression: {parsedString}");
-            }
-
-            parsedStringPointer--;
-            AtEndOfString = false;
-        }
 
         private static bool AtEndOfString = false;
+        public static Encoding OutputStringEncoding { get; set; }
+
+        public IExpressionPart[] Parts { get; private set; }
+
+        static Expression() => DefaultRadix = 10;
+
+        private static int _DefaultRadix;
+        public static int DefaultRadix
+        {
+            get => _DefaultRadix;
+            set
+            {
+                if(value is < 2 or > 16) {
+                    throw new InvalidOperationException($"{nameof(Expression)}.{nameof(DefaultRadix)}: value must be between 2 and 16");
+                }
+
+                _DefaultRadix = value;
+
+                if(numberRegexes.ContainsKey(value)) {
+                    currentRadixRegex = numberRegexes[value];
+                    return;
+                }
+
+                var extraBinarySuffix = value < 12 ? "b" : "";
+                var extraDecimalSuffix = value < 14 ? "d" : "";
+                var extraAllowedDigits = value switch {
+                    < 11 => $"{value - 1}",
+                    11 => "9a",
+                    _ => $"9a-{(char)('a' + value - 11)}"
+                };
+
+                currentRadixRegex = new Regex(
+                    $"((?<number_hex>[0-9a-f]+)h)|((?<number_bin>[01]+)[{extraBinarySuffix}i])|((?<number_dec>[0-9]+)[{extraDecimalSuffix}m])|((?<number_oct>[0-7]+)[oq])|((?<number>[0-{extraAllowedDigits}]+)(?![hbdmi0-{extraAllowedDigits}]))",
+                    RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+                numberRegexes[value] = currentRadixRegex;
+            }
+        }
 
         private static Dictionary<char, string> OperatorsAsStrings = new() {
             { '*', "*" },
-            { '/', "/" }
+            { '/', "/" },
+            { '(', "(" },
+            { ')', ")" }
         };
 
-        public static Expression FromParts(IEnumerable<IExpressionPart> parts)
+        public static Expression FromParts(params IExpressionPart[] parts)
         {
             return new Expression(parts.ToArray());
         }
@@ -82,11 +103,12 @@ namespace Konamiman.Nestor80.Assembler
         /// <exception cref="InvalidExpressionException">The supplied string doesn't represent a valid expression</exception>
         public static Expression Parse(string expressionString, bool forDefb = false)
         {
-            if(expressionString == null) {
-                throw new ArgumentNullException(nameof(expressionString));
+            if(expressionString[0] is ' ' or '\t' || expressionString[^1] is ' ' or '\t') {
+                throw new ArgumentException($"The string passed to {nameof(Expression)}.{nameof(Parse)} isn't supposed to contain spaces/tabs at the beginning or the end");
             }
-            if(expressionString == "") {
-                return new Expression();
+
+            if(string.IsNullOrWhiteSpace(expressionString)) {
+                throw new ArgumentNullException(nameof(expressionString));
             }
 
             parts.Clear();
@@ -94,103 +116,45 @@ namespace Konamiman.Nestor80.Assembler
             parsedString = expressionString;
             parsedStringPointer = 0;
             parsedStringLength = expressionString.Length;
-            lastExtractedChar = '\0';
-            bool insideString = false;
-            char stringDelimiter = '\0';
-            bool lastCharWasStringDelimiter = false;
-            int stringstartPointer = 0;
-            int stringEndPointer = 0;
+            extractingForDb = forDefb;
             lastExtractedPart = null;
 
             AtEndOfString = false;
 
-            while(!AtEndOfString) {
-                SkipBlanks();
-
-                if(char.IsDigit(lastExtractedChar)) {
-                    ExtractNumber();
-                    continue;
-                }
-
-                if(lastExtractedChar is 'x' or 'X') {
-                    if(AtEndOfString) {
-                        RewindToPreviousChar();
-                        ExtractSymbolOrOperator();
-                        continue;
-                    }
-
-                    ExtractCharFromParsedString();
-                    if(lastExtractedChar == '\'') {
-                        ExtractNumber(isXDelimited: true);
-                        continue;
-                    }
-                    else {
-                        RewindToPreviousChar();
-                        RewindToPreviousChar();
-                        ExtractSymbolOrOperator();
-                        continue;
-                    }
-                }
-
-                if(lastExtractedChar is '"' or '\'') {
-                    ProcessString(forDefb);
-                    continue;
-                }
-
-                if(lastExtractedChar == '-') {
-                    ProcessMinus();
-                }
-                else if(lastExtractedChar == '+') {
-                    ProcessPlus();
-                }
-                else if(lastExtractedChar is '*' or '/' or '(' or ')') {
-                    ProcessOperator(OperatorsAsStrings[lastExtractedChar]);
-                }
-                else if(IsValidSymbolChar(lastExtractedChar)) {
-                    RewindToPreviousChar();
-                    ExtractSymbolOrOperator();
-                }
-
-                Throw($"Unexpected character found: {lastExtractedChar}");
-            }
-
+            while(!AtEndOfString)
+                ExtractNextPart();
 
             return new Expression(parts.ToArray());
         }
 
-        private static bool IsValidSymbolChar(char theChar)
+        private static void ExtractNextPart()
         {
-            return char.IsLetter(theChar) || theChar is '?' or '_' or '@' or '.' or '$';
-        }
+            var currentChar = parsedString[parsedStringPointer];
 
-        private static string ProcessString(bool forDefb)
-        {
-            throw new NotImplementedException();
-        }
-
-        private static void ProcessOperator(string theOperator)
-        {
-            throw new NotImplementedException();
-        }
-
-        private static void SkipBlanks()
-        {
-            while(!AtEndOfString && ExtractCharFromParsedString() is ' ' or '\t') ;
-        }
-
-        private static void ProcessMinus()
-        {
-            throw new NotImplementedException();
-        }
-
-        private static void ProcessPlus()
-        {
-            throw new NotImplementedException();
-        }
-
-        private static void ExtractSymbolOrOperator()
-        {
-            throw new NotImplementedException();
+            if(char.IsDigit(currentChar)) {
+                ExtractNumber();
+            }
+            else if(currentChar is 'x' or 'X' && parsedStringPointer < parsedStringLength - 1 && parsedString[parsedStringPointer + 1] == '\'') {
+                ExtractXNumber();
+            }
+            else if(currentChar is '"' or '\'') {
+                ExtractString();
+            }
+            else if(currentChar == '-') {
+                ProcessMinus();
+            }
+            else if(currentChar == '+') {
+                ProcessPlus();
+            }
+            else if(currentChar is '*' or '/' or '(' or ')') {
+                ProcessOperator(OperatorsAsStrings[currentChar]);
+            }
+            else if(IsValidSymbolChar(currentChar)) {
+                ExtractSymbolOrOperator();
+            }
+            else {
+                Throw($"Unexpected character found: {currentChar}");
+            }
         }
 
         /// <summary>
@@ -215,69 +179,72 @@ namespace Konamiman.Nestor80.Assembler
         /// <exception cref="InvalidExpressionException"></exception>
         private static void ExtractNumber(bool isXDelimited = false)
         {
-            var radix = DefaultRadix;
-            extractedChars.Clear();
-
-            if(isXDelimited) {
-                if(AtEndOfString) {
-                    Throw ("Unterminated x'nnnn' number");
-                }
-                ExtractCharFromParsedString();
+            Match match = null;
+            try {
+                match = currentRadixRegex.Match(parsedString, parsedStringPointer);
+            }
+            catch {
+                Throw("Invalid number");
             }
 
-            while(IsValidHexChar(lastExtractedChar)) {
-                extractedChars.Add(lastExtractedChar);
-                if(AtEndOfString) {
-                    break;
-                }
-                ExtractCharFromParsedString();
+            var matchKey = match.Groups.Keys.FirstOrDefault(k => k[0] == 'n' && match.Groups[k].Success);
+            if(matchKey is null) {
+                Throw("Invalid number");
             }
 
-            if(isXDelimited) {
-                if(lastExtractedChar != '\'') {
-                    Throw("x'nnnn' number is unterminated or has invalid characters");
-                }
-                if(extractedChars.Count == 0) {
-                    extractedChars.Add('0');
-                }
-                radix = 16;
-            }
-            else if(!IsValidNumericChar(lastExtractedChar, radix)) {
-                if(lastExtractedChar is ' ' or '\t' or '+' or '-' or '*' or '/') {
-                    RewindToPreviousChar();
-                }
-                else {
-                    radix = lastExtractedChar switch {
-                        'h' or 'H' => 16,
-                        'd' or 'D' => 10,
-                        'b' or 'B' => 2,
-                        'o' or 'O' or 'q' or 'Q' => 8,
-                        _ => throw new InvalidExpressionException($"Unexpected character found: {lastExtractedChar}")
-                    };
-                    if(!IsValidNumericChar(extractedChars[extractedChars.Count - 1], radix)) {
-                        extractedChars.RemoveAt(extractedChars.Count - 1);
-                    }
-                }
-            }
+            var extractedNumber = match.Groups[matchKey].Value;
+            var radix = matchKey switch {
+                "number" => DefaultRadix,
+                "number_hex" => 16,
+                "number_bin" => 2,
+                "number_dec" => 10,
+                "number_oct" => 8,
+                _ => throw new InvalidOperationException($"Something weird happened in {nameof(Expression)}.{nameof(ExtractNumber)}: got unknown regex group name, {matchKey}")
+            };
 
             int value = 0;
-            var extractedString = new string(extractedChars.ToArray());
             try {
-                value = ParseNumber(extractedString, radix);
-            } catch {
-                Throw($"{extractedString} is not a valid base {radix} number");
+                value = ParseNumber(extractedNumber, radix);
+            }
+            catch {
+                Throw($"Invalid base {radix} number");
             }
 
-            var address = new Address(AddressType.ASEG, (ushort)(value & 0xFFFF));
+            //TODO: Warning if truncated value
+            var address = Address.Absolute((ushort)(value & 0xFFFF));
             AddExpressionPart(address);
+
+            IncreaseParsedStringPointer(match.Length);
         }
 
-        private static Dictionary<char, int> hexDigitValues = new() {
-            { '0', 0 }, { '1', 1 }, { '2', 2 }, { '3', 3 }, { '4', 4 }, 
-            { '5', 5 }, { '6', 6 }, { '7', 7 }, { '8', 8 }, { '9', 9 },
-            { 'a', 10 }, { 'b', 11 }, { 'c', 12 }, { 'd', 13 }, { 'e', 14 },
-            { 'A', 10 }, { 'B', 11 }, { 'C', 12 }, { 'D', 13 }, { 'E', 14 }
-        };
+        private static void ExtractXNumber()
+        {
+            Match match = null;
+            try {
+                match = xNumberRegex.Match(parsedString, parsedStringPointer);
+            }
+            catch {
+                Throw("Invalid X'' number");
+            }
+
+            var extractedNumber = match.Value;
+
+            int value = 0;
+            if(extractedNumber.Length > 0) {
+                try {
+                    value = ParseNumber(extractedNumber, 16);
+                }
+                catch {
+                    Throw($"Invalid X'' number");
+                }
+            }
+
+            //TODO: Warning if truncated value
+            var address = Address.Absolute((ushort)(value & 0xFFFF));
+            AddExpressionPart(address);
+
+            IncreaseParsedStringPointer(match.Length + 3); //+3 to include the opening X' and the closing ' that were excluded from the match
+        }
 
         private static int ParseNumber(string number, int radix)
         {
@@ -293,7 +260,47 @@ namespace Konamiman.Nestor80.Assembler
 
             return result;
         }
-    
+
+        private static bool IsValidSymbolChar(char theChar)
+        {
+            return char.IsLetter(theChar) || theChar is '?' or '_' or '@' or '.' or '$';
+        }
+
+        private static string ExtractString()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void ProcessOperator(string theOperator)
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void ProcessMinus()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void ProcessPlus()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void ExtractSymbolOrOperator()
+        {
+            throw new NotImplementedException();
+        }
+
+
+
+        private static Dictionary<char, int> hexDigitValues = new() {
+            { '0', 0 }, { '1', 1 }, { '2', 2 }, { '3', 3 }, { '4', 4 }, 
+            { '5', 5 }, { '6', 6 }, { '7', 7 }, { '8', 8 }, { '9', 9 },
+            { 'a', 10 }, { 'b', 11 }, { 'c', 12 }, { 'd', 13 }, { 'e', 14 },
+            { 'A', 10 }, { 'B', 11 }, { 'C', 12 }, { 'D', 13 }, { 'E', 14 }
+        };
+
+   
         private static void AddExpressionPart(IExpressionPart part)
         {
             parts.Add(part);
@@ -363,21 +370,18 @@ namespace Konamiman.Nestor80.Assembler
             return new Expression(new RawBytesOutput[] { new(OutputStringEncoding.GetBytes(expressionString)) });
         }
 
-        public static Encoding OutputStringEncoding { get; set; }
 
-        private static int _DefaultRadix = 10;
-        public static int DefaultRadix {
-            get => _DefaultRadix;
-            set {
-                if(value is < 2 or > 16) {
-                    throw new InvalidOperationException($"{nameof(Expression)}.{nameof(DefaultRadix)}: value must be between 2 and 16");
-                }
+        private static void IncreaseParsedStringPointer(int amount = 1)
+        {
+            parsedStringPointer += amount;
 
-                _DefaultRadix = value;
+            if(parsedStringPointer == parsedStringLength) {
+                AtEndOfString = true;
+            }
+            else if(parsedStringPointer == parsedStringLength) {
+                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(IncreaseParsedStringPointer)}: parsed string length is {parsedStringLength} and the string pointer was set to {parsedStringPointer}");
             }
         }
-
-        public IExpressionPart[] Parts { get; private set; }
 
         private static void Throw(string message)
         {

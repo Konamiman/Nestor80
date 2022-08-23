@@ -106,6 +106,7 @@ namespace Konamiman.Nestor80.AssemblerTests
             // The x'nnnn' syntax
 
             new object[] {10, "x'12eF'", 0x12ef },
+            new object[] {10, "X'1234eF'", 0x34ef },
             new object[] {10, "x''", 0 },
 
             // Overflow
