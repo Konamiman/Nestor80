@@ -1,5 +1,4 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -12,16 +11,16 @@ namespace Konamiman.Nestor80.Assembler
             this.Parts = parts ?? Array.Empty<IExpressionPart>();
         }
 
-        private static Dictionary<int, Regex> numberRegexes = new();
-        private static Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static Regex symbolRegex = new("(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Dictionary<int, Regex> numberRegexes = new();
+        private static readonly Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex symbolRegex = new("(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private static Regex currentRadixRegex;
         private static string parsedString = null;
         private static int parsedStringLength = 0;
         private static int parsedStringPointer = 0;
         private static bool extractingForDb = false;
-        private static List<IExpressionPart> parts = new();
+        private static readonly List<IExpressionPart> parts = new();
         private static IExpressionPart lastExtractedPart = null;
 
         private static bool AtEndOfString = false;
@@ -57,25 +56,24 @@ namespace Konamiman.Nestor80.Assembler
                 };
 
                 currentRadixRegex = new Regex(
-                    $"((?<number_hex>[0-9a-f]+)h)|((?<number_bin>[01]+)[{extraBinarySuffix}i])|((?<number_dec>[0-9]+)[{extraDecimalSuffix}m])|((?<number_oct>[0-7]+)[oq])|((?<number>[0-{extraAllowedDigits}]+)(?![hbdmi0-{extraAllowedDigits}]))",
+                    $"((?<number_hex>[0-9a-f]+)h)|" +
+                    $"((?<number_bin>[01]+)[{extraBinarySuffix}i])|" +
+                    $"((?<number_dec>[0-9]+)[{extraDecimalSuffix}m])|" +
+                    $"((?<number_oct>[0-7]+)[oq])|" +
+                    $"((?<number>[0-{extraAllowedDigits}]+)(?![hbdmi0-{extraAllowedDigits}]))",
                     RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
                 numberRegexes[value] = currentRadixRegex;
             }
         }
 
-        private static Dictionary<char, string> OperatorsAsStrings = new() {
-            { '+', "+" },
-            { '-', "-" },
-            { '*', "*" },
-            { '/', "/" },
-            { '(', "(" },
-            { ')', ")" }
+        private static readonly Dictionary<char, string> OperatorsAsStrings = new() {
+            { '+', "+" }, { '-', "-" }, { '*', "*" },
+            { '/', "/" }, { '(', "(" }, { ')', ")" }
         };
 
-        private static Dictionary<char, string> UnaryOperatorsAsStrings = new() {
-            { '+', "u+" },
-            { '-', "u-" },
+        private static readonly Dictionary<char, string> UnaryOperatorsAsStrings = new() {
+            { '+', "u+" }, { '-', "u-" },
         };
 
         public static Expression FromParts(params IExpressionPart[] parts)
@@ -308,16 +306,6 @@ namespace Konamiman.Nestor80.Assembler
             IncreaseParsedStringPointer(theOperator is "u+" or "u-" ? 1 : theOperator.Length);
         }
 
-        private static void ProcessMinus()
-        {
-            throw new NotImplementedException();
-        }
-
-        private static void ProcessPlus()
-        {
-            throw new NotImplementedException();
-        }
-
         private static void ExtractSymbolOrOperator()
         {
             Match match = null;
@@ -344,7 +332,7 @@ namespace Konamiman.Nestor80.Assembler
                 IncreaseParsedStringPointer(3); //To make AtEndOfString accurate
                 var part = AtEndOfString ? Address.AbsoluteMinusOne : Address.AbsoluteZero;
                 AddExpressionPart(part);
-                AtEndOfString = true;
+                AtEndOfString = true; //This will cause the rest of the expression to be discarded
                 return;
             }
 
@@ -361,7 +349,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static Dictionary<char, int> hexDigitValues = new() {
+        private static readonly Dictionary<char, int> hexDigitValues = new() {
             { '0', 0 }, { '1', 1 }, { '2', 2 }, { '3', 3 }, { '4', 4 }, 
             { '5', 5 }, { '6', 6 }, { '7', 7 }, { '8', 8 }, { '9', 9 },
             { 'a', 10 }, { 'b', 11 }, { 'c', 12 }, { 'd', 13 }, { 'e', 14 },
@@ -375,13 +363,6 @@ namespace Konamiman.Nestor80.Assembler
             lastExtractedPart = part;
         }
 
-        private static bool IsValidNumericChar(char theChar, int radix)
-        {
-            theChar = char.ToUpper(theChar);
-            return char.IsDigit(theChar) ||
-                ((theChar = char.ToUpper(theChar)) >= 'A' && theChar <= 'A' + radix - 11);
-        }
-
         private static bool IsValidHexChar(char theChar)
         {
             return char.IsDigit(theChar) ||
@@ -389,55 +370,13 @@ namespace Konamiman.Nestor80.Assembler
                 (theChar >= 'A' && theChar <= 'F');
         }
 
-        private static Expression ParseNonString(string expressionString)
-        {
-            throw new NotImplementedException();
-        }
-
-        private static Dictionary<char, string> singleDelimiters = new() {
-            { '"', "\"" },
-            { '\'', "'" }
+        private static readonly Dictionary<char, string> singleDelimiters = new() {
+            { '"', "\"" }, { '\'', "'" }
         };
 
-        private static Dictionary<char, string> doubleDelimiters = new() {
-            { '"', "\"\"" },
-            { '\'', "''" }
+        private static readonly Dictionary<char, string> doubleDelimiters = new() {
+            { '"', "\"\"" }, { '\'', "''" }
         };
-
-        private static Expression ParseString(string expressionString)
-        {
-            var delimiter = expressionString[0];
-            if(expressionString[1] == delimiter) {
-                if(expressionString.Length > 2) {
-                    Throw("Extra content found after string");
-                }
-                else {
-                    return new Expression();
-                }
-            }
-
-            var hasEscapedDelimiter = false;
-            if(expressionString.Contains(doubleDelimiters[delimiter])) {
-                hasEscapedDelimiter = true;
-                expressionString = expressionString.Replace(doubleDelimiters[delimiter], "\0");
-            }
-
-            var extraDelimiterIndex = expressionString.IndexOf(delimiter, 1);
-            if(extraDelimiterIndex == -1) {
-                Throw("Unterminated string");
-            }
-            else if(extraDelimiterIndex != expressionString.Length-1) {
-                Throw("Extra content found after string");
-            }
-
-            if(hasEscapedDelimiter) {
-                expressionString = expressionString.Replace("\0", singleDelimiters[delimiter]);
-            }
-
-            expressionString = expressionString[1..^1];
-            return new Expression(new RawBytesOutput[] { new(OutputStringEncoding.GetBytes(expressionString)) });
-        }
-
 
         private static void IncreaseParsedStringPointer(int amount = 1)
         {
