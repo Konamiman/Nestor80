@@ -251,7 +251,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             IncreaseParsedStringPointer(increaseStringPointerBy);
-            if(!AtEndOfString && parsedString[parsedStringPointer] is not ' ' or '\t' or '+' or '-' or '*' or '/' or ')') {
+            if(!AtEndOfString && (parsedString[parsedStringPointer] is not ' ' and not '\t' and not '+' and not '-' and not '*' and not '/' and not ')')) {
                 Throw($"Unexpected character found after number: {parsedString[parsedStringPointer]}");
             }
 
@@ -335,6 +335,19 @@ namespace Konamiman.Nestor80.Assembler
             var symbol = match.Groups["symbol"].Value;
             var isExternalRef = match.Groups["external"].Length > 0;
 
+            if(string.Equals(symbol, "NUL", StringComparison.OrdinalIgnoreCase)) {
+                /*
+                 * The NUL operator is a special case.
+                 * If it's the last item in the expression it evaluates to -1.
+                 * Otherwise it evaluates to 0 and the remaning of the expression is discarded.
+                 */ 
+                IncreaseParsedStringPointer(3); //To make AtEndOfString accurate
+                var part = AtEndOfString ? Address.AbsoluteMinusOne : Address.AbsoluteZero;
+                AddExpressionPart(part);
+                AtEndOfString = true;
+                return;
+            }
+
             var theOperator = operators.GetValueOrDefault(symbol);
             if(theOperator is null) {
                 var part = new SymbolReference() { SymbolName = symbol, IsExternal = isExternalRef };
@@ -342,7 +355,7 @@ namespace Konamiman.Nestor80.Assembler
                 IncreaseParsedStringPointer(match.Length);
             }
             else if(isExternalRef) {
-                Throw($"{symbol.ToUpper()} is an operator, can't be used as external reference");
+                Throw($"{symbol.ToUpper()} is an operator, can't be used as external symbol reference");
             } else { 
                 ProcessOperator(symbol);
             }

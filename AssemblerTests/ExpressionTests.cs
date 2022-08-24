@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using Konamiman.Nestor80.Assembler;
+using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 
 namespace Konamiman.Nestor80.AssemblerTests
 {
@@ -164,6 +165,67 @@ namespace Konamiman.Nestor80.AssemblerTests
             AssertThrowsExpressionError(radix, input, exceptionMessage);
         }
 
+        static object[] TestParsingSymbolsAndOperatorsSource = {
+            new object[] { "ABCDE", new[] { SymbolReference.For("ABCDE") } },
+            new object[] { "ABCDE##", new[] { SymbolReference.For("ABCDE", true) } },
+            new object[] { "ABCDE0123?@._", new[] { SymbolReference.For("ABCDE0123?@._") } },
+            new object[] { "MOD", new[] { ModOperator.Instance } },
+            new object[] { "+", new[] { UnaryPlusOperator.Instance } },
+            new object[] { "3 + 4", new object[] { Address.Absolute(3), PlusOperator.Instance, Address.Absolute(4) } },
+            new object[] { "-", new[] { UnaryMinusOperator.Instance } },
+            new object[] { "3 - 4", new object[] { Address.Absolute(3), MinusOperator.Instance, Address.Absolute(4) } },
+
+            new object[] { "1 2 NUL", new object[] { Address.Absolute(1), Address.Absolute(2), Address.AbsoluteMinusOne } },
+            new object[] { "1 2 NUL 3 4 FOO BAR # WHATEVER", new object[] { Address.Absolute(1), Address.Absolute(2), Address.AbsoluteZero } },
+
+            new object[] { "EQ NE LT LE GT GE HIGH LOW * / NOT AND OR XOR SHR SHL MOD",
+                new object[] {
+                    EqualsOperator.Instance,
+                    NotEqualsOperator.Instance,
+                    LessThanOperator.Instance,
+                    LessThanOrEqualOperator.Instance,
+                    GreaterThanOperator.Instance,
+                    GreaterThanOrEqualOperator.Instance,
+                    HighOperator.Instance,
+                    LowOperator.Instance,
+                    MultiplyOperator.Instance,
+                    DivideOperator.Instance,
+                    NotOperator.Instance,
+                    AndOperator.Instance,
+                    OrOperator.Instance,
+                    XorOperator.Instance,
+                    ShiftRightOperator.Instance,
+                    ShiftLeftOperator.Instance,
+                    ModOperator.Instance
+                }
+            },
+            
+            new object[] {
+                "-(-3-4 MOD 5)-FOO+BAR##",
+                new object[] {
+                    UnaryMinusOperator.Instance,
+                    OpeningParenthesis.Value,
+                    UnaryMinusOperator.Instance,
+                    Address.Absolute(3),
+                    MinusOperator.Instance,
+                    Address.Absolute(4),
+                    ModOperator.Instance,
+                    Address.Absolute(5),
+                    ClosingParenthesis.Value,
+                    MinusOperator.Instance,
+                    SymbolReference.For("FOO"),
+                    PlusOperator.Instance,
+                    SymbolReference.For("BAR", true)
+                }
+            },
+        };
+
+        [TestCaseSource(nameof(TestParsingSymbolsAndOperatorsSource))]
+        public void TestParsingSymbolsAndOperators(string expressionString, object[] parts)
+        {
+            AssertGenerates(expressionString, parts.Select(p => (IExpressionPart)p).ToArray());
+        }
+
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
             AssertIsNumber(Expression.Parse(expressionString), number);
 
@@ -182,5 +244,8 @@ namespace Konamiman.Nestor80.AssemblerTests
             if(message is not null)
                 Assert.AreEqual(message, ex.Message);
         }
+
+        private static void AssertGenerates(string expressionString, params IExpressionPart[] parts) =>
+            AssertExpressionIs(Expression.Parse(expressionString), parts);
     }
 }

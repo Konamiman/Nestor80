@@ -33,5 +33,35 @@
         protected abstract Address OperateCore(Address value1, Address value2);
 
         public override string ToString() => Name;
+
+        public static bool operator ==(ArithmeticOperator operator1, object operator2)
+        {
+            if(operator2 is not Address)
+                return false;
+
+            if(operator1 is null)
+                return operator2 is null;
+
+            return operator1.Equals(operator2);
+        }
+
+        public static bool operator !=(ArithmeticOperator operator1, object operator2)
+        {
+            return !(operator1 == operator2);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if(obj == null || GetType() != obj.GetType())
+                return false;
+
+            var b2 = (ArithmeticOperator)obj;
+            return b2.GetType() == GetType() && b2.Name == Name;
+        }
+
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode();
+        }
     }
 }
