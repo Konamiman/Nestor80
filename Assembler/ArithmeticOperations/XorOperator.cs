@@ -1,7 +1,7 @@
 ﻿
 namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class XorOperator : ArithmeticOperator
+    internal class XorOperator : BinaryOperator
     {
         public static XorOperator Instance = new();
 

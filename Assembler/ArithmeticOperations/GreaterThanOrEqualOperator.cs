@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class GreaterThanOrEqualOperator : ArithmeticOperator
+    internal class GreaterThanOrEqualOperator : BinaryOperator
     {
         public static GreaterThanOrEqualOperator Instance = new();
 

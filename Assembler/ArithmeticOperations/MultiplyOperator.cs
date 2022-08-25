@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class MultiplyOperator : ArithmeticOperator
+    internal class MultiplyOperator : BinaryOperator
     {
         public static MultiplyOperator Instance = new();
 

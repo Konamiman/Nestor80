@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class EqualsOperator : ArithmeticOperator
+    internal class EqualsOperator : BinaryOperator
     {
         public static EqualsOperator Instance = new();
 

@@ -260,10 +260,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         {
             Expression.OutputStringEncoding = Encoding.ASCII;
             var exp = Expression.Parse(expressionString, true);
-            if(expectedOutput.Length == 0)
-                Assert.AreEqual(Expression.Empty, exp);
-            else
-                AssertExpressionIs(exp, RawBytesOutput.FromBytes(expectedOutput));
+            AssertExpressionIs(exp, RawBytesOutput.FromBytes(expectedOutput));
         }
 
         static object[] TestWrongStringCases = {

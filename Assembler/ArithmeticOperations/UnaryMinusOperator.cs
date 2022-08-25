@@ -1,14 +1,12 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class UnaryMinusOperator : ArithmeticOperator
+    internal class UnaryMinusOperator : UnaryOperator
     {
         public static UnaryMinusOperator Instance = new();
 
         public override int Precedence => 3;
 
         public override string Name => "u-";
-
-        public override bool IsUnary => true;
 
         public override byte? ExtendedLinkItemType => 6;
 

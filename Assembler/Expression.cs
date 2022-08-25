@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
-    internal class Expression : IAssemblyOutputPart
+    internal partial class Expression : IAssemblyOutputPart
     {
         private Expression(IExpressionPart[] parts = null)
         {
@@ -295,7 +295,7 @@ namespace Konamiman.Nestor80.Assembler
         private static void ExtractString(char delimiter)
         {
             if(parsedStringPointer == parsedStringLength-1) {
-                // This cover the edge case of a stray ' or " at the end of the string,
+                // This covers the edge case of a stray ' or " at the end of the string,
                 // e.g. 'ABC''
                 Throw("Unterminated string");
             }
@@ -321,19 +321,13 @@ namespace Konamiman.Nestor80.Assembler
             var stringBytes = OutputStringEncoding.GetBytes(theString);
 
             if(extractingForDb) {
-                if(stringBytes.Length > 0) {
-                    AddExpressionPart(new RawBytesOutput(stringBytes));
-                }
+                AddExpressionPart(new RawBytesOutput(stringBytes.Length > 0 ? stringBytes : Array.Empty<byte>()));
             }
             else {
                 if(stringBytes.Length > 2) {
                     Throw($"The string \"{theString}\" generates more than two bytes in the current output encoding ({OutputStringEncoding.EncodingName})");
                 }
-                ushort value = stringBytes.Length switch {
-                    0 => 0,
-                    1 => stringBytes[0],
-                    _ => (ushort)(stringBytes[0] | stringBytes[1] << 8)
-                };
+                var value = RawBytesOutput.NumericValueFor(stringBytes);
                 AddExpressionPart(Address.Absolute(value));
             }
 

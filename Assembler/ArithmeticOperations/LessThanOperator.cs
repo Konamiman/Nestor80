@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class LessThanOperator : ArithmeticOperator
+    internal class LessThanOperator : BinaryOperator
     {
         public static LessThanOperator Instance = new();
 

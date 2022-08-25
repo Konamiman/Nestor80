@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class OrOperator : ArithmeticOperator
+    internal class OrOperator : BinaryOperator
     {
         public static OrOperator Instance = new();
 

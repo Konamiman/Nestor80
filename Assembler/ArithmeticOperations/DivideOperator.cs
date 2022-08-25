@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class DivideOperator : ArithmeticOperator
+    internal class DivideOperator : BinaryOperator
     {
         public static DivideOperator Instance = new();
 

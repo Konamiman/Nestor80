@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class NotEqualsOperator : ArithmeticOperator
+    internal class NotEqualsOperator : BinaryOperator
     {
         public static NotEqualsOperator Instance = new();
 

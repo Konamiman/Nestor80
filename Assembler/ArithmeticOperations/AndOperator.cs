@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class AndOperator : ArithmeticOperator
+    internal class AndOperator : BinaryOperator
     {
         public static AndOperator Instance = new();
 

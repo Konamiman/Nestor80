@@ -8,7 +8,7 @@
 
         public abstract string Name { get; }
 
-        public virtual bool IsUnary => false;
+        public abstract bool IsUnary { get; }
 
         public virtual byte? ExtendedLinkItemType => null;
 

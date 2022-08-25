@@ -1,14 +1,12 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class HighOperator : ArithmeticOperator
+    internal class HighOperator : UnaryOperator
     {
         public static HighOperator Instance = new();
 
         public override int Precedence => 1;
 
         public override string Name => "HIGH";
-
-        public override bool IsUnary => true;
 
         public override byte? ExtendedLinkItemType => 3;
 

@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class ShiftRightOperator : ArithmeticOperator
+    internal class ShiftRightOperator : BinaryOperator
     {
         public static ShiftRightOperator Instance = new();
 

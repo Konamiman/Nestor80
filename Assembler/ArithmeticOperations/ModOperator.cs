@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal class ModOperator : ArithmeticOperator
+    internal class ModOperator : BinaryOperator
     {
         public static ModOperator Instance = new();
 
