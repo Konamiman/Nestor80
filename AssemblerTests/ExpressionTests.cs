@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
 using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.ArithmeticOperations;
+using System.Text;
 
 namespace Konamiman.Nestor80.AssemblerTests
 {
@@ -178,6 +179,8 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { "1 2 NUL", new object[] { Address.Absolute(1), Address.Absolute(2), Address.AbsoluteMinusOne } },
             new object[] { "1 2 NUL 3 4 FOO BAR # WHATEVER", new object[] { Address.Absolute(1), Address.Absolute(2), Address.AbsoluteZero } },
 
+            new object[] { "5+'AB'-1", new object[] { Address.Absolute(5), PlusOperator.Instance, Address.Absolute(0x4241), MinusOperator.Instance, Address.Absolute(1) } },
+
             new object[] { "EQ NE LT LE GT GE HIGH LOW * / NOT AND OR XOR SHR SHL MOD",
                 new object[] {
                     EqualsOperator.Instance,
@@ -226,6 +229,58 @@ namespace Konamiman.Nestor80.AssemblerTests
             AssertGenerates(expressionString, parts.Select(p => (IExpressionPart)p).ToArray());
         }
 
+        static object[] TestExpressionStringParseSource = {
+            new object[] { "'AB'", 0x4241 },
+            new object[] { "\"AB\"", 0x4241 },
+            new object[] { "'A'", 0x41 },
+            new object[] { "\"A\"", 0x41 },
+            new object[] { "\"\"", 0 },
+            new object[] { "''", 0 },
+        };
+
+        [TestCaseSource(nameof(TestExpressionStringParseSource))]
+        public void TestExpressionStringParse(string expressionString, int expectedResult)
+        {
+            Expression.OutputStringEncoding = Encoding.ASCII;
+            var exp = Expression.Parse(expressionString, false);
+            AssertExpressionIs(exp, Address.Absolute((ushort)expectedResult));
+        }
+
+        static object[] TestLongStringParseSource = {
+            new object[] { "'ABC'", new byte[] { 0x41, 0x42, 0x43 } },
+            new object[] { "\"ABC\"", new byte[] { 0x41, 0x42, 0x43 } },
+            new object[] { "'A''C'", new byte[] { 0x41, 0x27, 0x43 } },
+            new object[] { "\"A\"\"C\"", new byte[] { 0x41, 0x22, 0x43 } },
+            new object[] { "''", Array.Empty<byte>() },
+            new object[] { "\"\"", Array.Empty<byte>() },
+        };
+
+        [TestCaseSource(nameof(TestLongStringParseSource))]
+        public void TestLongStringParse(string expressionString, byte[] expectedOutput)
+        {
+            Expression.OutputStringEncoding = Encoding.ASCII;
+            var exp = Expression.Parse(expressionString, true);
+            if(expectedOutput.Length == 0)
+                Assert.AreEqual(Expression.Empty, exp);
+            else
+                AssertExpressionIs(exp, RawBytesOutput.FromBytes(expectedOutput));
+        }
+
+        static object[] TestWrongStringCases = {
+            new object[] { "'ABC", "Unterminated string", true },
+            new object[] { "'ABC''", "Unterminated string", true },
+            new object[] { "\"ABC", "Unterminated string", true },
+            new object[] { "\"ABC\"\"", "Unterminated string", true },
+            new object[] { "'ABC'", $"The string \"ABC\" generates more than two bytes in the current output encoding ({Encoding.ASCII.EncodingName})", false },
+        };
+
+        [TestCaseSource(nameof(TestWrongStringCases))]
+        public void TestParsingWrongString(string input, string exceptionMessage, bool forDb)
+        {
+            Expression.OutputStringEncoding = Encoding.ASCII;
+            AssertThrowsExpressionError(10, input, exceptionMessage, forDb);
+        }
+
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
             AssertIsNumber(Expression.Parse(expressionString), number);
 
@@ -235,8 +290,8 @@ namespace Konamiman.Nestor80.AssemblerTests
         private static void AssertExpressionIs(Expression expression, params IExpressionPart[] parts) =>
             Assert.AreEqual(Expression.FromParts(parts), expression);
 
-        private static void AssertThrowsExpressionError(int radix, string input, string? message = null) =>
-            AssertThrowsExpressionError(() => { Expression.DefaultRadix = radix; Expression.Parse(input); }, message);
+        private static void AssertThrowsExpressionError(int radix, string input, string? message = null, bool forDb = false) =>
+            AssertThrowsExpressionError(() => { Expression.DefaultRadix = radix; Expression.Parse(input, forDb); }, message);
 
         private static void AssertThrowsExpressionError(Action code, string? message = null)
         {

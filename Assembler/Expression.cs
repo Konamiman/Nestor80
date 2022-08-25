@@ -14,6 +14,10 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Dictionary<int, Regex> numberRegexes = new();
         private static readonly Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex symbolRegex = new("(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Dictionary<char, Regex> stringRegexes = new() {
+            {'\'', new Regex("(?<=')((?<quot>'')|[^'])*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
+            {'"',  new Regex("(?<=\")((?<quot>\"\")|[^\"])*(?=\")", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
+        };
 
         private static Regex currentRadixRegex;
         private static string parsedString = null;
@@ -81,6 +85,8 @@ namespace Konamiman.Nestor80.Assembler
             return new Expression(parts.ToArray());
         }
 
+        public static Expression Empty => FromParts();
+
         /// <summary>
         /// Parse a string representing an expression.
         /// </summary>
@@ -147,7 +153,7 @@ namespace Konamiman.Nestor80.Assembler
                 ExtractXNumber();
             }
             else if(currentChar is '"' or '\'') {
-                ExtractString();
+                ExtractString(currentChar);
             }
             else if(currentChar is '+' or '-') {
                 ProcessPlusOrMinus(currentChar);
@@ -286,9 +292,52 @@ namespace Konamiman.Nestor80.Assembler
             return char.IsLetter(theChar) || theChar is '?' or '_' or '@' or '.' or '$';
         }
 
-        private static string ExtractString()
+        private static void ExtractString(char delimiter)
         {
-            throw new NotImplementedException();
+            if(parsedStringPointer == parsedStringLength-1) {
+                // This cover the edge case of a stray ' or " at the end of the string,
+                // e.g. 'ABC''
+                Throw("Unterminated string");
+            }
+            
+            Match match = null;
+            try {
+                match = stringRegexes[delimiter].Match(parsedString, parsedStringPointer);
+            }
+            catch {
+                Throw("Invalid string");
+            }
+
+            if(!match.Success) {
+                Throw("Unterminated string");
+            }
+
+            var theString = match.Value;
+            var matchLength = theString.Length;
+            if(match.Groups["quot"].Success) {
+                theString = theString.Replace(doubleDelimiters[delimiter], singleDelimiters[delimiter]);
+            }
+
+            var stringBytes = OutputStringEncoding.GetBytes(theString);
+
+            if(extractingForDb) {
+                if(stringBytes.Length > 0) {
+                    AddExpressionPart(new RawBytesOutput(stringBytes));
+                }
+            }
+            else {
+                if(stringBytes.Length > 2) {
+                    Throw($"The string \"{theString}\" generates more than two bytes in the current output encoding ({OutputStringEncoding.EncodingName})");
+                }
+                ushort value = stringBytes.Length switch {
+                    0 => 0,
+                    1 => stringBytes[0],
+                    _ => (ushort)(stringBytes[0] | stringBytes[1] << 8)
+                };
+                AddExpressionPart(Address.Absolute(value));
+            }
+
+            IncreaseParsedStringPointer(matchLength + 2); // +2 for the delimiters
         }
 
         private static void ProcessOperator(string theOperator)
