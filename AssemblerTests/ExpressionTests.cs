@@ -429,11 +429,6 @@ namespace Konamiman.Nestor80.AssemblerTests
             },
 
             new object[] {
-                "- HIGH 1",
-                new object[] { Address.Absolute(1), HighOperator.Instance, UnaryMinusOperator.Instance }
-            },
-
-            new object[] {
                 "- (HIGH 1)",
                 new object[] { Address.Absolute(1), HighOperator.Instance, UnaryMinusOperator.Instance }
             },
