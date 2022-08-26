@@ -363,12 +363,15 @@ namespace Konamiman.Nestor80.AssemblerTests
                 new object[] {
                     LowOperator.Instance,
                     Address.Absolute(1),
+                    HighOperator.Instance,
                     Address.Absolute(2),
                     MultiplyOperator.Instance,
                     Address.Absolute(3),
                     DivideOperator.Instance,
                     Address.Absolute(4),
+                    ModOperator.Instance,
                     Address.Absolute(5),
+                    ShiftRightOperator.Instance,
                     Address.Absolute(6),
                     ShiftLeftOperator.Instance,
                     Address.Absolute(7),
@@ -409,6 +412,31 @@ namespace Konamiman.Nestor80.AssemblerTests
             AssertExpressionIs(exp, parts.Select(p => (IExpressionPart)p).ToArray());
         }
 
+        static object[] TestFailingValidationSource = {
+            new object[] { "((1)", "Extra ( found" },
+            new object[] { "(1))", "Missing (" },
+            new object[] { "3 NOT", "NOT can only be preceded by another operator or by (" },
+            new object[] { "* 3", "* can only be preceded by a number, a symbol, or )" },
+            new object[] { "(1) 3", "A number can only be preceded by an operator or by (" },
+            new object[] { "(FOO) 3", "A number can only be preceded by an operator or by (" },
+            new object[] { "3 (1)", "( can only be preceded by a an operator or by another (" },
+            new object[] { ") 1", ") can only be preceded by a an address, a symbol or another )" },
+        };
+
+        [TestCaseSource(nameof(TestFailingValidationSource))]
+        public void TestFailingValidation(string input, string exceptionMessage)
+        {
+            Expression.OutputStringEncoding = Encoding.ASCII;
+            var exp = Expression.Parse(input);
+
+            Action testAction = () => {
+                var exp = Expression.Parse(input);
+                exp.ValidateAndPostifixize();
+            };
+
+            var ex = Assert.Throws<InvalidExpressionException>(new TestDelegate(testAction));
+            Assert.AreEqual(exceptionMessage, ex.Message);
+        }
 
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
             AssertIsNumber(Expression.Parse(expressionString), number);
