@@ -27,7 +27,7 @@ namespace Konamiman.Nestor80.Assembler
                 var part = Parts[i];
                 if(part is RawBytesOutput rbo) {
                     if(rbo.Length > 2) {
-                        Throw($"A string of {rbo.Length} (more than 2) bytes can't be part of an expression");
+                        throw new Exception($"String of {rbo.Length} bytes found as part of an expression, this should have been filtered out by {nameof(Expression)}.{nameof(Parse)}");
                     }
                     Parts[i] = part = Address.Absolute(rbo.NumericValue);
                 }
@@ -51,8 +51,8 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             else if(part is Address or SymbolReference) {
-                if(!(previous is null or BinaryOperator or OpeningParenthesis)) {
-                    Throw($"A { (part is Address ? "number" : "symbol") } can only be preceded by a binary operator or by (");
+                if(!(previous is null or ArithmeticOperator or OpeningParenthesis)) {
+                    Throw($"A { (part is Address ? "number" : "symbol") } can only be preceded by an operator or by (");
                 }
             }
             else if(part is OpeningParenthesis) {
@@ -91,7 +91,7 @@ namespace Konamiman.Nestor80.Assembler
                         if(popped is OpeningParenthesis)
                             openingParenthesisFound = true;
                         else
-                            operators.Push(popped);
+                            result.Add(popped);
                     }
                     if(!openingParenthesisFound) {
                         Throw("Missing (");
@@ -99,7 +99,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     var op = (ArithmeticOperator)part;
-                    var operatorPriority = op.Precedence;
+                    var operatorPrecedence = op.Precedence;
 
                     while(operators.Count > 0) {
                         var stackOperatorToken = operators.Peek();
@@ -107,8 +107,8 @@ namespace Konamiman.Nestor80.Assembler
                             break;
                         }
 
-                        var stackOperatorPriority = ((ArithmeticOperator)stackOperatorToken).Precedence;
-                        if(stackOperatorPriority < operatorPriority) {
+                        var stackOperatorPrecedence = ((ArithmeticOperator)stackOperatorToken).Precedence;
+                        if(stackOperatorPrecedence > operatorPrecedence) {
                             break;
                         }
 

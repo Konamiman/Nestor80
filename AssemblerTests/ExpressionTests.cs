@@ -278,6 +278,138 @@ namespace Konamiman.Nestor80.AssemblerTests
             AssertThrowsExpressionError(10, input, exceptionMessage, forDb);
         }
 
+        [Test]
+        public void TestValidateSingleLongStringForDb()
+        {
+            Expression.OutputStringEncoding = Encoding.ASCII;
+            var exp = Expression.Parse("'ABC'", true);
+            exp.ValidateAndPostifixize();
+            AssertExpressionIs(exp, RawBytesOutput.FromBytes(0x41, 0x42, 0x43));
+        }
+
+        [Test]
+        public void TestValidateStringInExpressionForDb()
+        {
+            Expression.OutputStringEncoding = Encoding.ASCII;
+
+            Action testAction = () => {
+                var exp = Expression.FromParts(RawBytesOutput.FromBytes(0x41, 0x42, 0x43), PlusOperator.Instance, Address.Absolute(1));
+                exp.ValidateAndPostifixize();
+            };
+
+            var ex = Assert.Throws<Exception>(new TestDelegate(testAction));
+            Assert.AreEqual("String of 3 bytes found as part of an expression, this should have been filtered out by Expression.Parse", ex.Message);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TestValidStringsInExpressionsAreConvertedToNumbersOnValidation(bool forDb)
+        {
+            Expression.OutputStringEncoding = Encoding.ASCII;
+            var exp = Expression.Parse("'AB'+1", forDb);
+            exp.ValidateAndPostifixize();
+            AssertExpressionIs(exp, Address.Absolute(0x4241), Address.Absolute(1), PlusOperator.Instance);
+        }
+
+        static object[] TestValidateComplexExpressionsSource = {
+            new object[] {
+                "1+2*3",
+                new object[] {
+                    Address.Absolute(1),
+                    Address.Absolute(2),
+                    Address.Absolute(3),
+                    MultiplyOperator.Instance,
+                    PlusOperator.Instance,
+                }
+            },
+            
+            new object[] { 
+                "NOT FOO##+(1+2)*3/4", 
+                new object[] {
+                    SymbolReference.For("FOO", true),
+                    Address.Absolute(1),
+                    Address.Absolute(2),
+                    PlusOperator.Instance,
+                    Address.Absolute(3),
+                    MultiplyOperator.Instance,
+                    Address.Absolute(4),
+                    DivideOperator.Instance,
+                    PlusOperator.Instance,
+                    NotOperator.Instance
+                }
+            },
+
+            new object[] {
+                "-(-3)",
+                new object[] {
+                    Address.Absolute(3),
+                    UnaryMinusOperator.Instance,
+                    UnaryMinusOperator.Instance,
+                }
+            },
+
+            new object[] {
+                "+(1+3)",
+                new object[] {
+                    Address.Absolute(1),
+                    Address.Absolute(3),
+                    PlusOperator.Instance,
+                    UnaryPlusOperator.Instance,
+                }
+            },
+
+            new object[] {
+                "LOW HIGH 1 * 2 / 3 MOD 4 SHR 5 SHL 6 + 7 - 8 EQ 9 NE 10 LT 11 LE 12 GT 13 GE 14 + NOT 15 AND 16 OR 17 XOR 18",
+                new object[] {
+                    LowOperator.Instance,
+                    Address.Absolute(1),
+                    Address.Absolute(2),
+                    MultiplyOperator.Instance,
+                    Address.Absolute(3),
+                    DivideOperator.Instance,
+                    Address.Absolute(4),
+                    Address.Absolute(5),
+                    Address.Absolute(6),
+                    ShiftLeftOperator.Instance,
+                    Address.Absolute(7),
+                    PlusOperator.Instance,
+                    Address.Absolute(8),
+                    MinusOperator.Instance,
+                    Address.Absolute(9),
+                    EqualsOperator.Instance,
+                    Address.Absolute(10),
+                    NotEqualsOperator.Instance,
+                    Address.Absolute(11),
+                    LessThanOperator.Instance,
+                    Address.Absolute(12),
+                    LessThanOrEqualOperator.Instance,
+                    Address.Absolute(13),
+                    GreaterThanOperator.Instance,
+                    Address.Absolute(14),
+                    PlusOperator.Instance,
+                    GreaterThanOrEqualOperator.Instance,
+                    Address.Absolute(15),
+                    NotOperator.Instance,
+                    Address.Absolute(16),
+                    AndOperator.Instance,
+                    Address.Absolute(17),
+                    OrOperator.Instance,
+                    Address.Absolute(18),
+                    XorOperator.Instance
+                }
+
+            }
+        };
+
+        [TestCaseSource(nameof(TestValidateComplexExpressionsSource))]
+        public void TestValidateComplexExpressions(string expressionString, object[] parts)
+        {
+            var exp = Expression.Parse(expressionString);
+            exp.ValidateAndPostifixize();
+            AssertExpressionIs(exp, parts.Select(p => (IExpressionPart)p).ToArray());
+        }
+
+
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
             AssertIsNumber(Expression.Parse(expressionString), number);
 

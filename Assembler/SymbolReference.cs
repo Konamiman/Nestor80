@@ -40,7 +40,7 @@
 
         public override string ToString()
         {
-            return IsExternal ? $"{SymbolName}" : SymbolName;
+            return IsExternal ? $"{SymbolName}##" : SymbolName;
         }
     }
 }
