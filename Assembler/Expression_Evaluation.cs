@@ -40,9 +40,14 @@ namespace Konamiman.Nestor80.Assembler
 
         private void ValidatePart(IExpressionPart part, IExpressionPart previous)
         {
-            if(part is UnaryOperator ) {
+            if(part is UnaryPlusOperator or UnaryMinusOperator) {
                 if(!(previous is null or ArithmeticOperator or OpeningParenthesis)) {
                     Throw($"{part} can only be preceded by another operator or by (");
+                }
+            }
+            else if(part is UnaryOperator ) {
+                if(!(previous is null or OpeningParenthesis)) {
+                    Throw($"{part} can only be preceded by (");
                 }
             }
             else if(part is BinaryOperator) {
@@ -72,7 +77,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private void Postfixize()
         {
-            //https://itdranik.com/en/math-expressions-shunting-yard-algorithm-en/
+            // https://itdranik.com/en/math-expressions-shunting-yard-algorithm-en/
+            // (Support for unary operators: https://stackoverflow.com/a/44562047/4574 )
 
             var operators = new Stack<IExpressionPart>();
             var result = new List<IExpressionPart>();
@@ -107,8 +113,8 @@ namespace Konamiman.Nestor80.Assembler
                             break;
                         }
 
-                        var stackOperatorPrecedence = ((ArithmeticOperator)stackOperatorToken).Precedence;
-                        if(stackOperatorPrecedence > operatorPrecedence) {
+                        var stackOperatorPriority = ((ArithmeticOperator)stackOperatorToken).Precedence;
+                        if(stackOperatorPriority > operatorPrecedence || !(stackOperatorPriority == operatorPrecedence && op.IsRightAssociative)) {
                             break;
                         }
 

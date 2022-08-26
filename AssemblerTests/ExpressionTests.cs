@@ -359,49 +359,84 @@ namespace Konamiman.Nestor80.AssemblerTests
             },
 
             new object[] {
-                "LOW HIGH 1 * 2 / 3 MOD 4 SHR 5 SHL 6 + 7 - 8 EQ 9 NE 10 LT 11 LE 12 GT 13 GE 14 + NOT 15 AND 16 OR 17 XOR 18",
+                "LOW (HIGH 1) * 2 / 3 MOD 4 SHR 5 SHL 6 + 7 - 8 EQ 9 NE 10 LT 11 LE 12 GT 13 GE 14 + (NOT 15) AND 16 OR 17 XOR 18",
                 new object[] {
-                    LowOperator.Instance,
                     Address.Absolute(1),
                     HighOperator.Instance,
                     Address.Absolute(2),
                     MultiplyOperator.Instance,
                     Address.Absolute(3),
-                    DivideOperator.Instance,
                     Address.Absolute(4),
-                    ModOperator.Instance,
                     Address.Absolute(5),
-                    ShiftRightOperator.Instance,
                     Address.Absolute(6),
-                    ShiftLeftOperator.Instance,
                     Address.Absolute(7),
-                    PlusOperator.Instance,
                     Address.Absolute(8),
-                    MinusOperator.Instance,
                     Address.Absolute(9),
-                    EqualsOperator.Instance,
                     Address.Absolute(10),
-                    NotEqualsOperator.Instance,
                     Address.Absolute(11),
-                    LessThanOperator.Instance,
                     Address.Absolute(12),
-                    LessThanOrEqualOperator.Instance,
                     Address.Absolute(13),
-                    GreaterThanOperator.Instance,
                     Address.Absolute(14),
-                    PlusOperator.Instance,
-                    GreaterThanOrEqualOperator.Instance,
                     Address.Absolute(15),
                     NotOperator.Instance,
                     Address.Absolute(16),
-                    AndOperator.Instance,
                     Address.Absolute(17),
-                    OrOperator.Instance,
                     Address.Absolute(18),
-                    XorOperator.Instance
+                    XorOperator.Instance,
+                    OrOperator.Instance,
+                    AndOperator.Instance,
+                    PlusOperator.Instance,
+                    GreaterThanOrEqualOperator.Instance,
+                    GreaterThanOperator.Instance,
+                    LessThanOrEqualOperator.Instance,
+                    LessThanOperator.Instance,
+                    NotEqualsOperator.Instance,
+                    EqualsOperator.Instance,
+                    MinusOperator.Instance,
+                    PlusOperator.Instance,
+                    ShiftLeftOperator.Instance,
+                    ShiftRightOperator.Instance,
+                    ModOperator.Instance,
+                    DivideOperator.Instance,
+                    LowOperator.Instance
                 }
 
-            }
+            },
+
+            new object[] {
+                "- (NOT 1)",
+                new object[] { Address.Absolute(1), NotOperator.Instance, UnaryMinusOperator.Instance }
+            },
+
+            new object[] {
+                "LOW (HIGH FOO)",
+                new object[] { SymbolReference.For("FOO"), HighOperator.Instance, LowOperator.Instance }
+            },
+
+            new object[] {
+                "HIGH -1",
+                new object[] { Address.Absolute(1), UnaryMinusOperator.Instance, HighOperator.Instance }
+            },
+
+            new object[] {
+                "HIGH (-1)",
+                new object[] { Address.Absolute(1), UnaryMinusOperator.Instance, HighOperator.Instance }
+            },
+
+            new object[] {
+                "HIGH -(1)",
+                new object[] { Address.Absolute(1), UnaryMinusOperator.Instance, HighOperator.Instance }
+            },
+
+            new object[] {
+                "- HIGH 1",
+                new object[] { Address.Absolute(1), HighOperator.Instance, UnaryMinusOperator.Instance }
+            },
+
+            new object[] {
+                "- (HIGH 1)",
+                new object[] { Address.Absolute(1), HighOperator.Instance, UnaryMinusOperator.Instance }
+            },
         };
 
         [TestCaseSource(nameof(TestValidateComplexExpressionsSource))]
@@ -415,7 +450,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         static object[] TestFailingValidationSource = {
             new object[] { "((1)", "Extra ( found" },
             new object[] { "(1))", "Missing (" },
-            new object[] { "3 NOT", "NOT can only be preceded by another operator or by (" },
+            new object[] { "3 NOT", "NOT can only be preceded by (" },
             new object[] { "* 3", "* can only be preceded by a number, a symbol, or )" },
             new object[] { "(1) 3", "A number can only be preceded by an operator or by (" },
             new object[] { "(FOO) 3", "A number can only be preceded by an operator or by (" },

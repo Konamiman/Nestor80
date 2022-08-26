@@ -12,6 +12,8 @@
 
         public virtual byte? ExtendedLinkItemType => null;
 
+        public abstract bool IsRightAssociative { get; }
+
         public bool AllowedForRelocatableSymbols => ExtendedLinkItemType != null;
 
         protected Address AbsoluteZero => new Address(AddressType.ASEG, 0);
