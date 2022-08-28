@@ -3,7 +3,5 @@
     internal abstract class BinaryOperator : ArithmeticOperator
     {
         public override bool IsUnary => false;
-
-        public override bool IsRightAssociative => false;
     }
 }

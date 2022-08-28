@@ -10,8 +10,6 @@
 
         public override byte? ExtendedLinkItemType => 10;
 
-        public override bool IsRightAssociative => true;
-
         protected override Address OperateCore(Address value1, Address value2)
         {
             // One of the operands must be absolute

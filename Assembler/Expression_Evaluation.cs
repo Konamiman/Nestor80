@@ -87,7 +87,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(part is Address or SymbolReference) {
                     result.Add(part);
                 }
-                else if(part is OpeningParenthesis) {
+                else if(part is OpeningParenthesis or UnaryOperator) {
                     operators.Push(part);
                 }
                 else if(part is ClosingParenthesis) {
@@ -103,8 +103,7 @@ namespace Konamiman.Nestor80.Assembler
                         Throw("Missing (");
                     }
                 }
-                else {
-                    var op = (ArithmeticOperator)part;
+                else if(part is ArithmeticOperator op) {
                     var operatorPrecedence = op.Precedence;
 
                     while(operators.Count > 0) {
@@ -113,8 +112,8 @@ namespace Konamiman.Nestor80.Assembler
                             break;
                         }
 
-                        var stackOperatorPriority = ((ArithmeticOperator)stackOperatorToken).Precedence;
-                        if(stackOperatorPriority > operatorPrecedence || !(stackOperatorPriority == operatorPrecedence && op.IsRightAssociative)) {
+                        var stackOperatorPrecedence = ((ArithmeticOperator)stackOperatorToken).Precedence;
+                        if(stackOperatorPrecedence > operatorPrecedence && stackOperatorToken is not UnaryOperator) {
                             break;
                         }
 
@@ -122,6 +121,9 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     operators.Push(op);
+                }
+                else {
+                    throw new InvalidOperationException($"{nameof(Expression)}.{nameof(ValidateAndPostifixize)}: Unexpected expression part found: {part}");
                 }
             }
 

@@ -327,6 +327,7 @@ namespace Konamiman.Nestor80.AssemblerTests
                 "NOT FOO##+(1+2)*3/4", 
                 new object[] {
                     SymbolReference.For("FOO", true),
+                    NotOperator.Instance,
                     Address.Absolute(1),
                     Address.Absolute(2),
                     PlusOperator.Instance,
@@ -335,7 +336,7 @@ namespace Konamiman.Nestor80.AssemblerTests
                     Address.Absolute(4),
                     DivideOperator.Instance,
                     PlusOperator.Instance,
-                    NotOperator.Instance
+
                 }
             },
 
@@ -363,44 +364,43 @@ namespace Konamiman.Nestor80.AssemblerTests
                 new object[] {
                     Address.Absolute(1),
                     HighOperator.Instance,
+                    LowOperator.Instance,
                     Address.Absolute(2),
                     MultiplyOperator.Instance,
                     Address.Absolute(3),
+                    DivideOperator.Instance,
                     Address.Absolute(4),
+                    ModOperator.Instance,
                     Address.Absolute(5),
+                    ShiftRightOperator.Instance,
                     Address.Absolute(6),
+                    ShiftLeftOperator.Instance,
                     Address.Absolute(7),
+                    PlusOperator.Instance,
                     Address.Absolute(8),
+                    MinusOperator.Instance,
                     Address.Absolute(9),
+                    EqualsOperator.Instance,
                     Address.Absolute(10),
+                    NotEqualsOperator.Instance,
                     Address.Absolute(11),
+                    LessThanOperator.Instance,
                     Address.Absolute(12),
+                    LessThanOrEqualOperator.Instance,
                     Address.Absolute(13),
+                    GreaterThanOperator.Instance,
                     Address.Absolute(14),
                     Address.Absolute(15),
                     NotOperator.Instance,
-                    Address.Absolute(16),
-                    Address.Absolute(17),
-                    Address.Absolute(18),
-                    XorOperator.Instance,
-                    OrOperator.Instance,
-                    AndOperator.Instance,
                     PlusOperator.Instance,
                     GreaterThanOrEqualOperator.Instance,
-                    GreaterThanOperator.Instance,
-                    LessThanOrEqualOperator.Instance,
-                    LessThanOperator.Instance,
-                    NotEqualsOperator.Instance,
-                    EqualsOperator.Instance,
-                    MinusOperator.Instance,
-                    PlusOperator.Instance,
-                    ShiftLeftOperator.Instance,
-                    ShiftRightOperator.Instance,
-                    ModOperator.Instance,
-                    DivideOperator.Instance,
-                    LowOperator.Instance
+                    Address.Absolute(16),
+                    AndOperator.Instance,
+                    Address.Absolute(17),
+                    OrOperator.Instance,
+                    Address.Absolute(18),
+                    XorOperator.Instance
                 }
-
             },
 
             new object[] {
@@ -431,6 +431,66 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] {
                 "- (HIGH 1)",
                 new object[] { Address.Absolute(1), HighOperator.Instance, UnaryMinusOperator.Instance }
+            },
+
+            new object[] {
+                "2*3+1",
+                new object[] { 
+                    Address.Absolute(2),
+                    Address.Absolute(3),
+                    MultiplyOperator.Instance,
+                    Address.Absolute(1),
+                    PlusOperator.Instance, }
+            },
+
+            new object[] {
+                "1*2/3",
+                new object[] {
+                    Address.Absolute(1),
+                    Address.Absolute(2),
+                    MultiplyOperator.Instance,
+                    Address.Absolute(3),
+                    DivideOperator.Instance,
+                }
+            },
+
+            new object[] {
+                "1/2*3",
+                new object[] {
+                    Address.Absolute(1),
+                    Address.Absolute(2),
+                    DivideOperator.Instance,
+                    Address.Absolute(3),
+                    MultiplyOperator.Instance,
+                }
+            },
+
+            new object[] {
+                "-1/-2*-3",    
+                new object[] {
+                    Address.Absolute(1),
+                    UnaryMinusOperator.Instance,
+                    Address.Absolute(2),
+                    UnaryMinusOperator.Instance,
+                    DivideOperator.Instance,
+                    Address.Absolute(3),
+                    UnaryMinusOperator.Instance,
+                    MultiplyOperator.Instance,
+                }
+            },
+
+            new object[] {
+                "(-1)/(-2)*(-3)",
+                new object[] {
+                    Address.Absolute(1),
+                    UnaryMinusOperator.Instance,
+                    Address.Absolute(2),
+                    UnaryMinusOperator.Instance,
+                    DivideOperator.Instance,
+                    Address.Absolute(3),
+                    UnaryMinusOperator.Instance,
+                    MultiplyOperator.Instance,
+                }
             },
         };
 
@@ -466,6 +526,14 @@ namespace Konamiman.Nestor80.AssemblerTests
 
             var ex = Assert.Throws<InvalidExpressionException>(new TestDelegate(testAction));
             Assert.AreEqual(exceptionMessage, ex.Message);
+        }
+
+        [Test]
+        public void Foo()
+        {
+            var x = Expression.Parse("2*FOO-1");
+            x.ValidateAndPostifixize();
+
         }
 
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
