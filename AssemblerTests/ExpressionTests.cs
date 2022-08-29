@@ -8,6 +8,13 @@ namespace Konamiman.Nestor80.AssemblerTests
     [TestFixture]
     public class ExpressionTests
     {
+        [SetUp]
+        public static void SetUp()
+        {
+            Expression.Symbols = new();
+            Expression.OutputStringEncoding = Encoding.ASCII;
+        }
+
         static object[] TestNumberCases = {
 
             // Radix 10, no suffix
@@ -241,7 +248,6 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCaseSource(nameof(TestExpressionStringParseSource))]
         public void TestExpressionStringParse(string expressionString, int expectedResult)
         {
-            Expression.OutputStringEncoding = Encoding.ASCII;
             var exp = Expression.Parse(expressionString, false);
             AssertExpressionIs(exp, Address.Absolute((ushort)expectedResult));
         }
@@ -258,7 +264,6 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCaseSource(nameof(TestLongStringParseSource))]
         public void TestLongStringParse(string expressionString, byte[] expectedOutput)
         {
-            Expression.OutputStringEncoding = Encoding.ASCII;
             var exp = Expression.Parse(expressionString, true);
             AssertExpressionIs(exp, RawBytesOutput.FromBytes(expectedOutput));
         }
@@ -274,14 +279,12 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCaseSource(nameof(TestWrongStringCases))]
         public void TestParsingWrongString(string input, string exceptionMessage, bool forDb)
         {
-            Expression.OutputStringEncoding = Encoding.ASCII;
             AssertThrowsExpressionError(10, input, exceptionMessage, forDb);
         }
 
         [Test]
         public void TestValidateSingleLongStringForDb()
         {
-            Expression.OutputStringEncoding = Encoding.ASCII;
             var exp = Expression.Parse("'ABC'", true);
             exp.ValidateAndPostifixize();
             AssertExpressionIs(exp, RawBytesOutput.FromBytes(0x41, 0x42, 0x43));
@@ -290,8 +293,6 @@ namespace Konamiman.Nestor80.AssemblerTests
         [Test]
         public void TestValidateStringInExpressionForDb()
         {
-            Expression.OutputStringEncoding = Encoding.ASCII;
-
             Action testAction = () => {
                 var exp = Expression.FromParts(RawBytesOutput.FromBytes(0x41, 0x42, 0x43), PlusOperator.Instance, Address.Absolute(1));
                 exp.ValidateAndPostifixize();
@@ -305,7 +306,6 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase(false)]
         public void TestValidStringsInExpressionsAreConvertedToNumbersOnValidation(bool forDb)
         {
-            Expression.OutputStringEncoding = Encoding.ASCII;
             var exp = Expression.Parse("'AB'+1", forDb);
             exp.ValidateAndPostifixize();
             AssertExpressionIs(exp, Address.Absolute(0x4241), Address.Absolute(1), PlusOperator.Instance);
@@ -516,7 +516,6 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCaseSource(nameof(TestFailingValidationSource))]
         public void TestFailingValidation(string input, string exceptionMessage)
         {
-            Expression.OutputStringEncoding = Encoding.ASCII;
             var exp = Expression.Parse(input);
 
             Action testAction = () => {
@@ -529,11 +528,62 @@ namespace Konamiman.Nestor80.AssemblerTests
         }
 
         [Test]
-        public void Foo()
+        public void TestExpressionEvaluationWithSymbol()
         {
-            var x = Expression.Parse("2*FOO-1");
-            x.ValidateAndPostifixize();
+            Expression.Symbols.Add("FOO", new Symbol() { Name = "FOO", Value = Address.Absolute(3) });
+            var exp = Expression.Parse("1+2+FOO");
+            exp.ValidateAndPostifixize();
+            var result = exp.Evaluate();
+            Assert.AreEqual(Address.Absolute(6), result);
+        }
 
+
+        static object[] TestExpressionEvaluatesToSource = {
+            new object[] { "1+2", 3 },
+            new object[] { "-1-2", 0xFFFD },
+            new object[] { "(1+2)*4", 12 },
+            new object[] { "10/2", 5 },
+
+            new object[] { "1 EQ 1", 0xFFFF},
+            new object[] { "1 EQ 0", 0},
+            new object[] { "1 NE 0", 0xFFFF},
+            new object[] { "1 NE 1", 0},
+            new object[] { "1 GT 0", 0xFFFF},
+            new object[] { "1 GT 1", 0},
+            new object[] { "1 GE 0", 0xFFFF},
+            new object[] { "1 GE 1", 0xFFFF},
+            new object[] { "1 GE 2", 0},
+            new object[] { "1 LT 0", 0},
+            new object[] { "1 LT 1", 0},
+            new object[] { "1 LT 2", 0xFFFF},
+            new object[] { "1 LE 0", 0},
+            new object[] { "1 LE 1", 0xFFFF},
+            new object[] { "1 LE 2", 0xFFFF},
+
+            new object[] { "NOT 0F0Fh", 0xF0F0},
+            new object[] { "8000h OR 0FFh", 0x80FF},
+            new object[] { "8FFFh AND 0FF00h", 0x8F00},
+            new object[] { "1111h XOR 0FFh", 0x11EE},
+
+            new object[] { "8000h SHR 2", 0x2000},
+            new object[] { "2000h SHL 2", 0x8000},
+
+            new object[] { "84 MOD 9", 3},
+
+            new object[] { "HIGH 1234h", 0x12},
+            new object[] { "LOW 1234h", 0x34},
+
+            new object[] { "2*NUL", -2},
+            new object[] { "2+NUL FOO", 2},
+        };
+
+        [TestCaseSource(nameof(TestExpressionEvaluatesToSource))]
+        public void TestExpressionEvaluatesTo(string expressionString, int number)
+        {
+            var exp =Expression.Parse(expressionString);
+            exp.ValidateAndPostifixize();
+            var result = exp.Evaluate();
+            Assert.AreEqual(Address.Absolute((ushort)number), result);
         }
 
         private static void AssertParsesToNumber(string expressionString, ushort number) =>

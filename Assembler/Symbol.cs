@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Konamiman.Nestor80.Assembler
+﻿namespace Konamiman.Nestor80.Assembler
 {
     internal class Symbol
     {
+        public static int MaxEffectivePublicNameLength {get; set;} = 16;
+        public const int MaxEffectiveExternalNameLength = 6;
+
         private string _Name;
         public string Name
         {
@@ -33,21 +30,37 @@ namespace Konamiman.Nestor80.Assembler
             get => _IsExternal;
             set
             {
-                if(value != _IsExternal) {
-                    _IsExternal = value;
-                    SetEffectiveName();
+                if(value == _IsExternal)
+                    return;
+
+                if(value && _Value is not null) {
+                    throw new InvalidOperationException($"Can't set {Name} as external, it has a value assigned");
                 }
+
+                _IsExternal = value;
+                SetEffectiveName();
             }
         }
 
         private void SetEffectiveName()
         {
-            var maxLength = _IsExternal ? 6 : 16;
-            EffectiveName = Name.Substring(0, maxLength).ToUpper();
+            var maxLength = _IsExternal ? MaxEffectiveExternalNameLength : MaxEffectivePublicNameLength;
+            EffectiveName = Name.Length > maxLength ? Name[..maxLength].ToUpper() : Name.ToUpper();
         }
 
-        public Address Value { get; set; }
+        private Address _Value;
+        public Address Value 
+        {
+            get => _Value;
+            set
+            {
+                if(Value is not null && IsExternal) {
+                    throw new InvalidOperationException($"Can't set a value for symbol {Name}, it's declared as external");
+                }
+                _Value = value;
+            }
+        }
 
-        public bool IsKnown => Value != null;
+        public bool IsKnown => Value is not null;
     }
 }

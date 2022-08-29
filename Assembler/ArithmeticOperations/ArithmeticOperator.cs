@@ -20,10 +20,10 @@
 
         public Address Operate(Address value1, Address value2)
         {
-            if(IsUnary && value2 != null) {
+            if(IsUnary && value2 is not null) {
                 throw new ArgumentException($"Operator \"{Name}\" is unary, can't apply to two values");
             }
-            if(!IsUnary && value2 == null) {
+            if(!IsUnary && value2 is null) {
                 throw new ArgumentException($"Operator \"{Name}\" is not unary, can't apply to only one value");
             }
 

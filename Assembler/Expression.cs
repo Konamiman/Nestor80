@@ -6,9 +6,10 @@ namespace Konamiman.Nestor80.Assembler
 {
     internal partial class Expression : IAssemblyOutputPart
     {
-        private Expression(IExpressionPart[] parts = null)
+        private Expression(IExpressionPart[] parts = null, string source = null)
         {
             this.Parts = parts ?? Array.Empty<IExpressionPart>();
+            this.Source = source;
         }
 
         private static readonly Dictionary<int, Regex> numberRegexes = new();
@@ -28,11 +29,14 @@ namespace Konamiman.Nestor80.Assembler
         private static IExpressionPart lastExtractedPart = null;
 
         private static bool AtEndOfString = false;
-        public static Encoding OutputStringEncoding { get; set; }
+        public static Encoding OutputStringEncoding { get; set; } = null;
+        public static Dictionary<string, Symbol> Symbols { get; set; } = null;
 
         public IExpressionPart[] Parts { get; private set; }
 
         static Expression() => DefaultRadix = 10;
+
+        public string Source { get; init; }
 
         private static int _DefaultRadix;
         public static int DefaultRadix
@@ -115,6 +119,14 @@ namespace Konamiman.Nestor80.Assembler
         /// <exception cref="InvalidExpressionException">The supplied string doesn't represent a valid expression</exception>
         public static Expression Parse(string expressionString, bool forDefb = false)
         {
+            if(OutputStringEncoding is null) {
+                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: { nameof(OutputStringEncoding)} is null");
+            }
+
+            if(Symbols is null) {
+                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: {nameof(Symbols)} is null");
+            }
+
             if(expressionString[0] is ' ' or '\t' || expressionString[^1] is ' ' or '\t') {
                 throw new ArgumentException($"The string passed to {nameof(Expression)}.{nameof(Parse)} isn't supposed to contain spaces/tabs at the beginning or the end");
             }
@@ -136,7 +148,7 @@ namespace Konamiman.Nestor80.Assembler
             while(!AtEndOfString)
                 ExtractNextPart();
 
-            return new Expression(parts.ToArray());
+            return new Expression(parts.ToArray(), expressionString);
         }
 
         private static void ExtractNextPart()

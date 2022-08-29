@@ -137,5 +137,106 @@ namespace Konamiman.Nestor80.Assembler
 
             Parts = result.ToArray();
         }
+
+        public SymbolReference[] ReferencedSymbols => 
+            Parts.Where(p => p is SymbolReference).Cast<SymbolReference>().ToArray();
+
+        public Address Evaluate() => EvaluateCore(true);
+        public Address TryEvaluate() => EvaluateCore(false);
+
+        private Address EvaluateCore(bool throwOnUnknownSymbol)
+        {
+            if(!IsPostfixized) {
+                throw new InvalidOperationException($"{nameof(Expression)}: {nameof(ValidateAndPostifixize)} must be executed before {nameof(Evaluate)} or {nameof(TryEvaluate)}");
+            }
+
+            var stack = new Stack<IExpressionPart>();
+
+            foreach(var part in Parts) {
+                var item = part;
+                if(item is UnaryOperator uop) {
+                    if(stack.Count == 0) {
+                        throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: found an unary operator ({uop}) but the items stack is empty. Expression: {Source}");
+                    }
+
+                    var poppedItem = stack.Pop();
+                    var poppedAddress = ResolveAddressOrSymbol(poppedItem, throwOnUnknownSymbol);
+                    if(poppedAddress is null) {
+                        return null;
+                    }
+
+                    var operationResult = uop.Operate(poppedAddress, null);
+                    stack.Push(operationResult);
+                }
+                else if(item is BinaryOperator bop) {
+                    if(stack.Count < 2) {
+                        throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: found a binary operator ({bop}) but the items stack contains {stack.Count} items (expected at least 2). Expression: {Source}");
+                    }
+
+                    var poppedItem2 = stack.Pop();
+                    var poppedAddress2 = ResolveAddressOrSymbol(poppedItem2, throwOnUnknownSymbol);
+                    if(poppedAddress2 is null) {
+                        return null;
+                    }
+
+                    var poppedItem1 = stack.Pop();
+                    var poppedAddress1 = ResolveAddressOrSymbol(poppedItem1, throwOnUnknownSymbol);
+                    if(poppedAddress1 is null) {
+                        return null;
+                    }
+
+                    var operationResult = bop.Operate(poppedAddress1, poppedAddress2);
+                    stack.Push(operationResult);
+                }
+                else {
+                    var address = ResolveAddressOrSymbol(item, throwOnUnknownSymbol);
+                    if(address is null) {
+                        return null;
+                    }
+
+                    stack.Push(address);
+                }
+            }
+
+            if(stack.Count != 1) {
+                throw new Exception($"Unexpected expression parse result: the resulting stack should have one item, but it has {stack.Count}.");
+            }
+
+            var result = stack.Pop();
+            if(result is not Address) {
+                throw new Exception($"Unexpected expression parse result: the resulting item should be an {nameof(Address)}, but is an {result.GetType().Name} ({result}).");
+            }
+            return (Address)result;
+        }
+
+        private Address ResolveAddressOrSymbol(IExpressionPart part, bool throwOnUnknownSymbol)
+        {
+            if(part is Address address) {
+                return address;
+            }
+            else if(part is not SymbolReference) {
+                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: unexpected expression part type found: {part.GetType().Name} ({part}).");
+            }
+
+            var sr = (SymbolReference)part;
+
+            if(!Symbols.ContainsKey(sr.SymbolName)) {
+                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed before all the referenced symbols are registered (even if the symbol value isn't yet known). Symbol: {sr.SymbolName}");
+            }
+
+            var symbol = Symbols[sr.SymbolName];
+            if(symbol.IsExternal) {
+                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed when the expression contains external symbols. Symbol: {sr.SymbolName}");
+            }
+
+            if(symbol.IsKnown) {
+                return symbol.Value;
+            }
+            else if(throwOnUnknownSymbol) {
+                Throw($"Unknown symbol: {sr.SymbolName}");
+            }
+
+            return null;
+        }
     }
 }
