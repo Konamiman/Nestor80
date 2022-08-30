@@ -220,11 +220,11 @@ namespace Konamiman.Nestor80.Assembler
 
             var sr = (SymbolReference)part;
 
-            if(!Symbols.ContainsKey(sr.SymbolName)) {
+            var symbol = GetSymbol(sr.SymbolName);
+            if(symbol is null) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed before all the referenced symbols are registered (even if the symbol value isn't yet known). Symbol: {sr.SymbolName}");
             }
 
-            var symbol = Symbols[sr.SymbolName];
             if(symbol.IsExternal) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed when the expression contains external symbols. Symbol: {sr.SymbolName}");
             }

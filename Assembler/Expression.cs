@@ -30,7 +30,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static bool AtEndOfString = false;
         public static Encoding OutputStringEncoding { get; set; } = null;
-        public static Dictionary<string, Symbol> Symbols { get; set; } = null;
+        public static Func<string, Symbol> GetSymbol { get; set; } = (_) => null;
 
         public IExpressionPart[] Parts { get; private set; }
 
@@ -121,10 +121,6 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(OutputStringEncoding is null) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: { nameof(OutputStringEncoding)} is null");
-            }
-
-            if(Symbols is null) {
-                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: {nameof(Symbols)} is null");
             }
 
             if(expressionString[0] is ' ' or '\t' || expressionString[^1] is ' ' or '\t') {

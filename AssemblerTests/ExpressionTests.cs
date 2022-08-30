@@ -11,7 +11,6 @@ namespace Konamiman.Nestor80.AssemblerTests
         [SetUp]
         public static void SetUp()
         {
-            Expression.Symbols = new();
             Expression.OutputStringEncoding = Encoding.ASCII;
         }
 
@@ -530,7 +529,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [Test]
         public void TestExpressionEvaluationWithSymbol()
         {
-            Expression.Symbols.Add("FOO", new Symbol() { Name = "FOO", Value = Address.Absolute(3) });
+            Expression.GetSymbol = (name) => name is "FOO" ? new Symbol() { Name = "FOO", Value = Address.Absolute(3) } : null;
             var exp = Expression.Parse("1+2+FOO");
             exp.ValidateAndPostifixize();
             var result = exp.Evaluate();
