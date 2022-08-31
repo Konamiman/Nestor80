@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace Konamiman.Nestor80.Assembler
+namespace Konamiman.Nestor80.Assembler.Expressions
 {
     internal class OpeningParenthesis : IExpressionPart
     {
@@ -14,7 +14,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public static bool operator ==(OpeningParenthesis parent1, OpeningParenthesis parent2)
         {
-            if(parent1 is null)
+            if (parent1 is null)
                 return parent2 is null;
 
             return parent2.Equals(parent2);

@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal class Address : IAssemblyOutputPart, IExpressionPart
+    public class Address : IAssemblyOutputPart, IExpressionPart
     {
         public static Address AbsoluteZero = new(AddressType.ASEG, 0);
         public static Address AbsoluteMinusOne = new(AddressType.ASEG, 0xFFFF);
@@ -31,18 +31,6 @@
 
         public bool IsAbsolute => Type == AddressType.ASEG;
         public bool IsCommon => Type == AddressType.COMMON;
-
-        public void SetValue(ushort value)
-        {
-            this.Value = value;
-        }
-
-        public void IncValue(ushort amount)
-        {
-            unchecked {
-                this.Value += amount;
-            }
-        }
 
         public bool SameModeAs(Address address2)
         {

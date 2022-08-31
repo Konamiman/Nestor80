@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Konamiman.Nestor80.Assembler
 {
-    public partial class Assembler
+    public partial class AssemblySourceProcessor
     {
         /* Instructions that need to be handled as special cases:
          * 

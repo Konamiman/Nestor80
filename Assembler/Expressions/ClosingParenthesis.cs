@@ -1,4 +1,4 @@
-﻿namespace Konamiman.Nestor80.Assembler
+﻿namespace Konamiman.Nestor80.Assembler.Expressions
 {
     internal class ClosingParenthesis : IExpressionPart
     {
@@ -12,7 +12,7 @@
 
         public static bool operator ==(ClosingParenthesis parent1, ClosingParenthesis parent2)
         {
-            if(parent1 is null)
+            if (parent1 is null)
                 return parent2 is null;
 
             return parent2.Equals(parent2);

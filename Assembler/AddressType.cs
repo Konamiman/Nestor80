@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal enum AddressType : byte
+    public enum AddressType : byte
     {
         ASEG,
         CSEG,

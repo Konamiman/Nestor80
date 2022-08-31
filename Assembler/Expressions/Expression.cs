@@ -1,11 +1,11 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
-    internal partial class Expression : IAssemblyOutputPart
-    {
+    internal partial class Expression    {
         private Expression(IExpressionPart[] parts = null, string source = null)
         {
             this.Parts = parts ?? Array.Empty<IExpressionPart>();

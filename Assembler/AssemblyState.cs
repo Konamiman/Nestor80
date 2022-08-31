@@ -1,10 +1,15 @@
-﻿namespace Konamiman.Nestor80.Assembler
+﻿using System.Text;
+using Konamiman.Nestor80.Assembler.Output;
+
+namespace Konamiman.Nestor80.Assembler
 {
     internal class AssemblyState
     {
         private List<AssemblyError> Errors;
 
         public AssemblyConfiguration Configuration { get; init; }
+
+        public Encoding SourceStreamEncoding { get; init; }
 
         public bool InPass2 { get; private set; }
 
@@ -38,7 +43,7 @@
 
         public void AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {
-            AddError(new AssemblyError(code, message) { LineNumber = withLineNumber ? CurrentLineNumber : null });
+            AddError(new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null ));
         }
 
         public AssemblyError[] GetErrors() => Errors.ToArray();

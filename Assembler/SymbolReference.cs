@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal class SymbolReference : IAssemblyOutputPart, IExpressionPart
+    public class SymbolReference : IAssemblyOutputPart, IExpressionPart
     {
         public static SymbolReference For(string name, bool isExternal = false) => new() { SymbolName = name, IsExternal = isExternal };
 

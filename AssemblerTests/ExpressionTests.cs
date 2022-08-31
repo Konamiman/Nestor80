@@ -2,6 +2,7 @@
 using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using System.Text;
+using Konamiman.Nestor80.Assembler.Expressions;
 
 namespace Konamiman.Nestor80.AssemblerTests
 {

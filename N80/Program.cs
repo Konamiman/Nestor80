@@ -17,13 +17,12 @@ namespace Konamiman.Nestor80.N80
             var config = new AssemblyConfiguration() {
                 DefaultProgramName = "SOURCE",
                 ListFalseConditionals = true,
-                SourceStream = sourceStream,
                 Print = (s) => Debug.WriteLine(s),
                 TargetStream = ourputStream,
                 MaxLineLength = 20
             };
 
-            var assembler = new Assembler.Assembler(config);
+            var assembler = new AssemblySourceProcessor(config);
             var result = assembler.Assemble();
         }
     }

@@ -126,6 +126,18 @@
             return logicalEndOfLineReached;
         }
 
+        public int EffectiveLength
+        { 
+            get
+            {
+                if(!CheckEndOfLine())
+                    throw new InvalidOperationException($"{nameof(SourceLineWalker)}.{nameof(EffectiveLength)} can't be invoked before reaching the end of the line. Walked line: {sourceLine}");
+
+                return linePointer;
+            }
+        }
+          
+
         private bool PhysicalEndOfLineReached => linePointer >= lineLength;
 
         private bool PointingToSpace() => !AtEndOfLine && (sourceLine[linePointer] == ' ' || sourceLine[linePointer] == '\t');

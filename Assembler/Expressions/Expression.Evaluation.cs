@@ -1,8 +1,9 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Expressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
-    internal partial class Expression : IAssemblyOutputPart
+    internal partial class Expression
     {
         public bool IsPostfixized { get; private set; } = false;
 
