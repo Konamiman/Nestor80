@@ -66,5 +66,31 @@ namespace Konamiman.Nestor80.AssemblerTests
             Assert.IsNull(sut.ExtractSymbol());
             Assert.AreEqual(expectedEffectiveLength, sut.EffectiveLength);
         }
+
+        [Test]
+        public void TestExtractSymbolsAsExpressions()
+        {
+            var sut = new SourceLineWalker("  FO O,B AR , FIZZ  ;I'll be back");
+            Assert.IsFalse(sut.AtEndOfLine);
+            Assert.AreEqual("FO O", sut.ExtractExpression());
+            Assert.IsFalse(sut.AtEndOfLine);
+            Assert.AreEqual("B AR", sut.ExtractExpression());
+            Assert.IsFalse(sut.AtEndOfLine);
+            Assert.AreEqual("FIZZ", sut.ExtractExpression());
+            Assert.IsTrue(sut.AtEndOfLine);
+            Assert.IsNull(sut.ExtractExpression());
+            Assert.AreEqual("  FO O,B AR , FIZZ  ".Length, sut.EffectiveLength);
+        }
+
+        [Test]
+        public void TestExtractSrings()
+        {
+            var sut = new SourceLineWalker(@" ""Hi, I'm """"good"""" today."" , 'Hi, I''m not bad.' ;Cool! ");
+            Assert.IsFalse(sut.AtEndOfLine);
+            Assert.AreEqual(@"""Hi, I'm """"good"""" today.""", sut.ExtractExpression());
+            Assert.IsFalse(sut.AtEndOfLine);
+            Assert.AreEqual("'Hi, I''m not bad.'", sut.ExtractExpression());
+            Assert.IsTrue(sut.AtEndOfLine);
+        }
     }
 }

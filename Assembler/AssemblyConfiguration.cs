@@ -6,22 +6,12 @@ namespace Konamiman.Nestor80.Assembler
     {
         public string DefaultProgramName { get; init; }
 
-        public Stream SourceStream { get; init; }
-
-        public Encoding SourceStreamEncoding { get; init; } = Encoding.ASCII;
+        public Encoding OutputStringEncoding { get; init; } = Encoding.ASCII;
 
         public int? MaxLineLength { get; init; } = null;
 
-        public Stream TargetStream { get; init; }
+        public Func<string, Stream> GetStreamForInclude { get; init; } = _ => null;
 
-        public bool ListingAsCrossReference { get; init; }
-
-        public bool OctalListing { get; init; }
-
-        public bool ListFalseConditionals { get; init; }
-
-        public Func<string, Stream> GetStreamForInclude { get; init; }
-
-        public Action<string> Print { get; init; }
+        public Action<string> Print { get; init; } = _ => { };
     }
 }

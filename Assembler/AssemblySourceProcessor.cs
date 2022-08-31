@@ -16,6 +16,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private Stream sourceStream;
 
+        private List<IProcessedSourceLine> processedLines;
+
 
         private AssemblySourceProcessor()
         {
@@ -38,13 +40,15 @@ namespace Konamiman.Nestor80.Assembler
             this.configuration = configuration;
             this.sourceStream = sourceStream;
             this.sourceStreamEncoding = sourceStreamEncoding;
-
-            Expression.OutputStringEncoding = configuration.SourceStreamEncoding;
+            this.state = new AssemblyState() { Configuration = configuration };
 
             try {
                 state = new AssemblyState { 
                     Configuration = configuration
                 };
+
+                Expression.OutputStringEncoding = configuration.OutputStringEncoding;
+                Expression.GetSymbol = state.GetSymbol;
 
                 DoPass1();
                 if(!state.HasErrors) {
@@ -61,8 +65,17 @@ namespace Konamiman.Nestor80.Assembler
                     message: $"Unexpected error: ({ex.GetType().Name}) {ex.Message}"
                 );
             }
+
+            state.WrapUp();
+
             return new AssemblyResult() {
-                Errors = state.GetErrors()
+                ProgramName = state.ProgramName,
+                ProgramAreaSize = state.GetLocationPointer(AddressType.CSEG),
+                DataAreaSize = state.GetLocationPointer(AddressType.DSEG),
+                CommonAreaSizes = new(), //TODO: Handle commons
+                ProcessedLines = processedLines.ToArray(),
+                Symbols = state.GetSymbols(),
+                Errors = state.GetErrors(),
             };
         }
 

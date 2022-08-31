@@ -13,5 +13,7 @@
         public AssemblyError[] Errors { get; init; }
 
         public IProcessedSourceLine[] ProcessedLines { get; init; }
+
+        public Symbol[] Symbols { get; init; }
     }
 }

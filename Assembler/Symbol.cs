@@ -1,9 +1,9 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal class Symbol
+    public class Symbol
     {
-        public static int MaxEffectivePublicNameLength {get; set;} = 16;
-        public const int MaxEffectiveExternalNameLength = 6;
+        internal static int MaxEffectivePublicNameLength {get; set;} = 16;
+        internal const int MaxEffectiveExternalNameLength = 6;
 
         private string _Name;
         public string Name

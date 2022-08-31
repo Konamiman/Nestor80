@@ -11,19 +11,21 @@ namespace Konamiman.Nestor80.N80
             var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../SOURCE.MAC");
             var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
 
+            /*
             var outputFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../SOURCE.REL");
             var ourputStream = new FileStream(outputFileName, FileMode.Create, FileAccess.Write);
+            */
 
             var config = new AssemblyConfiguration() {
                 DefaultProgramName = "SOURCE",
-                ListFalseConditionals = true,
                 Print = (s) => Debug.WriteLine(s),
-                TargetStream = ourputStream,
                 MaxLineLength = 20
             };
 
+            /*
             var assembler = new AssemblySourceProcessor(config);
             var result = assembler.Assemble();
+            */
         }
     }
 }
