@@ -16,9 +16,6 @@ namespace Konamiman.Nestor80.Assembler
 
         private Stream sourceStream;
 
-        private List<IProcessedSourceLine> processedLines;
-
-
         private AssemblySourceProcessor()
         {
         }
@@ -70,10 +67,10 @@ namespace Konamiman.Nestor80.Assembler
 
             return new AssemblyResult() {
                 ProgramName = state.ProgramName,
-                ProgramAreaSize = state.GetLocationPointer(AddressType.CSEG),
-                DataAreaSize = state.GetLocationPointer(AddressType.DSEG),
+                ProgramAreaSize = state.GetAreaSize(AddressType.CSEG),
+                DataAreaSize = state.GetAreaSize(AddressType.DSEG),
                 CommonAreaSizes = new(), //TODO: Handle commons
-                ProcessedLines = processedLines.ToArray(),
+                ProcessedLines = state.ProcessedLines.ToArray(),
                 Symbols = state.GetSymbols(),
                 Errors = state.GetErrors(),
             };
@@ -86,6 +83,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private void DoPass1()
         {
+            state.AddSymbol("BAR", Address.Code(0x34));
+
             var sourceStream = new StreamReader(this.sourceStream, this.sourceStreamEncoding, true, 4096);
 
             int lineLength;
@@ -106,10 +105,27 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        List<string> lines = new List<string>();
         private void ProcessSourceLine(string line)
         {
-            lines.Add(line);
+            if(string.IsNullOrWhiteSpace(line)) {
+                state.ProcessedLines.Add(BlankLine.Instance);
+                return;
+            }
+
+            var walker = new SourceLineWalker(line);
+            if(walker.AtEndOfLine) {
+                state.ProcessedLines.Add(new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength });
+                return;
+            }
+
+            var op = walker.ExtractSymbol();
+            if(PseudoOpProcessors.ContainsKey(op)) {
+                var processor = PseudoOpProcessors[op];
+                processor(state, walker);
+                return;
+            }
+
+            throw new NotImplementedException("Can't parse line (yet): " + line);
         }
     }
 }

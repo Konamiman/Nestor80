@@ -1,4 +1,6 @@
-﻿namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
+﻿using Konamiman.Nestor80.Assembler.Expressions;
+
+namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
     internal abstract class ArithmeticOperator : IExpressionPart, IAssemblyOutputPart
     {

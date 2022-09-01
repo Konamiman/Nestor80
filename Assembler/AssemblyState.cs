@@ -18,6 +18,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public string ProgramName { get; set; }
 
+        public List<IProcessedSourceLine> ProcessedLines { get; } = new();
+
         public void SwitchToPass2()
         {
             InPass2 = true;
@@ -37,6 +39,12 @@ namespace Konamiman.Nestor80.Assembler
             {AddressType.ASEG, 0}
         };
 
+        private readonly Dictionary<AddressType, ushort> AreaSizes = new() {
+            {AddressType.CSEG, 0},
+            {AddressType.DSEG, 0},
+            {AddressType.ASEG, 0}
+        };
+
         public AddressType CurrentLocationArea { get; private set; } = AddressType.CSEG;
 
         public ushort CurrentLocationPointer { get; private set; }
@@ -50,7 +58,8 @@ namespace Konamiman.Nestor80.Assembler
             if(area == AddressType.COMMON) {
                 CurrentLocationPointer = 0;
             }
-            else { 
+            else {
+                AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
                 LocationPointersByArea[CurrentLocationArea] = CurrentLocationPointer;
                 CurrentLocationPointer = LocationPointersByArea[area];
             }
@@ -63,6 +72,16 @@ namespace Konamiman.Nestor80.Assembler
             //TODO: Handle commons
             if(area != AddressType.COMMON) {
                 return LocationPointersByArea[area];
+            }
+
+            return 0;
+        }
+
+        public ushort GetAreaSize(AddressType area)
+        {
+            //TODO: Handle commons
+            if(area != AddressType.COMMON) {
+                return AreaSizes[area];
             }
 
             return 0;
@@ -81,14 +100,22 @@ namespace Konamiman.Nestor80.Assembler
 
         public AssemblyError[] GetErrors() => Errors.ToArray();
 
-        private Dictionary<string, Symbol> Symbols = new(StringComparer.InvariantCultureIgnoreCase);
+        private readonly Dictionary<string, Symbol> Symbols = new(StringComparer.InvariantCultureIgnoreCase);
 
         public Symbol[] GetSymbols() => Symbols.Values.ToArray();
+
+        public bool HasSymbol(string symbol) => Symbols.ContainsKey(symbol);
+
+        public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].IsKnown;
+
+        public void AddSymbol(string name, Address value = null, bool isPublic = false, bool isExternal = false) =>
+            Symbols.Add(name, new Symbol() { Name = name, Value = value, IsPublic = isPublic, IsExternal = isExternal });
 
         public void WrapUp()
         {
             //TODO: Handle sizes of commons
             if(CurrentLocationArea != AddressType.COMMON) {
+                AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
                 LocationPointersByArea[CurrentLocationArea] = CurrentLocationPointer;
             }
         }

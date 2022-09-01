@@ -16,11 +16,20 @@ namespace Konamiman.Nestor80.N80
             var ourputStream = new FileStream(outputFileName, FileMode.Create, FileAccess.Write);
             */
 
+            var code =
+@"
+   ; Foo
+
+  db 1, 2+2 ,,FOO*5, 'Hola', BAR+2,
+";
+
             var config = new AssemblyConfiguration() {
                 DefaultProgramName = "SOURCE",
                 Print = (s) => Debug.WriteLine(s),
-                MaxLineLength = 20
+                MaxLineLength = 2000
             };
+
+            var result = AssemblySourceProcessor.Assemble(code, config);
 
             /*
             var assembler = new AssemblySourceProcessor(config);

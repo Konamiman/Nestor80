@@ -1,4 +1,6 @@
-﻿namespace Konamiman.Nestor80.Assembler
+﻿using Konamiman.Nestor80.Assembler.Expressions;
+
+namespace Konamiman.Nestor80.Assembler
 {
     public class SymbolReference : IAssemblyOutputPart, IExpressionPart
     {

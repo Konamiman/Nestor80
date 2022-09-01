@@ -39,6 +39,8 @@ namespace Konamiman.Nestor80.Assembler
             IsPostfixized = true;
         }
 
+        public bool IsRawBytesOutput => Parts.Length == 1 && Parts[0] is RawBytesOutput;
+
         private void ValidatePart(IExpressionPart part, IExpressionPart previous)
         {
             if(part is UnaryPlusOperator or UnaryMinusOperator) {

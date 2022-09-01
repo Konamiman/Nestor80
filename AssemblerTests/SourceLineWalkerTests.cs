@@ -92,5 +92,18 @@ namespace Konamiman.Nestor80.AssemblerTests
             Assert.AreEqual("'Hi, I''m not bad.'", sut.ExtractExpression());
             Assert.IsTrue(sut.AtEndOfLine);
         }
+
+        [Test]
+        [TestCase("FOO,")]
+        [TestCase("  FOO , ")]
+        public void TestStrayComma(string line)
+        {
+            var sut = new SourceLineWalker(line);
+            Assert.IsFalse(sut.AtEndOfLine);
+            Assert.AreEqual("FOO", sut.ExtractExpression());
+            Assert.IsFalse(sut.AtEndOfLine);
+            Assert.AreEqual("", sut.ExtractExpression());
+            Assert.IsTrue(sut.AtEndOfLine);
+        }
     }
 }

@@ -9,6 +9,7 @@
         int linePointer;
         bool logicalEndOfLineReached;
 
+        public string SourceLine => sourceLine;
 
         public SourceLineWalker(string sourceLine)
         {
@@ -143,5 +144,7 @@
         private bool PointingToSpace() => !AtEndOfLine && (sourceLine[linePointer] == ' ' || sourceLine[linePointer] == '\t');
 
         private bool PointingToComma() => !AtEndOfLine && sourceLine[linePointer] == ',';
+
+        public override string ToString() => "Walking: " + sourceLine;
     }
 }
