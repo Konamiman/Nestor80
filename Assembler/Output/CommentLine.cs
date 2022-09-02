@@ -1,9 +1,9 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Output
 {
-    internal class CommentLine : IProcessedSourceLine
+    internal class CommentLine : ProcessedSourceLine
     {
-        public string Line { get; init; }
-
-        public int EffectiveLineLength { get; init; }
+        public CommentLine(string line, int effectiveSize): base(line, effectiveSize)
+        {
+        } 
     }
 }

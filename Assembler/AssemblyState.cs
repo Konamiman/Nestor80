@@ -18,7 +18,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public string ProgramName { get; set; }
 
-        public List<IProcessedSourceLine> ProcessedLines { get; } = new();
+        public List<ProcessedSourceLine> ProcessedLines { get; } = new();
 
         public void SwitchToPass2()
         {

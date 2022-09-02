@@ -75,13 +75,13 @@ namespace Konamiman.Nestor80.Assembler
             state.IncreaseLocationPointer(outputBytes.Count);
 
             state.ProcessedLines.Add(
-                new DefbLine() {
-                    Line = walker.SourceLine, 
-                    EffectiveLineLength = walker.EffectiveLength,
-                    Expressions = outputExpressions.ToArray(), 
-                    OutputBytes = outputBytes.ToArray(),
-                    NewLocationCounter = new Address(state.CurrentLocationArea, state.CurrentLocationPointer)
-                }
+                new DefbLine(
+                    line: walker.SourceLine, 
+                    effectiveLength: walker.EffectiveLength,
+                    outputBytes: outputBytes.ToArray(),
+                    expressions: outputExpressions.ToArray(), 
+                    newLocationCounter: new Address(state.CurrentLocationArea, state.CurrentLocationPointer)
+                )
             );
         }
     }

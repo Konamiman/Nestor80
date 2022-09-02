@@ -1,15 +1,11 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Output
 {
-    public class BlankLine : IProcessedSourceLine
+    public class BlankLine : ProcessedSourceLine
     {
-        private BlankLine()
+        private BlankLine() : base("", 0)
         {
         }
 
         public static BlankLine Instance => new();
-
-        public string Line => "";
-
-        public int EffectiveLineLength => 0;
     }
 }

@@ -114,7 +114,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
-                state.ProcessedLines.Add(new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength });
+                state.ProcessedLines.Add(new CommentLine(line, walker.EffectiveLength));
                 return;
             }
 
