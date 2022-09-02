@@ -5,7 +5,7 @@ namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor
     {
-        Dictionary<string, Action<AssemblyState, SourceLineWalker>> PseudoOpProcessors = new(StringComparer.OrdinalIgnoreCase) {
+        readonly Dictionary<string, Action<AssemblyState, SourceLineWalker>> PseudoOpProcessors = new(StringComparer.OrdinalIgnoreCase) {
             { "DB", ProcessDefb },
             { "DEFB", ProcessDefb }
         };

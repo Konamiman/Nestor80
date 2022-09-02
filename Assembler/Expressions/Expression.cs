@@ -15,9 +15,13 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Dictionary<int, Regex> numberRegexes = new();
         private static readonly Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex symbolRegex = new("(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Dictionary<char, Regex> stringRegexes = new() {
+        private static readonly Dictionary<char, Regex> unescapedStringRegexes = new() {
             {'\'', new Regex("(?<=')((?<quot>'')|[^'])*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
             {'"',  new Regex("(?<=\")((?<quot>\"\")|[^\"])*(?=\")", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
+        };
+        private static readonly Dictionary<char, Regex> escapedStringRegexes = new() {
+            {'\'', new Regex("(?<=')((?<quot>\\\\')|[^'])*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
+            {'"',  new Regex("(?<=\")((?<quot>\\\\\")|[^\"])*(?=\")", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
         };
 
         private static Regex currentRadixRegex;
@@ -37,6 +41,8 @@ namespace Konamiman.Nestor80.Assembler
         static Expression() => DefaultRadix = 10;
 
         public string Source { get; init; }
+
+        public static bool AllowEscapesInStrings = false;
 
         private static int _DefaultRadix;
         public static int DefaultRadix
@@ -310,7 +316,8 @@ namespace Konamiman.Nestor80.Assembler
             
             Match match = null;
             try {
-                match = stringRegexes[delimiter].Match(parsedString, parsedStringPointer);
+                var regexes = AllowEscapesInStrings ? escapedStringRegexes : unescapedStringRegexes;
+                match = regexes[delimiter].Match(parsedString, parsedStringPointer);
             }
             catch {
                 Throw("Invalid string");
@@ -322,7 +329,10 @@ namespace Konamiman.Nestor80.Assembler
 
             var theString = match.Value;
             var matchLength = theString.Length;
-            if(match.Groups["quot"].Success) {
+            if(AllowEscapesInStrings) {
+                theString = Regex.Unescape(theString);
+            }
+            else if(match.Groups["quot"].Success) {
                 theString = theString.Replace(doubleDelimiters[delimiter], singleDelimiters[delimiter]);
             }
 

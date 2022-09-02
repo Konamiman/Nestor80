@@ -6,6 +6,12 @@ namespace Konamiman.Nestor80.AssemblerTests
     [TestFixture]
     public class SourceLineWalkerTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            SourceLineWalker.AllowEscapesInStrings = false;
+        }
+
         [Test]
         [TestCase("")]
         [TestCase("  ")]
@@ -104,6 +110,25 @@ namespace Konamiman.Nestor80.AssemblerTests
             Assert.IsFalse(sut.AtEndOfLine);
             Assert.AreEqual("", sut.ExtractExpression());
             Assert.IsTrue(sut.AtEndOfLine);
+        }
+
+        [Test]
+        [TestCase(@"'Hello \', friend.'", @"'Hello \'")]
+        [TestCase(@"""Hello \"", friend.'""", @"""Hello \""")]
+        public void TestUnsupportedEscapes(string line, string expectedString)
+        {
+            var sut = new SourceLineWalker(line);
+            Assert.AreEqual(expectedString, sut.ExtractExpression());
+        }
+
+        [Test]
+        [TestCase(@"'Hello \', friend.',12", @"'Hello \', friend.'")]
+        [TestCase(@"""Hello \"", friend."",34", @"""Hello \"", friend.""")]
+        public void TestSupportedEscapes(string line, string expectedString)
+        {
+            SourceLineWalker.AllowEscapesInStrings = true;
+            var sut = new SourceLineWalker(line);
+            Assert.AreEqual(expectedString, sut.ExtractExpression());
         }
     }
 }

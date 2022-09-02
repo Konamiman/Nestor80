@@ -9,6 +9,8 @@
         int linePointer;
         bool logicalEndOfLineReached;
 
+        public static bool AllowEscapesInStrings = false;
+
         public string SourceLine => sourceLine;
 
         public SourceLineWalker(string sourceLine)
@@ -69,6 +71,7 @@
             var insideString = false;
             char stringDelimiter = '\0';
             var lastCharWasStringDelimiter = false;
+            var lastCharWasBackslash = false;
 
             if(AtEndOfLine) {
                 return null;
@@ -89,8 +92,14 @@
                         stringDelimiter = currentChar;
                     }
                 }
+                else if(currentChar == '\\' && AllowEscapesInStrings && !lastCharWasBackslash) {
+                    lastCharWasBackslash = true;
+                }
                 else if(currentChar == stringDelimiter) {
-                    if(!lastCharWasStringDelimiter) {
+                    if(lastCharWasBackslash) {
+                        lastCharWasBackslash = false;
+                    }
+                    else if(!lastCharWasStringDelimiter) {
                         insideString = false;
                         lastCharWasStringDelimiter = false;
                     }
@@ -100,6 +109,7 @@
                 }
                 else {
                     lastCharWasStringDelimiter = false;
+                    lastCharWasBackslash = false;
                 }
 
                 linePointer++;

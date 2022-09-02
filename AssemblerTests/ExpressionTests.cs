@@ -13,6 +13,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         public static void SetUp()
         {
             Expression.OutputStringEncoding = Encoding.ASCII;
+            Expression.AllowEscapesInStrings = false;
         }
 
         static object[] TestNumberCases = {
@@ -209,7 +210,7 @@ namespace Konamiman.Nestor80.AssemblerTests
                     ModOperator.Instance
                 }
             },
-            
+
             new object[] {
                 "-(-3-4 MOD 5)-FOO+BAR##",
                 new object[] {
@@ -322,9 +323,9 @@ namespace Konamiman.Nestor80.AssemblerTests
                     PlusOperator.Instance,
                 }
             },
-            
-            new object[] { 
-                "NOT FOO##+(1+2)*3/4", 
+
+            new object[] {
+                "NOT FOO##+(1+2)*3/4",
                 new object[] {
                     SymbolReference.For("FOO", true),
                     NotOperator.Instance,
@@ -435,7 +436,7 @@ namespace Konamiman.Nestor80.AssemblerTests
 
             new object[] {
                 "2*3+1",
-                new object[] { 
+                new object[] {
                     Address.Absolute(2),
                     Address.Absolute(3),
                     MultiplyOperator.Instance,
@@ -466,7 +467,7 @@ namespace Konamiman.Nestor80.AssemblerTests
             },
 
             new object[] {
-                "-1/-2*-3",    
+                "-1/-2*-3",
                 new object[] {
                     Address.Absolute(1),
                     UnaryMinusOperator.Instance,
@@ -580,10 +581,35 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCaseSource(nameof(TestExpressionEvaluatesToSource))]
         public void TestExpressionEvaluatesTo(string expressionString, int number)
         {
-            var exp =Expression.Parse(expressionString);
+            var exp = Expression.Parse(expressionString);
             exp.ValidateAndPostifixize();
             var result = exp.Evaluate();
             Assert.AreEqual(Address.Absolute((ushort)number), result);
+        }
+
+        [Test]
+        [TestCase(@"'\r\n\''\""'")]
+        [TestCase(@"""\r\n\'\""""""")]
+        public void TestDelimitedStringsWithUnsupportedEscaped(string line)
+        {
+            var exp = Expression.Parse(line, true);
+            exp.ValidateAndPostifixize();
+            var bytes = (RawBytesOutput)exp.Parts[0];
+            // literal chars: \ r \ n \ ' \ "
+            Assert.AreEqual(new byte[] { 0x5c, 0x72, 0x5c, 0x6e, 0x5c, 39, 0x5c, 34 }, bytes);
+        }
+
+        [Test]
+        [TestCase(@"'\r\n\'\""\u0045\\'")]
+        [TestCase(@"""\r\n\'\""\u0045\\""")]
+        public void TestSingleQuoteDelimitedStringsWithSupportedEscaped(string line)
+        {
+            Expression.AllowEscapesInStrings = true;
+            var exp = Expression.Parse(line, true);
+            exp.ValidateAndPostifixize();
+            var bytes = (RawBytesOutput)exp.Parts[0];
+            // escape sequences: \r \n, then literals ' " 0x45 \
+            Assert.AreEqual(new byte[] { 13, 10, 39, 34, 0x45, 0x5c }, bytes);
         }
 
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
