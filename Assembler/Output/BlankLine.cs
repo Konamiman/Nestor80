@@ -2,10 +2,8 @@
 {
     public class BlankLine : ProcessedSourceLine
     {
-        private BlankLine() : base("", 0)
+        public BlankLine(string label) : base("", 0, label)
         {
         }
-
-        public static BlankLine Instance => new();
     }
 }

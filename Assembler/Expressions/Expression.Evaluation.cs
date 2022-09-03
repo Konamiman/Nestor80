@@ -223,7 +223,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var sr = (SymbolReference)part;
 
-            var symbol = GetSymbol(sr.SymbolName);
+            var symbol = GetSymbol(sr.SymbolName, sr.IsExternal);
             if(symbol is null) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed before all the referenced symbols are registered (even if the symbol value isn't yet known). Symbol: {sr.SymbolName}");
             }

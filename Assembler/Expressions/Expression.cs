@@ -34,7 +34,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static bool AtEndOfString = false;
         public static Encoding OutputStringEncoding { get; set; } = null;
-        public static Func<string, Symbol> GetSymbol { get; set; } = (_) => null;
+        public static Func<string, bool, Symbol> GetSymbol { get; set; } = (_, _) => null;
 
         public IExpressionPart[] Parts { get; private set; }
 

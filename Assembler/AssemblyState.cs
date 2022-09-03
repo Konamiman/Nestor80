@@ -49,6 +49,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public ushort CurrentLocationPointer { get; private set; }
 
+        public Address GetCurrentLocation() => new Address(CurrentLocationArea, CurrentLocationPointer);
+
         public void SwitchToArea(AddressType area)
         {
             //TODO: Handle sizes of commons
@@ -122,10 +124,22 @@ namespace Konamiman.Nestor80.Assembler
 
         public Symbol GetSymbol(string name)
         {
-            if(name == "$")
-                return new Symbol() { Name = "$", Value = new Address(CurrentLocationArea, CurrentLocationPointer) };
-
             return Symbols.ContainsKey(name) ? Symbols[name] : null;
+        }
+
+        public Symbol GetSymbolForExpression(string name, bool isExternal)
+        {
+            if(name == "$") {
+                if(Symbols.ContainsKey("$"))
+                    return Symbols[name];
+                else
+                    return new Symbol() { Name = "$", Value = new Address(CurrentLocationArea, CurrentLocationPointer) };
+            }
+
+            if(!Symbols.ContainsKey(name))
+                Symbols[name] = new Symbol() { Name = name, IsExternal = isExternal };
+
+            return Symbols[name];
         }
     }
 }

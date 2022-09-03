@@ -5,10 +5,13 @@
         None = 0,
         NoEndStatement,
         UnexpectedContentAtEndOfLine,
+        MaskedDollar,
 
         FirstError = 64,
         InvalidExpression,
         MisssingOperand,
+        InvalidLabel,
+        DuplicateLabel,
 
         FirstFatal = 128,
         UnexpectedError,

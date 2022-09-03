@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using Konamiman.Nestor80.Assembler.Output;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
@@ -10,11 +11,13 @@ namespace Konamiman.Nestor80.Assembler
     {
         private AssemblyConfiguration configuration;
 
-        private AssemblyState state;
+        private static AssemblyState state;
 
         private Encoding sourceStreamEncoding;
 
         private Stream sourceStream;
+
+        private static readonly Regex labelRegex = new("^[\\w$@?.]+:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private AssemblySourceProcessor()
         {
@@ -37,7 +40,7 @@ namespace Konamiman.Nestor80.Assembler
             this.configuration = configuration;
             this.sourceStream = sourceStream;
             this.sourceStreamEncoding = sourceStreamEncoding;
-            this.state = new AssemblyState() { Configuration = configuration };
+            state = new AssemblyState() { Configuration = configuration };
 
             try {
                 state = new AssemblyState { 
@@ -45,7 +48,7 @@ namespace Konamiman.Nestor80.Assembler
                 };
 
                 Expression.OutputStringEncoding = configuration.OutputStringEncoding;
-                Expression.GetSymbol = state.GetSymbol;
+                Expression.GetSymbol = state.GetSymbolForExpression;
 
                 DoPass1();
                 if(!state.HasErrors) {
@@ -108,7 +111,7 @@ namespace Konamiman.Nestor80.Assembler
         private void ProcessSourceLine(string line)
         {
             if(string.IsNullOrWhiteSpace(line)) {
-                state.ProcessedLines.Add(BlankLine.Instance);
+                state.ProcessedLines.Add(BlankLineWithoutLabel.Instance);
                 return;
             }
 
@@ -118,14 +121,68 @@ namespace Konamiman.Nestor80.Assembler
                 return;
             }
 
+            ProcessedSourceLine processedLine = null;
+            string label = null;
+
             var op = walker.ExtractSymbol();
+            if(op.EndsWith(':')) {
+                if(labelRegex.IsMatch(op)) {
+                    label = op;
+                    ProcessLabel(label);
+                }
+                else {
+                    state.AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label (contains illegal characters): {op}");
+                }
+
+                if(walker.AtEndOfLine) {
+                    if(walker.EffectiveLength == walker.SourceLine.Length) {
+                        state.ProcessedLines.Add(new BlankLine(label));
+                    }
+                    else {
+                        state.ProcessedLines.Add(new CommentLine(walker.SourceLine, walker.EffectiveLength, label));
+                    }
+                    return;
+                }
+
+                op = walker.ExtractSymbol();
+            }
+
             if(PseudoOpProcessors.ContainsKey(op)) {
                 var processor = PseudoOpProcessors[op];
-                processor(state, walker);
+                processedLine = processor(walker);
+            }
+            else {
+
+                throw new NotImplementedException("Can't parse line (yet): " + line);
+            }
+
+            processedLine.Label = label;
+            state.ProcessedLines.Add(processedLine);
+        }
+
+        private static void ProcessLabel(string label)
+        {
+            var isPublic = label.EndsWith("::");
+            var labelValue = label.TrimEnd(':');
+
+            if(labelValue == "$") {
+                state.AddError(AssemblyErrorCode.MaskedDollar, "Using '$' as a label name will prevent using it as the current location pointer");
+            }
+
+            var symbol = state.GetSymbol(labelValue);
+            if(symbol == null) {
+                state.AddSymbol(labelValue, state.GetCurrentLocation(), isPublic: isPublic);
                 return;
             }
 
-            throw new NotImplementedException("Can't parse line (yet): " + line);
+            if(symbol.IsExternal) {
+                state.AddError(AssemblyErrorCode.DuplicateLabel, $"Label has been declared already as external: {labelValue}");
+            }
+            else if(symbol.IsKnown) {
+                if(symbol.Value != state.GetCurrentLocation()) {
+                    state.AddError(AssemblyErrorCode.DuplicateLabel, $"Duplicate label: {labelValue}");
+                }
+            };
         }
     }
 }

@@ -5,12 +5,12 @@ namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor
     {
-        readonly Dictionary<string, Action<AssemblyState, SourceLineWalker>> PseudoOpProcessors = new(StringComparer.OrdinalIgnoreCase) {
+        readonly Dictionary<string, Func<SourceLineWalker, ProcessedSourceLine>> PseudoOpProcessors = new(StringComparer.OrdinalIgnoreCase) {
             { "DB", ProcessDefb },
             { "DEFB", ProcessDefb }
         };
 
-        static void ProcessDefb(AssemblyState state, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessDefb(SourceLineWalker walker)
         {
             var outputBytes = new List<byte>();
             var outputExpressions = new List<Tuple<int, IExpressionPart[]>>();
@@ -43,10 +43,11 @@ namespace Konamiman.Nestor80.Assembler
                         continue;
                     }
 
+                    /* --- No longer needed?
                     var unknownSymbols = expression.ReferencedSymbols.Where(s => !state.HasSymbol(s.SymbolName));
                     foreach(var symbol in unknownSymbols) {
                         state.AddSymbol(symbol.SymbolName, isExternal: symbol.IsExternal);
-                    }
+                    }*/
 
                     var value = expression.TryEvaluate();
                     if(value is null) {
@@ -74,14 +75,12 @@ namespace Konamiman.Nestor80.Assembler
 
             state.IncreaseLocationPointer(outputBytes.Count);
 
-            state.ProcessedLines.Add(
-                new DefbLine(
-                    line: walker.SourceLine, 
-                    effectiveLength: walker.EffectiveLength,
-                    outputBytes: outputBytes.ToArray(),
-                    expressions: outputExpressions.ToArray(), 
-                    newLocationCounter: new Address(state.CurrentLocationArea, state.CurrentLocationPointer)
-                )
+            return new DefbLine(
+                line: walker.SourceLine,
+                effectiveLength: walker.EffectiveLength,
+                outputBytes: outputBytes.ToArray(),
+                expressions: outputExpressions.ToArray(),
+                newLocationCounter: new Address(state.CurrentLocationArea, state.CurrentLocationPointer)
             );
         }
     }

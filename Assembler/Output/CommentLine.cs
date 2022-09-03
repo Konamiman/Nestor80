@@ -2,7 +2,7 @@
 {
     internal class CommentLine : ProcessedSourceLine
     {
-        public CommentLine(string line, int effectiveSize): base(line, effectiveSize)
+        public CommentLine(string line, int effectiveSize, string label = null): base(line, effectiveSize, label)
         {
         } 
     }

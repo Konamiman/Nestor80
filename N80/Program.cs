@@ -19,6 +19,11 @@ namespace Konamiman.Nestor80.N80
             var code =
 @"
    ; Foo
+  BLANK_NO_LABEL:  
+  COMMENT_LABEL:  ;Bar
+  PUBLIC::
+DEBE: db 34
+    INVA-LID:
 
   db 1, 2+2 ,,FOO*5, 'Hola', BAR+2,
 ";
