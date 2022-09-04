@@ -43,12 +43,6 @@ namespace Konamiman.Nestor80.Assembler
                         continue;
                     }
 
-                    /* --- No longer needed?
-                    var unknownSymbols = expression.ReferencedSymbols.Where(s => !state.HasSymbol(s.SymbolName));
-                    foreach(var symbol in unknownSymbols) {
-                        state.AddSymbol(symbol.SymbolName, isExternal: symbol.IsExternal);
-                    }*/
-
                     var value = expression.TryEvaluate();
                     if(value is null) {
                         outputBytes.Add(0);

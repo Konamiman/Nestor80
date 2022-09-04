@@ -18,6 +18,10 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+    BAR:
+    BAR:
+
+
    ; Foo
   BLANK_NO_LABEL:  
   COMMENT_LABEL:  ;Bar

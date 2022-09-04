@@ -26,6 +26,8 @@
 
         public void Rewind() => linePointer = 0;
 
+        public string GetRemaining() => AtEndOfLine ? "" : sourceLine.Substring(linePointer);
+
         /// <summary>
         /// Extracts a symbol from the source line.
         /// </summary>

@@ -48,7 +48,7 @@ namespace Konamiman.Nestor80.Assembler
                 };
 
                 Expression.OutputStringEncoding = configuration.OutputStringEncoding;
-                Expression.GetSymbol = state.GetSymbolForExpression;
+                Expression.GetSymbol = GetSymbolForExpression;
 
                 DoPass1();
                 if(!state.HasErrors) {
@@ -86,8 +86,6 @@ namespace Konamiman.Nestor80.Assembler
 
         private void DoPass1()
         {
-            state.AddSymbol("BAR", Address.Code(0x34));
-
             var sourceStream = new StreamReader(this.sourceStream, this.sourceStreamEncoding, true, 4096);
 
             int lineLength;
@@ -128,7 +126,7 @@ namespace Konamiman.Nestor80.Assembler
             if(op.EndsWith(':')) {
                 if(labelRegex.IsMatch(op)) {
                     label = op;
-                    ProcessLabel(label);
+                    ProcessLabelDefinition(label);
                 }
                 else {
                     state.AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label (contains illegal characters): {op}");
@@ -152,22 +150,41 @@ namespace Konamiman.Nestor80.Assembler
                 processedLine = processor(walker);
             }
             else {
-
                 throw new NotImplementedException("Can't parse line (yet): " + line);
+            }
+
+            if(!walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected content found at the end of the line: {walker.GetRemaining()}");
             }
 
             processedLine.Label = label;
             state.ProcessedLines.Add(processedLine);
         }
 
-        private static void ProcessLabel(string label)
+        public static Symbol GetSymbolForExpression(string name, bool isExternal)
+        {
+            if(name == "$")
+                return new Symbol() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
+
+            var symbol = state.GetSymbol(name);
+            if(symbol is null) {
+                state.AddSymbol(name, isExternal: isExternal);
+                symbol = state.GetSymbol(name);
+            }
+
+            return symbol;
+        }
+
+        private static void ProcessLabelDefinition(string label)
         {
             var isPublic = label.EndsWith("::");
             var labelValue = label.TrimEnd(':');
 
             if(labelValue == "$") {
-                state.AddError(AssemblyErrorCode.MaskedDollar, "Using '$' as a label name will prevent using it as the current location pointer");
+                state.AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");
             }
+
+            //TODO: Warn if register used as label (e.g.: if B is a label, LD A,B loads the label and not reg B)
 
             var symbol = state.GetSymbol(labelValue);
             if(symbol == null) {

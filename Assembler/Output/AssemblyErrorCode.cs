@@ -5,7 +5,7 @@
         None = 0,
         NoEndStatement,
         UnexpectedContentAtEndOfLine,
-        MaskedDollar,
+        DollarAsLabel,
 
         FirstError = 64,
         InvalidExpression,

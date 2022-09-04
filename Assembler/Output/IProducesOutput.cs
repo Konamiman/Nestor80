@@ -2,7 +2,7 @@
 
 namespace Konamiman.Nestor80.Assembler.Output
 {
-    public interface IProducesOutput
+    public interface IProducesOutput : IChangesLocationCounter
     {
         byte[] OutputBytes { get; init; }
 
