@@ -5,5 +5,7 @@
         public BlankLine(string label) : base("", 0, label)
         {
         }
+        
+        public override string ToString() => base.ToString() + "(blank)";
     }
 }

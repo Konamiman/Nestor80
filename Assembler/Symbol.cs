@@ -62,5 +62,12 @@
         }
 
         public bool IsKnown => Value is not null;
+
+        public override string ToString()
+        {
+            var suffix = IsPublic ? "::" : (IsExternal ? "##" : "");
+            var value = IsKnown ? $" = {Value:X4}" : "";
+            return $"{EffectiveName}{suffix}{value}";
+        }
     }
 }

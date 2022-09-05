@@ -7,5 +7,7 @@
         }
 
         public static BlankLineWithoutLabel Instance => new();
+
+        public override string ToString() => "(blank)";
     }
 }

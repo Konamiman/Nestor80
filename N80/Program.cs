@@ -11,25 +11,34 @@ namespace Konamiman.Nestor80.N80
             var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../SOURCE.MAC");
             var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
 
-            /*
-            var outputFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../SOURCE.REL");
-            var ourputStream = new FileStream(outputFileName, FileMode.Create, FileAccess.Write);
-            */
-
             var code =
-@"
+@"  dseg ;1
+  dseg;1
+  dseg ,1
+
     BAR:
     BAR:
+    db EXT##
 
 
    ; Foo
   BLANK_NO_LABEL:  
   COMMENT_LABEL:  ;Bar
   PUBLIC::
-DEBE: db 34
+DEBE: defb 34
     INVA-LID:
 
   db 1, 2+2 ,,FOO*5, 'Hola', BAR+2,
+
+    org
+
+    dseg ,TAL
+DSEG1: db 0
+    ;org 10 , cual
+DSEG2: db 1
+    org 1
+    org DSEG3
+DSEG3:
 ";
 
             var config = new AssemblyConfiguration() {
@@ -39,11 +48,6 @@ DEBE: db 34
             };
 
             var result = AssemblySourceProcessor.Assemble(code, config);
-
-            /*
-            var assembler = new AssemblySourceProcessor(config);
-            var result = assembler.Assemble();
-            */
         }
     }
 }

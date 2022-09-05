@@ -5,12 +5,16 @@ namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor
     {
-        readonly Dictionary<string, Func<SourceLineWalker, ProcessedSourceLine>> PseudoOpProcessors = new(StringComparer.OrdinalIgnoreCase) {
-            { "DB", ProcessDefb },
-            { "DEFB", ProcessDefb }
+        readonly Dictionary<string, Func<string, SourceLineWalker, ProcessedSourceLine>> PseudoOpProcessors = new(StringComparer.OrdinalIgnoreCase) {
+            { "DB", ProcessDefbLine },
+            { "DEFB", ProcessDefbLine },
+            { "CSEG", ProcessCsegLine },
+            { "DSEG", ProcessDsegLine },
+            { "ASEG", ProcessAsegLine },
+            { "ORG", ProcessOrgLine },
         };
 
-        static ProcessedSourceLine ProcessDefb(SourceLineWalker walker)
+        static ProcessedSourceLine ProcessDefbLine(string operand, SourceLineWalker walker)
         {
             var outputBytes = new List<byte>();
             var outputExpressions = new List<Tuple<int, IExpressionPart[]>>();
@@ -71,11 +75,48 @@ namespace Konamiman.Nestor80.Assembler
 
             return new DefbLine(
                 line: walker.SourceLine,
-                effectiveLength: walker.EffectiveLength,
                 outputBytes: outputBytes.ToArray(),
                 expressions: outputExpressions.ToArray(),
-                newLocationCounter: new Address(state.CurrentLocationArea, state.CurrentLocationPointer)
+                newLocationCounter: new Address(state.CurrentLocationArea, state.CurrentLocationPointer),
+                operand: operand
             );
+        }
+
+        static ProcessedSourceLine ProcessCsegLine(string operand, SourceLineWalker walker) => ProcessChangeAreaLine(operand, AddressType.CSEG, walker);
+
+        static ProcessedSourceLine ProcessDsegLine(string operand, SourceLineWalker walker) => ProcessChangeAreaLine(operand, AddressType.DSEG, walker);
+
+        static ProcessedSourceLine ProcessAsegLine(string operand, SourceLineWalker walker) => ProcessChangeAreaLine(operand, AddressType.ASEG, walker);
+
+        static ProcessedSourceLine ProcessChangeAreaLine(string operand, AddressType area, SourceLineWalker walker)
+        {
+            state.SwitchToArea(area);
+
+            return new ChangeAreaLine(
+                line: walker.SourceLine,
+                newLocationCounter: state.GetCurrentLocation(),
+                operand: operand
+            );
+        }
+
+        static ProcessedSourceLine ProcessOrgLine(string operand, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.LineHasNoEffect, "ORG without value will have no effect");
+                return new ChangeOriginLine(walker.SourceLine, null, operand);
+            }
+
+            var valueExpressionString = walker.ExtractExpression();
+            var valueExpression = Expression.Parse(valueExpressionString);
+            valueExpression.ValidateAndPostifixize();
+            var value = valueExpression.TryEvaluate();
+            if(value is null) {
+                return new ChangeOriginLine(walker.SourceLine, null, operand) { NewLocationCounterExpression = valueExpression };
+            }
+            else {
+                state.SwitchToLocation(value.Value);
+                return new ChangeOriginLine(walker.SourceLine, value, operand);
+            }
         }
     }
 }

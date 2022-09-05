@@ -81,7 +81,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private void DoPass2()
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         private void DoPass1()
@@ -147,7 +147,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(PseudoOpProcessors.ContainsKey(op)) {
                 var processor = PseudoOpProcessors[op];
-                processedLine = processor(walker);
+                processedLine = processor(op, walker);
             }
             else {
                 throw new NotImplementedException("Can't parse line (yet): " + line);
@@ -157,6 +157,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected content found at the end of the line: {walker.GetRemaining()}");
             }
 
+            processedLine.EffectiveLineLength = walker.DiscardRemaining();
             processedLine.Label = label;
             state.ProcessedLines.Add(processedLine);
         }

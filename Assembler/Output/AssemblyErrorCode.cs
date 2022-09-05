@@ -6,6 +6,7 @@
         NoEndStatement,
         UnexpectedContentAtEndOfLine,
         DollarAsLabel,
+        LineHasNoEffect,
 
         FirstError = 64,
         InvalidExpression,

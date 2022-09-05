@@ -139,6 +139,12 @@
             return logicalEndOfLineReached;
         }
 
+        public int DiscardRemaining()
+        {
+            while(!AtEndOfLine) ExtractExpression();
+            return EffectiveLength;
+        }
+
         public int EffectiveLength
         { 
             get
@@ -149,7 +155,7 @@
                 return linePointer;
             }
         }
-          
+
 
         private bool PhysicalEndOfLineReached => linePointer >= lineLength;
 

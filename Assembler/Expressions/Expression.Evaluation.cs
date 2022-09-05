@@ -229,7 +229,10 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(symbol.IsExternal) {
-                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed when the expression contains external symbols. Symbol: {sr.SymbolName}");
+                if(throwOnUnknownSymbol)
+                    throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed when the expression contains external symbols. Symbol: {sr.SymbolName}");
+                else
+                    return null;
             }
 
             if(symbol.IsKnown) {
