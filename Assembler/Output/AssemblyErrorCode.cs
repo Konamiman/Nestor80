@@ -12,7 +12,7 @@
         InvalidExpression,
         MisssingOperand,
         InvalidLabel,
-        DuplicateLabel,
+        DuplicatedSymbol,
 
         FirstFatal = 128,
         UnexpectedError,

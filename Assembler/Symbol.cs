@@ -20,6 +20,8 @@
             }
         }
 
+        public bool IsLabel { get; init; }
+
         public string EffectiveName { get; private set; }
 
         public bool IsPublic { get; set; }
@@ -65,7 +67,7 @@
 
         public override string ToString()
         {
-            var suffix = IsPublic ? "::" : (IsExternal ? "##" : "");
+            var suffix = IsLabel ? (IsPublic ? "::" : (IsExternal ? "##" : ":")) : "";
             var value = IsKnown ? $" = {Value:X4}" : "";
             return $"{EffectiveName}{suffix}{value}";
         }

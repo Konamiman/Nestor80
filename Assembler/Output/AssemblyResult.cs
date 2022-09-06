@@ -15,5 +15,7 @@
         public ProcessedSourceLine[] ProcessedLines { get; init; }
 
         public Symbol[] Symbols { get; init; }
+
+        public Address EndAddress { get; init; }
     }
 }

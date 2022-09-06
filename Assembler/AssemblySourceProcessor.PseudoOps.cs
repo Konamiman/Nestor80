@@ -12,6 +12,11 @@ namespace Konamiman.Nestor80.Assembler
             { "DSEG", ProcessDsegLine },
             { "ASEG", ProcessAsegLine },
             { "ORG", ProcessOrgLine },
+            { "EXT", ProcessExternalDeclarationLine },
+            { "EXTRN", ProcessExternalDeclarationLine },
+            { "EXTERNAL", ProcessExternalDeclarationLine },
+            { "PUBLIC", ProcessPublicDeclarationLine },
+            { "END", ProcessEndLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string operand, SourceLineWalker walker)
@@ -106,16 +111,99 @@ namespace Konamiman.Nestor80.Assembler
                 return new ChangeOriginLine(walker.SourceLine, null, operand);
             }
 
-            var valueExpressionString = walker.ExtractExpression();
-            var valueExpression = Expression.Parse(valueExpressionString);
-            valueExpression.ValidateAndPostifixize();
-            var value = valueExpression.TryEvaluate();
-            if(value is null) {
-                return new ChangeOriginLine(walker.SourceLine, null, operand) { NewLocationCounterExpression = valueExpression };
+            try {
+                var valueExpressionString = walker.ExtractExpression();
+                var valueExpression = Expression.Parse(valueExpressionString);
+                valueExpression.ValidateAndPostifixize();
+                var value = valueExpression.TryEvaluate();
+                if(value is null) {
+                    return new ChangeOriginLine(walker.SourceLine, null, operand) { NewLocationCounterExpression = valueExpression };
+                }
+                else {
+                    state.SwitchToLocation(value.Value);
+                    return new ChangeOriginLine(walker.SourceLine, value, operand);
+                }
+            }
+            catch(InvalidExpressionException ex) {
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {operand.ToUpper()}: {ex.Message}");
+                return new ChangeOriginLine(walker.SourceLine, null, operand);
+            }
+        }
+
+        static ProcessedSourceLine ProcessExternalDeclarationLine(string operand, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MisssingOperand, $"{operand.ToUpper()} must be followed by a symbol name");
+                return new ExternalDeclarationLine(walker.SourceLine, symbolName: null, operand: operand);
+            }
+
+            var symbolName = walker.ExtractSymbol();
+            if(!externalSymbolRegex.IsMatch(symbolName)) {
+                state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name");
+                return new ExternalDeclarationLine(walker.SourceLine, symbolName: symbolName, operand: operand);
+            }
+
+            var existingSymbol = state.GetSymbol(symbolName);
+            if(existingSymbol is null) {
+                state.AddSymbol(symbolName, isExternal: true);
+            }
+            else if(existingSymbol.IsKnown) {
+                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
+            }
+
+            return new ExternalDeclarationLine(walker.SourceLine, symbolName: symbolName, operand: operand);
+        }
+
+        static ProcessedSourceLine ProcessPublicDeclarationLine(string operand, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MisssingOperand, $"{operand.ToUpper()} must be followed by a label name");
+                return new PublicDeclarationLine(walker.SourceLine, symbolName: null, operand: operand);
+            }
+
+            var symbolName = walker.ExtractSymbol();
+            if(!labelRegex.IsMatch(symbolName)) {
+                state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid label name");
+                return new PublicDeclarationLine(walker.SourceLine, symbolName: symbolName, operand: operand);
+            }
+
+            var existingSymbol = state.GetSymbol(symbolName);
+            if(existingSymbol is null) {
+                state.AddSymbol(symbolName, isLabel: true, isPublic: true);
+            }
+            else if(existingSymbol.IsExternal) {
+                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined as an external symbol, can't be defined as public");
             }
             else {
-                state.SwitchToLocation(value.Value);
-                return new ChangeOriginLine(walker.SourceLine, value, operand);
+                existingSymbol.IsPublic = true;
+            }
+
+            return new PublicDeclarationLine(walker.SourceLine, symbolName: symbolName, operand: operand);
+        }
+
+        static ProcessedSourceLine ProcessEndLine(string operand, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.End(Address.AbsoluteZero);
+                return new AssemblyEndLine(walker.SourceLine, operand: operand, endAddress: null);
+            }
+
+            try {
+                var endAddressText = walker.ExtractExpression();
+                var endAddressExpression = Expression.Parse(endAddressText);
+                endAddressExpression.ValidateAndPostifixize();
+
+                //Note that we are ending source code parsing here,
+                //therefore, the end address expression must be evaluable at this point!
+                var endAddress = endAddressExpression.Evaluate();
+
+                state.End(endAddress);
+                return new AssemblyEndLine(walker.SourceLine, operand: operand, endAddress: endAddress);
+            }
+            catch(InvalidExpressionException ex) {
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {operand.ToUpper()}: {ex.Message}");
+                state.End(Address.AbsoluteZero);
+                return new AssemblyEndLine(walker.SourceLine, operand: operand, endAddress: null);
             }
         }
     }

@@ -12,7 +12,16 @@ namespace Konamiman.Nestor80.N80
             var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
 
             var code =
-@"  dseg ;1
+@"
+foo::
+foo:
+
+
+    
+    end
+
+
+dseg ;1
   dseg;1
   dseg ,1
 

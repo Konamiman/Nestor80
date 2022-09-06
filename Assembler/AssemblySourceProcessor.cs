@@ -17,7 +17,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private Stream sourceStream;
 
-        private static readonly Regex labelRegex = new("^[\\w$@?.]+:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private AssemblySourceProcessor()
         {
@@ -76,6 +77,7 @@ namespace Konamiman.Nestor80.Assembler
                 ProcessedLines = state.ProcessedLines.ToArray(),
                 Symbols = state.GetSymbols(),
                 Errors = state.GetErrors(),
+                EndAddress = state.EndAddress ?? Address.AbsoluteZero,
             };
         }
 
@@ -90,7 +92,7 @@ namespace Konamiman.Nestor80.Assembler
 
             int lineLength;
 
-            while(true) {
+            while(!state.EndReached) {
                 var sourceLine = sourceStream.ReadLine();
                 if(sourceLine == null) break;
                 if(configuration.MaxLineLength is not null && (lineLength = sourceLine.Length) > configuration.MaxLineLength) {
@@ -103,6 +105,10 @@ namespace Konamiman.Nestor80.Assembler
 
                 ProcessSourceLine(sourceLine);
                 state.IncreaseLineNumber();
+            }
+
+            if(!state.EndReached) {
+                state.AddError(AssemblyErrorCode.NoEndStatement, "No END statement found");
             }
         }
 
@@ -189,17 +195,19 @@ namespace Konamiman.Nestor80.Assembler
 
             var symbol = state.GetSymbol(labelValue);
             if(symbol == null) {
-                state.AddSymbol(labelValue, state.GetCurrentLocation(), isPublic: isPublic);
-                return;
+                state.AddSymbol(labelValue, state.GetCurrentLocation(), isPublic: isPublic, isLabel: true);
             }
-
-            if(symbol.IsExternal) {
-                state.AddError(AssemblyErrorCode.DuplicateLabel, $"Label has been declared already as external: {labelValue}");
+            else if(symbol.IsExternal) {
+                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Label has been declared already as external: {labelValue}");
             }
             else if(symbol.IsKnown) {
                 if(symbol.Value != state.GetCurrentLocation()) {
-                    state.AddError(AssemblyErrorCode.DuplicateLabel, $"Duplicate label: {labelValue}");
+                    state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
                 }
+            }
+            else {
+                //PUBLIC declaration preceded label in code
+                symbol.Value = state.GetCurrentLocation();
             };
         }
     }

@@ -20,6 +20,18 @@ namespace Konamiman.Nestor80.Assembler
 
         public List<ProcessedSourceLine> ProcessedLines { get; } = new();
 
+        public Address EndAddress { get; private set; }
+
+        public void End(Address address)
+        {
+            if(address is null)
+                throw new ArgumentNullException(nameof(address));
+
+            EndAddress = address;
+        }
+
+        public bool EndReached => EndAddress is not null;
+
         public void SwitchToPass2()
         {
             InPass2 = true;
@@ -117,8 +129,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].IsKnown;
 
-        public void AddSymbol(string name, Address value = null, bool isPublic = false, bool isExternal = false) =>
-            Symbols.Add(name, new Symbol() { Name = name, Value = value, IsPublic = isPublic, IsExternal = isExternal });
+        public void AddSymbol(string name, Address value = null, bool isPublic = false, bool isExternal = false, bool isLabel = true) =>
+            Symbols.Add(name, new Symbol() { Name = name, Value = value, IsPublic = isPublic, IsExternal = isExternal, IsLabel = isLabel });
 
         public void WrapUp()
         {
