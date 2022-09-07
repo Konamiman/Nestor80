@@ -2,14 +2,9 @@
 {
     public class ChangeOriginLine : ProcessedSourceLine, IChangesLocationCounter
     {
-        public ChangeOriginLine(string line, Address newLocationCounter, string operand, int effectiveLineLength = 0) : base(line, effectiveLineLength, operand: operand)
-        {
-            NewLocationCounter = newLocationCounter;
-        }
+        public Address NewLocationCounter { get; set; }
 
-        public Address NewLocationCounter { get; init; }
-
-        internal Expression NewLocationCounterExpression { get; init; }
+        internal Expression NewLocationCounterExpression { get; set; }
 
         public override string ToString()
         {

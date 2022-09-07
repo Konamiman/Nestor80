@@ -13,7 +13,7 @@
             // Both addresses must be in absolute mode
 
             if(!value1.IsAbsolute || !value2.IsAbsolute) {
-                throw new InvalidOperationException($"OR: Both operands must be in absolute mode (attempted {value1.Type} OR {value2.Type}");
+                throw new InvalidExpressionException($"OR: Both operands must be in absolute mode (attempted {value1.Type} OR {value2.Type}");
             }
 
             return new Address(AddressType.ASEG, (ushort)(value1.Value | value2.Value));

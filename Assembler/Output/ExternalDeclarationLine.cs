@@ -2,11 +2,6 @@
 {
     public class ExternalDeclarationLine : ProcessedSourceLine
     {
-        public ExternalDeclarationLine(string line, int effectiveLength = 0, string label = null, string operand = null, string symbolName = null) : base(line, effectiveLength, label, operand)
-        {
-            this.SymbolName = symbolName;
-        }
-
-        public string SymbolName { get; }
+        public string SymbolName { get; set; }
     }
 }

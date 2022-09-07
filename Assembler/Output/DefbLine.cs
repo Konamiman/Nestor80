@@ -4,18 +4,9 @@ namespace Konamiman.Nestor80.Assembler.Output
 {
     public class DefbLine : ProcessedSourceLine, IProducesOutput, IChangesLocationCounter
     {
-        public DefbLine(string line, byte[] outputBytes, Tuple<int, IExpressionPart[]>[] expressions, Address newLocationCounter, string operand) 
-            : base(line, operand: "DB")
-        {
-            this.OutputBytes = outputBytes;
-            this.Expressions = expressions;
-            this.NewLocationCounter = newLocationCounter;
-            this.Operand = operand;
-        }
-
-        public byte[] OutputBytes { get; init; }
+        public byte[] OutputBytes { get; set; }
         public Tuple<int, IExpressionPart[]>[] Expressions { get; set; }
-        public Address NewLocationCounter { get; init; }
+        public Address NewLocationCounter { get; set; }
 
         public override string ToString()
         {

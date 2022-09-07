@@ -2,17 +2,9 @@
 {
     public abstract class ProcessedSourceLine
     {
-        public ProcessedSourceLine(string line, int effectiveLength = 0, string label = null, string operand = null)
-        {
-            this.Line = line;
-            this.EffectiveLineLength = effectiveLength;
-            this.Label = label;
-            this.Operand = operand;
-        }
+        public string Line { get; set; }
 
-        public string Line { get; }
-
-        public int EffectiveLineLength { get; internal set; }
+        public int EffectiveLineLength { get; set; }
 
         private string _Label = null;
         public string Label { 
@@ -27,18 +19,18 @@
 
         public string EffectiveLabel { get; private set; }
 
-        public bool LabelIsPublic { get; private set; }
+        public bool LabelIsPublic { get; set; }
 
-        private string _Operand;
-        public string Operand
+        private string _Opcode = null;
+        public string Opcode
         {
-            get => _Operand;
-            init
+            get => _Opcode;
+            set
             {
-                _Operand = value?.ToUpper();
+                _Opcode = value?.ToUpper();
             }
         }
 
-        public override string ToString() => Label + " " + Operand is null ? "" : Operand + " ";
+        public override string ToString() => Label + " " + (Opcode is null ? "" : Opcode + " ");
     }
 }

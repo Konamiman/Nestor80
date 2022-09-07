@@ -2,8 +2,10 @@
 {
     public class BlankLineWithoutLabel : BlankLine
     {
-        public BlankLineWithoutLabel(): base(null)
+        private BlankLineWithoutLabel(): base()
         {
+            Line = null;
+            EffectiveLineLength = 0;
         }
 
         public static BlankLineWithoutLabel Instance => new();

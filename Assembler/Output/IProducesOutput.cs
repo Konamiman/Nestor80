@@ -4,7 +4,7 @@ namespace Konamiman.Nestor80.Assembler.Output
 {
     public interface IProducesOutput : IChangesLocationCounter
     {
-        byte[] OutputBytes { get; init; }
+        byte[] OutputBytes { get; set; }
 
         Tuple<int, IExpressionPart[]>[] Expressions { get; set; }
     }

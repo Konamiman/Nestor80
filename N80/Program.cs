@@ -16,11 +16,6 @@ namespace Konamiman.Nestor80.N80
 foo::
 foo:
 
-
-    
-    end
-
-
 dseg ;1
   dseg;1
   dseg ,1
@@ -37,7 +32,7 @@ dseg ;1
 DEBE: defb 34
     INVA-LID:
 
-  db 1, 2+2 ,,FOO*5, 'Hola', BAR+2,
+  db 1, 2+2 ,,FOO*5, 'Hola', BAR+2, FOO*FOO,
 
     org
 

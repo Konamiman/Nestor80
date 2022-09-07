@@ -13,7 +13,7 @@
             // The second operator must be absolute
 
             if(!value1.IsAbsolute || !value2.IsAbsolute) {
-                throw new InvalidOperationException($"SHL: The second operand must be absolute (attempted {value1.Type} SHL {value2.Type}");
+                throw new InvalidExpressionException($"SHL: The second operand must be absolute (attempted {value1.Type} SHL {value2.Type}");
             }
 
             unchecked {

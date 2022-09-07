@@ -16,8 +16,8 @@
             // <mode> MOD Absolute = <mode>
             // Absolute MOD <mode> = <mode>
 
-            if(!value1.IsAbsolute || !value2.IsAbsolute) {
-                throw new InvalidOperationException($"MOD: One of the operands must be is absolute (attempted {value1.Type} MOD {value2.Type}");
+            if(!value1.IsAbsolute && !value2.IsAbsolute) {
+                throw new InvalidExpressionException($"MOD: One of the operands must be absolute (attempted {value1.Type} MOD {value2.Type}");
             }
 
             var type = value1.IsAbsolute ? value2.Type : value1.Type;

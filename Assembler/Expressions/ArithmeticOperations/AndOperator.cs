@@ -12,8 +12,8 @@
         {
             // Both addresses must be in absolute mode
 
-            if(!value1.IsAbsolute ||!value2.IsAbsolute) {
-                throw new InvalidOperationException($"AND: Both operands must be in absolute mode (attempted {value1.Type} AND {value2.Type}");
+            if(!value1.IsAbsolute || !value2.IsAbsolute) {
+                throw new InvalidExpressionException($"AND: Both operands must be in absolute mode (attempted {value1.Type} AND {value2.Type}");
             }
 
             return new Address(AddressType.ASEG, (ushort)(value1.Value & value2.Value));

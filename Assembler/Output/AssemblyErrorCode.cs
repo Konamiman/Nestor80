@@ -10,7 +10,7 @@
 
         FirstError = 64,
         InvalidExpression,
-        MisssingOperand,
+        MissingValue,
         InvalidLabel,
         DuplicatedSymbol,
 

@@ -2,12 +2,7 @@
 {
     public class AssemblyEndLine : ProcessedSourceLine
     {
-        public AssemblyEndLine(string line, int effectiveLength = 0, string label = null, string operand = null, Address endAddress = null) : base(line, effectiveLength, label, operand)
-        {
-            this.EndAddress = endAddress;
-        }
-
-        public Address EndAddress { get; }
+        public Address EndAddress { get; set; }
 
         public override string ToString() => base.ToString() + EndAddress;
     }

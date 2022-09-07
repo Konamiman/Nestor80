@@ -15,12 +15,14 @@
             // One of the operands must be absolute
             // <mode1> * <mode2> = <mode2>
 
-            if(!value1.IsAbsolute || !value2.IsAbsolute) {
-                throw new InvalidOperationException($"*: One of the operands must be is absolute (attempted {value1.Type} * {value2.Type}");
+            if(!value1.IsAbsolute && !value2.IsAbsolute) {
+                throw new InvalidExpressionException($"*: One of the operands must be absolute (attempted {value1.Type} * {value2.Type}");
             }
 
+            var type = value1.IsAbsolute ? value2.Type : value1.Type;
+
             unchecked {
-                return new Address(value2.Type, (ushort)(value1.Value * value2.Value));
+                return new Address(type, (ushort)(value1.Value * value2.Value));
             }
         }
     }

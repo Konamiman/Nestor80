@@ -19,14 +19,14 @@ namespace Konamiman.Nestor80.Assembler
             { "END", ProcessEndLine }
         };
 
-        static ProcessedSourceLine ProcessDefbLine(string operand, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
         {
             var outputBytes = new List<byte>();
             var outputExpressions = new List<Tuple<int, IExpressionPart[]>>();
             var index = 0;
 
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MisssingOperand, "DB needs at least one byte value");
+                state.AddError(AssemblyErrorCode.MissingValue, "DB needs at least one byte value");
                 outputBytes.Add(0);
             }
 
@@ -78,37 +78,33 @@ namespace Konamiman.Nestor80.Assembler
 
             state.IncreaseLocationPointer(outputBytes.Count);
 
-            return new DefbLine(
-                line: walker.SourceLine,
-                outputBytes: outputBytes.ToArray(),
-                expressions: outputExpressions.ToArray(),
-                newLocationCounter: new Address(state.CurrentLocationArea, state.CurrentLocationPointer),
-                operand: operand
-            );
+            return new DefbLine() {
+                OutputBytes = outputBytes.ToArray(),
+                Expressions = outputExpressions.ToArray(),
+                NewLocationCounter = new Address(state.CurrentLocationArea, state.CurrentLocationPointer)
+            };
         }
 
-        static ProcessedSourceLine ProcessCsegLine(string operand, SourceLineWalker walker) => ProcessChangeAreaLine(operand, AddressType.CSEG, walker);
+        static ProcessedSourceLine ProcessCsegLine(string opcode, SourceLineWalker walker) => ProcessChangeAreaLine(AddressType.CSEG);
 
-        static ProcessedSourceLine ProcessDsegLine(string operand, SourceLineWalker walker) => ProcessChangeAreaLine(operand, AddressType.DSEG, walker);
+        static ProcessedSourceLine ProcessDsegLine(string opcode, SourceLineWalker walker) => ProcessChangeAreaLine(AddressType.DSEG);
 
-        static ProcessedSourceLine ProcessAsegLine(string operand, SourceLineWalker walker) => ProcessChangeAreaLine(operand, AddressType.ASEG, walker);
+        static ProcessedSourceLine ProcessAsegLine(string opcode, SourceLineWalker walker) => ProcessChangeAreaLine(AddressType.ASEG);
 
-        static ProcessedSourceLine ProcessChangeAreaLine(string operand, AddressType area, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessChangeAreaLine(AddressType area)
         {
             state.SwitchToArea(area);
 
-            return new ChangeAreaLine(
-                line: walker.SourceLine,
-                newLocationCounter: state.GetCurrentLocation(),
-                operand: operand
-            );
+            return new ChangeAreaLine() {
+                NewLocationCounter = state.GetCurrentLocation(),
+            };
         }
 
-        static ProcessedSourceLine ProcessOrgLine(string operand, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessOrgLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
                 state.AddError(AssemblyErrorCode.LineHasNoEffect, "ORG without value will have no effect");
-                return new ChangeOriginLine(walker.SourceLine, null, operand);
+                return new ChangeOriginLine();
             }
 
             try {
@@ -117,30 +113,30 @@ namespace Konamiman.Nestor80.Assembler
                 valueExpression.ValidateAndPostifixize();
                 var value = valueExpression.TryEvaluate();
                 if(value is null) {
-                    return new ChangeOriginLine(walker.SourceLine, null, operand) { NewLocationCounterExpression = valueExpression };
+                    return new ChangeOriginLine() { NewLocationCounterExpression = valueExpression };
                 }
                 else {
                     state.SwitchToLocation(value.Value);
-                    return new ChangeOriginLine(walker.SourceLine, value, operand);
+                    return new ChangeOriginLine() { NewLocationCounter = value };
                 }
             }
             catch(InvalidExpressionException ex) {
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {operand.ToUpper()}: {ex.Message}");
-                return new ChangeOriginLine(walker.SourceLine, null, operand);
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                return new ChangeOriginLine();
             }
         }
 
-        static ProcessedSourceLine ProcessExternalDeclarationLine(string operand, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessExternalDeclarationLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MisssingOperand, $"{operand.ToUpper()} must be followed by a symbol name");
-                return new ExternalDeclarationLine(walker.SourceLine, symbolName: null, operand: operand);
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a symbol name");
+                return new ExternalDeclarationLine();
             }
 
             var symbolName = walker.ExtractSymbol();
             if(!externalSymbolRegex.IsMatch(symbolName)) {
                 state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name");
-                return new ExternalDeclarationLine(walker.SourceLine, symbolName: symbolName, operand: operand);
+                return new ExternalDeclarationLine() { SymbolName = symbolName };
             }
 
             var existingSymbol = state.GetSymbol(symbolName);
@@ -151,20 +147,20 @@ namespace Konamiman.Nestor80.Assembler
                 state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
             }
 
-            return new ExternalDeclarationLine(walker.SourceLine, symbolName: symbolName, operand: operand);
+            return new ExternalDeclarationLine() { SymbolName = symbolName };
         }
 
-        static ProcessedSourceLine ProcessPublicDeclarationLine(string operand, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessPublicDeclarationLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MisssingOperand, $"{operand.ToUpper()} must be followed by a label name");
-                return new PublicDeclarationLine(walker.SourceLine, symbolName: null, operand: operand);
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a label name");
+                return new PublicDeclarationLine();
             }
 
             var symbolName = walker.ExtractSymbol();
             if(!labelRegex.IsMatch(symbolName)) {
                 state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid label name");
-                return new PublicDeclarationLine(walker.SourceLine, symbolName: symbolName, operand: operand);
+                return new PublicDeclarationLine() { SymbolName = symbolName };
             }
 
             var existingSymbol = state.GetSymbol(symbolName);
@@ -178,14 +174,14 @@ namespace Konamiman.Nestor80.Assembler
                 existingSymbol.IsPublic = true;
             }
 
-            return new PublicDeclarationLine(walker.SourceLine, symbolName: symbolName, operand: operand);
+            return new PublicDeclarationLine() { SymbolName = symbolName };
         }
 
-        static ProcessedSourceLine ProcessEndLine(string operand, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessEndLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
                 state.End(Address.AbsoluteZero);
-                return new AssemblyEndLine(walker.SourceLine, operand: operand, endAddress: null);
+                return new AssemblyEndLine() { Line = walker.SourceLine, Opcode = opcode };
             }
 
             try {
@@ -198,12 +194,12 @@ namespace Konamiman.Nestor80.Assembler
                 var endAddress = endAddressExpression.Evaluate();
 
                 state.End(endAddress);
-                return new AssemblyEndLine(walker.SourceLine, operand: operand, endAddress: endAddress);
+                return new AssemblyEndLine() { EndAddress = endAddress };
             }
             catch(InvalidExpressionException ex) {
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {operand.ToUpper()}: {ex.Message}");
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 state.End(Address.AbsoluteZero);
-                return new AssemblyEndLine(walker.SourceLine, operand: operand, endAddress: null);
+                return new AssemblyEndLine();
             }
         }
     }

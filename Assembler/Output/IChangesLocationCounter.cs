@@ -2,6 +2,6 @@
 {
     public interface IChangesLocationCounter
     {
-        Address NewLocationCounter { get; init; }
+        Address NewLocationCounter { get; set; }
     }
 }

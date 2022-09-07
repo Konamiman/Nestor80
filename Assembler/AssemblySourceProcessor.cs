@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Output;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
@@ -121,39 +122,41 @@ namespace Konamiman.Nestor80.Assembler
 
             var walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
-                state.ProcessedLines.Add(new CommentLine(line, walker.EffectiveLength));
+                state.ProcessedLines.Add(new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength });
                 return;
             }
 
             ProcessedSourceLine processedLine = null;
             string label = null;
+            string opcode = null;
 
-            var op = walker.ExtractSymbol();
-            if(op.EndsWith(':')) {
-                if(labelRegex.IsMatch(op)) {
-                    label = op;
+            var symbol = walker.ExtractSymbol();
+            if(symbol.EndsWith(':')) {
+                if(labelRegex.IsMatch(symbol)) {
+                    label = symbol;
                     ProcessLabelDefinition(label);
                 }
                 else {
-                    state.AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label (contains illegal characters): {op}");
+                    state.AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label (contains illegal characters): {symbol}");
                 }
 
                 if(walker.AtEndOfLine) {
                     if(walker.EffectiveLength == walker.SourceLine.Length) {
-                        state.ProcessedLines.Add(new BlankLine(label));
+                        state.ProcessedLines.Add(new BlankLine() { Label = label});
                     }
                     else {
-                        state.ProcessedLines.Add(new CommentLine(walker.SourceLine, walker.EffectiveLength, label));
+                        state.ProcessedLines.Add(new CommentLine() { Line = walker.SourceLine, EffectiveLineLength = walker.EffectiveLength, Label = label });
                     }
                     return;
                 }
 
-                op = walker.ExtractSymbol();
+                symbol = walker.ExtractSymbol();
             }
 
-            if(PseudoOpProcessors.ContainsKey(op)) {
-                var processor = PseudoOpProcessors[op];
-                processedLine = processor(op, walker);
+            if(PseudoOpProcessors.ContainsKey(symbol)) {
+                opcode = symbol;
+                var processor = PseudoOpProcessors[opcode];
+                processedLine = processor(opcode, walker);
             }
             else {
                 throw new NotImplementedException("Can't parse line (yet): " + line);
@@ -163,6 +166,11 @@ namespace Konamiman.Nestor80.Assembler
                 state.AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected content found at the end of the line: {walker.GetRemaining()}");
             }
 
+            if(opcode is not null) {
+                processedLine.Opcode = opcode;
+            }
+
+            processedLine.Line = line;
             processedLine.EffectiveLineLength = walker.DiscardRemaining();
             processedLine.Label = label;
             state.ProcessedLines.Add(processedLine);
