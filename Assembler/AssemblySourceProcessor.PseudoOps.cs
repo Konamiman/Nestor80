@@ -135,7 +135,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var symbolName = walker.ExtractSymbol();
             if(!externalSymbolRegex.IsMatch(symbolName)) {
-                state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name");
+                state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name, it contains invalid characters");
                 return new ExternalDeclarationLine() { SymbolName = symbolName };
             }
 
@@ -158,10 +158,11 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var symbolName = walker.ExtractSymbol();
-            if(!labelRegex.IsMatch(symbolName)) {
-                state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid label name");
-                return new PublicDeclarationLine() { SymbolName = symbolName };
+            if(!externalSymbolRegex.IsMatch(symbolName)) {
+                state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid public symbol name, it contains invalid characters");
+                return new ExternalDeclarationLine() { SymbolName = symbolName };
             }
+
 
             var existingSymbol = state.GetSymbol(symbolName);
             if(existingSymbol is null) {

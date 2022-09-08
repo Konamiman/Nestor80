@@ -1,7 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Output;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
@@ -203,6 +202,9 @@ namespace Konamiman.Nestor80.Assembler
 
             var symbol = state.GetSymbol(labelValue);
             if(symbol == null) {
+                if(isPublic && !externalSymbolRegex.IsMatch(labelValue)) {
+                    state.AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
+                };
                 state.AddSymbol(labelValue, state.GetCurrentLocation(), isPublic: isPublic, isLabel: true);
             }
             else if(symbol.IsExternal) {

@@ -20,6 +20,10 @@ dseg ;1
   dseg;1
   dseg ,1
 
+ñokis::
+
+    public çaço
+
     BAR:
     BAR:
     db EXT##
