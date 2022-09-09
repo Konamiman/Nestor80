@@ -144,11 +144,15 @@ namespace Konamiman.Nestor80.Assembler
 
             var existingSymbol = state.GetSymbol(symbolName);
             if(existingSymbol is null) {
-                state.AddSymbol(symbolName, isExternal: true);
+                state.AddSymbol(symbolName, type: SymbolType.External);
             }
-            else if(existingSymbol.IsKnown) {
+            else if(existingSymbol.HasKnownValue) {
                 state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
             }
+
+            //In case the symbol first appeared as part of an expression
+            //and was therefore of type "Unknown"
+            existingSymbol.Type = SymbolType.External;
 
             return new ExternalDeclarationLine() { SymbolName = symbolName };
         }
@@ -166,10 +170,9 @@ namespace Konamiman.Nestor80.Assembler
                 return new ExternalDeclarationLine() { SymbolName = symbolName };
             }
 
-
             var existingSymbol = state.GetSymbol(symbolName);
             if(existingSymbol is null) {
-                state.AddSymbol(symbolName, isLabel: true, isPublic: true);
+                state.AddSymbol(symbolName, SymbolType.Label, isPublic: true);
             }
             else if(existingSymbol.IsExternal) {
                 state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined as an external symbol, can't be defined as public");

@@ -139,10 +139,10 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool HasSymbol(string symbol) => Symbols.ContainsKey(symbol);
 
-        public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].IsKnown;
+        public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].HasKnownValue;
 
-        public void AddSymbol(string name, Address value = null, bool isPublic = false, bool isExternal = false, bool isLabel = true) =>
-            Symbols.Add(name, new Symbol() { Name = name, Value = value, IsPublic = isPublic, IsExternal = isExternal, IsLabel = isLabel });
+        public void AddSymbol(string name, SymbolType type, Address value = null, bool isPublic = false) =>
+            Symbols.Add(name, new Symbol() { Name = name, Type = type, Value = value, IsPublic = isPublic });
 
         public void WrapUp()
         {

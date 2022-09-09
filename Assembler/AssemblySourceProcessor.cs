@@ -175,14 +175,14 @@ namespace Konamiman.Nestor80.Assembler
             state.ProcessedLines.Add(processedLine);
         }
 
-        public static Symbol GetSymbolForExpression(string name, bool isExternal)
+        internal static Symbol GetSymbolForExpression(string name, bool isExternal)
         {
             if(name == "$")
                 return new Symbol() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
 
             var symbol = state.GetSymbol(name);
             if(symbol is null) {
-                state.AddSymbol(name, isExternal: isExternal);
+                state.AddSymbol(name, isExternal ? SymbolType.External : SymbolType.Unknown);
                 symbol = state.GetSymbol(name);
             }
 
@@ -205,19 +205,27 @@ namespace Konamiman.Nestor80.Assembler
                 if(isPublic && !externalSymbolRegex.IsMatch(labelValue)) {
                     state.AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
                 };
-                state.AddSymbol(labelValue, state.GetCurrentLocation(), isPublic: isPublic, isLabel: true);
+                state.AddSymbol(labelValue, SymbolType.Label, state.GetCurrentLocation(), isPublic: isPublic);
             }
             else if(symbol.IsExternal) {
-                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Label has been declared already as external: {labelValue}");
+                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already as external: {labelValue}");
             }
-            else if(symbol.IsKnown) {
+            else if(symbol.IsConstant) {
+                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already as a constant: {labelValue}");
+            }
+            else if(symbol.HasKnownValue) {
                 if(symbol.Value != state.GetCurrentLocation()) {
                     state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
                 }
             }
             else {
-                //PUBLIC declaration preceded label in code
+                //Either PUBLIC declaration preceded label in code,
+                //or the label first appeared as part of an expression
                 symbol.Value = state.GetCurrentLocation();
+
+                //In case the label first appeared as part of an expression
+                //and thus was of type "Unknown"
+                symbol.Type = SymbolType.Label;
             };
         }
     }

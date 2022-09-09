@@ -235,7 +235,7 @@ namespace Konamiman.Nestor80.Assembler
                     return null;
             }
 
-            if(symbol.IsKnown) {
+            if(symbol.HasKnownValue) {
                 return symbol.Value;
             }
             else if(throwOnUnknownSymbol) {

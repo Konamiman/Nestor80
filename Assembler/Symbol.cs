@@ -2,8 +2,21 @@
 {
     public class Symbol
     {
-        internal static int MaxEffectivePublicNameLength {get; set;} = 16;
         internal const int MaxEffectiveExternalNameLength = 6;
+
+        private SymbolType _Type;
+        public SymbolType Type
+        {
+            get => _Type;
+            set
+            {
+                if(Type == SymbolType.External && HasKnownValue) {
+                    throw new ArgumentNullException("The symbol has a value, it can't be declared as external");
+                }
+                _Type = value;
+                SetEffectiveName();
+            }
+        }
 
         private string _Name;
         public string Name
@@ -20,34 +33,37 @@
             }
         }
 
-        public bool IsLabel { get; init; }
+        public bool IsLabel => Type == SymbolType.Label;
+
+        public bool IsExternal => Type == SymbolType.External;
+
+        public bool IsOfKnownType => Type != SymbolType.Unknown;
+
+        public bool IsConstant => Type == SymbolType.Equ || Type == SymbolType.Defl;
 
         public string EffectiveName { get; private set; }
 
-        public bool IsPublic { get; set; }
-
-        private bool _IsExternal;
-        public bool IsExternal
+        private bool _IsPublic;
+        public bool IsPublic
         {
-            get => _IsExternal;
+            get => _IsPublic;
             set
             {
-                if(value == _IsExternal)
-                    return;
-
-                if(value && _Value is not null) {
-                    throw new InvalidOperationException($"Can't set {Name} as external, it has a value assigned");
+                if(Type == SymbolType.External) {
+                    throw new ArgumentNullException("The symbolis declared as external, it can't be declared as public");
                 }
-
-                _IsExternal = value;
+                _IsPublic = value;
                 SetEffectiveName();
             }
+                
         }
 
         private void SetEffectiveName()
         {
-            var maxLength = _IsExternal ? MaxEffectiveExternalNameLength : MaxEffectivePublicNameLength;
-            EffectiveName = Name.Length > maxLength ? Name[..maxLength].ToUpper() : Name.ToUpper();
+            if((IsExternal || IsPublic) && Name.Length > MaxEffectiveExternalNameLength)
+                EffectiveName = Name[..MaxEffectiveExternalNameLength].ToUpper();
+            else
+                EffectiveName = Name.ToUpper();
         }
 
         private Address _Value;
@@ -63,13 +79,12 @@
             }
         }
 
-        public bool IsKnown => Value is not null;
+        public bool HasKnownValue => Value is not null;
 
         public override string ToString()
         {
-            var suffix = IsLabel ? (IsPublic ? "::" : (IsExternal ? "##" : ":")) : "";
-            var value = IsKnown ? $" = {Value:X4}" : "";
-            return $"{EffectiveName}{suffix}{value}";
+            var value = HasKnownValue ? $" = {Value:X4}" : "";
+            return $"{EffectiveName}, {(IsPublic ? "public " : "")}{Type}{value}";
         }
     }
 }
