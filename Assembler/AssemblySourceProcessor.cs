@@ -110,26 +110,50 @@ namespace Konamiman.Nestor80.Assembler
             if(!state.EndReached) {
                 state.AddError(AssemblyErrorCode.NoEndStatement, "No END statement found");
             }
+
+            if(state.InsideMultiLineComment) {
+                state.AddError(AssemblyErrorCode.UnterminatedComment, $"Unterminated .COMMENT block (delimiter: '{state.MultiLineCommandDelimiter}')");
+            }
         }
 
         private void ProcessSourceLine(string line)
         {
+            ProcessedSourceLine processedLine = null;
+            SourceLineWalker walker;
+
+            if(state.InsideMultiLineComment) {
+                if(string.IsNullOrWhiteSpace(line) || (walker = new SourceLineWalker(line)).AtEndOfLine) {
+                    processedLine = new DelimitedCommandLine();
+                }
+                else if(walker.ExtractSymbol().Contains(state.MultiLineCommandDelimiter.Value)) {
+                    processedLine = new DelimitedCommandLine() { IsLastLine = true, Delimiter = state.MultiLineCommandDelimiter };
+                    state.MultiLineCommandDelimiter = null;
+                }
+                else {
+                    processedLine = new DelimitedCommandLine();
+                }
+
+                processedLine.Line = line;
+                processedLine.EffectiveLineLength = line.Length;
+                state.ProcessedLines.Add(processedLine);
+                return;
+            }
+
             if(string.IsNullOrWhiteSpace(line)) {
                 state.ProcessedLines.Add(BlankLineWithoutLabel.Instance);
                 return;
             }
 
-            var walker = new SourceLineWalker(line);
+            walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
                 state.ProcessedLines.Add(new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength });
                 return;
             }
 
-            ProcessedSourceLine processedLine = null;
             string label = null;
             string opcode = null;
-
             var symbol = walker.ExtractSymbol();
+
             if(symbol.EndsWith(':')) {
                 if(labelRegex.IsMatch(symbol)) {
                     label = symbol;
@@ -161,7 +185,7 @@ namespace Konamiman.Nestor80.Assembler
                 throw new NotImplementedException("Can't parse line (yet): " + line);
             }
 
-            if(!walker.AtEndOfLine) {
+            if(!walker.AtEndOfLine && !state.InsideMultiLineComment) {
                 state.AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected content found at the end of the line: {walker.GetRemaining()}");
             }
 

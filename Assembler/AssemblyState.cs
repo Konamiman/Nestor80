@@ -157,5 +157,9 @@ namespace Konamiman.Nestor80.Assembler
         {
             return Symbols.ContainsKey(name) ? Symbols[name] : null;
         }
+
+        public char? MultiLineCommandDelimiter { get; set; }
+
+        public bool InsideMultiLineComment => MultiLineCommandDelimiter.HasValue;
     }
 }

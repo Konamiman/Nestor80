@@ -14,6 +14,19 @@ namespace Konamiman.Nestor80.N80
             var code =
 @"
 
+db 1
+
+FOO: .COMMENT abc
+
+db 2
+xxx
+;Mooola
+ddd
+xxxaxxx
+
+db 3
+end
+
 db foo
 public foo
 foo:
@@ -63,7 +76,6 @@ DSEG2: db 1
     org DSEG3
 DSEG3:
 ";
-
             var config = new AssemblyConfiguration() {
                 DefaultProgramName = "SOURCE",
                 Print = (s) => Debug.WriteLine(s),

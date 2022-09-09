@@ -7,6 +7,7 @@
         UnexpectedContentAtEndOfLine,
         DollarAsLabel,
         LineHasNoEffect,
+        UnterminatedComment,
 
         FirstError = 64,
         InvalidExpression,

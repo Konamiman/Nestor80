@@ -16,7 +16,8 @@ namespace Konamiman.Nestor80.Assembler
             { "EXTRN", ProcessExternalDeclarationLine },
             { "EXTERNAL", ProcessExternalDeclarationLine },
             { "PUBLIC", ProcessPublicDeclarationLine },
-            { "END", ProcessEndLine }
+            { "END", ProcessEndLine },
+            { ".COMMENT", ProcessDelimitedCommentStartLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -208,6 +209,18 @@ namespace Konamiman.Nestor80.Assembler
                 state.End(Address.AbsoluteZero);
                 return new AssemblyEndLine();
             }
+        }
+
+        static ProcessedSourceLine ProcessDelimitedCommentStartLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one comment delimiter character");
+                return new DelimitedCommandLine() { Delimiter = '\0', IsLastLine = true };
+            }
+
+            var delimiter = walker.ExtractSymbol()[0];
+            state.MultiLineCommandDelimiter = delimiter;
+            return new DelimitedCommandLine() { Delimiter = delimiter };
         }
     }
 }
