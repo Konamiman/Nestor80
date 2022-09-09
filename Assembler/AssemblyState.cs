@@ -1,4 +1,5 @@
-﻿using Konamiman.Nestor80.Assembler.Output;
+﻿using Konamiman.Nestor80.Assembler.Expressions;
+using Konamiman.Nestor80.Assembler.Output;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -19,6 +20,17 @@ namespace Konamiman.Nestor80.Assembler
         public string ProgramName { get; set; }
 
         public List<ProcessedSourceLine> ProcessedLines { get; } = new();
+
+        public void RegisterPendingExpression(ProcessedSourceLine line, Expression expression, int location = 0, int size = 2)
+        {
+            if(!ExpressionsPendingEvaluation.ContainsKey(line)) {
+                ExpressionsPendingEvaluation[line] = new List<ExpressionPendingEvaluation>();
+            }
+
+            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, OutputSize = size } );
+        }
+
+        public Dictionary<ProcessedSourceLine, List<ExpressionPendingEvaluation>> ExpressionsPendingEvaluation { get; } = new();
 
         public Address EndAddress { get; private set; }
 

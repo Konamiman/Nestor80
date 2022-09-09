@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Expressions
 {
-    internal class RawBytesOutput : List<byte>, IAssemblyOutputPart, IExpressionPart
+    internal class RawBytesOutput : List<byte>, IExpressionPart
     {
         public RawBytesOutput()
         {

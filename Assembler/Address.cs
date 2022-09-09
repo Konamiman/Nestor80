@@ -2,7 +2,7 @@
 
 namespace Konamiman.Nestor80.Assembler
 {
-    public class Address : IAssemblyOutputPart, IExpressionPart
+    public class Address : IExpressionPart
     {
         public static Address AbsoluteZero = new(AddressType.ASEG, 0);
         public static Address AbsoluteMinusOne = new(AddressType.ASEG, 0xFFFF);

@@ -21,9 +21,10 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
         {
+            var line = new DefbLine();
             var outputBytes = new List<byte>();
-            var outputExpressions = new List<Tuple<int, IExpressionPart[]>>();
-            var index = 0;
+            var relocatables = new List<RelocatableOutputPart>();
+            var index = -1;
 
             if(walker.AtEndOfLine) {
                 state.AddError(AssemblyErrorCode.MissingValue, "DB needs at least one byte value");
@@ -31,6 +32,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             while(!walker.AtEndOfLine) {
+                index++;
                 var expressionText = walker.ExtractExpression();
                 if(expressionText == "") {
                     if(walker.AtEndOfLine) {
@@ -55,7 +57,7 @@ namespace Konamiman.Nestor80.Assembler
                     var value = expression.TryEvaluate();
                     if(value is null) {
                         outputBytes.Add(0);
-                        outputExpressions.Add(new(index, expression.Parts.ToArray()));
+                        state.RegisterPendingExpression(line, expression, index, 1);
                     }
                     else if(!value.IsValidByte) {
                         outputBytes.Add(0);
@@ -66,23 +68,22 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else {
                         outputBytes.Add(0);
-                        outputExpressions.Add(new(index, new IExpressionPart[] { value }));
+                        relocatables.Add(new RelocatableAddress() { Index = index, IsByte = true, Type = value.Type, Value = value.Value });
                     }
                 }
                 catch(InvalidExpressionException ex) {
                     outputBytes.Add(0);
                     state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
                 }
-                index++;
             }
 
             state.IncreaseLocationPointer(outputBytes.Count);
 
-            return new DefbLine() {
-                OutputBytes = outputBytes.ToArray(),
-                Expressions = outputExpressions.ToArray(),
-                NewLocationCounter = new Address(state.CurrentLocationArea, state.CurrentLocationPointer)
-            };
+            line.OutputBytes = outputBytes.ToArray();
+            line.RelocatableParts = relocatables.ToArray();
+            line.NewLocationCounter = state.GetCurrentLocation();
+            
+            return line;
         }
 
         static ProcessedSourceLine ProcessCsegLine(string opcode, SourceLineWalker walker) => ProcessChangeAreaLine(AddressType.CSEG);
@@ -113,7 +114,9 @@ namespace Konamiman.Nestor80.Assembler
                 valueExpression.ValidateAndPostifixize();
                 var value = valueExpression.TryEvaluate();
                 if(value is null) {
-                    return new ChangeOriginLine() { NewLocationCounterExpression = valueExpression };
+                    var line = new ChangeOriginLine();
+                    state.RegisterPendingExpression(line, valueExpression);
+                    return line;
                 }
                 else {
                     state.SwitchToLocation(value.Value);

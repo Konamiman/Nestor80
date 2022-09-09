@@ -2,7 +2,7 @@
 
 namespace Konamiman.Nestor80.Assembler
 {
-    public class SymbolReference : IAssemblyOutputPart, IExpressionPart
+    public class SymbolReference : IExpressionPart
     {
         public static SymbolReference For(string name, bool isExternal = false) => new() { SymbolName = name, IsExternal = isExternal };
 

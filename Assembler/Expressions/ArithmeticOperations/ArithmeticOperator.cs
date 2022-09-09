@@ -2,7 +2,7 @@
 
 namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
 {
-    internal abstract class ArithmeticOperator : IExpressionPart, IAssemblyOutputPart
+    internal abstract class ArithmeticOperator : IExpressionPart
     {
         protected ArithmeticOperator() { }
 

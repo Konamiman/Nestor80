@@ -13,12 +13,15 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+    org 1
 foo::
 foo:
 
 dseg ;1
   dseg;1
   dseg ,1
+
+    org 1
 
 ñokis::
 
@@ -36,7 +39,9 @@ dseg ;1
 DEBE: defb 34
     INVA-LID:
 
-  db 1, 2+2 ,,FOO*5, 'Hola', BAR+2, FOO*FOO,
+EXTRN EXT2
+
+  db 1, 2+2 ,,FOO*5, 'Hola', EXT##, BAR+2, FOO*7, EXT2
 
     org
 
