@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Konamiman.Nestor80.Assembler.Output;
@@ -19,6 +20,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "SET", "ASET" };
 
         private AssemblySourceProcessor()
         {
@@ -134,7 +137,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 processedLine.Line = line;
-                processedLine.EffectiveLineLength = line.Length;
+                processedLine.EffectiveLineLength = 0;
                 state.ProcessedLines.Add(processedLine);
                 return;
             }
@@ -176,10 +179,15 @@ namespace Konamiman.Nestor80.Assembler
                 symbol = walker.ExtractSymbol();
             }
 
+            string symbol2;
             if(PseudoOpProcessors.ContainsKey(symbol)) {
                 opcode = symbol;
                 var processor = PseudoOpProcessors[opcode];
                 processedLine = processor(opcode, walker);
+            }
+            else if(!walker.AtEndOfLine && constantDefinitionOpcodes.Contains(symbol2 = walker.ExtractSymbol(), StringComparer.OrdinalIgnoreCase)) {
+                opcode = symbol2;
+                processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
             }
             else {
                 throw new NotImplementedException("Can't parse line (yet): " + line);
@@ -235,7 +243,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already as external: {labelValue}");
             }
             else if(symbol.IsConstant) {
-                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already as a constant: {labelValue}");
+                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already with {symbol.Type.ToString().ToUpper()}: {labelValue}");
             }
             else if(symbol.HasKnownValue) {
                 if(symbol.Value != state.GetCurrentLocation()) {

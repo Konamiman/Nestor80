@@ -13,6 +13,23 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+foo:
+public foo
+extrn foo
+end
+
+db foo
+
+FOO defl 2
+db foo
+foo defl foo+1
+db foo
+foo aset foo+1
+db foo
+foo set foo+1
+db foo
+
+end
 
 db 1
 

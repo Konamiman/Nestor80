@@ -41,6 +41,8 @@
 
         public bool IsConstant => Type == SymbolType.Equ || Type == SymbolType.Defl;
 
+        public bool IsRedefinible => Type == SymbolType.Defl;
+
         public string EffectiveName { get; private set; }
 
         private bool _IsPublic;
@@ -49,8 +51,8 @@
             get => _IsPublic;
             set
             {
-                if(Type == SymbolType.External) {
-                    throw new ArgumentNullException("The symbolis declared as external, it can't be declared as public");
+                if(value && Type == SymbolType.External) {
+                    throw new ArgumentNullException("The symbol is declared as external, it can't be declared as public");
                 }
                 _IsPublic = value;
                 SetEffectiveName();

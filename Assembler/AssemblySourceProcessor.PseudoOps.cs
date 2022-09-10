@@ -147,13 +147,14 @@ namespace Konamiman.Nestor80.Assembler
             if(existingSymbol is null) {
                 state.AddSymbol(symbolName, type: SymbolType.External);
             }
-            else if(existingSymbol.HasKnownValue) {
+            else if(existingSymbol.IsPublic || (existingSymbol.IsOfKnownType && !existingSymbol.IsExternal)) {
                 state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
             }
-
-            //In case the symbol first appeared as part of an expression
-            //and was therefore of type "Unknown"
-            existingSymbol.Type = SymbolType.External;
+            else {
+                //In case the symbol first appeared as part of an expression
+                //and was therefore of type "Unknown"
+                existingSymbol.Type = SymbolType.External;
+            }
 
             return new ExternalDeclarationLine() { SymbolName = symbolName };
         }
@@ -173,7 +174,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var existingSymbol = state.GetSymbol(symbolName);
             if(existingSymbol is null) {
-                state.AddSymbol(symbolName, SymbolType.Label, isPublic: true);
+                state.AddSymbol(symbolName, SymbolType.Unknown, isPublic: true);
             }
             else if(existingSymbol.IsExternal) {
                 state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined as an external symbol, can't be defined as public");
@@ -221,6 +222,54 @@ namespace Konamiman.Nestor80.Assembler
             var delimiter = walker.ExtractSymbol()[0];
             state.MultiLineCommandDelimiter = delimiter;
             return new DelimitedCommandLine() { Delimiter = delimiter };
+        }
+
+        static ProcessedSourceLine ProcessConstantDefinition(string opcode, string name, SourceLineWalker walker)
+        {
+            var isRedefinition = !opcode.Equals("EQU", StringComparison.OrdinalIgnoreCase);
+            var line = new ConstantDefinitionLine() { Name = name, IsRedefinible = isRedefinition };
+
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a value");
+                return line;
+            }
+
+            Address value;
+
+            try {
+                var valueExpressionString = walker.ExtractExpression();
+                var valueExpression = Expression.Parse(valueExpressionString);
+                valueExpression.ValidateAndPostifixize();
+                value = valueExpression.TryEvaluate();
+                if(value is null) {
+                    state.RegisterPendingExpression(line, valueExpression);
+                    return line;
+                }
+            }
+            catch(InvalidExpressionException ex) {
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                return line;
+            }
+
+            line.Value = value;
+
+            var symbol = state.GetSymbol(name);
+            
+            if(symbol is null) {
+                state.AddSymbol(name, isRedefinition ? SymbolType.Defl : SymbolType.Equ, value);
+            }
+            else if(!symbol.IsOfKnownType) {
+                symbol.Type = isRedefinition ? SymbolType.Defl : SymbolType.Equ;
+                symbol.Value = value;
+            }
+            else if(isRedefinition && symbol.IsRedefinible) {
+                symbol.Value = value;
+            }
+            else if(value != symbol.Value) {
+                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol '{name.ToUpper()}' already exists (defined as {symbol.Type.ToString().ToLower()}) and can't be redefined with {opcode.ToUpper()}");
+            }
+
+            return line;
         }
     }
 }
