@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -8,12 +9,16 @@ namespace Konamiman.Nestor80.N80
     {
         static void Main(string[] args)
         {
+            //Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            //var x = Encoding.GetEncodings().Select(e => new { e.CodePage, e.Name });
+
             var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../SOURCE.MAC");
             var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
 
             var code =
 @"
 foo:
+db 'á'
 public foo
 extrn foo
 end
@@ -96,7 +101,8 @@ DSEG3:
             var config = new AssemblyConfiguration() {
                 DefaultProgramName = "SOURCE",
                 Print = (s) => Debug.WriteLine(s),
-                MaxLineLength = 2000
+                MaxLineLength = 2000,
+                OutputStringEncoding = "aaa"
             };
 
             var result = AssemblySourceProcessor.Assemble(code, config);

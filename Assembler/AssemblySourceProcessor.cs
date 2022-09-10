@@ -27,6 +27,10 @@ namespace Konamiman.Nestor80.Assembler
         {
         }
 
+        static AssemblySourceProcessor()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        }
 
         public static AssemblyResult Assemble(string source, AssemblyConfiguration configuration = null)
         {
@@ -51,7 +55,10 @@ namespace Konamiman.Nestor80.Assembler
                     Configuration = configuration
                 };
 
-                Expression.OutputStringEncoding = configuration.OutputStringEncoding;
+                var validInitialStringEncoding = SetStringEncoding(configuration.OutputStringEncoding, initial: true);
+                if(!validInitialStringEncoding)
+                    Expression.OutputStringEncoding = Encoding.ASCII;
+
                 Expression.GetSymbol = GetSymbolForExpression;
 
                 DoPass1();
@@ -259,6 +266,32 @@ namespace Konamiman.Nestor80.Assembler
                 //and thus was of type "Unknown"
                 symbol.Type = SymbolType.Label;
             };
+        }
+
+        private static bool SetStringEncoding(string encodingNameOrCodepage, bool initial = false)
+        {
+            if(encodingNameOrCodepage.Equals("ASCII", StringComparison.OrdinalIgnoreCase))
+                encodingNameOrCodepage = "US-ASCII";
+
+            var isCodePage = int.TryParse(encodingNameOrCodepage, out int codePage);
+
+            try {
+                Expression.OutputStringEncoding =
+                    isCodePage ?
+                        Encoding.GetEncoding(codePage, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback) :
+                        Encoding.GetEncoding(encodingNameOrCodepage, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                return true;
+            }
+            catch(Exception e) when (e is ArgumentException or NotSupportedException) {
+                state.AddError(
+                    AssemblyErrorCode.UnknownStringEncoding,
+                    isCodePage ?
+                        $"There's no known string encoding with the code page {codePage}" :
+                        $"There's no known string encoding with the name '{encodingNameOrCodepage}'",
+                    withLineNumber: !initial
+                );
+                return false;
+            }
         }
     }
 }

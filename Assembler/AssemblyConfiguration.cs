@@ -6,7 +6,7 @@ namespace Konamiman.Nestor80.Assembler
     {
         public string DefaultProgramName { get; init; }
 
-        public Encoding OutputStringEncoding { get; init; } = Encoding.ASCII;
+        public string OutputStringEncoding { get; init; } = "ASCII";
 
         public int? MaxLineLength { get; init; } = null;
 

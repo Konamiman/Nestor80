@@ -336,7 +336,13 @@ namespace Konamiman.Nestor80.Assembler
                 theString = theString.Replace(doubleDelimiters[delimiter], singleDelimiters[delimiter]);
             }
 
-            var stringBytes = OutputStringEncoding.GetBytes(theString);
+            byte[] stringBytes = null;
+            try {
+                stringBytes = OutputStringEncoding.GetBytes(theString);
+            }
+            catch(EncoderFallbackException) {
+                Throw($"string contains characters that aren't supported by the current encoding ({OutputStringEncoding.EncodingName})");
+            }
 
             if(extractingForDb) {
                 AddExpressionPart(new RawBytesOutput(stringBytes.Length > 0 ? stringBytes : Array.Empty<byte>()));

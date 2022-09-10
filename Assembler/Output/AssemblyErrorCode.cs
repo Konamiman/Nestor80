@@ -14,6 +14,7 @@
         MissingValue,
         InvalidLabel,
         DuplicatedSymbol,
+        UnknownStringEncoding,
 
         FirstFatal = 128,
         UnexpectedError,
