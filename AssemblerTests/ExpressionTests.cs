@@ -600,7 +600,6 @@ namespace Konamiman.Nestor80.AssemblerTests
         }
 
         [Test]
-        [TestCase(@"'\r\n\'\""\u0045\\'")]
         [TestCase(@"""\r\n\'\""\u0045\\""")]
         public void TestSingleQuoteDelimitedStringsWithSupportedEscaped(string line)
         {
