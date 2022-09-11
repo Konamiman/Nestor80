@@ -11,6 +11,8 @@ namespace Konamiman.Nestor80.Assembler
             { "DEFM", ProcessDefbLine },
             { "DW", ProcessDefwLine },
             { "DEFW", ProcessDefwLine },
+            { "DS", ProcessDefsLine },
+            { "DEFS", ProcessDefsLine },
             { "DC", ProcessDcLine },
             { "CSEG", ProcessCsegLine },
             { "DSEG", ProcessDsegLine },
@@ -83,7 +85,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else if(isByte && !value.IsValidByte) {
                         AddZero();
-                        state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: value {value:X4} can't be stored as a byte");
+                        state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: value {value:X4} can't be stored as a byte");
                     }
                     else if(value.IsAbsolute) {
                         outputBytes.Add(value.ValueAsByte);
@@ -97,7 +99,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 catch(InvalidExpressionException ex) {
                     AddZero();
-                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
+                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 }
             }
 
@@ -107,6 +109,53 @@ namespace Konamiman.Nestor80.Assembler
             line.RelocatableParts = relocatables.ToArray();
             line.NewLocationCounter = state.GetCurrentLocation();
             
+            return line;
+        }
+
+        static ProcessedSourceLine ProcessDefsLine(string opcode, SourceLineWalker walker)
+        {
+            byte? value = null;
+            ushort length = 0;
+            var line = new DefineSpaceLine();
+
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs at least the length argument");
+            }
+            else try{
+                var lengthExpressionText = walker.ExtractExpression();
+                var lengthExpression = Expression.Parse(lengthExpressionText);
+                lengthExpression.ValidateAndPostifixize();
+                var lengthAddress = lengthExpression.Evaluate();
+                if(!lengthAddress.IsAbsolute) {
+                    throw new InvalidExpressionException("the length argument must evaluate to an absolute value");
+                }
+                length = lengthAddress.Value;
+
+                if(!walker.AtEndOfLine) {
+                    var valueExpressionText = walker.ExtractExpression();
+                    var valueExpression = Expression.Parse(valueExpressionText);
+                    valueExpression.ValidateAndPostifixize();
+                    var valueAddress = valueExpression.TryEvaluate();
+                    if(valueAddress is null) {
+                        state.RegisterPendingExpression(line, valueExpression, size: 1);
+                    }
+                    else if(!valueAddress.IsValidByte) {
+                        throw new InvalidExpressionException("the value argument must evaluate to a valid byte");
+                    }
+                    else {
+                        value = valueAddress.ValueAsByte;
+                    }
+                }
+            }
+            catch(InvalidExpressionException ex) {
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+            }
+
+            state.IncreaseLocationPointer(length);
+            line.NewLocationCounter = state.GetCurrentLocation();
+            line.Size = length;
+            line.Value = value;
+
             return line;
         }
 
