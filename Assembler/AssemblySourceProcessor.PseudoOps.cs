@@ -1,7 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
-using System.Net;
-using System.Reflection.Metadata.Ecma335;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -13,6 +11,7 @@ namespace Konamiman.Nestor80.Assembler
             { "DEFM", ProcessDefbLine },
             { "DW", ProcessDefwLine },
             { "DEFW", ProcessDefwLine },
+            { "DC", ProcessDcLine },
             { "CSEG", ProcessCsegLine },
             { "DSEG", ProcessDsegLine },
             { "ASEG", ProcessAsegLine },
@@ -108,6 +107,46 @@ namespace Konamiman.Nestor80.Assembler
             line.RelocatableParts = relocatables.ToArray();
             line.NewLocationCounter = state.GetCurrentLocation();
             
+            return line;
+        }
+
+        static ProcessedSourceLine ProcessDcLine(string opcode, SourceLineWalker walker)
+        {
+            var line = new DefbLine();
+            byte[] outputBytes = null;
+
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one string as argument");
+            }
+            else try {
+                var expressionText = walker.ExtractExpression();
+                var expression = Expression.Parse(expressionText, forDefb: true);
+
+                if(expression.IsRawBytesOutput) {
+                    var bytes = (RawBytesOutput)expression.Parts[0];
+                    if(bytes.Any(b => b >= 0x80)) {
+                        state.AddError(AssemblyErrorCode.StringHasBytesWithHighBitSet, $"{opcode.ToUpper()}: the string already has bytes with the MSB set once encoded with {Expression.OutputStringEncoding.WebName}");
+                    }
+
+                    bytes[bytes.Length - 1] |= 0x80;
+                    outputBytes = bytes.ToArray();
+                }
+                else {
+                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
+                }
+            }
+            catch(InvalidExpressionException ex) {
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
+            }
+
+            if(outputBytes is not null) {
+                state.IncreaseLocationPointer(outputBytes.Length);
+            }
+
+            line.OutputBytes = outputBytes ?? Array.Empty<byte>();
+            line.RelocatableParts = Array.Empty<RelocatableOutputPart>();
+            line.NewLocationCounter = state.GetCurrentLocation();
+
             return line;
         }
 

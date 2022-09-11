@@ -17,6 +17,18 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+
+dc
+dc 1
+dc 'ABC'+1
+dc 'ABC',
+dc 'ABC'
+.strenc 850
+dc 'áBC'
+dc )(
+
+end
+
 db
 dw
 dw 'AB', ""CD"", 1, 1234h, '', ""\r\n""

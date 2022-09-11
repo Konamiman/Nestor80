@@ -8,6 +8,7 @@
         DollarAsLabel,
         LineHasNoEffect,
         UnterminatedComment,
+        StringHasBytesWithHighBitSet,
 
         FirstError = 64,
         InvalidExpression,
