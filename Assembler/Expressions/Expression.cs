@@ -313,10 +313,12 @@ namespace Konamiman.Nestor80.Assembler
                 // e.g. 'ABC''
                 Throw("Unterminated string");
             }
-            
+
+            var escapesAllowed = delimiter == '"' && AllowEscapesInStrings;
+
             Match match = null;
             try {
-                var regexes = AllowEscapesInStrings ? escapedStringRegexes : unescapedStringRegexes;
+                var regexes = escapesAllowed ? escapedStringRegexes : unescapedStringRegexes;
                 match = regexes[delimiter].Match(parsedString, parsedStringPointer);
             }
             catch {
@@ -329,7 +331,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var theString = match.Value;
             var matchLength = theString.Length;
-            if(AllowEscapesInStrings) {
+            if(escapesAllowed) {
                 theString = Regex.Unescape(theString);
             }
             else if(match.Groups["quot"].Success) {

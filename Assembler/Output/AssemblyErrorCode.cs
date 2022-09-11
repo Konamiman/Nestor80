@@ -11,6 +11,7 @@
 
         FirstError = 64,
         InvalidExpression,
+        InvalidArgument,
         MissingValue,
         InvalidLabel,
         DuplicatedSymbol,

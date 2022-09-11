@@ -18,7 +18,8 @@ namespace Konamiman.Nestor80.Assembler
             { "PUBLIC", ProcessPublicDeclarationLine },
             { "END", ProcessEndLine },
             { ".COMMENT", ProcessDelimitedCommentStartLine },
-            { ".STRENC", ProcessSetEncodingLine }
+            { ".STRENC", ProcessSetEncodingLine },
+            { ".STRESC", ProcessChangeStringEscapingLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -289,6 +290,29 @@ namespace Konamiman.Nestor80.Assembler
 
             var successful = SetStringEncoding(encodingNameOrCodePage);
             return new ChangeStringEncodingLine() { IsSuccessful = successful, EncodingNameOrCodePage = encodingNameOrCodePage };
+        }
+
+        static ProcessedSourceLine ProcessChangeStringEscapingLine(string opcode, SourceLineWalker walker)
+        {
+            string argument = null;
+            bool? enable = null;
+
+            if(!walker.AtEndOfLine) {
+                argument = walker.ExtractSymbol();
+                if(string.Equals(argument, "ON", StringComparison.OrdinalIgnoreCase))
+                    enable = true;
+                else if(string.Equals(argument, "OFF", StringComparison.OrdinalIgnoreCase))
+                    enable = false;
+            }
+
+            if(enable is null) {
+                state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()} requires an argument that must be either ON or OFF");
+            }
+            else {
+                Expression.AllowEscapesInStrings = enable.Value;
+            }
+
+            return new ChangeStringEscapingLine() { Argument = argument, IsOn = enable.GetValueOrDefault() };
         }
     }
 }

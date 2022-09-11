@@ -17,6 +17,20 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+
+db ""\r\n""
+db '\r\n'
+
+.stresc
+.stresc pepe
+.stresc off
+db ""\r\n""
+.stresc on
+db ""\r\n""
+
+
+end
+
 .strenc
 
 .strenc 28591
@@ -114,7 +128,8 @@ DSEG3:
                 DefaultProgramName = "SOURCE",
                 Print = (s) => Debug.WriteLine(s),
                 MaxLineLength = 2000,
-                OutputStringEncoding = "932"
+                OutputStringEncoding = "ascii",
+                AllowEscapesInStrings = false,
             };
 
             var result = AssemblySourceProcessor.Assemble(code, config);

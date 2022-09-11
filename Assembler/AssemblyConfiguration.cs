@@ -8,6 +8,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public string OutputStringEncoding { get; init; } = "ASCII";
 
+        public bool AllowEscapesInStrings { get; init; } = true;
+
         public int? MaxLineLength { get; init; } = null;
 
         public Func<string, Stream> GetStreamForInclude { get; init; } = _ => null;

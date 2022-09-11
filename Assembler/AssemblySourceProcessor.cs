@@ -62,6 +62,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.DefaultOutputStringEncoding = Expression.OutputStringEncoding;
 
                 Expression.GetSymbol = GetSymbolForExpression;
+                Expression.AllowEscapesInStrings = configuration.AllowEscapesInStrings;
 
                 DoPass1();
                 if(!state.HasErrors) {
