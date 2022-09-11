@@ -17,7 +17,8 @@ namespace Konamiman.Nestor80.Assembler
             { "EXTERNAL", ProcessExternalDeclarationLine },
             { "PUBLIC", ProcessPublicDeclarationLine },
             { "END", ProcessEndLine },
-            { ".COMMENT", ProcessDelimitedCommentStartLine }
+            { ".COMMENT", ProcessDelimitedCommentStartLine },
+            { ".STRENC", ProcessSetEncodingLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -270,6 +271,24 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return line;
+        }
+
+        static ProcessedSourceLine ProcessSetEncodingLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs a encoding name or code page number");
+                return new ChangeStringEncodingLine() { IsSuccessful = false };
+            }
+
+            var encodingNameOrCodePage = walker.ExtractSymbol();
+            if(string.Equals("default", encodingNameOrCodePage, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals("def", encodingNameOrCodePage, StringComparison.OrdinalIgnoreCase)) {
+                Expression.OutputStringEncoding = state.DefaultOutputStringEncoding;
+                return new ChangeStringEncodingLine() { IsSuccessful = true, EncodingNameOrCodePage = encodingNameOrCodePage, IsDefault = true };
+            }
+
+            var successful = SetStringEncoding(encodingNameOrCodePage);
+            return new ChangeStringEncodingLine() { IsSuccessful = successful, EncodingNameOrCodePage = encodingNameOrCodePage };
         }
     }
 }

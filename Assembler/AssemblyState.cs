@@ -1,5 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
+using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -8,6 +9,8 @@ namespace Konamiman.Nestor80.Assembler
         private readonly List<AssemblyError> Errors = new();
 
         public AssemblyConfiguration Configuration { get; init; }
+
+        public Encoding DefaultOutputStringEncoding {get;set;}
 
         public bool InPass2 { get; private set; } = false;
 

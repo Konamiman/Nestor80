@@ -341,7 +341,7 @@ namespace Konamiman.Nestor80.Assembler
                 stringBytes = OutputStringEncoding.GetBytes(theString);
             }
             catch(EncoderFallbackException) {
-                Throw($"string contains characters that aren't supported by the current encoding ({OutputStringEncoding.EncodingName})");
+                Throw($"string contains characters that aren't supported by the current encoding ({OutputStringEncoding.WebName})");
             }
 
             if(extractingForDb) {

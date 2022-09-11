@@ -59,6 +59,8 @@ namespace Konamiman.Nestor80.Assembler
                 if(!validInitialStringEncoding)
                     Expression.OutputStringEncoding = Encoding.ASCII;
 
+                state.DefaultOutputStringEncoding = Expression.OutputStringEncoding;
+
                 Expression.GetSymbol = GetSymbolForExpression;
 
                 DoPass1();

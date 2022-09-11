@@ -10,15 +10,27 @@ namespace Konamiman.Nestor80.N80
         static void Main(string[] args)
         {
             //Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            //var x = Encoding.GetEncodings().Select(e => new { e.CodePage, e.Name });
+            //var x = Encoding.GetEncodings().Select(e => new { e.CodePage, e.Name }).OrderBy(x=>x.CodePage).ToArray();
 
             var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../SOURCE.MAC");
             var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
 
             var code =
 @"
-foo:
+.strenc
+
+.strenc 28591
 db 'á'
+.strenc iso-8859-1
+db 'á'
+.strenc 850
+db 'á'
+.strenc ibm850
+db 'á'
+.strenc default
+db 'á'
+end
+
 public foo
 extrn foo
 end
@@ -102,7 +114,7 @@ DSEG3:
                 DefaultProgramName = "SOURCE",
                 Print = (s) => Debug.WriteLine(s),
                 MaxLineLength = 2000,
-                OutputStringEncoding = "aaa"
+                OutputStringEncoding = "932"
             };
 
             var result = AssemblySourceProcessor.Assemble(code, config);
