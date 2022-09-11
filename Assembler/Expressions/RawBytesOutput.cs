@@ -23,7 +23,7 @@
             {
                 0 => 0,
                 1 => bytes[0],
-                2 => (ushort)(bytes[0] | bytes[1] << 8),
+                2 => (ushort)(bytes[1] | bytes[0] << 8),
                 _ => throw new InvalidOperationException($"Can't convert a byte array of {bytes.Length} elements to a number")
             };
 

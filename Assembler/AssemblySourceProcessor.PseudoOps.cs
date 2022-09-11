@@ -1,5 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
+using System.Net;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -8,6 +10,9 @@ namespace Konamiman.Nestor80.Assembler
         readonly Dictionary<string, Func<string, SourceLineWalker, ProcessedSourceLine>> PseudoOpProcessors = new(StringComparer.OrdinalIgnoreCase) {
             { "DB", ProcessDefbLine },
             { "DEFB", ProcessDefbLine },
+            { "DEFM", ProcessDefbLine },
+            { "DW", ProcessDefwLine },
+            { "DEFW", ProcessDefwLine },
             { "CSEG", ProcessCsegLine },
             { "DSEG", ProcessDsegLine },
             { "ASEG", ProcessAsegLine },
@@ -16,6 +21,8 @@ namespace Konamiman.Nestor80.Assembler
             { "EXTRN", ProcessExternalDeclarationLine },
             { "EXTERNAL", ProcessExternalDeclarationLine },
             { "PUBLIC", ProcessPublicDeclarationLine },
+            { "GLOBAL", ProcessPublicDeclarationLine },
+            { "ENTRY", ProcessPublicDeclarationLine },
             { "END", ProcessEndLine },
             { ".COMMENT", ProcessDelimitedCommentStartLine },
             { ".STRENC", ProcessSetEncodingLine },
@@ -23,15 +30,28 @@ namespace Konamiman.Nestor80.Assembler
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
+            => ProcessDefbOrDefwLine(opcode, walker, true);
+
+        static ProcessedSourceLine ProcessDefwLine(string opcode, SourceLineWalker walker)
+            => ProcessDefbOrDefwLine(opcode, walker, false);
+
+        static ProcessedSourceLine ProcessDefbOrDefwLine(string opcode, SourceLineWalker walker, bool isByte)
         {
             var line = new DefbLine();
             var outputBytes = new List<byte>();
             var relocatables = new List<RelocatableOutputPart>();
             var index = -1;
 
-            if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, "DB needs at least one byte value");
+            void AddZero()
+            {
                 outputBytes.Add(0);
+                if(!isByte)
+                    outputBytes.Add(0);
+            }
+
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs at least one {(isByte ? "byte" : "word")} value");
+                AddZero();
             }
 
             while(!walker.AtEndOfLine) {
@@ -43,13 +63,13 @@ namespace Konamiman.Nestor80.Assembler
                         break;
                     }
                     else {
-                        outputBytes.Add(0);
+                        AddZero();
                         state.AddError(AssemblyErrorCode.InvalidExpression, "Empty expression found");
                         continue;
                     }
                 }
                 try {
-                    var expression = Expression.Parse(expressionText, forDefb: true);
+                    var expression = Expression.Parse(expressionText, forDefb: isByte);
                     expression.ValidateAndPostifixize();
 
                     if(expression.IsRawBytesOutput) {
@@ -59,23 +79,25 @@ namespace Konamiman.Nestor80.Assembler
 
                     var value = expression.TryEvaluate();
                     if(value is null) {
-                        outputBytes.Add(0);
+                        AddZero();
                         state.RegisterPendingExpression(line, expression, index, 1);
                     }
-                    else if(!value.IsValidByte) {
-                        outputBytes.Add(0);
+                    else if(isByte && !value.IsValidByte) {
+                        AddZero();
                         state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: value {value:X4} can't be stored as a byte");
                     }
                     else if(value.IsAbsolute) {
                         outputBytes.Add(value.ValueAsByte);
+                        if(!isByte)
+                            outputBytes.Add((byte)((value.Value & 0xFF00) >> 8));
                     }
                     else {
-                        outputBytes.Add(0);
-                        relocatables.Add(new RelocatableAddress() { Index = index, IsByte = true, Type = value.Type, Value = value.Value });
+                        AddZero();
+                        relocatables.Add(new RelocatableAddress() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value });
                     }
                 }
                 catch(InvalidExpressionException ex) {
-                    outputBytes.Add(0);
+                    AddZero();
                     state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
                 }
             }

@@ -17,6 +17,10 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+db
+dw
+dw 'AB', ""CD"", 1, 1234h, '', ""\r\n""
+end
 
 db ""\r\n""
 db '\r\n'
@@ -129,7 +133,7 @@ DSEG3:
                 Print = (s) => Debug.WriteLine(s),
                 MaxLineLength = 2000,
                 OutputStringEncoding = "ascii",
-                AllowEscapesInStrings = false,
+                AllowEscapesInStrings = true,
             };
 
             var result = AssemblySourceProcessor.Assemble(code, config);
