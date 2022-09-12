@@ -17,6 +17,20 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+
+db 0,0,0
+foo:
+.radix foo
+.radix bar
+.radix 1
+.radix 17
+.radix 1+1
+db 1010
+.radix 17-1
+db 80
+bar equ 3
+end
+
 ds
 ds foo
 ds 34

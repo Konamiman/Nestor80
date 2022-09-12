@@ -27,7 +27,8 @@ namespace Konamiman.Nestor80.Assembler
             { "END", ProcessEndLine },
             { ".COMMENT", ProcessDelimitedCommentStartLine },
             { ".STRENC", ProcessSetEncodingLine },
-            { ".STRESC", ProcessChangeStringEscapingLine }
+            { ".STRESC", ProcessChangeStringEscapingLine },
+            { ".RADIX", ProcessChangeRadixLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -423,6 +424,37 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return new ChangeStringEscapingLine() { Argument = argument, IsOn = enable.GetValueOrDefault() };
+        }
+
+        static ProcessedSourceLine ProcessChangeRadixLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs the new radix argument (a number between 2 and 16)");
+                return new ChangeRadixLine();
+            }
+
+            var backupRadix = Expression.DefaultRadix;
+
+            try {
+                Expression.DefaultRadix = 10;
+                var valueExpressionString = walker.ExtractExpression();
+                var valueExpression = Expression.Parse(valueExpressionString);
+                valueExpression.ValidateAndPostifixize();
+                var value = valueExpression.Evaluate();
+                if(!value.IsAbsolute || value.Value < 2 || value.Value > 16) {
+                    Expression.DefaultRadix = backupRadix;
+                    state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: argument must be an absolute value between 2 and 16)");
+                    return new ChangeRadixLine();
+                }
+
+                Expression.DefaultRadix = value.Value;
+                return new ChangeRadixLine() { NewRadix = value.Value };
+            }
+            catch(InvalidExpressionException ex) {
+                Expression.DefaultRadix = backupRadix;
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                return new ChangeRadixLine();
+            }
         }
     }
 }
