@@ -187,7 +187,7 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { "1 2 NUL", new object[] { Address.Absolute(1), Address.Absolute(2), Address.AbsoluteMinusOne } },
             new object[] { "1 2 NUL 3 4 FOO BAR # WHATEVER", new object[] { Address.Absolute(1), Address.Absolute(2), Address.AbsoluteZero } },
 
-            new object[] { "5+'AB'-1", new object[] { Address.Absolute(5), PlusOperator.Instance, Address.Absolute(0x4241), MinusOperator.Instance, Address.Absolute(1) } },
+            new object[] { "5+'AB'-1", new object[] { Address.Absolute(5), PlusOperator.Instance, Address.Absolute(0x4142), MinusOperator.Instance, Address.Absolute(1) } },
 
             new object[] { "EQ NE LT LE GT GE HIGH LOW * / NOT AND OR XOR SHR SHL MOD",
                 new object[] {
@@ -238,8 +238,8 @@ namespace Konamiman.Nestor80.AssemblerTests
         }
 
         static object[] TestExpressionStringParseSource = {
-            new object[] { "'AB'", 0x4241 },
-            new object[] { "\"AB\"", 0x4241 },
+            new object[] { "'AB'", 0x4142 },
+            new object[] { "\"AB\"", 0x4142 },
             new object[] { "'A'", 0x41 },
             new object[] { "\"A\"", 0x41 },
             new object[] { "\"\"", 0 },
@@ -309,7 +309,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         {
             var exp = Expression.Parse("'AB'+1", forDb);
             exp.ValidateAndPostifixize();
-            AssertExpressionIs(exp, Address.Absolute(0x4241), Address.Absolute(1), PlusOperator.Instance);
+            AssertExpressionIs(exp, Address.Absolute(0x4142), Address.Absolute(1), PlusOperator.Instance);
         }
 
         static object[] TestValidateComplexExpressionsSource = {
