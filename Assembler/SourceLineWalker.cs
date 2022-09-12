@@ -24,9 +24,23 @@
 
         public bool AtEndOfLine => logicalEndOfLineReached || CheckEndOfLine();
 
-        public void Rewind() => linePointer = 0;
+        public void Rewind()
+        {
+            linePointer = 0;
+            SkipBlanks();
+        }
 
-        public string GetRemaining() => AtEndOfLine ? "" : sourceLine.Substring(linePointer);
+        public string GetRemaining()
+        {
+            if(AtEndOfLine) {
+                return "";
+            }
+
+            var remaining = sourceLine[linePointer..];
+            linePointer = sourceLine.Length;
+            return remaining;
+        }
+        
 
         /// <summary>
         /// Extracts a symbol from the source line.

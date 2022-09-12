@@ -4,7 +4,7 @@
     {
         public string Line { get; set; }
 
-        public int EffectiveLineLength { get; set; }
+        public int EffectiveLineLength { get; set; } = -1;
 
         private string _Label = null;
         public string Label { 

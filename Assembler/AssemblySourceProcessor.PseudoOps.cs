@@ -29,9 +29,10 @@ namespace Konamiman.Nestor80.Assembler
             { ".STRENC", ProcessSetEncodingLine },
             { ".STRESC", ProcessChangeStringEscapingLine },
             { ".RADIX", ProcessChangeRadixLine },
-            { ".8080", ProcessChangeCpuTo8080 },
-            { ".Z80", ProcessChangeCpuToZ80 },
-            { ".CPU", ProcessChangeCpu }
+            { ".8080", ProcessChangeCpuTo8080Line },
+            { ".Z80", ProcessChangeCpuToZ80Line },
+            { ".CPU", ProcessChangeCpuLine },
+            { "NAME", ProcessSetProgramNameLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -460,17 +461,17 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        static ProcessedSourceLine ProcessChangeCpuTo8080(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessChangeCpuTo8080Line(string opcode, SourceLineWalker walker)
         {
             throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UnsupportedCpu, "Unsupported CPU type: 8080", state.CurrentLineNumber));
         }
 
-        static ProcessedSourceLine ProcessChangeCpuToZ80(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessChangeCpuToZ80Line(string opcode, SourceLineWalker walker)
         {
             return new ChangeCpuLine() { Cpu = CpuType.Z80 };
         }
 
-        static ProcessedSourceLine ProcessChangeCpu(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessChangeCpuLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
                 state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a CPU type as argument");
@@ -490,6 +491,34 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return new ChangeCpuLine() { Cpu = cpuType };
+        }
+
+        static ProcessedSourceLine ProcessSetProgramNameLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a program name as argument");
+                return new ProgramNameLine();
+            }
+
+            var programName = walker.GetRemaining();
+            return ProcessSetProgramName(opcode, walker, programName);
+        }
+
+        static ProcessedSourceLine ProcessSetProgramName(string opcode, SourceLineWalker walker, string programName)
+        {
+            var effectiveLineLength = walker.SourceLine.IndexOf(';');
+            if(effectiveLineLength < 0) {
+                effectiveLineLength = walker.SourceLine.Length;
+            }
+
+            var match = ProgramNameRegex.Match(programName);
+            if(!match.Success) {
+                state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the program name must be in the format ('NAME')");
+                return new ProgramNameLine() { EffectiveLineLength = effectiveLineLength };
+            }
+
+            var name = match.Groups["name"].Value;
+            return new ProgramNameLine() { Name = name, EffectiveLineLength = effectiveLineLength };
         }
     }
 }

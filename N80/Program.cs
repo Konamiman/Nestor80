@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using Konamiman.Nestor80.Assembler.Expressions;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -18,6 +19,16 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+
+name('foo')
+name('bar') ;bar!
+ name ('fizz')
+ name ('buzz') ;buzz!
+name
+name('')
+name('1')
+
+end
 
 .z80
 .cpu z80

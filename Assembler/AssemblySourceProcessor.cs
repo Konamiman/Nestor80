@@ -20,12 +20,13 @@ namespace Konamiman.Nestor80.Assembler
 
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ProgramNameRegex = new(@"^\('(?<name>[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*)'\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
         private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "SET", "ASET" };
 
-        private static ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
+        private static readonly ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
 
         private AssemblySourceProcessor()
         {
@@ -209,6 +210,10 @@ namespace Konamiman.Nestor80.Assembler
                 var processor = PseudoOpProcessors[opcode];
                 processedLine = processor(opcode, walker);
             }
+            else if(symbol.StartsWith("NAME(", StringComparison.OrdinalIgnoreCase)) {
+                opcode = symbol[..4];
+                processedLine = ProcessSetProgramName(opcode, walker, symbol[4..]);
+            }
             else if(!walker.AtEndOfLine && constantDefinitionOpcodes.Contains(symbol2 = walker.ExtractSymbol(), StringComparer.OrdinalIgnoreCase)) {
                 opcode = symbol2;
                 processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
@@ -226,7 +231,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             processedLine.Line = line;
-            processedLine.EffectiveLineLength = walker.DiscardRemaining();
+            if(processedLine.EffectiveLineLength == -1) processedLine.EffectiveLineLength = walker.DiscardRemaining();
             processedLine.Label = label;
             processedLine.FormFeedsCount = formFeedCharsCount;
             state.ProcessedLines.Add(processedLine);
