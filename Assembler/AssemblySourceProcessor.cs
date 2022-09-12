@@ -21,7 +21,11 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        //Constant definitions are considered pseudo-ops, but they are handled as a special case
+        //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
         private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "SET", "ASET" };
+
+        private static ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
 
         private AssemblySourceProcessor()
         {
@@ -134,6 +138,12 @@ namespace Konamiman.Nestor80.Assembler
             ProcessedSourceLine processedLine = null;
             SourceLineWalker walker;
 
+            var formFeedCharsCount = 0;
+            formFeedCharsCount = line.Count(ch => ch == '\f');
+            if(formFeedCharsCount > 0) {
+                line = line.Replace("\f", "");
+            }
+
             if(state.InsideMultiLineComment) {
                 if(string.IsNullOrWhiteSpace(line) || (walker = new SourceLineWalker(line)).AtEndOfLine) {
                     processedLine = new DelimitedCommandLine();
@@ -148,18 +158,22 @@ namespace Konamiman.Nestor80.Assembler
 
                 processedLine.Line = line;
                 processedLine.EffectiveLineLength = 0;
+                processedLine.FormFeedsCount = formFeedCharsCount;
                 state.ProcessedLines.Add(processedLine);
                 return;
             }
 
             if(string.IsNullOrWhiteSpace(line)) {
-                state.ProcessedLines.Add(BlankLineWithoutLabel.Instance);
+                state.ProcessedLines.Add(
+                    formFeedCharsCount == 0 ?
+                    blankLineWithoutLabel :
+                    new BlankLine() { FormFeedsCount = formFeedCharsCount });
                 return;
             }
 
             walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
-                state.ProcessedLines.Add(new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength });
+                state.ProcessedLines.Add(new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength, FormFeedsCount = formFeedCharsCount });
                 return;
             }
 
@@ -214,6 +228,7 @@ namespace Konamiman.Nestor80.Assembler
             processedLine.Line = line;
             processedLine.EffectiveLineLength = walker.DiscardRemaining();
             processedLine.Label = label;
+            processedLine.FormFeedsCount = formFeedCharsCount;
             state.ProcessedLines.Add(processedLine);
         }
 

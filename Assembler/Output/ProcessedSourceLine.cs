@@ -31,6 +31,8 @@
             }
         }
 
+        public int FormFeedsCount { get; set; }
+
         public override string ToString() => Label + " " + (Opcode is null ? "" : Opcode + " ");
     }
 }

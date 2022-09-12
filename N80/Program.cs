@@ -12,8 +12,9 @@ namespace Konamiman.Nestor80.N80
             //Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             //var x = Encoding.GetEncodings().Select(e => new { e.CodePage, e.Name }).OrderBy(x=>x.CodePage).ToArray();
 
-            var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../SOURCE.MAC");
-            var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
+            //var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../SOURCE.MAC");
+            //var sourceFileName = @"L:\home\konamiman\Nestor80\COMMENTS.MAC";
+            //var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
 
             var code =
 @"
@@ -172,6 +173,7 @@ DSEG3:
             };
 
             var result = AssemblySourceProcessor.Assemble(code, config);
+            //var result = AssemblySourceProcessor.Assemble(sourceStream, Encoding.GetEncoding("iso-8859-1"), config);
         }
     }
 }
