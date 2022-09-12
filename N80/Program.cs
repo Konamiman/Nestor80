@@ -19,6 +19,14 @@ namespace Konamiman.Nestor80.N80
             var code =
 @"
 
+.z80
+.cpu z80
+;.8080
+.cpu unknownx
+
+db 0
+end
+
 db 0,0,0
 foo:
 .radix foo

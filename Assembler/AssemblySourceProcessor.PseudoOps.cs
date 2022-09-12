@@ -28,7 +28,10 @@ namespace Konamiman.Nestor80.Assembler
             { ".COMMENT", ProcessDelimitedCommentStartLine },
             { ".STRENC", ProcessSetEncodingLine },
             { ".STRESC", ProcessChangeStringEscapingLine },
-            { ".RADIX", ProcessChangeRadixLine }
+            { ".RADIX", ProcessChangeRadixLine },
+            { ".8080", ProcessChangeCpuTo8080 },
+            { ".Z80", ProcessChangeCpuToZ80 },
+            { ".CPU", ProcessChangeCpu }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -455,6 +458,38 @@ namespace Konamiman.Nestor80.Assembler
                 state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 return new ChangeRadixLine();
             }
+        }
+
+        static ProcessedSourceLine ProcessChangeCpuTo8080(string opcode, SourceLineWalker walker)
+        {
+            throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UnsupportedCpu, "Unsupported CPU type: 8080", state.CurrentLineNumber));
+        }
+
+        static ProcessedSourceLine ProcessChangeCpuToZ80(string opcode, SourceLineWalker walker)
+        {
+            return new ChangeCpuLine() { Cpu = CpuType.Z80 };
+        }
+
+        static ProcessedSourceLine ProcessChangeCpu(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a CPU type as argument");
+                return new ChangeCpuLine();
+            }
+
+            var symbol = walker.ExtractSymbol();
+            var cpuType = CpuType.Unknown;
+            try {
+                cpuType = (CpuType)Enum.Parse(typeof(CpuType), symbol, true);
+            } catch(ArgumentException) {
+                //Invalid CPU type
+            }
+            
+            if(cpuType == CpuType.Unknown) {
+                throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UnsupportedCpu, $"{opcode.ToUpper()}: Unknown CPU type: {symbol}", state.CurrentLineNumber));
+            }
+
+            return new ChangeCpuLine() { Cpu = cpuType };
         }
     }
 }

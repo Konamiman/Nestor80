@@ -21,5 +21,6 @@
         FirstFatal = 128,
         UnexpectedError,
         SourceLineTooLong,
+        UnsupportedCpu
     }
 }
