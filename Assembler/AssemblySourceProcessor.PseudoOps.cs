@@ -37,7 +37,8 @@ namespace Konamiman.Nestor80.Assembler
             { "SUBTTL", ProcessSetListingSubtitleLine },
             { "$TITLE", ProcessLegacySetListingSubtitleLine },
             { "PAGE", ProcessSetListingNewPageLine },
-            { "$EJECT", ProcessSetListingNewPageLine }
+            { "$EJECT", ProcessSetListingNewPageLine },
+            { ".PRINTX", ProcessPrintxLine },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -593,6 +594,24 @@ namespace Konamiman.Nestor80.Assembler
                 state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 return new ChangeListingPageLine();
             }
+        }
+
+        static ProcessedSourceLine ProcessPrintxLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires the text to print as argument");
+                return new PrintxLine();
+            }
+
+            var text = walker.GetRemaining();
+            var delimiter = text[0];
+            var endDelimiterPosition = text.IndexOf(delimiter, 1);
+            if(endDelimiterPosition == -1) {
+                return new PrintxLine() { PrintedText = text, EffectiveLineLength = walker.SourceLine.Length };
+            }
+
+            var effectiveText = text[..(endDelimiterPosition + 1)];
+            return new PrintxLine() { PrintedText = effectiveText, EffectiveLineLength = walker.SourceLine.Length - (text.Length - endDelimiterPosition) + 1 };
         }
     }
 }

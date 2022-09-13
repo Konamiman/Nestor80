@@ -19,6 +19,15 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+.printx
+.printx Ola ke ase
+.printx /mola/
+.printx /bueno, me delimito/ y tal
+  .printx /a/
+  .printx //
+end
+
+
 title
 title ;
 title Foo, bar; fizz, buzz
