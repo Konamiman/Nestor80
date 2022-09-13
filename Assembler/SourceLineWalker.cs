@@ -8,6 +8,7 @@
         int lineLength;
         int linePointer;
         bool logicalEndOfLineReached;
+        int linePointerBackup;
 
         public static bool AllowEscapesInStrings = false;
 
@@ -28,6 +29,17 @@
         {
             linePointer = 0;
             SkipBlanks();
+        }
+
+        public void BackupPointer()
+        {
+            linePointerBackup = linePointer;
+        }
+
+        public void RestorePointer()
+        {
+            linePointer = linePointerBackup;
+            logicalEndOfLineReached = false;
         }
 
         public string GetUntil(char terminator)

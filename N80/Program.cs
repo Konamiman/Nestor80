@@ -19,6 +19,35 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+title defl 1
+title Hola ke ase
+foo: title defl title+1
+bar: title Hola ke ase mas
+page 50
+fizz: page 70
+page equ 80
+buzz: page equ 90
+end
+
+
+FOO equ 1234h
+BAR equ 7
+.print1 Esto es FOO: {foo+1} en default
+.print1 Esto es BAR: {bar+1} en default
+.print1 Esto es FOO: {d:foo+1} en dec
+.print1 Esto es FOO: {D:foo+1} en DEC
+.print1 Esto es BAR: {d:bar+1} en dec
+.print1 Esto es BAR: {D:bar+1} en DEC
+.print1 Esto es FOO: {h:foo+1} en hex
+.print1 Esto es FOO: {H:foo+1} en HEX
+.print1 Esto es BAR: {h:bar+1} en hex
+.print1 Esto es BAR: {H:bar+1} en HEX
+.print1 Esto es FOO: {b:foo+1} en bin
+.print1 Esto es FOO: {B:foo+1} en BIN
+.print1 Esto es BAR: {b:bar+1} en bin
+.print1 Esto es BAR: {B:bar+1} en BIN
+end
+
 .printx
 .printx Ola ke ase
 .printx /mola/

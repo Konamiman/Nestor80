@@ -206,25 +206,44 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             string symbol2;
-            if(PseudoOpProcessors.ContainsKey(symbol)) {
-                opcode = symbol;
-                var processor = PseudoOpProcessors[opcode];
-                processedLine = processor(opcode, walker);
+
+            // Constant definition check must go before any other opcode check,
+            // since pseudo-ops and cpu instructions are valid constant names too
+            // (but only if no label is defined in the line)
+            //
+            // Interesting edge case (compatible with Macro80):
+            //
+            // TITLE EQU 1      ---> defines constant "TITLE" with value 1
+            // FOO: TITLE EQU 1 ---> sets the program title as "EQU 1"
+            if(label is null && !walker.AtEndOfLine) {
+                walker.BackupPointer();
+                symbol2 = walker.ExtractSymbol();
+                if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
+                    opcode = symbol2;
+                    processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
+                }
+                else {
+                    walker.RestorePointer();
+                }
             }
-            else if(symbol.StartsWith("NAME(", StringComparison.OrdinalIgnoreCase)) {
-                opcode = symbol[..4];
-                processedLine = ProcessSetProgramName(opcode, walker, symbol[4..]);
-            }
-            else if(symbol.StartsWith("$TITLE(", StringComparison.OrdinalIgnoreCase)) {
-                opcode = symbol[..6];
-                processedLine = ProcessLegacySetListingSubtitle(opcode, walker, symbol[6..] + (walker.AtEndOfLine ? "" : " " + walker.GetUntil(')')));
-            }
-            else if(!walker.AtEndOfLine && constantDefinitionOpcodes.Contains(symbol2 = walker.ExtractSymbol(), StringComparer.OrdinalIgnoreCase)) {
-                opcode = symbol2;
-                processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
-            }
-            else {
-                throw new NotImplementedException("Can't parse line (yet): " + line);
+
+            if(processedLine is null) {
+                if(PseudoOpProcessors.ContainsKey(symbol)) {
+                    opcode = symbol;
+                    var processor = PseudoOpProcessors[opcode];
+                    processedLine = processor(opcode, walker);
+                }
+                else if(symbol.StartsWith("NAME(", StringComparison.OrdinalIgnoreCase)) {
+                    opcode = symbol[..4];
+                    processedLine = ProcessSetProgramName(opcode, walker, symbol[4..]);
+                }
+                else if(symbol.StartsWith("$TITLE(", StringComparison.OrdinalIgnoreCase)) {
+                    opcode = symbol[..6];
+                    processedLine = ProcessLegacySetListingSubtitle(opcode, walker, symbol[6..] + (walker.AtEndOfLine ? "" : " " + walker.GetUntil(')')));
+                }
+                else {
+                    throw new NotImplementedException("Can't parse line (yet): " + line);
+                }
             }
 
             if(!walker.AtEndOfLine && !state.InsideMultiLineComment) {
