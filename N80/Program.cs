@@ -19,7 +19,34 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+title
+title ;
+title Foo, bar; fizz, buzz
+subttl
+subttl ;
+subttl eso mismo; digo yo
+$title
+$title('
+$title('')
+$title ('')
+$title('mola mucho') ; y tanto
+$title ('mola mucho') ; y tanto
+$title('molamil')
+page
+page break
+page foo
+page 9
+page 1234h
+end
 
+
+db +
+db 2+
+db 2 eq
+db 2+(
+end
+
+name(
 name('foo')
 name('bar') ;bar!
  name ('fizz')

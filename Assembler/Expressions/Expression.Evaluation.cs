@@ -35,6 +35,10 @@ namespace Konamiman.Nestor80.Assembler
                 ValidatePart(part, i == 0 ? null : Parts[i - 1]);
             }
 
+            if(Parts[^1] is ArithmeticOperator) {
+                Throw($"{Parts[^1]} found at the end of the expression");
+            }
+
             Postfixize();
             IsPostfixized = true;
         }

@@ -21,6 +21,7 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ProgramNameRegex = new(@"^\('(?<name>[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*)'\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex LegacySubtitleRegex = new(@"^\('(?<name>[^']*)'\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
@@ -213,6 +214,10 @@ namespace Konamiman.Nestor80.Assembler
             else if(symbol.StartsWith("NAME(", StringComparison.OrdinalIgnoreCase)) {
                 opcode = symbol[..4];
                 processedLine = ProcessSetProgramName(opcode, walker, symbol[4..]);
+            }
+            else if(symbol.StartsWith("$TITLE(", StringComparison.OrdinalIgnoreCase)) {
+                opcode = symbol[..6];
+                processedLine = ProcessLegacySetListingSubtitle(opcode, walker, symbol[6..] + (walker.AtEndOfLine ? "" : " " + walker.GetUntil(')')));
             }
             else if(!walker.AtEndOfLine && constantDefinitionOpcodes.Contains(symbol2 = walker.ExtractSymbol(), StringComparer.OrdinalIgnoreCase)) {
                 opcode = symbol2;

@@ -32,7 +32,12 @@ namespace Konamiman.Nestor80.Assembler
             { ".8080", ProcessChangeCpuTo8080Line },
             { ".Z80", ProcessChangeCpuToZ80Line },
             { ".CPU", ProcessChangeCpuLine },
-            { "NAME", ProcessSetProgramNameLine }
+            { "NAME", ProcessSetProgramNameLine },
+            { "TITLE", ProcessSetListingTitleLine },
+            { "SUBTTL", ProcessSetListingSubtitleLine },
+            { "$TITLE", ProcessLegacySetListingSubtitleLine },
+            { "PAGE", ProcessSetListingNewPageLine },
+            { "$EJECT", ProcessSetListingNewPageLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -519,6 +524,75 @@ namespace Konamiman.Nestor80.Assembler
 
             var name = match.Groups["name"].Value;
             return new ProgramNameLine() { Name = name, EffectiveLineLength = effectiveLineLength };
+        }
+
+        static ProcessedSourceLine ProcessSetListingTitleLine(string opcode, SourceLineWalker walker)
+        {
+            var title = walker.GetRemaining();
+            return new SetListingTitleLine() { Title = title, EffectiveLineLength = walker.SourceLine.Length };
+        }
+
+        static ProcessedSourceLine ProcessSetListingSubtitleLine(string opcode, SourceLineWalker walker)
+        {
+            var subtitle = walker.GetRemaining();
+            return new SetListingSubtitleLine() { Subtitle = subtitle, EffectiveLineLength = walker.SourceLine.Length };
+        }
+
+        static ProcessedSourceLine ProcessLegacySetListingSubtitleLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a listing subtitle as argument");
+                return new SetListingSubtitleLine();
+            }
+
+            var subtitle = walker.GetRemaining();
+            return ProcessLegacySetListingSubtitle(opcode, walker, subtitle);
+        }
+
+        static ProcessedSourceLine ProcessLegacySetListingSubtitle(string opcode, SourceLineWalker walker, string subtitle)
+        {
+            var effectiveLineLength = walker.SourceLine.IndexOf(';');
+            if(effectiveLineLength < 0) {
+                effectiveLineLength = walker.SourceLine.Length;
+            }
+
+            var match = LegacySubtitleRegex.Match(subtitle);
+            if(!match.Success) {
+                state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the subtitle must be in the format ('text')");
+                return new SetListingSubtitleLine() { EffectiveLineLength = effectiveLineLength };
+            }
+
+            var effectiveSubtitle = match.Groups["name"].Value;
+            return new SetListingSubtitleLine() { Subtitle = effectiveSubtitle, EffectiveLineLength = effectiveLineLength };
+        }
+
+        static ProcessedSourceLine ProcessSetListingNewPageLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                return new ChangeListingPageLine();
+            }
+
+            try {
+                var pageSizeText = walker.ExtractExpression();
+                if(string.Equals("BREAK", pageSizeText, StringComparison.OrdinalIgnoreCase)) {
+                    return new ChangeListingPageLine() { IsMainPageChange = true };
+                }
+
+                var pageSizeExpression = Expression.Parse(pageSizeText);
+                pageSizeExpression.ValidateAndPostifixize();
+                var pageSize = pageSizeExpression.Evaluate();
+                if(!pageSize.IsAbsolute) {
+                    state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the page size must be an absolute value");
+                }
+                if(pageSize.Value < 10) {
+                    state.AddError(AssemblyErrorCode.InvalidListingPageSize, $"{opcode.ToUpper()}: the minimum listing page size is 10");
+                }
+                return new ChangeListingPageLine() { NewPageSize = pageSize.Value };
+            }
+            catch(InvalidExpressionException ex) {
+                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                return new ChangeListingPageLine();
+            }
         }
     }
 }

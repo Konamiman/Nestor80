@@ -30,6 +30,22 @@
             SkipBlanks();
         }
 
+        public string GetUntil(char terminator)
+        {
+            if(AtEndOfLine) return "";
+
+            char ch;
+            var chars = new List<char>();
+            do {
+                ch = sourceLine[linePointer++];
+                chars.Add(ch);
+            }
+            while(!AtEndOfLine && ch != terminator);
+
+            SkipBlanks();
+            return new string(chars.ToArray());
+        }
+
         public string GetRemaining()
         {
             if(AtEndOfLine) {

@@ -9,6 +9,7 @@
         LineHasNoEffect,
         UnterminatedComment,
         StringHasBytesWithHighBitSet,
+        InvalidListingPageSize,
 
         FirstError = 64,
         InvalidExpression,
