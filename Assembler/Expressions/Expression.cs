@@ -33,7 +33,26 @@ namespace Konamiman.Nestor80.Assembler
         private static IExpressionPart lastExtractedPart = null;
 
         private static bool AtEndOfString = false;
-        public static Encoding OutputStringEncoding { get; set; } = null;
+
+        private static readonly Dictionary<int, byte[]> ZeroCharBytesByEncoding = new();
+
+        public static byte[] ZeroCharBytes { get; private set; }
+
+        private static Encoding _OutputStringEncoding;
+        public static Encoding OutputStringEncoding
+        {
+            get => _OutputStringEncoding;
+            set
+            {
+                _OutputStringEncoding = value;
+                if(!ZeroCharBytesByEncoding.ContainsKey(value.CodePage)) {
+                    ZeroCharBytesByEncoding[value.CodePage] = value.GetBytes("\0");
+                }
+                ZeroCharBytes = ZeroCharBytesByEncoding[value.CodePage];
+            }
+        }
+
+
         public static Func<string, bool, SymbolInfo> GetSymbol { get; set; } = (_, _) => null;
 
         public IExpressionPart[] Parts { get; private set; }

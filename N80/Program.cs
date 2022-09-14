@@ -20,6 +20,14 @@ namespace Konamiman.Nestor80.N80
             var code =
 @"
 
+dz ""ABC""
+.strenc utf-16
+defz ""ABC""
+.strenc ascii
+defz ""ABC""
+end
+
+
 db 1
 FOO:
 BAR equ 2

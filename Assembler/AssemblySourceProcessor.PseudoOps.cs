@@ -39,6 +39,8 @@ namespace Konamiman.Nestor80.Assembler
             { "PAGE", ProcessSetListingNewPageLine },
             { "$EJECT", ProcessSetListingNewPageLine },
             { ".PRINTX", ProcessPrintxLine },
+            { "DEFZ", DefineZeroTerminatedStringLine },
+            { "DZ", DefineZeroTerminatedStringLine },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -617,6 +619,42 @@ namespace Konamiman.Nestor80.Assembler
 
             var effectiveText = text[..(endDelimiterPosition + 1)];
             return new PrintxLine() { PrintedText = effectiveText, EffectiveLineLength = walker.SourceLine.Length - (text.Length - endDelimiterPosition) + 1 };
+        }
+
+        static ProcessedSourceLine DefineZeroTerminatedStringLine(string opcode, SourceLineWalker walker)
+        {
+            var line = new DefbLine();
+            byte[] outputBytes = null;
+
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one string as argument");
+            }
+            else try {
+                    var expressionText = walker.ExtractExpression();
+                    var expression = Expression.Parse(expressionText, forDefb: true);
+
+                    if(expression.IsRawBytesOutput) {
+                        var bytes = (RawBytesOutput)expression.Parts[0];
+                        outputBytes = bytes.Concat(Expression.ZeroCharBytes).ToArray();
+                    }
+                    else {
+                        state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
+                    }
+                }
+                catch(InvalidExpressionException ex) {
+                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
+                }
+
+            if(outputBytes is not null) {
+                state.IncreaseLocationPointer(outputBytes.Length);
+            }
+
+            line.OutputBytes = outputBytes ?? Array.Empty<byte>();
+            line.RelocatableParts = Array.Empty<RelocatableOutputPart>();
+            line.NewLocationArea = state.CurrentLocationArea;
+            line.NewLocationCounter = state.CurrentLocationPointer;
+
+            return line;
         }
     }
 }
