@@ -1,8 +1,15 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal class ProcessorInstruction
+    internal class CpuInstruction
     {
-        public ProcessorInstruction(string instruction, string firstArgument, string secondArgument, byte[] opcodes, int valuePosition = 0, int valueSize = 0, bool isUndocumented = false)
+        public CpuInstruction(
+            string instruction,
+            string firstArgument,
+            string secondArgument, 
+            byte[] opcodes, 
+            int valuePosition = 0,
+            int valueSize = 0, 
+            bool isUndocumented = false)
         {
             Instruction = instruction;
             FirstArgument = firstArgument;
@@ -26,5 +33,9 @@
         public int ValueSize { get; set; }
 
         public bool IsUndocumented { get; set; }
+
+        public int? SecondValuePosition { get; set; }
+
+        public int? SecondValueSize { get; set; }
     }
 }

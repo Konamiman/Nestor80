@@ -10,6 +10,7 @@
         UnterminatedComment,
         StringHasBytesWithHighBitSet,
         InvalidListingPageSize,
+        SymbolWithCpuRegisterName,
 
         FirstError = 64,
         InvalidExpression,
@@ -18,6 +19,7 @@
         InvalidLabel,
         DuplicatedSymbol,
         UnknownStringEncoding,
+        InvalidCpuInstruction,
 
         FirstFatal = 128,
         UnexpectedError,

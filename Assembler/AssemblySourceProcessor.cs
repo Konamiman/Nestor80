@@ -18,6 +18,14 @@ namespace Konamiman.Nestor80.Assembler
 
         private Stream sourceStream;
 
+        private static Dictionary<string, CpuInstruction[]> CurrentCpuInstructions;
+
+        private static readonly string[] z80RegisterNames = new[] {
+            "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
+            "AF", "HL", "BC", "DE", "IX", "IY",
+            "SP", "IXH", "IXL", "IYH", "IYL"
+        };
+
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ProgramNameRegex = new(@"^\('(?<name>[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*)'\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -55,6 +63,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private AssemblyResult AssembleCore(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
         {
+            CurrentCpuInstructions = Z80Instructions;
             this.sourceStream = sourceStream;
             this.sourceStreamEncoding = sourceStreamEncoding;
             state = new AssemblyState() { Configuration = configuration };
@@ -244,6 +253,10 @@ namespace Konamiman.Nestor80.Assembler
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
                 }
+                else if(CurrentCpuInstructions.ContainsKey(symbol)) {
+                    opcode = symbol;
+                    processedLine = ProcessCpuInstruction(opcode, walker);
+                }
                 else if(symbol.StartsWith("NAME(", StringComparison.OrdinalIgnoreCase)) {
                     opcode = symbol[..4];
                     processedLine = ProcessSetProgramName(opcode, walker, symbol[4..]);
@@ -295,13 +308,14 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");
             }
 
-            //TODO: Warn if register used as label (e.g.: if B is a label, LD A,B loads the label and not reg B)
-
             var symbol = state.GetSymbol(labelValue);
             if(symbol == null) {
                 if(isPublic && !externalSymbolRegex.IsMatch(labelValue)) {
                     AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
                 };
+                if(z80RegisterNames.Contains(labelValue, StringComparer.OrdinalIgnoreCase)) {
+                    AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{labelValue.ToUpper()} is a Z80 register name, defining it as a label will prevent using it as a register in Z80 instructions");
+                }
                 state.AddSymbol(labelValue, SymbolType.Label, state.GetCurrentLocation(), isPublic: isPublic);
             }
             else if(symbol.IsExternal) {
