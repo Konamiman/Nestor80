@@ -17,6 +17,14 @@ namespace Konamiman.Nestor80.N80
             var code =
 @"
 
+FOO equ 12abh
+BAR equ 7
+.print ola ke ase
+.print1 Esto es FOO: {fizz} {foo+1:b0}, {foo+1:d8}, {foo+1:b}, {foo+1:B20}, {foo+1:h}, {foo+1:H}, {foo+1:h7} en default
+.print2 Esto es BAR: {bar+1} en default
+
+end
+
 .LIST
 .XLIST
 .TFCOND

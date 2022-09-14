@@ -1,5 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -47,6 +49,9 @@ namespace Konamiman.Nestor80.Assembler
             { ".TFCOND", ProcessListingControlLine },
             { ".SFCOND", ProcessListingControlLine },
             { ".LFCOND", ProcessListingControlLine },
+            { ".PRINT", ProcessPrintLine },
+            { ".PRINT1", ProcessPrint1Line },
+            { ".PRINT2", ProcessPrint2Line },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -613,18 +618,18 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(walker.AtEndOfLine) {
                 state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires the text to print as argument");
-                return new PrintxLine();
+                return new PrintLine();
             }
 
             var text = walker.GetRemaining();
             var delimiter = text[0];
             var endDelimiterPosition = text.IndexOf(delimiter, 1);
             if(endDelimiterPosition == -1) {
-                return new PrintxLine() { PrintedText = text, EffectiveLineLength = walker.SourceLine.Length };
+                return new PrintLine() { PrintedText = text, EffectiveLineLength = walker.SourceLine.Length };
             }
 
             var effectiveText = text[..(endDelimiterPosition + 1)];
-            return new PrintxLine() { PrintedText = effectiveText, EffectiveLineLength = walker.SourceLine.Length - (text.Length - endDelimiterPosition) + 1 };
+            return new PrintLine() { PrintedText = effectiveText, EffectiveLineLength = walker.SourceLine.Length - (text.Length - endDelimiterPosition) + 1 };
         }
 
         static ProcessedSourceLine ProcessDefineZeroTerminatedStringLine(string opcode, SourceLineWalker walker)
@@ -692,6 +697,95 @@ namespace Konamiman.Nestor80.Assembler
         {
             var type = (ListingControlType)Enum.Parse(typeof(ListingControlType), opcode[1..], ignoreCase: true);
             return new ListingControlLine() { Type = type };
+        }
+
+        static ProcessedSourceLine ProcessPrintLine(string opcode, SourceLineWalker walker)
+            => ProcessPrintLineCore(opcode, walker, null);
+
+        static ProcessedSourceLine ProcessPrint1Line(string opcode, SourceLineWalker walker)
+            => ProcessPrintLineCore(opcode, walker, 1);
+
+        static ProcessedSourceLine ProcessPrint2Line(string opcode, SourceLineWalker walker)
+            => ProcessPrintLineCore(opcode, walker, 2);
+
+        static ProcessedSourceLine ProcessPrintLineCore(string opcode, SourceLineWalker walker, int? printInPass)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires the text to print as argument");
+                return new PrintLine();
+            }
+
+            var rawText = walker.GetRemaining();
+            var sb = new StringBuilder();
+            var lastIndex = 0;
+            var expressionMatches = printStringExpressionRegex.Matches(rawText);
+            if(expressionMatches.Count == 0) {
+                return new PrintLine() { Line = rawText, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = printInPass };
+            }
+
+            Match match = null;
+            foreach(var m in expressionMatches) {
+                Address expressionValue = null;
+                string partToPrint = null;
+                string formatSpecifier = null;
+
+                match = (Match)m;
+                var expressionText = match.Value;
+                var originalExpressionText = expressionText;
+                var colonIndex = expressionText.LastIndexOf(':');
+                if(colonIndex != -1 && colonIndex != expressionText.Length-1 && colonIndex != 0) {
+                    formatSpecifier = expressionText[(colonIndex + 1)..].Replace('h', 'x').Replace('H', 'X');
+                    expressionText = expressionText[..colonIndex];
+                }
+
+                try {
+                    var expression = Expression.Parse(expressionText);
+                    expression.ValidateAndPostifixize();
+                    expressionValue = expression.TryEvaluate();
+                }
+                catch(InvalidExpressionException ex) {
+                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                }
+
+                if(expressionValue is null) {
+                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Can't evaluate expression for {opcode.ToUpper()}, does it reference undefined or external symbols?");
+                    partToPrint = $"{{{originalExpressionText}}}";
+                }
+                else {
+                    if(formatSpecifier is null) {
+                        partToPrint = expressionValue.Value.ToString();
+                    }
+                    else if(formatSpecifier[0] is 'b' or 'B') {
+                        if(formatSpecifier.Length == 1) {
+                            partToPrint = Convert.ToString(expressionValue.Value, 2);
+                        }
+                        else if(int.TryParse(formatSpecifier[1..], out int length) && length >= 0) {
+                            partToPrint = Convert.ToString(expressionValue.Value, 2).PadLeft(length, '0');
+                        }
+                        else {
+                            state.AddError(AssemblyErrorCode.InvalidArgument, $"Invalid format specifier for expression in {opcode.ToUpper()}: {formatSpecifier}");
+                            partToPrint = $"{{{originalExpressionText}}}";
+                        }
+                    }
+                    else {
+                        try {
+                            partToPrint = string.Format($"{{0:{formatSpecifier}}}", expressionValue.Value);
+                        }
+                        catch {
+                            state.AddError(AssemblyErrorCode.InvalidArgument, $"Invalid format specifier for expression in {opcode.ToUpper()}: {formatSpecifier}");
+                            partToPrint = $"{{{originalExpressionText}}}";
+                        }
+                    }
+                }
+
+                sb.Append(rawText.AsSpan(lastIndex, match.Index - lastIndex - 1));
+                sb.Append(partToPrint);
+                lastIndex = match.Index + match.Length + 1;
+            }
+
+            sb.Append(rawText.AsSpan(match.Index + match.Length + 1));
+
+            return new PrintLine() { PrintedText = sb.ToString(), EffectiveLineLength = walker.SourceLine.Length, PrintInPass = printInPass };
         }
     }
 }

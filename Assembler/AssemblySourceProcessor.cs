@@ -22,6 +22,7 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ProgramNameRegex = new(@"^\('(?<name>[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*)'\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex LegacySubtitleRegex = new(@"^\('(?<name>[^']*)'\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex printStringExpressionRegex = new(@"(?<=\{)[^}]*(?=\})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
@@ -51,7 +52,6 @@ namespace Konamiman.Nestor80.Assembler
 
         private AssemblyResult AssembleCore(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
         {
-            this.configuration = configuration;
             this.sourceStream = sourceStream;
             this.sourceStreamEncoding = sourceStreamEncoding;
             state = new AssemblyState() { Configuration = configuration };
