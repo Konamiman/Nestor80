@@ -30,6 +30,9 @@ namespace Konamiman.Nestor80.Assembler
 
         private static readonly ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
 
+        public static event EventHandler<AssemblyError> AssemblyErrorGenerated;
+        public static event EventHandler<string> PrintMessage;
+
         private AssemblySourceProcessor()
         {
         }
@@ -77,10 +80,10 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             catch(FatalErrorException ex) {
-                state.AddError(ex.Error);
+                AddError(ex.Error);
             }
             catch(Exception ex) {
-                state.AddError(
+                AddError(
                     code: AssemblyErrorCode.UnexpectedError,
                     message: $"Unexpected error: ({ex.GetType().Name}) {ex.Message}"
                 );
@@ -126,7 +129,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(sourceLine == null) break;
                 if((lineLength = sourceLine.Length) > MAX_LINE_LENGTH) {
                     sourceLine = sourceLine[..MAX_LINE_LENGTH];
-                    state.AddError(
+                    AddError(
                         AssemblyErrorCode.SourceLineTooLong,
                         $"Line is too long ({lineLength} bytes), actual line processed: {sourceLine.Trim()}"
                     );
@@ -137,11 +140,11 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(!state.EndReached) {
-                state.AddError(AssemblyErrorCode.NoEndStatement, "No END statement found");
+                AddError(AssemblyErrorCode.NoEndStatement, "No END statement found");
             }
 
             if(state.InsideMultiLineComment) {
-                state.AddError(AssemblyErrorCode.UnterminatedComment, $"Unterminated .COMMENT block (delimiter: '{state.MultiLineCommandDelimiter}')");
+                AddError(AssemblyErrorCode.UnterminatedComment, $"Unterminated .COMMENT block (delimiter: '{state.MultiLineCommandDelimiter}')");
             }
         }
 
@@ -199,7 +202,7 @@ namespace Konamiman.Nestor80.Assembler
                     ProcessLabelDefinition(label);
                 }
                 else {
-                    state.AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label (contains illegal characters): {symbol}");
+                    AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label (contains illegal characters): {symbol}");
                 }
 
                 if(walker.AtEndOfLine) {
@@ -255,7 +258,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(!walker.AtEndOfLine && !state.InsideMultiLineComment) {
-                state.AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected content found at the end of the line: {walker.GetRemaining()}");
+                AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected content found at the end of the line: {walker.GetRemaining()}");
             }
 
             if(opcode is not null) {
@@ -289,7 +292,7 @@ namespace Konamiman.Nestor80.Assembler
             var labelValue = label.TrimEnd(':');
 
             if(labelValue == "$") {
-                state.AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");
+                AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");
             }
 
             //TODO: Warn if register used as label (e.g.: if B is a label, LD A,B loads the label and not reg B)
@@ -297,19 +300,19 @@ namespace Konamiman.Nestor80.Assembler
             var symbol = state.GetSymbol(labelValue);
             if(symbol == null) {
                 if(isPublic && !externalSymbolRegex.IsMatch(labelValue)) {
-                    state.AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
+                    AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
                 };
                 state.AddSymbol(labelValue, SymbolType.Label, state.GetCurrentLocation(), isPublic: isPublic);
             }
             else if(symbol.IsExternal) {
-                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already as external: {labelValue}");
+                AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already as external: {labelValue}");
             }
             else if(symbol.IsConstant) {
-                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already with {symbol.Type.ToString().ToUpper()}: {labelValue}");
+                AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already with {symbol.Type.ToString().ToUpper()}: {labelValue}");
             }
             else if(symbol.HasKnownValue) {
                 if(symbol.Value != state.GetCurrentLocation()) {
-                    state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
+                    AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
                 }
             }
             else {
@@ -338,7 +341,7 @@ namespace Konamiman.Nestor80.Assembler
                 return true;
             }
             catch(Exception e) when (e is ArgumentException or NotSupportedException) {
-                state.AddError(
+                AddError(
                     AssemblyErrorCode.UnknownStringEncoding,
                     isCodePage ?
                         $"There's no known string encoding with the code page {codePage}" :
@@ -346,6 +349,22 @@ namespace Konamiman.Nestor80.Assembler
                     withLineNumber: !initial
                 );
                 return false;
+            }
+        }
+
+        static void AddError(AssemblyError error)
+        {
+            state.AddError(error);
+            if(AssemblyErrorGenerated is not null) {
+                AssemblyErrorGenerated(null, error);
+            }
+        }
+
+        static void AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
+        {
+            var error = state.AddError(code, message, withLineNumber);
+            if(AssemblyErrorGenerated is not null) {
+                AssemblyErrorGenerated(null, error);
             }
         }
     }

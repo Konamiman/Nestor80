@@ -20,7 +20,7 @@ namespace Konamiman.Nestor80.N80
 FOO equ 12abh
 BAR equ 7
 .print ola ke ase
-.print1 Esto es FOO: {fizz} {foo+1:b0}, {foo+1:d8}, {foo+1:b}, {foo+1:B20}, {foo+1:h}, {foo+1:H}, {foo+1:h7} en default
+.print1 Esto es FOO: {fizz} {foo+1:b0}, {foo:b-1} {foo+1:d8}, {foo+1:b}, {foo+1:B20}, {foo+1:h}, {foo+1:H}, {foo+1:h7} en default
 .print2 Esto es BAR: {bar+1} en default
 
 end
@@ -286,8 +286,21 @@ DSEG3:
                 AllowEscapesInStrings = true,
             };
 
+            AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage;
+            AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated;
+
             var result = AssemblySourceProcessor.Assemble(code, config);
             //var result = AssemblySourceProcessor.Assemble(sourceStream, Encoding.GetEncoding("iso-8859-1"), config);
+        }
+
+        private static void AssemblySourceProcessor_AssemblyErrorGenerated(object? sender, Assembler.Output.AssemblyError e)
+        {
+            Debug.WriteLine(e.ToString());
+        }
+
+        private static void AssemblySourceProcessor_PrintMessage(object? sender, string e)
+        {
+            Debug.WriteLine(e);
         }
     }
 }

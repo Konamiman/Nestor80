@@ -129,9 +129,11 @@ namespace Konamiman.Nestor80.Assembler
 
         public void AddError(AssemblyError error) => Errors.Add(error);
 
-        public void AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
+        public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {
-            AddError(new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null ));
+            var error = new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null );
+            AddError(error);
+            return error;
         }
 
         public AssemblyError[] GetErrors() => Errors.ToArray();

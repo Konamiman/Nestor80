@@ -75,7 +75,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs at least one {(isByte ? "byte" : "word")} value");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs at least one {(isByte ? "byte" : "word")} value");
                 AddZero();
             }
 
@@ -84,12 +84,12 @@ namespace Konamiman.Nestor80.Assembler
                 var expressionText = walker.ExtractExpression();
                 if(expressionText == "") {
                     if(walker.AtEndOfLine) {
-                        state.AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, "Unexpected ',' found at the end of the line");
+                        AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, "Unexpected ',' found at the end of the line");
                         break;
                     }
                     else {
                         AddZero();
-                        state.AddError(AssemblyErrorCode.InvalidExpression, "Empty expression found");
+                        AddError(AssemblyErrorCode.InvalidExpression, "Empty expression found");
                         continue;
                     }
                 }
@@ -109,7 +109,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else if(isByte && !value.IsValidByte) {
                         AddZero();
-                        state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: value {value:X4} can't be stored as a byte");
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: value {value:X4} can't be stored as a byte");
                     }
                     else if(value.IsAbsolute) {
                         outputBytes.Add(value.ValueAsByte);
@@ -123,7 +123,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 catch(InvalidExpressionException ex) {
                     AddZero();
-                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 }
             }
 
@@ -144,7 +144,7 @@ namespace Konamiman.Nestor80.Assembler
             var line = new DefineSpaceLine();
 
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs at least the length argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs at least the length argument");
             }
             else try{
                 var lengthExpressionText = walker.ExtractExpression();
@@ -173,7 +173,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             catch(InvalidExpressionException ex) {
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
             }
 
             state.IncreaseLocationPointer(length);
@@ -191,7 +191,7 @@ namespace Konamiman.Nestor80.Assembler
             byte[] outputBytes = null;
 
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one string as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one string as argument");
             }
             else try {
                 var expressionText = walker.ExtractExpression();
@@ -200,18 +200,18 @@ namespace Konamiman.Nestor80.Assembler
                 if(expression.IsRawBytesOutput) {
                     var bytes = (RawBytesOutput)expression.Parts[0];
                     if(bytes.Any(b => b >= 0x80)) {
-                        state.AddError(AssemblyErrorCode.StringHasBytesWithHighBitSet, $"{opcode.ToUpper()}: the string already has bytes with the MSB set once encoded with {Expression.OutputStringEncoding.WebName}");
+                        AddError(AssemblyErrorCode.StringHasBytesWithHighBitSet, $"{opcode.ToUpper()}: the string already has bytes with the MSB set once encoded with {Expression.OutputStringEncoding.WebName}");
                     }
 
                     bytes[bytes.Length - 1] |= 0x80;
                     outputBytes = bytes.ToArray();
                 }
                 else {
-                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
                 }
             }
             catch(InvalidExpressionException ex) {
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
             }
 
             if(outputBytes is not null) {
@@ -245,7 +245,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessOrgLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.LineHasNoEffect, "ORG without value will have no effect");
+                AddError(AssemblyErrorCode.LineHasNoEffect, "ORG without value will have no effect");
                 return new ChangeOriginLine();
             }
 
@@ -265,7 +265,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             catch(InvalidExpressionException ex) {
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 return new ChangeOriginLine();
             }
         }
@@ -273,13 +273,13 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessExternalDeclarationLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a symbol name");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a symbol name");
                 return new ExternalDeclarationLine();
             }
 
             var symbolName = walker.ExtractSymbol();
             if(!externalSymbolRegex.IsMatch(symbolName)) {
-                state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name, it contains invalid characters");
+                AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name, it contains invalid characters");
                 return new ExternalDeclarationLine() { SymbolName = symbolName };
             }
 
@@ -288,7 +288,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.AddSymbol(symbolName, type: SymbolType.External);
             }
             else if(existingSymbol.IsPublic || (existingSymbol.IsOfKnownType && !existingSymbol.IsExternal)) {
-                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
+                AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
             }
             else {
                 //In case the symbol first appeared as part of an expression
@@ -302,13 +302,13 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessPublicDeclarationLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a label name");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a label name");
                 return new PublicDeclarationLine();
             }
 
             var symbolName = walker.ExtractSymbol();
             if(!externalSymbolRegex.IsMatch(symbolName)) {
-                state.AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid public symbol name, it contains invalid characters");
+                AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid public symbol name, it contains invalid characters");
                 return new ExternalDeclarationLine() { SymbolName = symbolName };
             }
 
@@ -317,7 +317,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.AddSymbol(symbolName, SymbolType.Unknown, isPublic: true);
             }
             else if(existingSymbol.IsExternal) {
-                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined as an external symbol, can't be defined as public");
+                AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined as an external symbol, can't be defined as public");
             }
             else {
                 existingSymbol.IsPublic = true;
@@ -346,7 +346,7 @@ namespace Konamiman.Nestor80.Assembler
                 return new AssemblyEndLine() { EndAddress = endAddress.Value, EndAddressArea = endAddress.Type };
             }
             catch(InvalidExpressionException ex) {
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 state.End(Address.AbsoluteZero);
                 return new AssemblyEndLine();
             }
@@ -355,7 +355,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessDelimitedCommentStartLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one comment delimiter character");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one comment delimiter character");
                 return new DelimitedCommandLine() { Delimiter = '\0', IsLastLine = true };
             }
 
@@ -370,7 +370,7 @@ namespace Konamiman.Nestor80.Assembler
             var line = new ConstantDefinitionLine() { Name = name, IsRedefinible = isRedefinition };
 
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a value");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a value");
                 return line;
             }
 
@@ -387,7 +387,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             catch(InvalidExpressionException ex) {
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 return line;
             }
 
@@ -407,7 +407,7 @@ namespace Konamiman.Nestor80.Assembler
                 symbol.Value = value;
             }
             else if(value != symbol.Value) {
-                state.AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol '{name.ToUpper()}' already exists (defined as {symbol.Type.ToString().ToLower()}) and can't be redefined with {opcode.ToUpper()}");
+                AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol '{name.ToUpper()}' already exists (defined as {symbol.Type.ToString().ToLower()}) and can't be redefined with {opcode.ToUpper()}");
             }
 
             return line;
@@ -416,7 +416,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessSetEncodingLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs a encoding name or code page number");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs a encoding name or code page number");
                 return new ChangeStringEncodingLine() { IsSuccessful = false };
             }
 
@@ -445,7 +445,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(enable is null) {
-                state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()} requires an argument that must be either ON or OFF");
+                AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()} requires an argument that must be either ON or OFF");
             }
             else {
                 Expression.AllowEscapesInStrings = enable.Value;
@@ -457,7 +457,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessChangeRadixLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs the new radix argument (a number between 2 and 16)");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs the new radix argument (a number between 2 and 16)");
                 return new ChangeRadixLine();
             }
 
@@ -471,7 +471,7 @@ namespace Konamiman.Nestor80.Assembler
                 var value = valueExpression.Evaluate();
                 if(!value.IsAbsolute || value.Value < 2 || value.Value > 16) {
                     Expression.DefaultRadix = backupRadix;
-                    state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: argument must be an absolute value between 2 and 16)");
+                    AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: argument must be an absolute value between 2 and 16)");
                     return new ChangeRadixLine();
                 }
 
@@ -480,7 +480,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             catch(InvalidExpressionException ex) {
                 Expression.DefaultRadix = backupRadix;
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 return new ChangeRadixLine();
             }
         }
@@ -498,7 +498,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessChangeCpuLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a CPU type as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a CPU type as argument");
                 return new ChangeCpuLine();
             }
 
@@ -520,7 +520,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessSetProgramNameLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a program name as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a program name as argument");
                 return new ProgramNameLine();
             }
 
@@ -537,7 +537,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var match = ProgramNameRegex.Match(programName);
             if(!match.Success) {
-                state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the program name must be in the format ('NAME')");
+                AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the program name must be in the format ('NAME')");
                 return new ProgramNameLine() { EffectiveLineLength = effectiveLineLength };
             }
 
@@ -560,7 +560,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessLegacySetListingSubtitleLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a listing subtitle as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a listing subtitle as argument");
                 return new SetListingSubtitleLine();
             }
 
@@ -577,7 +577,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var match = LegacySubtitleRegex.Match(subtitle);
             if(!match.Success) {
-                state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the subtitle must be in the format ('text')");
+                AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the subtitle must be in the format ('text')");
                 return new SetListingSubtitleLine() { EffectiveLineLength = effectiveLineLength };
             }
 
@@ -601,15 +601,15 @@ namespace Konamiman.Nestor80.Assembler
                 pageSizeExpression.ValidateAndPostifixize();
                 var pageSize = pageSizeExpression.Evaluate();
                 if(!pageSize.IsAbsolute) {
-                    state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the page size must be an absolute value");
+                    AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the page size must be an absolute value");
                 }
                 if(pageSize.Value < 10) {
-                    state.AddError(AssemblyErrorCode.InvalidListingPageSize, $"{opcode.ToUpper()}: the minimum listing page size is 10");
+                    AddError(AssemblyErrorCode.InvalidListingPageSize, $"{opcode.ToUpper()}: the minimum listing page size is 10");
                 }
                 return new ChangeListingPageLine() { NewPageSize = pageSize.Value };
             }
             catch(InvalidExpressionException ex) {
-                state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 return new ChangeListingPageLine();
             }
         }
@@ -617,7 +617,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessPrintxLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires the text to print as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires the text to print as argument");
                 return new PrintLine();
             }
 
@@ -625,11 +625,19 @@ namespace Konamiman.Nestor80.Assembler
             var delimiter = text[0];
             var endDelimiterPosition = text.IndexOf(delimiter, 1);
             if(endDelimiterPosition == -1) {
+                TriggerPrintEvent(text);
                 return new PrintLine() { PrintedText = text, EffectiveLineLength = walker.SourceLine.Length };
             }
 
             var effectiveText = text[..(endDelimiterPosition + 1)];
+            TriggerPrintEvent(effectiveText);
             return new PrintLine() { PrintedText = effectiveText, EffectiveLineLength = walker.SourceLine.Length - (text.Length - endDelimiterPosition) + 1 };
+        }
+
+        static void TriggerPrintEvent(string message, int? ifPass = null)
+        {
+            if(PrintMessage is not null && ((ifPass is null) || (state.InPass1 && ifPass == 1) || (state.InPass2 && ifPass == 2)))
+                PrintMessage(null, message);
         }
 
         static ProcessedSourceLine ProcessDefineZeroTerminatedStringLine(string opcode, SourceLineWalker walker)
@@ -638,7 +646,7 @@ namespace Konamiman.Nestor80.Assembler
             byte[] outputBytes = null;
 
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one string as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one string as argument");
             }
             else try {
                     var expressionText = walker.ExtractExpression();
@@ -649,11 +657,11 @@ namespace Konamiman.Nestor80.Assembler
                         outputBytes = bytes.Concat(Expression.ZeroCharBytes).ToArray();
                     }
                     else {
-                        state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
+                        AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
                     }
                 }
                 catch(InvalidExpressionException ex) {
-                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
                 }
 
             if(outputBytes is not null) {
@@ -671,7 +679,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessRequestLinkFilesLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by at least one file name");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by at least one file name");
                 return new ExternalDeclarationLine();
             }
 
@@ -680,10 +688,10 @@ namespace Konamiman.Nestor80.Assembler
             while(!walker.AtEndOfLine) {
                 var filename = walker.ExtractExpression();
                 if(string.IsNullOrWhiteSpace(filename)) {
-                    state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the file name can't be empty");
+                    AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the file name can't be empty");
                 }
                 else if(!externalSymbolRegex.IsMatch(filename)) {
-                    state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: {filename} is not a valid linker request symbol name, it contains invalid characters");
+                    AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: {filename} is not a valid linker request symbol name, it contains invalid characters");
                 }
                 else {
                     filenames.Add(filename);
@@ -708,10 +716,20 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessPrint2Line(string opcode, SourceLineWalker walker)
             => ProcessPrintLineCore(opcode, walker, 2);
 
+        // {expression}
+        // {expression:d}
+        // {expression:d5}
+        // {expression:D5}
+        // {expression:b}
+        // {expression:b5}
+        // {expression:B5}
+        // {expression:h}
+        // {expression:h5}
+        // {expression:H5}
         static ProcessedSourceLine ProcessPrintLineCore(string opcode, SourceLineWalker walker, int? printInPass)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires the text to print as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires the text to print as argument");
                 return new PrintLine();
             }
 
@@ -720,6 +738,7 @@ namespace Konamiman.Nestor80.Assembler
             var lastIndex = 0;
             var expressionMatches = printStringExpressionRegex.Matches(rawText);
             if(expressionMatches.Count == 0) {
+                TriggerPrintEvent(rawText, printInPass);
                 return new PrintLine() { Line = rawText, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = printInPass };
             }
 
@@ -744,11 +763,12 @@ namespace Konamiman.Nestor80.Assembler
                     expressionValue = expression.TryEvaluate();
                 }
                 catch(InvalidExpressionException ex) {
-                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    partToPrint = $"{{{originalExpressionText}}}";
                 }
 
                 if(expressionValue is null) {
-                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Can't evaluate expression for {opcode.ToUpper()}, does it reference undefined or external symbols?");
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Can't evaluate expression for {opcode.ToUpper()}, does it reference undefined or external symbols?");
                     partToPrint = $"{{{originalExpressionText}}}";
                 }
                 else {
@@ -762,20 +782,20 @@ namespace Konamiman.Nestor80.Assembler
                         else if(int.TryParse(formatSpecifier[1..], out int length) && length >= 0) {
                             partToPrint = Convert.ToString(expressionValue.Value, 2).PadLeft(length, '0');
                         }
-                        else {
-                            state.AddError(AssemblyErrorCode.InvalidArgument, $"Invalid format specifier for expression in {opcode.ToUpper()}: {formatSpecifier}");
-                            partToPrint = $"{{{originalExpressionText}}}";
-                        }
                     }
-                    else {
+                    else if(formatSpecifier[0] is 'd' or 'D' or 'x' or 'X') {
                         try {
                             partToPrint = string.Format($"{{0:{formatSpecifier}}}", expressionValue.Value);
                         }
                         catch {
-                            state.AddError(AssemblyErrorCode.InvalidArgument, $"Invalid format specifier for expression in {opcode.ToUpper()}: {formatSpecifier}");
-                            partToPrint = $"{{{originalExpressionText}}}";
+                            // partToPrint will remain null and that will be handled later
                         }
                     }
+                }
+
+                if(partToPrint is null) {
+                    AddError(AssemblyErrorCode.InvalidArgument, $"Invalid format specifier for expression in {opcode.ToUpper()}: {formatSpecifier}");
+                    partToPrint = $"{{{originalExpressionText}}}";
                 }
 
                 sb.Append(rawText.AsSpan(lastIndex, match.Index - lastIndex - 1));
@@ -785,7 +805,9 @@ namespace Konamiman.Nestor80.Assembler
 
             sb.Append(rawText.AsSpan(match.Index + match.Length + 1));
 
-            return new PrintLine() { PrintedText = sb.ToString(), EffectiveLineLength = walker.SourceLine.Length, PrintInPass = printInPass };
+            var finalText = sb.ToString();
+            TriggerPrintEvent(finalText, printInPass);
+            return new PrintLine() { PrintedText = finalText, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = printInPass };
         }
     }
 }
