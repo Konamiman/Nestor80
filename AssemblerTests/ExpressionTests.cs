@@ -531,7 +531,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [Test]
         public void TestExpressionEvaluationWithSymbol()
         {
-            Expression.GetSymbol = (name, isExternal) => name is "FOO" ? new Symbol() { Name = "FOO", Value = Address.Absolute(3) } : null;
+            Expression.GetSymbol = (name, isExternal) => name is "FOO" ? new SymbolInfo() { Name = "FOO", Value = Address.Absolute(3) } : null;
             var exp = Expression.Parse("1+2+FOO");
             exp.ValidateAndPostifixize();
             var result = exp.Evaluate();

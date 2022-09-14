@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    public class Symbol
+    internal class SymbolInfo
     {
         internal const int MaxEffectiveExternalNameLength = 6;
 
@@ -69,7 +69,7 @@
         }
 
         private Address _Value;
-        public Address Value 
+        internal Address Value 
         {
             get => _Value;
             set

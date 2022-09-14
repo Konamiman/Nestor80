@@ -2,14 +2,9 @@
 {
     public class ChangeOriginLine : ProcessedSourceLine, IChangesLocationCounter
     {
-        public Address NewLocationCounter { get; set; }
+        public AddressType NewLocationArea { get; set; }
+        public ushort NewLocationCounter { get; set; }
 
-        public override string ToString()
-        {
-            if(NewLocationCounter is not null)
-                return base.ToString() + NewLocationCounter;
-            else
-                return base.ToString();
-        }
+        public override string ToString() => $"{base.ToString()}, {NewLocationArea} {NewLocationCounter}";
     }
 }

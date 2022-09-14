@@ -5,8 +5,12 @@ namespace Konamiman.Nestor80.Assembler.Output
     public class DefbLine : ProcessedSourceLine, IProducesOutput, IChangesLocationCounter
     {
         public byte[] OutputBytes { get; set; }
+
         public RelocatableOutputPart[] RelocatableParts { get; set; }
-        public Address NewLocationCounter { get; set; }
+
+        public AddressType NewLocationArea { get; set; }
+
+        public ushort NewLocationCounter { get; set; }
 
         public override string ToString()
         {

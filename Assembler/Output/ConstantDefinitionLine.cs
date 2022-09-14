@@ -2,7 +2,9 @@
 {
     public class ConstantDefinitionLine : ProcessedSourceLine
     {
-        public Address Value { get; set; }
+        public AddressType ValueArea { get; set; }
+
+        public ushort Value { get; set; }
 
         public string Name { get; set; }
 

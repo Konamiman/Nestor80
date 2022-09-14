@@ -118,7 +118,8 @@ namespace Konamiman.Nestor80.Assembler
 
             line.OutputBytes = outputBytes.ToArray();
             line.RelocatableParts = relocatables.ToArray();
-            line.NewLocationCounter = state.GetCurrentLocation();
+            line.NewLocationArea = state.CurrentLocationArea;
+            line.NewLocationCounter = state.CurrentLocationPointer;
             
             return line;
         }
@@ -163,7 +164,8 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             state.IncreaseLocationPointer(length);
-            line.NewLocationCounter = state.GetCurrentLocation();
+            line.NewLocationArea = state.CurrentLocationArea;
+            line.NewLocationCounter = state.CurrentLocationPointer;
             line.Size = length;
             line.Value = value;
 
@@ -205,7 +207,8 @@ namespace Konamiman.Nestor80.Assembler
 
             line.OutputBytes = outputBytes ?? Array.Empty<byte>();
             line.RelocatableParts = Array.Empty<RelocatableOutputPart>();
-            line.NewLocationCounter = state.GetCurrentLocation();
+            line.NewLocationArea = state.CurrentLocationArea;
+            line.NewLocationCounter = state.CurrentLocationPointer;
 
             return line;
         }
@@ -221,7 +224,8 @@ namespace Konamiman.Nestor80.Assembler
             state.SwitchToArea(area);
 
             return new ChangeAreaLine() {
-                NewLocationCounter = state.GetCurrentLocation(),
+                NewLocationArea = state.CurrentLocationArea,
+                NewLocationCounter = state.CurrentLocationPointer
             };
         }
 
@@ -244,7 +248,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     state.SwitchToLocation(value.Value);
-                    return new ChangeOriginLine() { NewLocationCounter = value };
+                    return new ChangeOriginLine() { NewLocationArea = value.Type, NewLocationCounter = value.Value };
                 }
             }
             catch(InvalidExpressionException ex) {
@@ -326,7 +330,7 @@ namespace Konamiman.Nestor80.Assembler
                 var endAddress = endAddressExpression.Evaluate();
 
                 state.End(endAddress);
-                return new AssemblyEndLine() { EndAddress = endAddress };
+                return new AssemblyEndLine() { EndAddress = endAddress.Value, EndAddressArea = endAddress.Type };
             }
             catch(InvalidExpressionException ex) {
                 state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
@@ -374,7 +378,8 @@ namespace Konamiman.Nestor80.Assembler
                 return line;
             }
 
-            line.Value = value;
+            line.ValueArea = value.Type;
+            line.Value = value.Value;
 
             var symbol = state.GetSymbol(name);
             

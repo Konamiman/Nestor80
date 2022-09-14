@@ -136,16 +136,16 @@ namespace Konamiman.Nestor80.Assembler
 
         public AssemblyError[] GetErrors() => Errors.ToArray();
 
-        private readonly Dictionary<string, Symbol> Symbols = new(StringComparer.InvariantCultureIgnoreCase);
+        private readonly Dictionary<string, SymbolInfo> Symbols = new(StringComparer.InvariantCultureIgnoreCase);
 
-        public Symbol[] GetSymbols() => Symbols.Values.ToArray();
+        public SymbolInfo[] GetSymbols() => Symbols.Values.ToArray();
 
         public bool HasSymbol(string symbol) => Symbols.ContainsKey(symbol);
 
         public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].HasKnownValue;
 
         public void AddSymbol(string name, SymbolType type, Address value = null, bool isPublic = false) =>
-            Symbols.Add(name, new Symbol() { Name = name, Type = type, Value = value, IsPublic = isPublic });
+            Symbols.Add(name, new SymbolInfo() { Name = name, Type = type, Value = value, IsPublic = isPublic });
 
         public void WrapUp()
         {
@@ -156,7 +156,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        public Symbol GetSymbol(string name)
+        public SymbolInfo GetSymbol(string name)
         {
             return Symbols.ContainsKey(name) ? Symbols[name] : null;
         }

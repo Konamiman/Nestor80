@@ -10,6 +10,8 @@ namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor
     {
+        const int MAX_LINE_LENGTH = 1034;
+
         private AssemblyConfiguration configuration;
 
         private static AssemblyState state;
@@ -88,15 +90,25 @@ namespace Konamiman.Nestor80.Assembler
 
             state.WrapUp();
 
+            var symbols =
+                state.GetSymbols().Select(s => new Symbol() {
+                    Name = s.Name,
+                    Type = s.Type,
+                    Value = s.Value?.Value ?? 0,
+                    ValueArea = s.Value?.Type ?? AddressType.ASEG,
+                    CommonName = s.Value?.CommonBlockName
+                }).ToArray();
+
             return new AssemblyResult() {
                 ProgramName = state.ProgramName,
                 ProgramAreaSize = state.GetAreaSize(AddressType.CSEG),
                 DataAreaSize = state.GetAreaSize(AddressType.DSEG),
                 CommonAreaSizes = new(), //TODO: Handle commons
                 ProcessedLines = state.ProcessedLines.ToArray(),
-                Symbols = state.GetSymbols(),
+                Symbols = symbols,
                 Errors = state.GetErrors(),
-                EndAddress = state.EndAddress ?? Address.AbsoluteZero,
+                EndAddressArea = state.EndAddress is null ? AddressType.ASEG : state.EndAddress.Type,
+                EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
             };
         }
 
@@ -114,8 +126,8 @@ namespace Konamiman.Nestor80.Assembler
             while(!state.EndReached) {
                 var sourceLine = sourceStream.ReadLine();
                 if(sourceLine == null) break;
-                if(configuration.MaxLineLength is not null && (lineLength = sourceLine.Length) > configuration.MaxLineLength) {
-                    sourceLine = sourceLine[..configuration.MaxLineLength.Value];
+                if((lineLength = sourceLine.Length) > MAX_LINE_LENGTH) {
+                    sourceLine = sourceLine[..MAX_LINE_LENGTH];
                     state.AddError(
                         AssemblyErrorCode.SourceLineTooLong,
                         $"Line is too long ({lineLength} bytes), actual line processed: {sourceLine.Trim()}"
@@ -205,8 +217,6 @@ namespace Konamiman.Nestor80.Assembler
                 symbol = walker.ExtractSymbol();
             }
 
-            string symbol2;
-
             // Constant definition check must go before any other opcode check,
             // since pseudo-ops and cpu instructions are valid constant names too
             // (but only if no label is defined in the line)
@@ -217,7 +227,7 @@ namespace Konamiman.Nestor80.Assembler
             // FOO: TITLE EQU 1 ---> sets the program title as "EQU 1"
             if(label is null && !walker.AtEndOfLine) {
                 walker.BackupPointer();
-                symbol2 = walker.ExtractSymbol();
+                var symbol2 = walker.ExtractSymbol();
                 if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
                     opcode = symbol2;
                     processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
@@ -261,10 +271,10 @@ namespace Konamiman.Nestor80.Assembler
             state.ProcessedLines.Add(processedLine);
         }
 
-        internal static Symbol GetSymbolForExpression(string name, bool isExternal)
+        internal static SymbolInfo GetSymbolForExpression(string name, bool isExternal)
         {
             if(name == "$")
-                return new Symbol() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
+                return new SymbolInfo() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
 
             var symbol = state.GetSymbol(name);
             if(symbol is null) {

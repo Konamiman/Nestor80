@@ -2,6 +2,8 @@
 {
     public interface IChangesLocationCounter
     {
-        Address NewLocationCounter { get; set; }
+        AddressType NewLocationArea { get; set; }
+
+        ushort NewLocationCounter { get; set; }
     }
 }

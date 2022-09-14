@@ -16,6 +16,8 @@
 
         public Symbol[] Symbols { get; init; }
 
-        public Address EndAddress { get; init; }
+        public AddressType EndAddressArea { get; init; }
+
+        public ushort EndAddress { get; init; }
     }
 }

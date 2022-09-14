@@ -19,6 +19,14 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+
+db 1
+FOO:
+BAR equ 2
+extrn FIZZ
+end
+
+.comment \
 title defl 1
 title Hola ke ase
 foo: title defl title+1
@@ -56,7 +64,7 @@ end
   .printx //
 end
 
-
+\
 title
 title ;
 title Foo, bar; fizz, buzz
@@ -251,7 +259,6 @@ DSEG3:
             var config = new AssemblyConfiguration() {
                 DefaultProgramName = "SOURCE",
                 Print = (s) => Debug.WriteLine(s),
-                MaxLineLength = 2000,
                 OutputStringEncoding = "ascii",
                 AllowEscapesInStrings = true,
             };
