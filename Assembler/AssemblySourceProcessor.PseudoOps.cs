@@ -41,6 +41,7 @@ namespace Konamiman.Nestor80.Assembler
             { ".PRINTX", ProcessPrintxLine },
             { "DEFZ", DefineZeroTerminatedStringLine },
             { "DZ", DefineZeroTerminatedStringLine },
+            { ".REQUEST", RequestLinkFilesLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -655,6 +656,31 @@ namespace Konamiman.Nestor80.Assembler
             line.NewLocationCounter = state.CurrentLocationPointer;
 
             return line;
+        }
+
+        static ProcessedSourceLine RequestLinkFilesLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by at least one file name");
+                return new ExternalDeclarationLine();
+            }
+
+            var filenames = new List<string>();
+
+            while(!walker.AtEndOfLine) {
+                var filename = walker.ExtractExpression();
+                if(string.IsNullOrWhiteSpace(filename)) {
+                    state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the file name can't be empty");
+                }
+                else if(!externalSymbolRegex.IsMatch(filename)) {
+                    state.AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: {filename} is not a valid linker request symbol name, it contains invalid characters");
+                }
+                else {
+                    filenames.Add(filename);
+                }
+            }
+
+            return new LinkerFileReadRequestLine() { Filenames = filenames.ToArray() };
         }
     }
 }

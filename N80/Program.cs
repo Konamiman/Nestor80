@@ -1,8 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using System.Diagnostics;
-using System.Reflection;
-using System.Text;
-using Konamiman.Nestor80.Assembler.Expressions;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -19,6 +16,9 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+
+.request foo,bar,,@fizz,á,
+end
 
 dz ""ABC""
 .strenc utf-16
