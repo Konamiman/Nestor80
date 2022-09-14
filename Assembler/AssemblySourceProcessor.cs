@@ -12,8 +12,6 @@ namespace Konamiman.Nestor80.Assembler
     {
         const int MAX_LINE_LENGTH = 1034;
 
-        private AssemblyConfiguration configuration;
-
         private static AssemblyState state;
 
         private Encoding sourceStreamEncoding;

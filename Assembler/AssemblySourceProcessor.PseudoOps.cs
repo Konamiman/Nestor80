@@ -39,9 +39,14 @@ namespace Konamiman.Nestor80.Assembler
             { "PAGE", ProcessSetListingNewPageLine },
             { "$EJECT", ProcessSetListingNewPageLine },
             { ".PRINTX", ProcessPrintxLine },
-            { "DEFZ", DefineZeroTerminatedStringLine },
-            { "DZ", DefineZeroTerminatedStringLine },
-            { ".REQUEST", RequestLinkFilesLine }
+            { "DEFZ", ProcessDefineZeroTerminatedStringLine },
+            { "DZ", ProcessDefineZeroTerminatedStringLine },
+            { ".REQUEST", ProcessRequestLinkFilesLine },
+            { ".LIST", ProcessListingControlLine },
+            { ".XLIST", ProcessListingControlLine },
+            { ".TFCOND", ProcessListingControlLine },
+            { ".SFCOND", ProcessListingControlLine },
+            { ".LFCOND", ProcessListingControlLine },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -622,7 +627,7 @@ namespace Konamiman.Nestor80.Assembler
             return new PrintxLine() { PrintedText = effectiveText, EffectiveLineLength = walker.SourceLine.Length - (text.Length - endDelimiterPosition) + 1 };
         }
 
-        static ProcessedSourceLine DefineZeroTerminatedStringLine(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessDefineZeroTerminatedStringLine(string opcode, SourceLineWalker walker)
         {
             var line = new DefbLine();
             byte[] outputBytes = null;
@@ -658,7 +663,7 @@ namespace Konamiman.Nestor80.Assembler
             return line;
         }
 
-        static ProcessedSourceLine RequestLinkFilesLine(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessRequestLinkFilesLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
                 state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by at least one file name");
@@ -681,6 +686,12 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return new LinkerFileReadRequestLine() { Filenames = filenames.ToArray() };
+        }
+
+        static ProcessedSourceLine ProcessListingControlLine(string opcode, SourceLineWalker walker)
+        {
+            var type = (ListingControlType)Enum.Parse(typeof(ListingControlType), opcode[1..], ignoreCase: true);
+            return new ListingControlLine() { Type = type };
         }
     }
 }

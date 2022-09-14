@@ -17,6 +17,13 @@ namespace Konamiman.Nestor80.N80
             var code =
 @"
 
+.LIST
+.XLIST
+.TFCOND
+.SFCOND
+.LFCOND
+end
+
 .request foo,bar,,@fizz,á,
 end
 
