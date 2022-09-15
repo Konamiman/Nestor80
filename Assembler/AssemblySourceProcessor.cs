@@ -23,7 +23,8 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
             "AF", "HL", "BC", "DE", "IX", "IY",
-            "SP", "IXH", "IXL", "IYH", "IYL"
+            "SP", "IXH", "IXL", "IYH", "IYL",
+            "NC", "Z", "NZ", "P", "PE", "PO"
         };
 
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);

@@ -1,6 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler.Expressions;
-
-namespace Konamiman.Nestor80.Assembler.Output
+﻿namespace Konamiman.Nestor80.Assembler.Output
 {
     public class DefbLine : ProcessedSourceLine, IProducesOutput, IChangesLocationCounter
     {

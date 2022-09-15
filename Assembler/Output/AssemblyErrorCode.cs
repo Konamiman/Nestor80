@@ -11,6 +11,7 @@
         StringHasBytesWithHighBitSet,
         InvalidListingPageSize,
         SymbolWithCpuRegisterName,
+        ConfusingOffset,
 
         FirstError = 64,
         InvalidExpression,

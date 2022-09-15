@@ -37,5 +37,9 @@
         public int? SecondValuePosition { get; set; }
 
         public int? SecondValueSize { get; set; }
+
+        public int? FirstArgumentFixedValue { get; set; }
+
+        public override string ToString() => $"{Instruction} {FirstArgument}, {SecondArgument}";
     }
 }
