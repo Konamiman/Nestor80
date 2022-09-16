@@ -11,6 +11,30 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Regex memPointedByRegisterRegex = new(@"^\(\s*(?<reg>[A-Z]+)\s*\)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex registerRegex = new(@"^[A-Z]{1,3}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        /**
+         * NOTE! Code like this:
+         * 
+         * jp (hl)
+         * hl equ 1
+         * jp (hl)
+         * 
+         * needs to end up assembling as this:
+         * 
+         * jp 1
+         * jp 1
+         * 
+         * In pass 1 this will generate the equivalent of:
+         * 
+         * jp (hl)
+         * jp 1
+         * 
+         * In pass 2 the instructions that reference REG or (REG) needs to be revisited:
+         * if REG ends up having been defined as a symbol, then the generated instruction needs to be revisited.
+         * This means generating a new instruction or maybe an error, like in the following example:
+         * 
+         * jp nz,0
+         * nz equ 1
+         */ 
         private static ProcessedSourceLine ProcessCpuInstruction(string opcode, SourceLineWalker walker)
         {
             //Important: we assume that all the CPU instructions either:
@@ -20,9 +44,9 @@ namespace Konamiman.Nestor80.Assembler
             string firstArgument = null, secondArgument = null;
             if(!walker.AtEndOfLine) {
                 firstArgument = walker.ExtractExpression();
-                if(!walker.AtEndOfLine) {
-                    secondArgument = walker.ExtractExpression();
-                }
+                //if(!walker.AtEndOfLine) {
+                    //    secondArgument = walker.ExtractExpression();
+                //}
             }
 
             var instructionsForOpcode = CurrentCpuInstructions[opcode];
@@ -69,9 +93,15 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             CpuInstruction matchingInstruction;
-            var matchingInstructions = FindMatchingInstructions(candidateInstructions, firstArgument, secondArgument);
+            var allowedRegisters = 
+                candidateInstructions
+                .Where(ci => char.IsUpper(ci.FirstArgument[0]) || ci.FirstArgument[0] == '(' && char.IsUpper(ci.FirstArgument[1]))
+                .Select(ci => ci.FirstArgument)
+                .Distinct()
+                .ToArray();
+            var matchingInstructions = FindMatchingInstructions(candidateInstructions, firstArgument, secondArgument, allowedRegisters);
             if(matchingInstructions.Length == 0) {
-                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid arguments for the Z80 instruction {opcode.ToUpper()}");
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for the Z80 instruction {opcode.ToUpper()}");
                 return GenerateInstructionLine(null);
             }
             else if(matchingInstructions.Length == 1) {
@@ -114,6 +144,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(matchingInstructions.Length > 1) {
+                //Can happen if the first argument pattern is of type "f"
                 if(firstArgumentValue is null) {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {opcode.ToUpper()}: expression for first argument references unknown symbols");
                     return GenerateInstructionLine(null);
@@ -161,12 +192,14 @@ namespace Konamiman.Nestor80.Assembler
                 var byteValue = firstArgumentValue.ValueAsByte;
 
                 if(indexOffsetSign == "+" && byteValue > 127) {
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Ofsset +{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as -{256 - byteValue}");
+                    var regName = firstArgument.Substring(1, 2).ToUpper();
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Ofsset {regName}+{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}-{256 - byteValue}");
                 }
 
                 if(indexOffsetSign == "-") {
                     if(byteValue > 127) {
-                        AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Ofsset -{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as +{256 - byteValue}");
+                        var regName = firstArgument.Substring(1, 2).ToUpper();
+                        AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Ofsset {regName}-{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}+{256 - byteValue}");
                     }
                     byteValue = (byte)(256 - byteValue);
                 }
@@ -178,23 +211,35 @@ namespace Konamiman.Nestor80.Assembler
             bytes[matchingInstruction.ValuePosition] = firstArgumentValue.ValueAsByte;
             bytes[matchingInstruction.ValuePosition+1] = ((byte)((firstArgumentValue.Value & 0xFF00) >> 8));
 
+            return GenerateInstructionLine(matchingInstruction, bytes);
+
             throw new NotImplementedException("I still can't handle that CPU instruction");
         }
 
-        private static CpuInstruction[] FindMatchingInstructions(CpuInstruction[] candidateInstructions, string firstArgument, string secondArgument)
+        private static CpuInstruction[] FindMatchingInstructions(CpuInstruction[] candidateInstructions, string firstArgument, string secondArgument, string[] allowedRegisters)
         {
             //Assumption: all the candidate instructions have one argument of type "d" (offset from current location), or none has.
             var isLocationOffset = candidateInstructions[0].FirstArgument == "d" || candidateInstructions[0].SecondArgument == "d";
-            var firstArgumentPattern = GetCpuInstructionArgumentPattern(firstArgument, isLocationOffset);
+            var firstArgumentPattern = GetCpuInstructionArgumentPattern(firstArgument, allowedRegisters);
             if(firstArgumentPattern == "n") {
-                candidateInstructions = candidateInstructions.Where(ci => ci.FirstArgument is "n" or "nn" or "f" or "d").ToArray();
+                candidateInstructions = candidateInstructions.Where(ci => ci.FirstArgument is "n" or "f" or "d").ToArray();
+            }
+            else if(firstArgumentPattern == "(n)") {
+                //This is needed so that e.g. "JP (n)" will be correctly interpreted as "JP n"
+                var candidateInstructions2 = candidateInstructions.Where(ci => ci.FirstArgument == "(n)").ToArray();
+                if(candidateInstructions2.Length == 0) {
+                    candidateInstructions = candidateInstructions.Where(ci => ci.FirstArgument == "n").ToArray();
+                }
+                else {
+                    candidateInstructions = candidateInstructions2;
+                }
             }
             else {
                 candidateInstructions = candidateInstructions.Where(ci => string.Equals(firstArgumentPattern, ci.FirstArgument, StringComparison.OrdinalIgnoreCase)).ToArray();
             }
 
             if(candidateInstructions.Length == 0) {
-                return null;
+                return Array.Empty<CpuInstruction>();
             }
 
             if(secondArgument is null) {
@@ -207,32 +252,33 @@ namespace Konamiman.Nestor80.Assembler
             throw new NotImplementedException("I can't process this instruction yet");
         }
 
-        private static string GetCpuInstructionArgumentPattern(string argument, bool isLocationOffset)
+        private static string GetCpuInstructionArgumentPattern(string argument, string[] allowedSymbols)
         {
+            string reg;
             if(state.HasSymbol(argument)) {
                 return "n";
-            }
-            if(registerRegex.IsMatch(argument)) {
-                if(isLocationOffset) {
-                    state.AddSymbol(argument, SymbolType.Unknown);
-                    return "n";
-                }
-                return argument;
-            }
-            if(ixPlusArgumentRegex.IsMatch(argument)) {
-                return "(IX+s)";
-            }
-            if(iyPlusArgumentRegex.IsMatch(argument)) {
-                return "(IY+s)";
             }
 
             var match = memPointedByRegisterRegex.Match(argument);
             if(match.Success) {
                 var register = match.Groups[1].Value;
                 if(state.HasSymbol(register)) {
-                    return "(nn)";
+                    return "(n)";
                 }
-                return $"({register})";
+                if((reg = allowedSymbols.SingleOrDefault(s => s.Equals($"({register})", StringComparison.OrdinalIgnoreCase))) is not null) {
+                    return $"({register})";
+                }
+                return "(n)";
+            }
+
+            if((reg = allowedSymbols.SingleOrDefault(s => s.Equals(argument, StringComparison.OrdinalIgnoreCase))) is not null) {
+                return reg;
+            }
+            if(ixPlusArgumentRegex.IsMatch(argument)) {
+                return "(IX+s)";
+            }
+            if(iyPlusArgumentRegex.IsMatch(argument)) {
+                return "(IY+s)";
             }
 
             if(argument[0] == '(') {

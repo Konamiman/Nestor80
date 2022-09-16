@@ -17,5 +17,7 @@
         public string SecondArgumentTemplate { get; set; }
 
         public bool IsInvalid { get; set; }
+
+        public override string ToString() => $"{base.ToString()} {FirstArgumentTemplate}, {SecondArgumentTemplate}";
     }
 }

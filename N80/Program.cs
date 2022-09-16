@@ -16,6 +16,21 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+inc (ix+255)
+end
+
+jp FOO
+FOO:
+jp FOO
+end
+
+jp (hl)
+;inc hl
+hl equ 1
+jp (hl)
+
+ret
+
 aseg
 ;ds 16
 ;jr 0
