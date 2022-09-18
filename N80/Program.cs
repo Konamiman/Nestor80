@@ -16,6 +16,16 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+bit 7,a
+end
+
+ld a,(34)
+end
+
+jr c,34
+end
+
+
 inc (ix+255)
 end
 

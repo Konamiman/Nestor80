@@ -213,6 +213,7 @@ namespace Konamiman.Nestor80.Assembler
             if(result is not Address) {
                 throw new Exception($"Unexpected expression parse result: the resulting item should be an {nameof(Address)}, but is an {result.GetType().Name} ({result}).");
             }
+
             return (Address)result;
         }
 
