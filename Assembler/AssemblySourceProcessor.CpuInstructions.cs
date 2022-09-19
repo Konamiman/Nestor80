@@ -1,6 +1,4 @@
 ﻿using Konamiman.Nestor80.Assembler.Output;
-using System.Reflection.Emit;
-using System.Reflection.Metadata;
 using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
@@ -13,38 +11,11 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Regex memPointedByRegisterRegex = new(@"^\(\s*(?<reg>[A-Z]+)\s*\)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex registerRegex = new(@"^[A-Z]{1,3}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        /**
-         * NOTE! Code like this:
-         * 
-         * jp (hl)
-         * hl equ 1
-         * jp (hl)
-         * 
-         * needs to end up assembling as this:
-         * 
-         * jp 1
-         * jp 1
-         * 
-         * In pass 1 this will generate the equivalent of:
-         * 
-         * jp (hl)
-         * jp 1
-         * 
-         * In pass 2 the instructions that reference REG or (REG) needs to be revisited:
-         * if REG ends up having been defined as a symbol, then the generated instruction needs to be revisited.
-         * This means generating a new instruction or maybe an error, like in the following example:
-         * 
-         * jp nz,0
-         * nz equ 1
-         */ 
         private static ProcessedSourceLine ProcessCpuInstruction(string opcode, SourceLineWalker walker)
         {
             string firstArgument = null, secondArgument = null;
             if(!walker.AtEndOfLine) {
                 firstArgument = walker.ExtractExpression();
-                //if(!walker.AtEndOfLine) {
-                    //    secondArgument = walker.ExtractExpression();
-                //}
             }
 
             var instructionsForOpcode = CurrentCpuInstructions[opcode];
@@ -52,6 +23,7 @@ namespace Konamiman.Nestor80.Assembler
             //Assumption: all the CPU instructions either:
             //1. Have one single variant that accepts no arguments; or
             //2. All of its existing variants require at least one argument.
+
             if(firstArgument is null) {
                 var instruction = instructionsForOpcode.SingleOrDefault( i => i.FirstArgument is null );
                 if(instruction is not null) {
@@ -62,7 +34,7 @@ namespace Konamiman.Nestor80.Assembler
                 return GenerateInstructionLine(null);
             }
 
-            // From here we know we received at least one argument
+            // From here we know that we received at least one argument
 
             if(instructionsForOpcode[0].FirstArgument is null) {
                 //e.g. "NOP foo", handle anyway and generate a warning
@@ -93,21 +65,36 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            //Further narrow the candidate instructions depending on the shape of the arguments received:
-            //we should get to either one single instruction, or multiple ones if the first argument
-            //of all of them is of type "f" (fixed value)
+            //Select the matching instruction from the candidates based on the pattern of the argument(s).
+            //
+            //Arguments can conform to one of these patterns:
+            //
+            //fixed: a fixed register or flag specification, e.g. A, (HL), NC
+            //evaluable: an expression that eventually needs to be evaluable, this includes (IX+s) and (IY+s)
+            //specific: a special case of "evaluable", where the argument has a specific value
+            //          (e.g. IM has only three valid variants: "IM 0", "IM 1", "IM 2").
+            //          Assumption: a specific argument is always the first one
+            //          Assumption: all the candidate instructions have the first argument as specific, or none has
+            //
+            //For instructions with the first argument being of type "specific", more than one matching
+            //instruction can actually be selected.
 
             CpuInstruction matchingInstruction = null;
+            bool firstArgumentIsSpecificValue = true;   //e.g. IM n
 
             var allowedRegisters1 = 
                 candidateInstructions
                 .Where(ci => IsRegisterReferencingPattern(ci.FirstArgument))
                 .Select(ci => ci.FirstArgument).Distinct().ToArray();
+            var firstArgumentPattern = GetCpuInstructionArgumentPattern(firstArgument, allowedRegisters1);
+            
             var allowedRegisters2 =
                 candidateInstructions
                 .Where(ci => ci.SecondArgument is not null && IsRegisterReferencingPattern(ci.SecondArgument))
                 .Select(ci => ci.SecondArgument).Distinct().ToArray();
-            var matchingInstructions = FindMatchingInstructions(candidateInstructions, firstArgument, secondArgument, allowedRegisters1, allowedRegisters2);
+            var secondArgumentPattern = GetCpuInstructionArgumentPattern(secondArgument, allowedRegisters2);
+            
+            var matchingInstructions = FindMatchingInstructions(candidateInstructions, firstArgument, firstArgumentPattern, secondArgument, secondArgumentPattern, allowedRegisters1, allowedRegisters2);
             if(matchingInstructions.Length == 0) {
                 AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for the Z80 instruction {opcode.ToUpper()}");
                 return GenerateInstructionLine(null);
@@ -116,85 +103,80 @@ namespace Konamiman.Nestor80.Assembler
                 matchingInstruction = matchingInstructions[0];
                 if(IsFixedPattern(matchingInstruction.FirstArgument) && 
                    (matchingInstruction.SecondArgument is null || IsFixedPattern(matchingInstruction.SecondArgument))) { 
-                    //e.g. INC A; LD A,(HL)
+                    //e.g. "INC A" or "LD A,(HL)" - nothing to evaluate so directly use the instruction as is
                     return GenerateInstructionLine(matchingInstruction);
                 }
+                firstArgumentIsSpecificValue = false;
             }
             else if(matchingInstructions.Any(i => i.FirstArgument != "f")) {
                 var instructionsList = string.Join("; ", candidateInstructions.Select(i => i.ToString()).ToArray());
                 throw new Exception($"Somethign went wrong: {matchingInstructions.Length} candidate Z80 instructions found: {instructionsList}");
             }
 
-            //Here we have one or two arguments, and at least one needs evaluation;
-            //so try evaluating them before further proceeding
+            //Here we have one or two arguments, and at least one is either specific or evaluable;
+            //so try evaluating them before further proceeding.
+            //
+            //Possible instruction patterns at this point:
+            //
+            //opcode evaluable
+            //opcode fixed, evaluable
+            //opcode specific, fixed
+            //opcode specific, evaluable
+            //opcode evaluable, evaluable - only for LD (IXY+-n),n
 
             string indexOffsetSign = null;
-            string firstArgumentExpressionText = null;
             Expression firstArgumentExpression = null;
             Address firstArgumentValue = null;
             var firstArgumentIsFixed = true;
-            string secondArgumentExpressionText = null;
             Expression secondArgumentExpression = null;
             Address secondArgumentValue = null;
             var secondArgumentIsFixed = true;
 
-            if(!IsFixedPattern(firstArgument)) {
+            if(!IsFixedPattern(firstArgumentPattern)) {
                 var match = indexPlusArgumentRegex.Match(firstArgument);
+                string firstArgumentExpressionText = firstArgument;
                 if(match.Success) {
                     indexOffsetSign = match.Groups["sign"].Value;
                     firstArgumentExpressionText = match.Groups["expression"].Value;
                 }
-                else {
-                    firstArgumentExpressionText = firstArgument;
-                }
 
-                firstArgumentExpression = GetExpressionForInstructionArgument(opcode, firstArgument);
+                firstArgumentExpression = GetExpressionForInstructionArgument(opcode, firstArgumentExpressionText);
                 if(firstArgumentExpression is null) {
                     return GenerateInstructionLine(null);
                 }
 
                 firstArgumentValue = firstArgumentExpression.TryEvaluate();
-                if(firstArgumentValue is not null) {
-                    firstArgumentExpression = null;
-                }
 
                 firstArgumentIsFixed = false;
             }
 
-            if(secondArgument is not null && !IsFixedPattern(secondArgument)) {
+            if(secondArgument is not null && !IsFixedPattern(secondArgumentPattern)) {
                 //Assumption: zero or one of the arguments are (IXY+-n), but not both
-                if(indexOffsetSign is null) {
+                string secondArgumentExpressionText = secondArgument;
+                if(indexOffsetSign is null && !matchingInstruction.SecondValuePosition.HasValue) {
                     var match = indexPlusArgumentRegex.Match(secondArgument);
                     if(match.Success) {
                         indexOffsetSign = match.Groups["sign"].Value;
                         secondArgumentExpressionText = match.Groups["expression"].Value;
                     }
-                    else {
-                        secondArgumentExpressionText = secondArgument;
-                    }
                 }
 
-                secondArgumentExpression = GetExpressionForInstructionArgument(opcode, secondArgument);
+                secondArgumentExpression = GetExpressionForInstructionArgument(opcode, secondArgumentExpressionText);
                 if(secondArgumentExpression is null) {
                     return GenerateInstructionLine(null);
                 }
 
                 secondArgumentValue = secondArgumentExpression.TryEvaluate();
-                if(secondArgumentValue is not null) {
-                    secondArgumentExpression = null;
-                }
 
                 secondArgumentIsFixed = false;
             }
 
-            if(matchingInstructions.Length > 1) {
-                //Instructions where the first (or only) argument is of type "f".
-
+            if(firstArgumentIsSpecificValue) {
                 if(firstArgumentValue is null) {
-                    //If the fixed value can't be evaluated at this point,
-                    //we provisionally take the first matching instruction;
-                    //we'll take the real one in pass 2.
-                    matchingInstruction = matchingInstructions.First();
+                    //This is one case where Nestor80 isn't compatible with Macro80
+                    //(in Macro80 the "specific value" arguments can be evaluated in pass 2)
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {opcode.ToUpper()}: all the referenced symbols must be known beforehand");
+                    return GenerateInstructionLine(null);
                 }
                 else {
                     matchingInstruction = matchingInstructions.SingleOrDefault(i => i.FirstArgumentFixedValue == firstArgumentValue.Value);
@@ -203,81 +185,123 @@ namespace Konamiman.Nestor80.Assembler
                         return GenerateInstructionLine(null);
                     }
                 }
+
+                if(secondArgument is null || secondArgumentIsFixed) {
+                    //e.g. "RST n" or "BIT n,A" - nothing to further evaluate so use the instruction as is
+                    return GenerateInstructionLine(matchingInstruction);
+                }
             }
 
-            if(firstArgumentIsFixed && (secondArgument is null || secondArgumentIsFixed)) {
-                return GenerateInstructionLine(matchingInstruction);
+            //If the first argument doesn't need evaluation,
+            //promote the second argument to being de facto the first one;
+            //this will simplify processing going further.
+
+            if(firstArgumentIsSpecificValue || firstArgumentIsFixed) { 
+                firstArgument = secondArgument;
+                firstArgumentValue = secondArgumentValue;
+                firstArgumentExpression = secondArgumentExpression;
+                firstArgumentIsFixed = secondArgumentIsFixed;
+                firstArgumentPattern = secondArgumentPattern;
+                secondArgument = null;
+                secondArgumentExpression = null;
+                secondArgumentValue = null;
             }
 
-            //At this point we have only one matching instruction,
-            //with one or two arguments, and at least one is an expression.
-            //If either can't be evaluated we generate an instruction line
+            //From this point we treat arguments with the "specific" pattern as "fixed",
+            //since we have already selected the matching instruction.
+            //So the possible patterns are now:
+            //
+            //opcode evaluable
+            //opcode fixed, evaluable
+            //opcode evaluable, evaluable - only for LD (IXY+-n),n
+
+            //If at least one argument can't be evaluated we generate an instruction line
             //with the appropriate pending expressions.
 
-            if(firstArgumentValue is null || (!secondArgumentIsFixed && secondArgumentValue is null)) {
+            if(firstArgumentValue is null || (secondArgument is not null && !secondArgumentIsFixed && secondArgumentValue is null)) {
                 return GenerateInstructionLine(
                     matchingInstruction,
                     pendingExpression1: firstArgumentExpression,
                     pendingExpression2: secondArgumentExpression);
             }
 
-            //Here we know that the required expressions have been successfully evaluated.
-            //WIP
+            //Here we know that the required expressions have been successfully evaluated,
+            //we just need to perform the final validations on them and generate the instruction.
 
             byte[] bytes = matchingInstruction.Opcodes.ToArray();
 
             if(matchingInstruction.FirstArgument == "d") {
-                if(firstArgumentValue is null) {
-                    GenerateInstructionLine(matchingInstruction, pendingExpression1: firstArgumentExpression);
-                }
-                else {
-                    return ProcessArgumentForDTypeInstruction(matchingInstruction, bytes, firstArgumentValue) ?
-                        GenerateInstructionLine(matchingInstruction, bytes) :
-                        GenerateInstructionLine(null);
-                }
-            }
-
-            if(matchingInstruction.SecondArgument == "d" && secondArgumentValue is not null) {
-                return ProcessArgumentForDTypeInstruction(matchingInstruction, bytes, secondArgumentValue) ?
+                return ProcessArgumentForDTypeInstruction(matchingInstruction, bytes, firstArgumentValue) ?
                     GenerateInstructionLine(matchingInstruction, bytes) :
                     GenerateInstructionLine(null);
             }
 
-            if(!firstArgumentValue.IsAbsolute) {
-                return GenerateInstructionLine(matchingInstruction, relocatables: new RelocatableOutputPart[] { new RelocatableAddress() { Type = firstArgumentValue.Type, Value = firstArgumentValue.Value } });
+            if(!ProcessEvaluatedInstructionArgument(opcode, bytes, firstArgument, firstArgumentValue, indexOffsetSign, matchingInstruction.ValueSize, matchingInstruction.ValuePosition)) {
+                return GenerateInstructionLine(null);
             }
 
+            if(secondArgument is null || secondArgumentIsFixed) {
+                return GenerateInstructionLine(
+                    matchingInstruction, 
+                    bytes, 
+                    relocatables: new RelocatableOutputPart[] {
+                        RelocatableFromAddress(firstArgumentValue, matchingInstruction.ValuePosition, matchingInstruction.ValueSize)
+                    });
+            }
 
-            //At this point the first argument is an absolute and already parsed value
+            if(matchingInstruction.SecondValuePosition is null) {
+                throw new Exception($"Something went wrong parsing {opcode.ToUpper()} instruction: we have an unexpected second argument");
+            }
 
-            bytes = matchingInstruction.Opcodes.ToArray();
-            if(matchingInstruction.ValueSize == 1) {
-                if(!firstArgumentValue.IsValidByte) {
+            if(!firstArgumentIsFixed && !firstArgumentIsSpecificValue) {
+                //To prevent the sign from being mistakenly used
+                //to validate the second argument in LD (IXY+-n),n
+                indexOffsetSign = null;
+            }
+
+            if(!ProcessEvaluatedInstructionArgument(opcode, bytes, secondArgument, secondArgumentValue, indexOffsetSign, matchingInstruction.SecondValueSize.Value, matchingInstruction.SecondValuePosition.Value)) {
+                return GenerateInstructionLine(null);
+            }
+
+            return GenerateInstructionLine(
+                matchingInstruction,
+                bytes, 
+                relocatables: new RelocatableOutputPart[] {
+                    RelocatableFromAddress(firstArgumentValue, matchingInstruction.ValuePosition, matchingInstruction.ValueSize),
+                    RelocatableFromAddress(secondArgumentValue, matchingInstruction.SecondValuePosition.Value, matchingInstruction.SecondValueSize.Value),
+                });
+        }
+
+        private static bool ProcessEvaluatedInstructionArgument(string opcode, byte[] bytes, string argumentText, Address argumentValue, string indexOffsetSign, int valueSize, int valuePosition)
+        {
+            if(valueSize == 1) {
+                if(!argumentValue.IsValidByte) {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {opcode.ToUpper()}: argument value out of range");
+                    return false;
                 }
-                var byteValue = firstArgumentValue.ValueAsByte;
+                var byteValue = argumentValue.ValueAsByte;
 
                 if(indexOffsetSign == "+" && byteValue > 127) {
-                    var regName = firstArgument.Substring(1, 2).ToUpper();
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Ofsset {regName}+{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}-{256 - byteValue}");
+                    var regName = argumentText.Substring(1, 2).ToUpper();
+                    AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}+{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}-{256 - byteValue}");
                 }
 
                 if(indexOffsetSign == "-") {
                     if(byteValue > 127) {
-                        var regName = firstArgument.Substring(1, 2).ToUpper();
-                        AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Ofsset {regName}-{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}+{256 - byteValue}");
+                        var regName = argumentText.Substring(1, 2).ToUpper();
+                        AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}-{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}+{256 - byteValue}");
                     }
                     byteValue = (byte)(256 - byteValue);
                 }
 
-                bytes[matchingInstruction.ValuePosition] = byteValue;
-                return GenerateInstructionLine(matchingInstruction, bytes);
+                bytes[valuePosition] = byteValue;
+            }
+            else {
+                bytes[valuePosition] = argumentValue.ValueAsByte;
+                bytes[valuePosition + 1] = (byte)((argumentValue.Value & 0xFF00) >> 8);
             }
 
-            bytes[matchingInstruction.ValuePosition] = firstArgumentValue.ValueAsByte;
-            bytes[matchingInstruction.ValuePosition+1] = ((byte)((firstArgumentValue.Value & 0xFF00) >> 8));
-
-            return GenerateInstructionLine(matchingInstruction, bytes);
+            return true;
         }
 
         private static bool ProcessArgumentForDTypeInstruction(CpuInstruction instruction, byte[] instructionBytes, Address value)
@@ -309,17 +333,17 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static RelocatableOutputPart[] RelocatablesArrayFor(Address address)
+        private static RelocatableOutputPart RelocatableFromAddress(Address address, int index, int size)
         {
             return address.IsAbsolute ?
                 null :
-                new RelocatableOutputPart[] { new RelocatableAddress() { Type = address.Type, Value = address.Value } };
+                new RelocatableAddress() { Type = address.Type, Value = address.Value, Index = index, IsByte = (size == 1) };
         }
 
         private static bool IsRegisterReferencingPattern(string argumentPattern)
         {
             //R, RR, (RR) or (IXY+-n)
-            return char.IsUpper(argumentPattern[0]) || (argumentPattern[0] == '(' && char.IsUpper(argumentPattern[0]));
+            return char.IsUpper(argumentPattern[0]) || (argumentPattern[0] == '(' && char.IsUpper(argumentPattern[1]));
         }
 
         private static bool IsFixedPattern(string argumentPattern)
@@ -328,9 +352,8 @@ namespace Konamiman.Nestor80.Assembler
             return char.IsUpper(argumentPattern[0]) || (argumentPattern[0] == '(' && char.IsUpper(argumentPattern[1]) && argumentPattern.Length == 4);
         }
 
-        private static CpuInstruction[] FindMatchingInstructions(CpuInstruction[] candidateInstructions, string firstArgument, string secondArgument, string[] allowedRegisters1, string[] allowedRegisters2)
+        private static CpuInstruction[] FindMatchingInstructions(CpuInstruction[] candidateInstructions, string firstArgument, string firstArgumentPattern, string secondArgument, string secondArgumentPattern, string[] allowedRegisters1, string[] allowedRegisters2)
         {
-            var firstArgumentPattern = GetCpuInstructionArgumentPattern(firstArgument, allowedRegisters1);
             if(firstArgumentPattern == "n") {
                 candidateInstructions = candidateInstructions.Where(ci => ci.FirstArgument is "n" or "f" or "d").ToArray();
             }
@@ -361,7 +384,6 @@ namespace Konamiman.Nestor80.Assembler
 
             //Repeat processing for second argument (TODO: try to deduplicate code)
 
-            var secondArgumentPattern = GetCpuInstructionArgumentPattern(secondArgument, allowedRegisters2);
             if(secondArgumentPattern == "n") {
                 candidateInstructions = candidateInstructions.Where(ci => ci.SecondArgument is "n" or "f" or "d").ToArray();
             }
@@ -384,19 +406,23 @@ namespace Konamiman.Nestor80.Assembler
 
         private static string GetCpuInstructionArgumentPattern(string argument, string[] allowedSymbols)
         {
+            if(argument is null)
+                return null;
+
             string reg;
-            if(state.HasSymbol(argument)) {
-                return "n";
-            }
 
             var match = memPointedByRegisterRegex.Match(argument);
             if(match.Success) {
                 var register = match.Groups[1].Value;
-                if(state.HasSymbol(register)) {
-                    return "(n)";
-                }
                 if((reg = allowedSymbols.SingleOrDefault(s => s.Equals($"({register})", StringComparison.OrdinalIgnoreCase))) is not null) {
                     return $"({register})";
+                }
+                //We need to handle the case of (IX) appearing as equivalent to (IX+0) where it's allowed
+                else if(allowedSymbols.Contains("(IX+s)") && register.Equals("IX", StringComparison.OrdinalIgnoreCase)) {
+                    return "(IX+s)";
+                }
+                else if(allowedSymbols.Contains("(IY+s)") && register.Equals("IY", StringComparison.OrdinalIgnoreCase)) {
+                    return "(IY+s)";
                 }
                 return "(n)";
             }
@@ -438,7 +464,7 @@ namespace Konamiman.Nestor80.Assembler
             line.FirstArgumentTemplate = instruction.FirstArgument;
             line.SecondArgumentTemplate = instruction.SecondArgument;
             line.OutputBytes = actualBytes;
-            line.RelocatableParts = relocatables ?? Array.Empty<RelocatableOutputPart>();
+            line.RelocatableParts = relocatables?.Where(r => r is not null).ToArray() ?? Array.Empty<RelocatableOutputPart>();
             
             state.IncreaseLocationPointer(actualBytes.Length);
             line.NewLocationArea = state.CurrentLocationArea;

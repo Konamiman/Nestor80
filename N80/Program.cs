@@ -16,6 +16,45 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+ds 0F0h
+foo:
+db 0
+foo2:
+resete equ 18h
+jp (hl)
+jp 34
+jp foo
+jp bar
+ld a,34
+ld a,foo
+ld a,bar
+rst 18h
+rst resete
+rst bar
+ld a,(ix+34)
+ld a,(ix+foo)
+ld a,(ix+bar)
+ld (ix+34),a
+ld (ix+foo),a
+ld (ix+bar),a
+ld (ix+34),89
+ld (ix+34),foo
+ld (ix+34),bar
+ld (ix+foo),34
+ld (ix+foo),bar
+ld (ix+bar),34
+ld (ix+bar),foo
+ld (ix+bar),fizz
+ld (ix+foo),foo2
+bar:
+fizz::
+end
+
+
+ld (ix+1),bar
+end
+
+
 bit 7,a
 end
 

@@ -40,6 +40,6 @@
 
         public int? FirstArgumentFixedValue { get; set; }
 
-        public override string ToString() => $"{Instruction} {FirstArgument}, {SecondArgument}";
+        public override string ToString() => $"{Instruction} {(FirstArgumentFixedValue.HasValue ? FirstArgumentFixedValue : FirstArgument)}, {SecondArgument}";
     }
 }
