@@ -13,6 +13,7 @@
         SymbolWithCpuRegisterName,
         ConfusingOffset,
         IgnoredForAbsoluteOutput,
+        UnterminatedConditional,
 
         FirstError = 64,
         InvalidExpression,

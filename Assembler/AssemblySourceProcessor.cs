@@ -166,12 +166,16 @@ namespace Konamiman.Nestor80.Assembler
                 state.IncreaseLineNumber();
             }
 
+            if(state.InConditionalBlock) {
+                AddError(AssemblyErrorCode.UnterminatedConditional, "Unterminated conditional block", withLineNumber: false);
+            }
+
             if(!state.EndReached) {
-                AddError(AssemblyErrorCode.NoEndStatement, "No END statement found");
+                AddError(AssemblyErrorCode.NoEndStatement, "No END statement found", withLineNumber: false);
             }
 
             if(state.InsideMultiLineComment) {
-                AddError(AssemblyErrorCode.UnterminatedComment, $"Unterminated .COMMENT block (delimiter: '{state.MultiLineCommandDelimiter}')");
+                AddError(AssemblyErrorCode.UnterminatedComment, $"Unterminated .COMMENT block (delimiter: '{state.MultiLineCommandDelimiter}')", withLineNumber: false);
             }
         }
 
@@ -224,12 +228,17 @@ namespace Konamiman.Nestor80.Assembler
             var symbol = walker.ExtractSymbol();
 
             //Label processing is tricky due to conditionals.
-            //In principle, a label defined in a line that is inside a false conditional block isn't registered as a symbol;
-            //but we need to support the following case, in which the label must be defined:
+            //A label defined in a line that is inside a false conditional block isn't registered as a symbol,
+            //and this includes the ELSE or ENDIF at the end of the block; but a label defined in
+            //an ELSE or ENDIF line at the end of a truthy block must be registered:
             //
-            //IF 0
-            //LABEL: ELSE
-            //ENDIF
+            //if 1
+            //FOO: else   --> label registered
+            //BAR: endif  --> label NOT registered
+            //
+            //if 0
+            //FOO: else   --> label NOT registered
+            //BAR: endif  --> label registered
             //
             //That's why we don't register the label beforehand unless the line contains only the label.
 
@@ -280,7 +289,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(state.InFalseConditional) {
-                if(string.Equals("ELSE", symbol, StringComparison.OrdinalIgnoreCase) || string.Equals("ENDIF", symbol, StringComparison.OrdinalIgnoreCase)) {
+                if(string.Equals("IF", symbol, StringComparison.OrdinalIgnoreCase) || string.Equals("ELSE", symbol, StringComparison.OrdinalIgnoreCase) || string.Equals("ENDIF", symbol, StringComparison.OrdinalIgnoreCase)) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
@@ -297,11 +306,11 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            if(label is not null) {
-                ProcessLabelDefinition(label);
-            }
+            if(processedLine is null) {
+                if(label is not null) {
+                    ProcessLabelDefinition(label);
+                }
 
-            if(processedLine is null) { 
                 if(PseudoOpProcessors.ContainsKey(symbol)) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];

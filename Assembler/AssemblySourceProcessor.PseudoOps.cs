@@ -62,6 +62,10 @@ namespace Konamiman.Nestor80.Assembler
             { "IF2", ProcessIf2Line },
             { "ELSE", ProcessElseLine },
             { "ENDIF", ProcessEndifLine },
+            { "IFB", ProcessIfBlankLine },
+            { "IFNB", ProcessIfNotBlankLine },
+            { "IFIDN", ProcessIfIdenticalLine },
+            { "IFDIF", ProcessIfDifferentLine },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -865,7 +869,7 @@ namespace Konamiman.Nestor80.Assembler
             => ProcessIfExpressionLine(opcode, walker, true);
 
         static ProcessedSourceLine ProcessIfFalseLine(string opcode, SourceLineWalker walker) 
-            => ProcessIfExpressionLine(opcode, walker, true);
+            => ProcessIfExpressionLine(opcode, walker, false);
 
         static ProcessedSourceLine ProcessIfExpressionLine(string opcode, SourceLineWalker walker, bool mustEvaluateToTrue)
         {
@@ -940,6 +944,80 @@ namespace Konamiman.Nestor80.Assembler
             static bool? evaluator()
             {
                 return state.InPass2;
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfBlankLine(string opcode, SourceLineWalker walker)
+        {
+            bool? evaluator()
+            {
+                var text = walker.ExtractAngleBracketed();
+                if(text is null) {
+                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
+                    return null;
+                }
+
+                return text == "";
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfNotBlankLine(string opcode, SourceLineWalker walker)
+        {
+            bool? evaluator()
+            {
+                var text = walker.ExtractAngleBracketed();
+                if(text is null) {
+                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
+                    return null;
+                }
+
+                return text != "";
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfIdenticalLine(string opcode, SourceLineWalker walker)
+        {
+            bool? evaluator()
+            {
+                string text1 = null, text2 = null;
+                text1 = walker.ExtractAngleBracketed();
+                if(text1 is not null && walker.SkipComma()) {
+                    text2 = walker.ExtractAngleBracketed();
+                }
+
+                if(text1 is null || text2 is null) {
+                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
+                    return null;
+                }
+
+                return text1 == text2;
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfDifferentLine(string opcode, SourceLineWalker walker)
+        {
+            bool? evaluator()
+            {
+                string text1 = null, text2 = null;
+                text1 = walker.ExtractAngleBracketed();
+                if(text1 is not null && walker.SkipComma()) {
+                    text2 = walker.ExtractAngleBracketed();
+                }
+
+                if(text1 is null || text2 is null) {
+                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
+                    return null;
+                }
+
+                return text1 != text2;
             }
 
             return ProcessIfLine(opcode, evaluator);

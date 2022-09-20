@@ -130,5 +130,28 @@ namespace Konamiman.Nestor80.AssemblerTests
             var sut = new SourceLineWalker(line);
             Assert.AreEqual(expectedString, sut.ExtractExpression());
         }
+
+        [Test]
+        [TestCase("", null)]
+        [TestCase("foo", null)]
+        [TestCase("<foo", null)]
+        [TestCase("<>", "")]
+        [TestCase("< >", " ")]
+        [TestCase("<,>", ",")]
+        public void TestExtractAngleBracketed(string line, string expectedString)
+        {
+            var sut = new SourceLineWalker(line);
+            Assert.AreEqual(expectedString, sut.ExtractAngleBracketed());
+        }
+
+        [Test]
+        public void TestExtractMultipleAngleBracketed()
+        {
+            var sut = new SourceLineWalker("<abc>, <def> ;Foo");
+            Assert.AreEqual("abc", sut.ExtractAngleBracketed());
+            Assert.IsTrue(sut.SkipComma());
+            Assert.AreEqual("def", sut.ExtractAngleBracketed());
+            Assert.True(sut.AtEndOfLine);
+        }
     }
 }

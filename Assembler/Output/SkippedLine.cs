@@ -2,6 +2,6 @@
 {
     public class SkippedLine : ProcessedSourceLine
     {
-        public override string ToString() => "Skipped: " + Line;
+        public override string ToString() => "Skipped, " + Line;
     }
 }

@@ -165,6 +165,47 @@
             return expression;
         }
 
+        public string ExtractAngleBracketed()
+        {
+            if(AtEndOfLine) {
+                return null;
+            }
+
+            var currentChar = sourceLine[linePointer];
+            if(currentChar != '<') {
+                return null;
+            }
+
+            var originalPointer = ++linePointer;
+            while(!AtEndOfLine) {
+                currentChar = sourceLine[linePointer];
+                if(currentChar == '>') {
+                    var text = sourceLine[originalPointer..linePointer];
+                    linePointer++;
+                    SkipBlanks();
+                    return text;
+                }
+                linePointer++;
+            }
+
+            return null;
+        }
+
+        public bool SkipComma()
+        {
+            if(AtEndOfLine) {
+                return false;
+            }
+
+            if(sourceLine[linePointer] == ',') {
+                linePointer++;
+                SkipBlanks();
+                return true;
+            }
+
+            return false;
+        }
+
         public void SkipBlanks()
         {
             while(PointingToSpace()) {

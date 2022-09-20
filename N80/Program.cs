@@ -16,12 +16,103 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
-if1
+ifdif <a>,<A>
+db 0
+endif
+
+ifdif <a>,<a>
+db 0
+endif
+end
+
+ifidn <a>,<a>
+db 0
+endif
+
+ifidn <a>,<>
+db 1
+endif
+
+ifidn <a>,<A>
+db 1
+endif
+
+ifidn <a>
+endif
+
+ifidn <a>,
+endif
+
+ifidn <a>,<a
+endif
+
+end
+
+ifb <>
+db 0
+endif
+
+ifb < >
+db 1
+endif
+
+ifnb <>
+db 2
+endif
+
+ifnb < >
+db 2
+endif
+
+ifb
+endif
+
+ifb <
+endif
+
+end
+
+iff 0
+db 34
+endif
+foo equ 1
+bar:
+extrn fizz
+ifdef foo
+db 0
+endif
+ifdef bar
+db 1
+endif
+ifdef fizz
+db 2
+endif
+ifndef NOPE
+db 3
+endif
+end
+
+db 0
+  if 0
+    db 1
+    if 1
+      db 2
+    else
+      db 3
+    endif
+    db 4
+  else
+    db 5
+  endif
+db 6
+end
+
+if 1
 db 1
 bar:
 foo: else
 fizz: db 2
-endif
+buzz: endif
 end
 
 CSEG
@@ -419,7 +510,6 @@ DSEG3:
                 Print = (s) => Debug.WriteLine(s),
                 OutputStringEncoding = "ascii",
                 AllowEscapesInStrings = true,
-                BuildType = BuildType.Absolute
             };
 
             AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage;
