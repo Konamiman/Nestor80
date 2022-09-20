@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Konamiman.Nestor80.Assembler.Output;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
@@ -17,6 +18,8 @@ namespace Konamiman.Nestor80.Assembler
         private Encoding sourceStreamEncoding;
 
         private Stream sourceStream;
+
+        private static BuildType buildType;
 
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
@@ -43,6 +46,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public static event EventHandler<AssemblyError> AssemblyErrorGenerated;
         public static event EventHandler<string> PrintMessage;
+        public static event EventHandler<(int, BuildType)> BuildTypeAutomaticallySelected;
 
         private AssemblySourceProcessor()
         {
@@ -84,6 +88,8 @@ namespace Konamiman.Nestor80.Assembler
                 };
 
                 SetCurrentCpu(configuration.CpuName);
+                buildType = configuration.BuildType;
+                state.SwitchToArea(buildType == BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
 
                 var validInitialStringEncoding = SetStringEncoding(configuration.OutputStringEncoding, initial: true);
                 if(!validInitialStringEncoding)
@@ -295,6 +301,23 @@ namespace Konamiman.Nestor80.Assembler
             processedLine.Label = label;
             processedLine.FormFeedsCount = formFeedCharsCount;
             state.ProcessedLines.Add(processedLine);
+
+            if(buildType == BuildType.Automatic) {
+                //Build type is also automatically selected when a constant/label
+                //is defined/referenced as public or external
+                if(processedLine is ExternalDeclarationLine or PublicDeclarationLine) {
+                    SetBuildType(BuildType.Relocatable);
+                }
+                else if(processedLine is ChangeAreaLine cal && cal.NewLocationArea != AddressType.ASEG) {
+                    SetBuildType(BuildType.Relocatable);
+                }
+                else if(processedLine is ChangeOriginLine) {
+                    SetBuildType(BuildType.Absolute);
+                }
+                else if(processedLine is IProducesOutput or DefineSpaceLine) {
+                    SetBuildType(BuildType.Relocatable);
+                }
+            }
         }
 
         internal static SymbolInfo GetSymbolForExpression(string name, bool isExternal)
@@ -306,6 +329,15 @@ namespace Konamiman.Nestor80.Assembler
             if(symbol is null) {
                 state.AddSymbol(name, isExternal ? SymbolType.External : SymbolType.Unknown);
                 symbol = state.GetSymbol(name);
+
+                if(isExternal) {
+                    if(buildType == BuildType.Automatic) {
+                        SetBuildType(BuildType.Relocatable);
+                    }
+                    else if(buildType == BuildType.Absolute) {
+                        state.AddError(AssemblyErrorCode.InvalidForAbsoluteOutput, $"Expression references symbol {name.ToUpper()} as external, but that's not allowed when the output type is absolute");
+                    }
+                }
             }
 
             return symbol;
@@ -329,6 +361,16 @@ namespace Konamiman.Nestor80.Assembler
                     AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{labelValue.ToUpper()} is a {currentCpu} register name, defining it as a label will prevent using it as a register in {currentCpu} instructions");
                 }
                 state.AddSymbol(labelValue, SymbolType.Label, state.GetCurrentLocation(), isPublic: isPublic);
+
+                if(isPublic) {
+                    if(buildType == BuildType.Automatic) {
+                        SetBuildType(BuildType.Relocatable);
+                    }
+                    else if(buildType == BuildType.Absolute) {
+                        state.AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Label {labelValue.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
+                    }
+                }
+
             }
             else if(symbol.IsExternal) {
                 AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already as external: {labelValue}");
@@ -350,6 +392,14 @@ namespace Konamiman.Nestor80.Assembler
                 //and thus was of type "Unknown"
                 symbol.Type = SymbolType.Label;
             };
+        }
+
+        private static void SetBuildType(BuildType type)
+        {
+            buildType = type;
+            if(BuildTypeAutomaticallySelected is not null) {
+                BuildTypeAutomaticallySelected(null, (state.CurrentLineNumber, buildType));
+            }
         }
 
         private static bool SetStringEncoding(string encodingNameOrCodepage, bool initial = false)

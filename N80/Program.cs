@@ -16,6 +16,35 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+CSEG
+end
+
+;public FOO
+;end
+
+;extrn FOO
+;end
+
+;ld a,(FOO##)
+;end
+
+FOO::
+end
+
+ds 1
+end
+
+db 0
+end
+
+dseg
+foo:
+end
+
+org 100h
+foo:
+end
+
 .cpu r800
 mulub
 .z80
@@ -382,13 +411,20 @@ DSEG3:
                 Print = (s) => Debug.WriteLine(s),
                 OutputStringEncoding = "ascii",
                 AllowEscapesInStrings = true,
+                BuildType = BuildType.Absolute
             };
 
             AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage;
             AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated;
+            AssemblySourceProcessor.BuildTypeAutomaticallySelected += AssemblySourceProcessor_BuildTypeAutomaticallySelected;
 
             var result = AssemblySourceProcessor.Assemble(code, config);
             //var result = AssemblySourceProcessor.Assemble(sourceStream, Encoding.GetEncoding("iso-8859-1"), config);
+        }
+
+        private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected(object? sender, (int, BuildType) e)
+        {
+            Debug.WriteLine($"In line {e.Item1} build type was automatically selected as {e.Item2.ToString().ToUpper()}");
         }
 
         private static void AssemblySourceProcessor_AssemblyErrorGenerated(object? sender, Assembler.Output.AssemblyError e)

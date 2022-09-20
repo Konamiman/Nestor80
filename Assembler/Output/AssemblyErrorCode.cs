@@ -12,6 +12,7 @@
         InvalidListingPageSize,
         SymbolWithCpuRegisterName,
         ConfusingOffset,
+        IgnoredForAbsoluteOutput,
 
         FirstError = 64,
         InvalidExpression,
@@ -21,6 +22,7 @@
         DuplicatedSymbol,
         UnknownStringEncoding,
         InvalidCpuInstruction,
+        InvalidForAbsoluteOutput,
 
         FirstFatal = 128,
         UnexpectedError,

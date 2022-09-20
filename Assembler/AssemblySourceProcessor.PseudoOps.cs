@@ -236,6 +236,10 @@ namespace Konamiman.Nestor80.Assembler
         {
             state.SwitchToArea(area);
 
+            if(buildType == BuildType.Absolute && area != AddressType.ASEG) {
+                state.AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing area to {area} when the output type is absolute has no effect");
+            }
+
             return new ChangeAreaLine() {
                 NewLocationArea = state.CurrentLocationArea,
                 NewLocationCounter = state.CurrentLocationPointer
@@ -284,16 +288,27 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var existingSymbol = state.GetSymbol(symbolName);
+            var success = true;
             if(existingSymbol is null) {
                 state.AddSymbol(symbolName, type: SymbolType.External);
             }
             else if(existingSymbol.IsPublic || (existingSymbol.IsOfKnownType && !existingSymbol.IsExternal)) {
                 AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
+                success = false;
             }
             else {
                 //In case the symbol first appeared as part of an expression
                 //and was therefore of type "Unknown"
                 existingSymbol.Type = SymbolType.External;
+            }
+
+            if(success) {
+                if(buildType == BuildType.Automatic) {
+                    SetBuildType(BuildType.Relocatable);
+                }
+                else if(buildType == BuildType.Absolute) {
+                    state.AddError(AssemblyErrorCode.InvalidForAbsoluteOutput, $"Symbol {symbolName.ToUpper()} is declared as external, but that's not allowed when the output type is absolute");
+                }
             }
 
             return new ExternalDeclarationLine() { SymbolName = symbolName };
@@ -313,14 +328,25 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var existingSymbol = state.GetSymbol(symbolName);
+            var success = true;
             if(existingSymbol is null) {
                 state.AddSymbol(symbolName, SymbolType.Unknown, isPublic: true);
             }
             else if(existingSymbol.IsExternal) {
                 AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined as an external symbol, can't be defined as public");
+                success = false;
             }
             else {
                 existingSymbol.IsPublic = true;
+            }
+
+            if(success) {
+                if(buildType == BuildType.Automatic) {
+                    SetBuildType(BuildType.Relocatable);
+                }
+                else if(buildType == BuildType.Absolute) {
+                    state.AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Symbol {symbolName.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
+                }
             }
 
             return new PublicDeclarationLine() { SymbolName = symbolName };

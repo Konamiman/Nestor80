@@ -8,6 +8,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public string OutputStringEncoding { get; init; } = "ASCII";
 
+        public BuildType BuildType { get; init; } = BuildType.Automatic;
+
         public string CpuName { get; init; } = "Z80";
 
         public bool AllowEscapesInStrings { get; init; } = true;
