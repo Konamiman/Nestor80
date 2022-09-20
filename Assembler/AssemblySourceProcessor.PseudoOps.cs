@@ -52,6 +52,16 @@ namespace Konamiman.Nestor80.Assembler
             { ".PRINT", ProcessPrintLine },
             { ".PRINT1", ProcessPrint1Line },
             { ".PRINT2", ProcessPrint2Line },
+            { "IF", ProcessIfTrueLine },
+            { "IFT", ProcessIfTrueLine },
+            { "IFE", ProcessIfFalseLine },
+            { "IFF", ProcessIfFalseLine },
+            { "IFDEF", ProcessIfDefinedLine },
+            { "IFNDEF", ProcessIfNotDefinedLine },
+            { "IF1", ProcessIf1Line },
+            { "IF2", ProcessIf2Line },
+            { "ELSE", ProcessElseLine },
+            { "ENDIF", ProcessEndifLine },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -850,5 +860,129 @@ namespace Konamiman.Nestor80.Assembler
             TriggerPrintEvent(finalText, printInPass);
             return new PrintLine() { PrintedText = finalText, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = printInPass };
         }
+
+        static ProcessedSourceLine ProcessIfTrueLine(string opcode, SourceLineWalker walker)
+            => ProcessIfExpressionLine(opcode, walker, true);
+
+        static ProcessedSourceLine ProcessIfFalseLine(string opcode, SourceLineWalker walker) 
+            => ProcessIfExpressionLine(opcode, walker, true);
+
+        static ProcessedSourceLine ProcessIfExpressionLine(string opcode, SourceLineWalker walker, bool mustEvaluateToTrue)
+        {
+            bool? evaluator() { 
+                if(walker.AtEndOfLine) {
+                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
+                    return null;
+                }
+
+                var expressionText = walker.ExtractExpression();
+                Address expressionValue;
+                try {
+                    var expression = Expression.Parse(expressionText);
+                    expression.ValidateAndPostifixize();
+                    expressionValue = expression.Evaluate();
+                }
+                catch(InvalidExpressionException ex) {
+                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    return null;
+                }
+
+                return mustEvaluateToTrue ? expressionValue.Value != 0 : expressionValue.Value == 0;
+            };
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfDefinedLine(string opcode, SourceLineWalker walker)
+        {
+            bool? evaluator()
+            {
+                if(walker.AtEndOfLine) {
+                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
+                    return null;
+                }
+
+                var symbol = walker.ExtractSymbol();
+                return state.SymbolIsOfKnownType(symbol);
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfNotDefinedLine(string opcode, SourceLineWalker walker)
+        {
+            bool? evaluator()
+            {
+                if(walker.AtEndOfLine) {
+                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
+                    return null;
+                }
+
+                var symbol = walker.ExtractSymbol();
+                return !state.SymbolIsOfKnownType(symbol);
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIf1Line(string opcode, SourceLineWalker walker)
+        {
+            static bool? evaluator()
+            {
+                return state.InPass1;
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIf2Line(string opcode, SourceLineWalker walker)
+        {
+            static bool? evaluator()
+            {
+                return state.InPass2;
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfLine(string opcode, Func<bool?> evaluator)
+        {
+            var mustEvaluateTo = evaluator();
+            if(mustEvaluateTo is not null) {
+                state.PushAndSetConditionalBlock(mustEvaluateTo.Value ? ConditionalBlockType.TrueIf : ConditionalBlockType.FalseIf);
+            }
+
+            return new IfLine() { EvaluatesToTrue = mustEvaluateTo };
+        }
+
+        static ProcessedSourceLine ProcessElseLine(string opcode, SourceLineWalker walker)
+        {
+            bool enteringTrueBlock = false;
+            if(state.InElseBlock) {
+                state.AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found inside an ELSE block");
+            }
+            else if(!state.InMainConditionalBlock) {
+                state.AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found outside an IF block");
+            }
+            else {
+                enteringTrueBlock = !state.InTrueConditional;
+                state.SetConditionalBlock(enteringTrueBlock ? ConditionalBlockType.TrueElse : ConditionalBlockType.FalseElse);
+            }
+
+            return new ElseLine() { EvaluatesToTrue = enteringTrueBlock };
+        }
+
+        static ProcessedSourceLine ProcessEndifLine(string opcode, SourceLineWalker walker)
+        {
+            if(state.InConditionalBlock) {
+                state.PopConditionalBlock();
+            }
+            else {
+                state.AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found outside a conditional (IF or ELSE) block");
+            }
+
+            return EndifLine.Instance;
+        }
+
     }
 }

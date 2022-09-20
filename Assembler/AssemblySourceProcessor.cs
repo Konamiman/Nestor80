@@ -223,20 +223,34 @@ namespace Konamiman.Nestor80.Assembler
             string opcode = null;
             var symbol = walker.ExtractSymbol();
 
+            //Label processing is tricky due to conditionals.
+            //In principle, a label defined in a line that is inside a false conditional block isn't registered as a symbol;
+            //but we need to support the following case, in which the label must be defined:
+            //
+            //IF 0
+            //LABEL: ELSE
+            //ENDIF
+            //
+            //That's why we don't register the label beforehand unless the line contains only the label.
+
             if(symbol.EndsWith(':')) {
                 if(labelRegex.IsMatch(symbol)) {
                     label = symbol;
-                    ProcessLabelDefinition(label);
                 }
                 else {
                     AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label (contains illegal characters): {symbol}");
                 }
 
                 if(walker.AtEndOfLine) {
-                    if(walker.EffectiveLength == walker.SourceLine.Length) {
+                    if(state.InFalseConditional) {
+                        state.ProcessedLines.Add(new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount });
+                    }
+                    else if(walker.EffectiveLength == walker.SourceLine.Length) {
+                        ProcessLabelDefinition(label);
                         state.ProcessedLines.Add(new BlankLine() { Label = label});
                     }
                     else {
+                        ProcessLabelDefinition(label);
                         state.ProcessedLines.Add(new CommentLine() { Line = walker.SourceLine, EffectiveLineLength = walker.EffectiveLength, Label = label });
                     }
                     return;
@@ -253,7 +267,7 @@ namespace Konamiman.Nestor80.Assembler
             //
             // TITLE EQU 1      ---> defines constant "TITLE" with value 1
             // FOO: TITLE EQU 1 ---> sets the program title as "EQU 1"
-            if(label is null && !walker.AtEndOfLine) {
+            if(!state.InFalseConditional && label is null && !walker.AtEndOfLine) {
                 walker.BackupPointer();
                 var symbol2 = walker.ExtractSymbol();
                 if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
@@ -265,7 +279,29 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            if(processedLine is null) {
+            if(state.InFalseConditional) {
+                if(string.Equals("ELSE", symbol, StringComparison.OrdinalIgnoreCase) || string.Equals("ENDIF", symbol, StringComparison.OrdinalIgnoreCase)) {
+                    opcode = symbol;
+                    var processor = PseudoOpProcessors[opcode];
+                    processedLine = processor(opcode, walker);
+                    //Note that we can still be inside a false conditional block even after an ENDIF, if there are nested conditional blocks,
+                    //e.g: IF 0 - IF 1 - ENDIF (still in false block here) - ENDIF (out of false block now)
+                    if(state.InFalseConditional) {
+                        state.ProcessedLines.Add(new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount });
+                        return;
+                    }
+                }
+                else {
+                    state.ProcessedLines.Add(new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount });
+                    return;
+                }
+            }
+
+            if(label is not null) {
+                ProcessLabelDefinition(label);
+            }
+
+            if(processedLine is null) { 
                 if(PseudoOpProcessors.ContainsKey(symbol)) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];

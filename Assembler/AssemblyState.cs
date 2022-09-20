@@ -146,6 +146,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].HasKnownValue;
 
+        public bool SymbolIsOfKnownType(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].IsOfKnownType;
+
         public void AddSymbol(string name, SymbolType type, Address value = null, bool isPublic = false) =>
             Symbols.Add(name, new SymbolInfo() { Name = name, Type = type, Value = value, IsPublic = isPublic });
 
@@ -166,5 +168,49 @@ namespace Konamiman.Nestor80.Assembler
         public char? MultiLineCommandDelimiter { get; set; }
 
         public bool InsideMultiLineComment => MultiLineCommandDelimiter.HasValue;
+
+        public Stack<ConditionalBlockType> conditionalBlocksStack = new();
+
+        public ConditionalBlockType CurrentConditionalBlockType { get; private set; }
+
+        public bool InTrueConditional => CurrentConditionalBlockType is ConditionalBlockType.TrueIf or ConditionalBlockType.TrueElse;
+
+        public bool InFalseConditional =>
+            (CurrentConditionalBlockType is ConditionalBlockType.FalseIf or ConditionalBlockType.FalseElse) ||
+            (conditionalBlocksStack.Any(b => b is ConditionalBlockType.FalseIf or ConditionalBlockType.FalseElse));
+
+        public bool InMainConditionalBlock => CurrentConditionalBlockType is ConditionalBlockType.TrueIf or ConditionalBlockType.FalseIf;
+
+        public bool InElseBlock => CurrentConditionalBlockType is ConditionalBlockType.TrueElse or ConditionalBlockType.FalseElse;
+
+        public bool InConditionalBlock => CurrentConditionalBlockType is not ConditionalBlockType.None;
+
+        public void PushAndSetConditionalBlock(ConditionalBlockType blockType)
+        {
+            if(CurrentConditionalBlockType is not ConditionalBlockType.None)
+                conditionalBlocksStack.Push(CurrentConditionalBlockType);
+
+            CurrentConditionalBlockType = blockType;
+        }
+
+        public void SetConditionalBlock(ConditionalBlockType blockType)
+        {
+            CurrentConditionalBlockType = blockType;
+        }
+
+        public void PopConditionalBlock()
+        {
+            if(conditionalBlocksStack.Count == 0) {
+                if(InConditionalBlock) {
+                    CurrentConditionalBlockType = ConditionalBlockType.None;
+                }
+                else {
+                    throw new InvalidOperationException("Attempted to exit a conditional block when none was in progress");
+                }
+            }
+            else {
+                CurrentConditionalBlockType = conditionalBlocksStack.Pop();
+            }
+        }
     }
 }

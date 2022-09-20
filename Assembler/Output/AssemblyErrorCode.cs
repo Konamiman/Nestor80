@@ -23,6 +23,7 @@
         UnknownStringEncoding,
         InvalidCpuInstruction,
         InvalidForAbsoluteOutput,
+        ConditionalOutOfScope,
 
         FirstFatal = 128,
         UnexpectedError,
