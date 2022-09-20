@@ -137,7 +137,7 @@ namespace Konamiman.Nestor80.Assembler
                 string firstArgumentExpressionText = firstArgument;
                 if(match.Success) {
                     indexOffsetSign = match.Groups["sign"].Value;
-                    firstArgumentExpressionText = match.Groups["expression"].Value;
+                    firstArgumentExpressionText = indexOffsetSign + match.Groups["expression"].Value;
                 }
 
                 firstArgumentExpression = GetExpressionForInstructionArgument(opcode, firstArgumentExpressionText);
@@ -157,7 +157,7 @@ namespace Konamiman.Nestor80.Assembler
                     var match = indexPlusArgumentRegex.Match(secondArgument);
                     if(match.Success) {
                         indexOffsetSign = match.Groups["sign"].Value;
-                        secondArgumentExpressionText = match.Groups["expression"].Value;
+                        secondArgumentExpressionText = indexOffsetSign + match.Groups["expression"].Value;
                     }
                 }
 
@@ -286,12 +286,9 @@ namespace Konamiman.Nestor80.Assembler
                     AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}+{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}-{256 - byteValue}");
                 }
 
-                if(indexOffsetSign == "-") {
-                    if(byteValue > 127) {
-                        var regName = argumentText.Substring(1, 2).ToUpper();
-                        AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}-{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}+{256 - byteValue}");
-                    }
-                    byteValue = (byte)(256 - byteValue);
+                if(indexOffsetSign == "-" && argumentValue.Value < (ushort)0xFF80) {
+                    var regName = argumentText.Substring(1, 2).ToUpper();
+                    AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}-{(65536-argumentValue.Value)} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}+{byteValue}");
                 }
 
                 bytes[valuePosition] = byteValue;
@@ -306,7 +303,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static bool ProcessArgumentForDTypeInstruction(CpuInstruction instruction, byte[] instructionBytes, Address value)
         {
-            if(value != state.CurrentLocationArea) {
+            if(value.Type != state.CurrentLocationArea) {
                 AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {instruction.Instruction.ToUpper()}: the target address must be in the same area of the instruction");
                 return false;
             }
@@ -416,13 +413,6 @@ namespace Konamiman.Nestor80.Assembler
                 var register = match.Groups[1].Value;
                 if((reg = allowedSymbols.SingleOrDefault(s => s.Equals($"({register})", StringComparison.OrdinalIgnoreCase))) is not null) {
                     return $"({register})";
-                }
-                //We need to handle the case of (IX) appearing as equivalent to (IX+0) where it's allowed
-                else if(allowedSymbols.Contains("(IX+s)") && register.Equals("IX", StringComparison.OrdinalIgnoreCase)) {
-                    return "(IX+s)";
-                }
-                else if(allowedSymbols.Contains("(IY+s)") && register.Equals("IY", StringComparison.OrdinalIgnoreCase)) {
-                    return "(IY+s)";
                 }
                 return "(n)";
             }
