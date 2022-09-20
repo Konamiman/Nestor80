@@ -8,6 +8,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public string OutputStringEncoding { get; init; } = "ASCII";
 
+        public string CpuName { get; init; } = "Z80";
+
         public bool AllowEscapesInStrings { get; init; } = true;
 
         public Func<string, Stream> GetStreamForInclude { get; init; } = _ => null;

@@ -18,7 +18,7 @@ namespace Konamiman.Nestor80.Assembler
                 firstArgument = walker.ExtractExpression();
             }
 
-            var instructionsForOpcode = CurrentCpuInstructions[opcode];
+            var instructionsForOpcode = currentCpuInstructions[opcode];
 
             //Assumption: all the CPU instructions either:
             //1. Have one single variant that accepts no arguments; or
@@ -30,7 +30,7 @@ namespace Konamiman.Nestor80.Assembler
                     return GenerateInstructionLine(instruction);
                 }
 
-                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"The Z80 instruction {opcode.ToUpper()} requires one or more arguments");
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"The {currentCpu} instruction {opcode.ToUpper()} requires one or more arguments");
                 return GenerateInstructionLine(null);
             }
 
@@ -39,7 +39,7 @@ namespace Konamiman.Nestor80.Assembler
             if(instructionsForOpcode[0].FirstArgument is null) {
                 //e.g. "NOP foo", handle anyway and generate a warning
                 //(for compatibility with Macro80)
-                AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected arguments(s) for the Z80 instruction {opcode.ToUpper()}");
+                AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected arguments(s) for the {currentCpu} instruction {opcode.ToUpper()}");
                 walker.DiscardRemaining();
                 return GenerateInstructionLine(instructionsForOpcode[0]);
             }
@@ -48,7 +48,7 @@ namespace Konamiman.Nestor80.Assembler
             if(walker.AtEndOfLine) {
                 candidateInstructions = instructionsForOpcode.Where(i => i.FirstArgument is not null && i.SecondArgument is null).ToArray();
                 if(candidateInstructions.Length == 0) {
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"The Z80 instruction {opcode.ToUpper()} requires two arguments");
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"The {currentCpu} instruction {opcode.ToUpper()} requires two arguments");
                     return GenerateInstructionLine(null);
                 }
             }
@@ -58,7 +58,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(candidateInstructions.Length == 0) {
                     //e.g. "INC A,foo", handle anyway and generate a warning
                     //(for compatibility with Macro80)
-                    AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected second argument for the Z80 instruction {opcode.ToUpper()}");
+                    AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected second argument for the {currentCpu} instruction {opcode.ToUpper()}");
                     candidateInstructions = instructionsForOpcode.Where(i => i.FirstArgument is not null && i.SecondArgument is null).ToArray();
                     secondArgument = null;
                     walker.DiscardRemaining();
@@ -96,7 +96,7 @@ namespace Konamiman.Nestor80.Assembler
             
             var matchingInstructions = FindMatchingInstructions(candidateInstructions, firstArgument, firstArgumentPattern, secondArgument, secondArgumentPattern, allowedRegisters1, allowedRegisters2);
             if(matchingInstructions.Length == 0) {
-                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for the Z80 instruction {opcode.ToUpper()}");
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for the {currentCpu} instruction {opcode.ToUpper()}");
                 return GenerateInstructionLine(null);
             }
             else if(matchingInstructions.Length == 1) {
@@ -110,7 +110,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else if(matchingInstructions.Any(i => i.FirstArgument != "f")) {
                 var instructionsList = string.Join("; ", candidateInstructions.Select(i => i.ToString()).ToArray());
-                throw new Exception($"Somethign went wrong: {matchingInstructions.Length} candidate Z80 instructions found: {instructionsList}");
+                throw new Exception($"Somethign went wrong: {matchingInstructions.Length} candidate {currentCpu} instructions found: {instructionsList}");
             }
 
             //Here we have one or two arguments, and at least one is either specific or evaluable;
@@ -175,13 +175,13 @@ namespace Konamiman.Nestor80.Assembler
                 if(firstArgumentValue is null) {
                     //This is one case where Nestor80 isn't compatible with Macro80
                     //(in Macro80 the "specific value" arguments can be evaluated in pass 2)
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {opcode.ToUpper()}: all the referenced symbols must be known beforehand");
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {opcode.ToUpper()}: all the referenced symbols must be known beforehand");
                     return GenerateInstructionLine(null);
                 }
                 else {
                     matchingInstruction = matchingInstructions.SingleOrDefault(i => i.FirstArgumentFixedValue == firstArgumentValue.Value);
                     if(matchingInstruction is null) {
-                        AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {opcode.ToUpper()}: expression yields an unsupported value");
+                        AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {opcode.ToUpper()}: expression yields an unsupported value");
                         return GenerateInstructionLine(null);
                     }
                 }
@@ -276,19 +276,19 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(valueSize == 1) {
                 if(!argumentValue.IsValidByte) {
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {opcode.ToUpper()}: argument value out of range");
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {opcode.ToUpper()}: argument value out of range");
                     return false;
                 }
                 var byteValue = argumentValue.ValueAsByte;
 
                 if(indexOffsetSign == "+" && byteValue > 127) {
                     var regName = argumentText.Substring(1, 2).ToUpper();
-                    AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}+{byteValue} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}-{256 - byteValue}");
+                    AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}+{byteValue} in {currentCpu} instruction {opcode.ToUpper()} will actually be interpreted as {regName}-{256 - byteValue}");
                 }
 
                 if(indexOffsetSign == "-" && argumentValue.Value < (ushort)0xFF80) {
                     var regName = argumentText.Substring(1, 2).ToUpper();
-                    AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}-{(65536-argumentValue.Value)} in Z80 instruction {opcode.ToUpper()} will actually be interpreted as {regName}+{byteValue}");
+                    AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}-{(65536-argumentValue.Value)} in {currentCpu} instruction {opcode.ToUpper()} will actually be interpreted as {regName}+{byteValue}");
                 }
 
                 bytes[valuePosition] = byteValue;
@@ -304,12 +304,12 @@ namespace Konamiman.Nestor80.Assembler
         private static bool ProcessArgumentForDTypeInstruction(CpuInstruction instruction, byte[] instructionBytes, Address value)
         {
             if(value.Type != state.CurrentLocationArea) {
-                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {instruction.Instruction.ToUpper()}: the target address must be in the same area of the instruction");
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {instruction.Instruction.ToUpper()}: the target address must be in the same area of the instruction");
                 return false;
             }
             var offset = value.Value - (state.CurrentLocationPointer + 2);
             if(offset is < -128 or > 127) {
-                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {instruction.Instruction.ToUpper()}: the target address is out of range");
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {instruction.Instruction.ToUpper()}: the target address is out of range");
                 return false;
             }
 
@@ -325,7 +325,7 @@ namespace Konamiman.Nestor80.Assembler
                 return expression;
             }
             catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for Z80 instruction {opcode.ToUpper()}: {ex.Message}");
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {opcode.ToUpper()}: {ex.Message}");
                 return null;
             }
         }
@@ -374,7 +374,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(secondArgument is null) {
                 if(candidateInstructions.Length > 1 && candidateInstructions.Any(ci => ci.FirstArgument != "f")) {
-                    throw new InvalidOperationException("Something went wrong: more than one suitable Z80 instruction found");
+                    throw new InvalidOperationException("Something went wrong: more than one suitable {currentCpu} instruction found");
                 }
                 return candidateInstructions;
             }
@@ -450,7 +450,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.RegisterPendingExpression(line, pendingExpression2, instruction.SecondValuePosition.Value, instruction.SecondValueSize.Value);
             }
 
-            line.Cpu = CpuType.Z80;
+            line.Cpu = currentCpu;
             line.FirstArgumentTemplate = instruction.FirstArgument;
             line.SecondArgumentTemplate = instruction.SecondArgument;
             line.OutputBytes = actualBytes;

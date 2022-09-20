@@ -16,6 +16,10 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+.cpu r800
+mulub
+.z80
+mulub a,b
 ex af,af
 ex af,af'
 end

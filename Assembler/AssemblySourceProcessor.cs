@@ -18,14 +18,16 @@ namespace Konamiman.Nestor80.Assembler
 
         private Stream sourceStream;
 
-        private static Dictionary<string, CpuInstruction[]> CurrentCpuInstructions;
-
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
             "AF", "HL", "BC", "DE", "IX", "IY",
             "SP", "IXH", "IXL", "IYH", "IYL",
             "NC", "Z", "NZ", "P", "PE", "PO"
         };
+
+        private static CpuType currentCpu;
+        private static Dictionary<CpuType, Dictionary<string, CpuInstruction[]>> cpuInstructions;
+        private static Dictionary<string, CpuInstruction[]> currentCpuInstructions;
 
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -49,6 +51,14 @@ namespace Konamiman.Nestor80.Assembler
         static AssemblySourceProcessor()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+            cpuInstructions = new() {
+                [CpuType.Z80] = Z80Instructions,
+                [CpuType.R800] = Z80Instructions.ToDictionary(x => x.Key, x=>x.Value, StringComparer.OrdinalIgnoreCase)
+            };
+            foreach(var entry in R800Instructions) {
+                cpuInstructions[CpuType.R800].Add(entry.Key, entry.Value);
+            }
         }
 
         public static AssemblyResult Assemble(string source, AssemblyConfiguration configuration = null)
@@ -64,7 +74,6 @@ namespace Konamiman.Nestor80.Assembler
 
         private AssemblyResult AssembleCore(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
         {
-            CurrentCpuInstructions = Z80Instructions;
             this.sourceStream = sourceStream;
             this.sourceStreamEncoding = sourceStreamEncoding;
             state = new AssemblyState() { Configuration = configuration };
@@ -73,6 +82,8 @@ namespace Konamiman.Nestor80.Assembler
                 state = new AssemblyState { 
                     Configuration = configuration
                 };
+
+                SetCurrentCpu(configuration.CpuName);
 
                 var validInitialStringEncoding = SetStringEncoding(configuration.OutputStringEncoding, initial: true);
                 if(!validInitialStringEncoding)
@@ -254,7 +265,7 @@ namespace Konamiman.Nestor80.Assembler
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
                 }
-                else if(CurrentCpuInstructions.ContainsKey(symbol)) {
+                else if(currentCpuInstructions.ContainsKey(symbol)) {
                     opcode = symbol;
                     processedLine = ProcessCpuInstruction(opcode, walker);
                 }
@@ -315,7 +326,7 @@ namespace Konamiman.Nestor80.Assembler
                     AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
                 };
                 if(z80RegisterNames.Contains(labelValue, StringComparer.OrdinalIgnoreCase)) {
-                    AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{labelValue.ToUpper()} is a Z80 register name, defining it as a label will prevent using it as a register in Z80 instructions");
+                    AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{labelValue.ToUpper()} is a {currentCpu} register name, defining it as a label will prevent using it as a register in {currentCpu} instructions");
                 }
                 state.AddSymbol(labelValue, SymbolType.Label, state.GetCurrentLocation(), isPublic: isPublic);
             }

@@ -3,6 +3,7 @@
     public enum CpuType
     {
         Unknown,
-        Z80
+        Z80,
+        R800
     }
 }

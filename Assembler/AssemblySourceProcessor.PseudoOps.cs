@@ -495,6 +495,8 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessChangeCpuToZ80Line(string opcode, SourceLineWalker walker)
         {
+            currentCpu = CpuType.Z80;
+            currentCpuInstructions = cpuInstructions[CpuType.Z80];
             return new ChangeCpuLine() { Cpu = CpuType.Z80 };
         }
 
@@ -506,18 +508,28 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var symbol = walker.ExtractSymbol();
+            var cpuType = SetCurrentCpu(symbol);
+            return new ChangeCpuLine() { Cpu = cpuType };
+        }
+
+        private static CpuType SetCurrentCpu(string cpuName)
+        {
             var cpuType = CpuType.Unknown;
             try {
-                cpuType = (CpuType)Enum.Parse(typeof(CpuType), symbol, true);
-            } catch(ArgumentException) {
+                cpuType = (CpuType)Enum.Parse(typeof(CpuType), cpuName, ignoreCase: true);
+            }
+            catch(ArgumentException) {
                 //Invalid CPU type
             }
-            
+
             if(cpuType == CpuType.Unknown) {
-                throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UnsupportedCpu, $"{opcode.ToUpper()}: Unknown CPU type: {symbol}", state.CurrentLineNumber));
+                throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UnsupportedCpu, $"Unknown CPU type: {cpuName}", state.CurrentLineNumber));
             }
 
-            return new ChangeCpuLine() { Cpu = cpuType };
+            currentCpu = cpuType;
+            currentCpuInstructions = cpuInstructions[cpuType];
+
+            return cpuType;
         }
 
         static ProcessedSourceLine ProcessSetProgramNameLine(string opcode, SourceLineWalker walker)
