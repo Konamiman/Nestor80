@@ -33,6 +33,7 @@
         SourceLineTooLong,
         UnsupportedCpu,
         CantInclude,
+        TooManyNestedIncludes,
         UserFatal
     }
 }

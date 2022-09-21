@@ -271,5 +271,7 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         public bool InsideIncludedFile { get; private set; }
+
+        public int CurrentIncludesDeepLevel => includeStates.Count;
     }
 }

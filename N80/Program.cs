@@ -547,6 +547,7 @@ DSEG3:
                     string code;
                     if(name == "foo/bar.asm") {
                         code = "db 34\r\n.warn Warn in include 1\r\ninclude bar/fizz.asm\r\ndb 89\r\n";
+                        //code = "include foo/bar.asm\r\n";
                     }
                     else {
                         code = ".warn Warn in include 2\r\ndw 2324h\r\n";

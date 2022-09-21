@@ -12,6 +12,7 @@ namespace Konamiman.Nestor80.Assembler
     public partial class AssemblySourceProcessor
     {
         const int MAX_LINE_LENGTH = 1034;
+        const int MAX_INCLUDE_NESTING = 34;
 
         private static AssemblyState state;
 
@@ -323,6 +324,9 @@ namespace Konamiman.Nestor80.Assembler
                     processedLine = ProcessCpuInstruction(opcode, walker);
                 }
                 else if(symbol.Equals("INCLUDE", StringComparison.OrdinalIgnoreCase)) {
+                    if(state.CurrentIncludesDeepLevel >= MAX_INCLUDE_NESTING) {
+                        ThrowFatal(AssemblyErrorCode.TooManyNestedIncludes, $"Too many nested INCLUDEs, maximum nesting level allowed is {MAX_INCLUDE_NESTING}");
+                    }
                     opcode = symbol;
                     (includeStream, processedLine) = ProcessIncludeLine(opcode, walker);
                 }

@@ -1120,7 +1120,6 @@ namespace Konamiman.Nestor80.Assembler
             catch(ArgumentException) {
             }
 
-            //state.PushIncludeState(stream, walker.SourceLine, fileName);
             return (stream, new IncludeLine() { FileName = fileName, FullPath = path });
         }
     }
