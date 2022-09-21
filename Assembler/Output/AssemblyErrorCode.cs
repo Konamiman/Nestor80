@@ -14,6 +14,7 @@
         ConfusingOffset,
         IgnoredForAbsoluteOutput,
         UnterminatedConditional,
+        UserWarning,
 
         FirstError = 64,
         InvalidExpression,
@@ -25,10 +26,12 @@
         InvalidCpuInstruction,
         InvalidForAbsoluteOutput,
         ConditionalOutOfScope,
+        UserError,
 
         FirstFatal = 128,
         UnexpectedError,
         SourceLineTooLong,
-        UnsupportedCpu
+        UnsupportedCpu,
+        UserFatal
     }
 }

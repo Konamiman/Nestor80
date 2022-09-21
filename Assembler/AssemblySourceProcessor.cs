@@ -163,11 +163,7 @@ namespace Konamiman.Nestor80.Assembler
                 var sourceLine = sourceStream.ReadLine();
                 if(sourceLine == null) break;
                 if((lineLength = sourceLine.Length) > MAX_LINE_LENGTH) {
-                    sourceLine = sourceLine[..MAX_LINE_LENGTH];
-                    AddError(
-                        AssemblyErrorCode.SourceLineTooLong,
-                        $"Line is too long ({lineLength} bytes), actual line processed: {sourceLine.Trim()}"
-                    );
+                    throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.SourceLineTooLong, $"Line is too long, maximum allowed line length is {MAX_LINE_LENGTH} characters", state.CurrentLineNumber));
                 }
 
                 ProcessSourceLine(sourceLine);

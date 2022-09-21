@@ -58,6 +58,13 @@
             return new string(chars.ToArray());
         }
 
+        public string GetRemainingRaw()
+        {
+            var text = linePointer >= sourceLine.Length ? "" : sourceLine[linePointer..];
+            linePointer = sourceLine.Length;
+            return text;
+        }
+
         public string GetRemaining()
         {
             if(AtEndOfLine) {

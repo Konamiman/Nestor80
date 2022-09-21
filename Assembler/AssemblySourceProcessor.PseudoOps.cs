@@ -66,6 +66,9 @@ namespace Konamiman.Nestor80.Assembler
             { "IFNB", ProcessIfNotBlankLine },
             { "IFIDN", ProcessIfIdenticalLine },
             { "IFDIF", ProcessIfDifferentLine },
+            { ".WARN", ProcessUserWarning },
+            { ".ERROR", ProcessUserError },
+            { ".FATAL", ProcessUserFatal },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -763,13 +766,22 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         static ProcessedSourceLine ProcessPrintLine(string opcode, SourceLineWalker walker)
-            => ProcessPrintLineCore(opcode, walker, null);
+            => ProcessPrintOrUserErrorLine(opcode, walker, null);
 
         static ProcessedSourceLine ProcessPrint1Line(string opcode, SourceLineWalker walker)
-            => ProcessPrintLineCore(opcode, walker, 1);
+            => ProcessPrintOrUserErrorLine(opcode, walker, 1);
 
         static ProcessedSourceLine ProcessPrint2Line(string opcode, SourceLineWalker walker)
-            => ProcessPrintLineCore(opcode, walker, 2);
+            => ProcessPrintOrUserErrorLine(opcode, walker, 2);
+
+        static ProcessedSourceLine ProcessUserWarning(string opcode, SourceLineWalker walker)
+            => ProcessPrintOrUserErrorLine(opcode, walker, errorSeverity: AssemblyErrorSeverity.Warning);
+
+        static ProcessedSourceLine ProcessUserError(string opcode, SourceLineWalker walker)
+            => ProcessPrintOrUserErrorLine(opcode, walker, errorSeverity: AssemblyErrorSeverity.Error);
+
+        static ProcessedSourceLine ProcessUserFatal(string opcode, SourceLineWalker walker)
+            => ProcessPrintOrUserErrorLine(opcode, walker, errorSeverity: AssemblyErrorSeverity.Fatal);
 
         // {expression}
         // {expression:d}
@@ -781,20 +793,14 @@ namespace Konamiman.Nestor80.Assembler
         // {expression:h}
         // {expression:h5}
         // {expression:H5}
-        static ProcessedSourceLine ProcessPrintLineCore(string opcode, SourceLineWalker walker, int? printInPass)
+        static ProcessedSourceLine ProcessPrintOrUserErrorLine(string opcode, SourceLineWalker walker, int? printInPass = null, AssemblyErrorSeverity errorSeverity = AssemblyErrorSeverity.None)
         {
-            if(walker.AtEndOfLine) {
-                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires the text to print as argument");
-                return new PrintLine();
-            }
-
-            var rawText = walker.GetRemaining();
+            var rawText = walker.GetRemainingRaw();
             var sb = new StringBuilder();
             var lastIndex = 0;
             var expressionMatches = printStringExpressionRegex.Matches(rawText);
             if(expressionMatches.Count == 0) {
-                TriggerPrintEvent(rawText, printInPass);
-                return new PrintLine() { Line = rawText, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = printInPass };
+                return GetLineForPrintOrUserError(rawText, walker, printInPass, errorSeverity);
             }
 
             Match match = null;
@@ -861,8 +867,23 @@ namespace Konamiman.Nestor80.Assembler
             sb.Append(rawText.AsSpan(match.Index + match.Length + 1));
 
             var finalText = sb.ToString();
-            TriggerPrintEvent(finalText, printInPass);
-            return new PrintLine() { PrintedText = finalText, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = printInPass };
+            return GetLineForPrintOrUserError(finalText, walker, printInPass, errorSeverity);
+        }
+
+        static ProcessedSourceLine GetLineForPrintOrUserError(string text, SourceLineWalker walker, int? pass, AssemblyErrorSeverity severity)
+        {
+            if(severity is AssemblyErrorSeverity.None) {
+                TriggerPrintEvent(text, pass);
+                return new PrintLine() { PrintedText = text, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = pass };
+            }
+            else if(severity is AssemblyErrorSeverity.Fatal) {
+                throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UserFatal, text, state.CurrentLineNumber));
+            }
+            else {
+                var errorCode = severity is AssemblyErrorSeverity.Warning ? AssemblyErrorCode.UserWarning : AssemblyErrorCode.UserError;
+                state.AddError(errorCode, text);
+                return new UserErrorLine() { Severity = severity, Message = text };
+            }
         }
 
         static ProcessedSourceLine ProcessIfTrueLine(string opcode, SourceLineWalker walker)

@@ -16,6 +16,16 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+.print {2+2}
+.warn ;oo {1+1}
+.error {3+3}
+.fatal {4+4}
+
+.print hello!
+.warn Oops, some warning
+.error Yikes, some error
+.fatal Aaargh, fatal!!
+
 db 0
   if2
     db 1
