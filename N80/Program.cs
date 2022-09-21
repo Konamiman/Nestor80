@@ -1,5 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using System.Diagnostics;
+using System.Text;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -16,6 +17,13 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+db 0
+db 0
+include foo/bar.asm
+db 1
+.warn Warn in main code
+end
+
 .print {2+2}
 .warn ;oo {1+1}
 .error {3+3}
@@ -535,6 +543,16 @@ DSEG3:
                 Print = (s) => Debug.WriteLine(s),
                 OutputStringEncoding = "ascii",
                 AllowEscapesInStrings = true,
+                GetStreamForInclude = (name) => {
+                    string code;
+                    if(name == "foo/bar.asm") {
+                        code = "db 34\r\n.warn Warn in include 1\r\ninclude bar/fizz.asm\r\ndb 89\r\n";
+                    }
+                    else {
+                        code = ".warn Warn in include 2\r\ndw 2324h\r\n";
+                    }
+                    return new MemoryStream(Encoding.ASCII.GetBytes(code));
+                }
             };
 
             AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage;

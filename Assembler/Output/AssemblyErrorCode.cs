@@ -32,6 +32,7 @@
         UnexpectedError,
         SourceLineTooLong,
         UnsupportedCpu,
+        CantInclude,
         UserFatal
     }
 }

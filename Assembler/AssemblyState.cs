@@ -1,14 +1,26 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
+using System.ComponentModel.DataAnnotations;
 using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
 {
     internal class AssemblyState
     {
+        public AssemblyState(AssemblyConfiguration configuration, Stream sourceStream, Encoding sourceStreamEncoding)
+        {
+            this.Configuration = configuration;
+            this.sourceStreamEncoding = sourceStreamEncoding;
+            this.SourceStreamReader = new StreamReader(sourceStream, sourceStreamEncoding, true, 4096);
+        }
+
+        private Encoding sourceStreamEncoding;
+
         private readonly List<AssemblyError> Errors = new();
 
         public AssemblyConfiguration Configuration { get; init; }
+
+        public StreamReader SourceStreamReader { get; private set; }
 
         public Encoding DefaultOutputStringEncoding {get;set;}
 
@@ -22,7 +34,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public string ProgramName { get; set; }
 
-        public List<ProcessedSourceLine> ProcessedLines { get; } = new();
+        public List<ProcessedSourceLine> ProcessedLines { get; private set; } = new();
 
         public void RegisterPendingExpression(ProcessedSourceLine line, Expression expression, int location = 0, int size = 2)
         {
@@ -131,7 +143,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {
-            var error = new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null );
+            var error = new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null, CurrentIncludeFilename );
             AddError(error);
             return error;
         }
@@ -212,5 +224,52 @@ namespace Konamiman.Nestor80.Assembler
                 CurrentConditionalBlockType = conditionalBlocksStack.Pop();
             }
         }
+
+        private Stack<IncludeState> includeStates = new();
+
+        public string CurrentIncludeFilename { get; private set; } = null;
+
+        public void PushIncludeState(Stream newStream, IncludeLine includeLine)
+        {
+            var previousState = new IncludeState() {
+                PreviousFileName = CurrentIncludeFilename,
+                ProcessedLine = includeLine, 
+                PreviousLineNumber = CurrentLineNumber,
+                PreviousLines = ProcessedLines, 
+                PreviousSourceStreamReader = SourceStreamReader
+            };
+
+            includeStates.Push(previousState);
+            InsideIncludedFile = true;
+
+            CurrentIncludeFilename = includeLine.FileName;
+            SourceStreamReader = new StreamReader(newStream, sourceStreamEncoding, true, 4096);
+            CurrentLineNumber = 0; //0 because the line number will be increased right after this method
+
+            //Don't just clear the existing list, we really need a new one!
+            ProcessedLines = new List<ProcessedSourceLine>();
+        }
+
+        public void PopIncludeState()
+        {
+            if(!InsideIncludedFile) {
+                throw new InvalidOperationException("Can't exit included file because we aren't in one");
+            }
+
+            SourceStreamReader.Dispose();
+
+            var previousState = includeStates.Pop();
+
+            previousState.ProcessedLine.Lines = ProcessedLines.ToArray();
+
+            CurrentLineNumber = previousState.PreviousLineNumber + 1; //+1 because line number was increased after the call to PushIncludeState
+            SourceStreamReader = previousState.PreviousSourceStreamReader;
+            ProcessedLines = previousState.PreviousLines;
+            CurrentIncludeFilename = previousState.PreviousFileName;
+
+            InsideIncludedFile = includeStates.Count > 0;
+        }
+
+        public bool InsideIncludedFile { get; private set; }
     }
 }

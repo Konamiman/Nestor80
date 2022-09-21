@@ -153,5 +153,19 @@ namespace Konamiman.Nestor80.AssemblerTests
             Assert.AreEqual("def", sut.ExtractAngleBracketed());
             Assert.True(sut.AtEndOfLine);
         }
+
+        [Test]
+        [TestCase("", null)]
+        [TestCase("Foo Bar", "Foo")]
+        [TestCase(@"""Hola que tal"" yo bien", "Hola que tal")]
+        [TestCase(@"""Hola que tal """"estamos"""" eh"" yo bien", @"Hola que tal ""estamos"" eh")]
+        [TestCase(@"""Bla""""", @"Bla""")]
+        [TestCase(@"""Bla"""""" blo", @"Bla""")]
+        [TestCase(@"""Bla", "Bla")]
+        public void TestExtractFilename(string line, string expectedString)
+        {
+            var sut = new SourceLineWalker(line);
+            Assert.AreEqual(expectedString, sut.ExtractFileName());
+        }
     }
 }

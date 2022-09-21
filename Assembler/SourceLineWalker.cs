@@ -246,6 +246,45 @@
             }
         }
 
+        /// <summary>
+        /// If the currently pointer character is " then characters are extracted until the next ",
+        /// but "" are considered as one single " part of the name.
+        /// 
+        /// If the currently pointer character is not " then this is equivalent to ExtractSymbol
+        /// (extracts characters until a space is found).
+        /// </summary>
+        /// <returns></returns>
+        public string ExtractFileName()
+        {
+            if(AtEndOfLine) {
+                return null;
+            }
+
+            if(sourceLine[linePointer] != '"') {
+                return ExtractSymbol();
+            }
+
+            var originalPointer = ++linePointer;
+            var previousWasQuote = false;
+            char currentChar = '\0';
+            while(!AtEndOfLine) {
+                currentChar = sourceLine[linePointer];
+                if(currentChar == '"') {
+                    previousWasQuote = !previousWasQuote;
+                }
+                else if(previousWasQuote) {
+                    break;
+                } else { 
+                    previousWasQuote = false;
+                }
+                linePointer++;
+            }
+
+            var endPointer = previousWasQuote ? linePointer - 1 : linePointer;
+            var line = sourceLine[originalPointer..endPointer].Replace("\"\"", "\"");
+            linePointer++;
+            return line;
+        }
 
         private bool PhysicalEndOfLineReached => linePointer >= lineLength;
 

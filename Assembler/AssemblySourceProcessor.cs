@@ -15,10 +15,6 @@ namespace Konamiman.Nestor80.Assembler
 
         private static AssemblyState state;
 
-        private Encoding sourceStreamEncoding;
-
-        private Stream sourceStream;
-
         private static BuildType buildType;
 
         private static readonly string[] z80RegisterNames = new[] {
@@ -85,14 +81,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private AssemblyResult AssembleCore(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
         {
-            this.sourceStream = sourceStream;
-            this.sourceStreamEncoding = sourceStreamEncoding;
-            state = new AssemblyState() { Configuration = configuration };
-
             try {
-                state = new AssemblyState { 
-                    Configuration = configuration
-                };
+                state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
 
                 SetCurrentCpu(configuration.CpuName);
                 buildType = configuration.BuildType;
@@ -155,19 +145,26 @@ namespace Konamiman.Nestor80.Assembler
 
         private void DoPass1()
         {
-            var sourceStream = new StreamReader(this.sourceStream, this.sourceStreamEncoding, true, 4096);
-
-            int lineLength;
-
             while(!state.EndReached) {
-                var sourceLine = sourceStream.ReadLine();
-                if(sourceLine == null) break;
-                if((lineLength = sourceLine.Length) > MAX_LINE_LENGTH) {
-                    throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.SourceLineTooLong, $"Line is too long, maximum allowed line length is {MAX_LINE_LENGTH} characters", state.CurrentLineNumber));
+                var sourceLine = state.SourceStreamReader.ReadLine();
+                if(sourceLine == null) {
+                    if(state.InsideIncludedFile) {
+                        state.PopIncludeState();
+                        continue;
+                    }
+                    break;
+                }
+                if(sourceLine.Length > MAX_LINE_LENGTH) {
+                    ThrowFatal(AssemblyErrorCode.SourceLineTooLong, $"Line is too long, maximum allowed line length is {MAX_LINE_LENGTH} characters");
                 }
 
                 ProcessSourceLine(sourceLine);
                 state.IncreaseLineNumber();
+            }
+
+            //In case END is found inside an included file
+            while(state.InsideIncludedFile) {
+                state.PopIncludeState();
             }
 
             if(state.InConditionalBlock) {
@@ -310,6 +307,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
+            Stream includeStream = null;
             if(processedLine is null) {
                 if(label is not null) {
                     ProcessLabelDefinition(label);
@@ -323,6 +321,10 @@ namespace Konamiman.Nestor80.Assembler
                 else if(currentCpuInstructions.ContainsKey(symbol)) {
                     opcode = symbol;
                     processedLine = ProcessCpuInstruction(opcode, walker);
+                }
+                else if(symbol.Equals("INCLUDE", StringComparison.OrdinalIgnoreCase)) {
+                    opcode = symbol;
+                    (includeStream, processedLine) = ProcessIncludeLine(opcode, walker);
                 }
                 else if(symbol.StartsWith("NAME(", StringComparison.OrdinalIgnoreCase)) {
                     opcode = symbol[..4];
@@ -350,6 +352,10 @@ namespace Konamiman.Nestor80.Assembler
             processedLine.Label = label;
             processedLine.FormFeedsCount = formFeedCharsCount;
             state.ProcessedLines.Add(processedLine);
+
+            if(includeStream is not null) {
+                state.PushIncludeState(includeStream, (IncludeLine)processedLine);
+            }
 
             if(buildType == BuildType.Automatic) {
                 //Build type is also automatically selected when a constant/label
@@ -491,6 +497,11 @@ namespace Konamiman.Nestor80.Assembler
             if(AssemblyErrorGenerated is not null) {
                 AssemblyErrorGenerated(null, error);
             }
+        }
+
+        static void ThrowFatal(AssemblyErrorCode errorCode, string message)
+        {
+            throw new FatalErrorException(new AssemblyError(errorCode, message, state.CurrentLineNumber, state.CurrentIncludeFilename));
         }
     }
 }

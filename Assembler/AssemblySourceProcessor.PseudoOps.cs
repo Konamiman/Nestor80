@@ -68,7 +68,7 @@ namespace Konamiman.Nestor80.Assembler
             { "IFDIF", ProcessIfDifferentLine },
             { ".WARN", ProcessUserWarning },
             { ".ERROR", ProcessUserError },
-            { ".FATAL", ProcessUserFatal },
+            { ".FATAL", ProcessUserFatal }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -533,7 +533,8 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessChangeCpuTo8080Line(string opcode, SourceLineWalker walker)
         {
-            throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UnsupportedCpu, "Unsupported CPU type: 8080", state.CurrentLineNumber));
+            ThrowFatal(AssemblyErrorCode.UnsupportedCpu, "Unsupported CPU type: 8080");
+            return null;
         }
 
         static ProcessedSourceLine ProcessChangeCpuToZ80Line(string opcode, SourceLineWalker walker)
@@ -566,7 +567,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(cpuType == CpuType.Unknown) {
-                throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UnsupportedCpu, $"Unknown CPU type: {cpuName}", state.CurrentLineNumber));
+                ThrowFatal(AssemblyErrorCode.UnsupportedCpu, $"Unknown CPU type: {cpuName}");
             }
 
             currentCpu = cpuType;
@@ -877,7 +878,8 @@ namespace Konamiman.Nestor80.Assembler
                 return new PrintLine() { PrintedText = text, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = pass };
             }
             else if(severity is AssemblyErrorSeverity.Fatal) {
-                throw new FatalErrorException(new AssemblyError(AssemblyErrorCode.UserFatal, text, state.CurrentLineNumber));
+                ThrowFatal(AssemblyErrorCode.UserFatal, text);
+                return null;
             }
             else {
                 var errorCode = severity is AssemblyErrorSeverity.Warning ? AssemblyErrorCode.UserWarning : AssemblyErrorCode.UserError;
@@ -1083,5 +1085,43 @@ namespace Konamiman.Nestor80.Assembler
             return EndifLine.Instance;
         }
 
+        static (Stream, ProcessedSourceLine) ProcessIncludeLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a file path as argument");
+                return (null, new IncludeLine());
+            }
+
+            var path = walker.ExtractFileName();
+
+            Stream stream = null;
+            Exception exception = null;
+            if(state.Configuration.GetStreamForInclude is not null) {
+                try {
+                    stream = state.Configuration.GetStreamForInclude(path);
+                }
+                catch(Exception ex) {
+                    exception = ex;
+                }
+            }
+
+            if(exception is not null) {
+                ThrowFatal(AssemblyErrorCode.CantInclude, $"Error trying to include file {path}: ({exception.GetType().Name}) {exception.Message}");
+            }
+
+            if(stream is null) {
+                ThrowFatal(AssemblyErrorCode.CantInclude, $"Can't include file {path}: File not found");
+            }
+
+            string fileName = path;
+            try {
+                fileName = Path.GetFileName(fileName);
+            }
+            catch(ArgumentException) {
+            }
+
+            //state.PushIncludeState(stream, walker.SourceLine, fileName);
+            return (stream, new IncludeLine() { FileName = fileName, FullPath = path });
+        }
     }
 }
