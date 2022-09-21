@@ -16,6 +16,21 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+db 0
+  if2
+    db 1
+    if1
+      db 2
+    else
+      db 3
+    endif
+    db 4
+  else
+    db 5
+  endif
+db 6
+end
+
 ifdif <a>,<A>
 db 0
 endif

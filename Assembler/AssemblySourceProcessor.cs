@@ -28,6 +28,13 @@ namespace Konamiman.Nestor80.Assembler
             "NC", "Z", "NZ", "P", "PE", "PO"
         };
 
+        private static readonly string[] conditionalInstructions = new[] {
+            "IF", "IFT", "IFE", "IFF",
+            "IFDEF", "IFNDEF", "IF1", "IF2",
+            "IFB", "IFNB", "IFIDN", "IFDIF",
+            "ELSE", "ENDIF"
+        };
+
         private static CpuType currentCpu;
         private static Dictionary<CpuType, Dictionary<string, CpuInstruction[]>> cpuInstructions;
         private static Dictionary<string, CpuInstruction[]> currentCpuInstructions;
@@ -137,6 +144,7 @@ namespace Konamiman.Nestor80.Assembler
                 Errors = state.GetErrors(),
                 EndAddressArea = state.EndAddress is null ? AddressType.ASEG : state.EndAddress.Type,
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
+                BuildType = buildType is BuildType.Automatic ? BuildType.Absolute : buildType 
             };
         }
 
@@ -289,7 +297,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(state.InFalseConditional) {
-                if(string.Equals("IF", symbol, StringComparison.OrdinalIgnoreCase) || string.Equals("ELSE", symbol, StringComparison.OrdinalIgnoreCase) || string.Equals("ENDIF", symbol, StringComparison.OrdinalIgnoreCase)) {
+                if(conditionalInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);

@@ -19,5 +19,7 @@
         public AddressType EndAddressArea { get; init; }
 
         public ushort EndAddress { get; init; }
+
+        public BuildType BuildType { get; set; }
     }
 }
