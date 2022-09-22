@@ -87,7 +87,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 SetCurrentCpu(configuration.CpuName);
                 buildType = configuration.BuildType;
-                state.SwitchToArea(buildType == BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
+                state.SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
 
                 var validInitialStringEncoding = SetStringEncoding(configuration.OutputStringEncoding, initial: true);
                 if(!validInitialStringEncoding)
@@ -101,6 +101,7 @@ namespace Konamiman.Nestor80.Assembler
                 DoPass1();
                 if(!state.HasErrors) {
                     state.SwitchToPass2();
+                    state.SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
                     DoPass2();
                 }
             }
@@ -125,9 +126,26 @@ namespace Konamiman.Nestor80.Assembler
                     CommonName = s.Value?.CommonBlockName
                 }).ToArray();
 
+            if(buildType == BuildType.Automatic)
+                buildType = BuildType.Absolute;
+
+            int programSize;
+            if(buildType == BuildType.Absolute) {
+                var firstOutputOrOrg = state.ProcessedLines.FirstOrDefault(l => l is ChangeOriginLine or IProducesOutput or DefineSpaceLine);
+                if(firstOutputOrOrg is null || firstOutputOrOrg is not ChangeOriginLine) {
+                    programSize = state.GetAreaSize(AddressType.ASEG);
+                }
+                else {
+                    programSize = state.GetAreaSize(AddressType.ASEG) - ((ChangeOriginLine)firstOutputOrOrg).NewLocationCounter;
+                }
+            }
+            else {
+                programSize = state.GetAreaSize(AddressType.CSEG);
+            }
+
             return new AssemblyResult() {
                 ProgramName = state.ProgramName,
-                ProgramAreaSize = state.GetAreaSize(AddressType.CSEG),
+                ProgramAreaSize = programSize,
                 DataAreaSize = state.GetAreaSize(AddressType.DSEG),
                 CommonAreaSizes = new(), //TODO: Handle commons
                 ProcessedLines = state.ProcessedLines.ToArray(),
@@ -135,7 +153,7 @@ namespace Konamiman.Nestor80.Assembler
                 Errors = state.GetErrors(),
                 EndAddressArea = state.EndAddress is null ? AddressType.ASEG : state.EndAddress.Type,
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
-                BuildType = buildType is BuildType.Automatic ? BuildType.Absolute : buildType 
+                BuildType = buildType
             };
         }
 
@@ -372,6 +390,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else if(processedLine is ChangeOriginLine) {
                     SetBuildType(BuildType.Absolute);
+                    state.SwitchToArea(AddressType.ASEG);
                 }
                 else if(processedLine is IProducesOutput or DefineSpaceLine) {
                     SetBuildType(BuildType.Relocatable);

@@ -17,6 +17,10 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+org 4000h
+ds 10
+end
+
 db 0
 db 0
 include foo/bar.asm
@@ -543,6 +547,7 @@ DSEG3:
                 Print = (s) => Debug.WriteLine(s),
                 OutputStringEncoding = "ascii",
                 AllowEscapesInStrings = true,
+                BuildType = BuildType.Absolute,
                 GetStreamForInclude = (name) => {
                     string code;
                     if(name == "foo/bar.asm") {

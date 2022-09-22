@@ -65,8 +65,6 @@ namespace Konamiman.Nestor80.Assembler
             CurrentLineNumber = 1;
             ProgramName = Configuration.DefaultProgramName;
 
-            CurrentLocationArea = AddressType.CSEG;
-
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
             LocationPointersByArea[AddressType.ASEG] = 0;
