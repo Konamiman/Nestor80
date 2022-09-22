@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Expressions
 {
-    public class StoreAsByte
+    public class StoreAsByte : IExpressionPart
     {
         private StoreAsByte()
         {

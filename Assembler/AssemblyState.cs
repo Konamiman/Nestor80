@@ -152,6 +152,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public SymbolInfo[] GetSymbols() => Symbols.Values.ToArray();
 
+        public SymbolInfo[] GetSymbolsOfUnknownType() => Symbols.Values.Where(s => !s.IsOfKnownType || (!s.IsExternal && !s.HasKnownValue)).ToArray();
+
         public bool HasSymbol(string symbol) => Symbols.ContainsKey(symbol);
 
         public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].HasKnownValue;

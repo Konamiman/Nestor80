@@ -159,6 +159,8 @@ namespace Konamiman.Nestor80.Assembler
 
             var stack = new Stack<IExpressionPart>();
 
+            var hasUnknownSymbols = false;
+
             foreach(var part in Parts) {
                 var item = part;
                 if(item is UnaryOperator uop) {
@@ -198,11 +200,16 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     var address = ResolveAddressOrSymbol(item, throwOnUnknownSymbol);
                     if(address is null) {
-                        return null;
+                        hasUnknownSymbols = true;
+                        address = Address.AbsoluteZero;
                     }
 
                     stack.Push(address);
                 }
+            }
+
+            if(hasUnknownSymbols) {
+                return null;
             }
 
             if(stack.Count != 1) {

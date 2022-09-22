@@ -26,6 +26,8 @@
         InvalidCpuInstruction,
         InvalidForAbsoluteOutput,
         ConditionalOutOfScope,
+        UnknownSymbol,
+        InvalidForRelocatable,
         UserError,
 
         FirstFatal = 128,

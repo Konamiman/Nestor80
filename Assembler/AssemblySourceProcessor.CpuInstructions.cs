@@ -291,9 +291,11 @@ namespace Konamiman.Nestor80.Assembler
                     AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {regName}-{(65536-argumentValue.Value)} in {currentCpu} instruction {opcode.ToUpper()} will actually be interpreted as {regName}+{byteValue}");
                 }
 
-                bytes[valuePosition] = byteValue;
+                if(argumentValue.IsAbsolute) {
+                    bytes[valuePosition] = byteValue;
+                }
             }
-            else {
+            else if(argumentValue.IsAbsolute) {
                 bytes[valuePosition] = argumentValue.ValueAsByte;
                 bytes[valuePosition + 1] = (byte)((argumentValue.Value & 0xFF00) >> 8);
             }

@@ -122,11 +122,11 @@ namespace Konamiman.Nestor80.Assembler
                     var value = expression.TryEvaluate();
                     if(value is null) {
                         AddZero();
-                        state.RegisterPendingExpression(line, expression, index, 1);
+                        state.RegisterPendingExpression(line, expression, index, isByte ? 1 : 2);
                     }
                     else if(isByte && !value.IsValidByte) {
                         AddZero();
-                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: value {value:X4} can't be stored as a byte");
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: value {value:X4}h can't be stored as a byte");
                     }
                     else if(value.IsAbsolute) {
                         outputBytes.Add(value.ValueAsByte);

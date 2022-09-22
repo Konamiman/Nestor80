@@ -17,10 +17,37 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+dw 1+(BAR## SHL 8)
+end
+
+db 1+FOO-BAR*FIZZ##
+FOO equ 1
+BAR:
+end
+
+ld a,12h
+jp 1234h
+
+FOO:
+ld a,FOO
+jp FOO
+end
+
+db FOO+BAR
+end
+
+foo equ 12h
+db foo,bar,fizz+1
+fizz equ 5566h
+bar equ 77h
+end
+
 db 0
 db 0
 include foo/bar.asm
 db 1
+foocios equ 1
+ld a,barcios
 .warn Warn in main code
 end
 
@@ -543,7 +570,7 @@ DSEG3:
                 Print = (s) => Debug.WriteLine(s),
                 OutputStringEncoding = "ascii",
                 AllowEscapesInStrings = true,
-                BuildType = BuildType.Absolute,
+                //BuildType = BuildType.Absolute,
                 GetStreamForInclude = (name) => {
                     string code;
                     if(name == "foo/bar.asm") {

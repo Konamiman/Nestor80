@@ -1,8 +1,8 @@
-﻿using System.Linq;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
+using Konamiman.Nestor80.Assembler.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
@@ -82,6 +82,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private AssemblyResult AssembleCore(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
         {
+            ProcessedSourceLine[] processedLines = null;
+
             try {
                 state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
 
@@ -102,7 +104,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(!state.HasErrors) {
                     state.SwitchToPass2();
                     state.SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
-                    DoPass2();
+                    processedLines = DoPass2();
                 }
             }
             catch(FatalErrorException ex) {
@@ -113,6 +115,9 @@ namespace Konamiman.Nestor80.Assembler
                     code: AssemblyErrorCode.UnexpectedError,
                     message: $"Unexpected error: ({ex.GetType().Name}) {ex.Message}"
                 );
+            }
+            finally {
+                processedLines ??= state.ProcessedLines.ToArray();
             }
 
             state.WrapUp();
@@ -148,18 +153,13 @@ namespace Konamiman.Nestor80.Assembler
                 ProgramAreaSize = programSize,
                 DataAreaSize = state.GetAreaSize(AddressType.DSEG),
                 CommonAreaSizes = new(), //TODO: Handle commons
-                ProcessedLines = state.ProcessedLines.ToArray(),
+                ProcessedLines = processedLines,
                 Symbols = symbols,
                 Errors = state.GetErrors(),
                 EndAddressArea = state.EndAddress is null ? AddressType.ASEG : state.EndAddress.Type,
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
                 BuildType = buildType
             };
-        }
-
-        private void DoPass2()
-        {
-            //throw new NotImplementedException();
         }
 
         private void DoPass1()
@@ -399,7 +399,141 @@ namespace Konamiman.Nestor80.Assembler
             return processedLine;
         }
 
-        internal static SymbolInfo GetSymbolForExpression(string name, bool isExternal)
+        private static ProcessedSourceLine[] DoPass2()
+        {
+            var lines = state.ProcessedLines.ToArray();
+            ProcessLinesForPass2(lines);
+
+            var unknownSymbols = state.GetSymbolsOfUnknownType();
+            foreach(var symbol in unknownSymbols) {
+                AddError(AssemblyErrorCode.UnknownSymbol, $"Unknown symbol: {symbol.Name}", withLineNumber: false);
+            }
+
+            return lines;
+        }
+
+        private static void ProcessLinesForPass2(ProcessedSourceLine[] processedLines)
+        {
+            for(var lineIndex=0; lineIndex<processedLines.Length; lineIndex++) {
+                var originalLine = processedLines[lineIndex];
+
+                //TODO - handle include
+
+                var maybeNewLine = ProcessLineForPass2(originalLine);
+                if(!ReferenceEquals(originalLine, maybeNewLine)) {
+                    processedLines[lineIndex] = maybeNewLine;
+                }
+                state.IncreaseLineNumber();
+            }
+        }
+
+        private static ProcessedSourceLine ProcessLineForPass2(ProcessedSourceLine processedLine)
+        {
+            //TODO - handle conditionals
+            //TODO - verify that labels dont get different values in pass 1 and 2
+
+            if(state.ExpressionsPendingEvaluation.ContainsKey(processedLine)) {
+                ProcessExpressionPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation[processedLine].ToArray());
+            }
+
+            return processedLine;
+        }
+
+        private static void ProcessExpressionPendingEvaluation(ProcessedSourceLine processedLine, ExpressionPendingEvaluation[] expressionsPendingEvaluation)
+        {
+            var line = (IProducesOutput)processedLine;
+            var relocatables = new List<RelocatableOutputPart>();
+
+            foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
+                var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => s.SymbolName);
+                var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbol(s));
+                
+                if(referencedSymbols.Any(s => s.IsExternal)) {
+                    var unknownSymbols = referencedSymbols.Where(s => !s.IsExternal && !s.HasKnownValue);
+                    foreach(var symbol in unknownSymbols) {
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: unknown symbol {symbol.Name}");
+                    }
+
+                    if(unknownSymbols.Any()) {
+                        continue;
+                    }
+
+                    var linkItems = GetLinkItemsGroupFromExpression(processedLine, expressionPendingEvaluation);
+                    if(linkItems != null) {
+                        relocatables.Add(linkItems);
+                    }
+                }
+                else {
+                    Address expressionValue = null;
+                    try {
+                        expressionValue = expressionPendingEvaluation.Expression.Evaluate();
+                    }
+                    catch(InvalidExpressionException ex) {
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: {ex.Message}");
+                        continue;
+                    }
+
+                    if(expressionValue.IsAbsolute) {
+                        if(expressionPendingEvaluation.OutputSize == 1) {
+                            if(!expressionValue.IsValidByte) {
+                                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: value {expressionValue.Value:X4}h can't be stored as a byte");
+                            }
+                            else {
+                                line.OutputBytes[expressionPendingEvaluation.LocationInOutput] = expressionValue.ValueAsByte;
+                            }
+                        }
+                        else {
+                            line.OutputBytes[expressionPendingEvaluation.LocationInOutput] = expressionValue.ValueAsByte;
+                            line.OutputBytes[expressionPendingEvaluation.LocationInOutput + 1] = (byte)((expressionValue.Value & 0xFF00) >> 8);
+                        }
+                    }
+                    else {
+                        relocatables.Add(new RelocatableAddress() { 
+                            Index = expressionPendingEvaluation.LocationInOutput, 
+                            IsByte = expressionPendingEvaluation.OutputSize == 1,
+                            Type = expressionValue.Type, 
+                            Value = expressionValue.Value
+                        });
+                    }
+                }
+            }
+
+            line.RelocatableParts = relocatables.ToArray();
+        }
+
+        private static LinkItemsGroup GetLinkItemsGroupFromExpression(ProcessedSourceLine processedLine, ExpressionPendingEvaluation expressionPendingEvaluation)
+        {
+            var items = new List<LinkItem>();
+
+            foreach(var part in expressionPendingEvaluation.Expression.Parts) {
+                if(part is Address ad) {
+                    items.Add(LinkItem.ForAddressReference(ad.Type, ad.Value));
+                }
+                else if(part is SymbolReference sr) {
+                    var symbol = state.GetSymbol(sr.SymbolName);
+                    if(symbol is null || ! symbol.IsExternal) {
+                        throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: {symbol} doesn't exist or is not external (this should have been catched earlier)");
+                    }
+                    items.Add(LinkItem.ForExternalReference(symbol.EffectiveName));
+                }
+                else if(part is ArithmeticOperator op) {
+                    if(op.ExtendedLinkItemType is null) {
+                        AddError(AssemblyErrorCode.InvalidForRelocatable, $"Operator {op} is not allowed in expressions involving external references");
+                        return null;
+                    }
+                    items.Add(LinkItem.ForArithmeticOperator((ArithmeticOperatorCode)op.ExtendedLinkItemType));
+                }
+                else {
+                    throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: unexpected expression part: {part}");
+                }
+            }
+
+            items.Add(LinkItem.ForArithmeticOperator(expressionPendingEvaluation.OutputSize == 1 ? ArithmeticOperatorCode.StoreAsByte : ArithmeticOperatorCode.StoreAsWord));
+
+            return new LinkItemsGroup() { Index = expressionPendingEvaluation.LocationInOutput, IsByte = expressionPendingEvaluation.OutputSize == 1, LinkItems = items.ToArray() };
+        }
+
+        private static SymbolInfo GetSymbolForExpression(string name, bool isExternal)
         {
             if(name == "$")
                 return new SymbolInfo() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
