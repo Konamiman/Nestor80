@@ -177,7 +177,8 @@ namespace Konamiman.Nestor80.Assembler
                     ThrowFatal(AssemblyErrorCode.SourceLineTooLong, $"Line is too long, maximum allowed line length is {MAX_LINE_LENGTH} characters");
                 }
 
-                ProcessSourceLine(sourceLine);
+                var processedLine = ProcessSourceLine(sourceLine);
+                state.ProcessedLines.Add(processedLine);
                 state.IncreaseLineNumber();
             }
 
@@ -199,7 +200,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private void ProcessSourceLine(string line)
+        private ProcessedSourceLine ProcessSourceLine(string line)
         {
             ProcessedSourceLine processedLine = null;
             SourceLineWalker walker;
@@ -225,22 +226,21 @@ namespace Konamiman.Nestor80.Assembler
                 processedLine.Line = line;
                 processedLine.EffectiveLineLength = 0;
                 processedLine.FormFeedsCount = formFeedCharsCount;
-                state.ProcessedLines.Add(processedLine);
-                return;
+                return processedLine;
             }
 
             if(string.IsNullOrWhiteSpace(line)) {
-                state.ProcessedLines.Add(
+                processedLine =
                     formFeedCharsCount == 0 ?
                     blankLineWithoutLabel :
-                    new BlankLine() { FormFeedsCount = formFeedCharsCount });
-                return;
+                    new BlankLine() { FormFeedsCount = formFeedCharsCount };
+                return processedLine;
             }
 
             walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
-                state.ProcessedLines.Add(new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength, FormFeedsCount = formFeedCharsCount });
-                return;
+                processedLine = new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength, FormFeedsCount = formFeedCharsCount };
+                return processedLine;
             }
 
             string label = null;
@@ -272,17 +272,17 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(walker.AtEndOfLine) {
                     if(state.InFalseConditional) {
-                        state.ProcessedLines.Add(new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount });
+                        processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount };
                     }
                     else if(walker.EffectiveLength == walker.SourceLine.Length) {
                         ProcessLabelDefinition(label);
-                        state.ProcessedLines.Add(new BlankLine() { Label = label});
+                        processedLine =  new BlankLine() { Label = label};
                     }
                     else {
                         ProcessLabelDefinition(label);
-                        state.ProcessedLines.Add(new CommentLine() { Line = walker.SourceLine, EffectiveLineLength = walker.EffectiveLength, Label = label });
+                        processedLine = new CommentLine() { Line = walker.SourceLine, EffectiveLineLength = walker.EffectiveLength, Label = label };
                     }
-                    return;
+                    return processedLine;
                 }
 
                 symbol = walker.ExtractSymbol();
@@ -316,13 +316,13 @@ namespace Konamiman.Nestor80.Assembler
                     //Note that we can still be inside a false conditional block even after an ENDIF, if there are nested conditional blocks,
                     //e.g: IF 0 - IF 1 - ENDIF (still in false block here) - ENDIF (out of false block now)
                     if(state.InFalseConditional) {
-                        state.ProcessedLines.Add(new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount });
-                        return;
+                        processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount };
+                        return processedLine;
                     }
                 }
                 else {
-                    state.ProcessedLines.Add(new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount });
-                    return;
+                    processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount };
+                    return processedLine;
                 }
             }
 
@@ -373,7 +373,6 @@ namespace Konamiman.Nestor80.Assembler
             if(processedLine.EffectiveLineLength == -1) processedLine.EffectiveLineLength = walker.DiscardRemaining();
             processedLine.Label = label;
             processedLine.FormFeedsCount = formFeedCharsCount;
-            state.ProcessedLines.Add(processedLine);
 
             if(includeStream is not null) {
                 state.PushIncludeState(includeStream, (IncludeLine)processedLine);
@@ -396,6 +395,8 @@ namespace Konamiman.Nestor80.Assembler
                     SetBuildType(BuildType.Relocatable);
                 }
             }
+
+            return processedLine;
         }
 
         internal static SymbolInfo GetSymbolForExpression(string name, bool isExternal)

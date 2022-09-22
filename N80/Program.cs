@@ -17,10 +17,6 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
-org 4000h
-ds 10
-end
-
 db 0
 db 0
 include foo/bar.asm
