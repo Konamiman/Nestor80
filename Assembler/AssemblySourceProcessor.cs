@@ -414,7 +414,7 @@ namespace Konamiman.Nestor80.Assembler
                         SetBuildType(BuildType.Relocatable);
                     }
                     else if(buildType == BuildType.Absolute) {
-                        state.AddError(AssemblyErrorCode.InvalidForAbsoluteOutput, $"Expression references symbol {name.ToUpper()} as external, but that's not allowed when the output type is absolute");
+                        AddError(AssemblyErrorCode.InvalidForAbsoluteOutput, $"Expression references symbol {name.ToUpper()} as external, but that's not allowed when the output type is absolute");
                     }
                 }
             }
@@ -446,7 +446,7 @@ namespace Konamiman.Nestor80.Assembler
                         SetBuildType(BuildType.Relocatable);
                     }
                     else if(buildType == BuildType.Absolute) {
-                        state.AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Label {labelValue.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
+                        AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Label {labelValue.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
                     }
                 }
 

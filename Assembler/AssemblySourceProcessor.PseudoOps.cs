@@ -254,7 +254,7 @@ namespace Konamiman.Nestor80.Assembler
             state.SwitchToArea(area);
 
             if(buildType == BuildType.Absolute && area != AddressType.ASEG) {
-                state.AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing area to {area} when the output type is absolute has no effect");
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing area to {area} when the output type is absolute has no effect");
             }
 
             return new ChangeAreaLine() {
@@ -324,7 +324,7 @@ namespace Konamiman.Nestor80.Assembler
                     SetBuildType(BuildType.Relocatable);
                 }
                 else if(buildType == BuildType.Absolute) {
-                    state.AddError(AssemblyErrorCode.InvalidForAbsoluteOutput, $"Symbol {symbolName.ToUpper()} is declared as external, but that's not allowed when the output type is absolute");
+                    AddError(AssemblyErrorCode.InvalidForAbsoluteOutput, $"Symbol {symbolName.ToUpper()} is declared as external, but that's not allowed when the output type is absolute");
                 }
             }
 
@@ -362,7 +362,7 @@ namespace Konamiman.Nestor80.Assembler
                     SetBuildType(BuildType.Relocatable);
                 }
                 else if(buildType == BuildType.Absolute) {
-                    state.AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Symbol {symbolName.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
+                    AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Symbol {symbolName.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
                 }
             }
 
@@ -883,7 +883,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else {
                 var errorCode = severity is AssemblyErrorSeverity.Warning ? AssemblyErrorCode.UserWarning : AssemblyErrorCode.UserError;
-                state.AddError(errorCode, text);
+                AddError(errorCode, text);
                 return new UserErrorLine() { Severity = severity, Message = text };
             }
         }
@@ -898,7 +898,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             bool? evaluator() { 
                 if(walker.AtEndOfLine) {
-                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
                     return null;
                 }
 
@@ -910,7 +910,7 @@ namespace Konamiman.Nestor80.Assembler
                     expressionValue = expression.Evaluate();
                 }
                 catch(InvalidExpressionException ex) {
-                    state.AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                     return null;
                 }
 
@@ -925,7 +925,7 @@ namespace Konamiman.Nestor80.Assembler
             bool? evaluator()
             {
                 if(walker.AtEndOfLine) {
-                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
                     return null;
                 }
 
@@ -941,7 +941,7 @@ namespace Konamiman.Nestor80.Assembler
             bool? evaluator()
             {
                 if(walker.AtEndOfLine) {
-                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
                     return null;
                 }
 
@@ -978,7 +978,7 @@ namespace Konamiman.Nestor80.Assembler
             {
                 var text = walker.ExtractAngleBracketed();
                 if(text is null) {
-                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
                     return null;
                 }
 
@@ -994,7 +994,7 @@ namespace Konamiman.Nestor80.Assembler
             {
                 var text = walker.ExtractAngleBracketed();
                 if(text is null) {
-                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
                     return null;
                 }
 
@@ -1015,7 +1015,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(text1 is null || text2 is null) {
-                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
                     return null;
                 }
 
@@ -1036,7 +1036,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(text1 is null || text2 is null) {
-                    state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
                     return null;
                 }
 
@@ -1060,10 +1060,10 @@ namespace Konamiman.Nestor80.Assembler
         {
             bool enteringTrueBlock = false;
             if(state.InElseBlock) {
-                state.AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found inside an ELSE block");
+                AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found inside an ELSE block");
             }
             else if(!state.InMainConditionalBlock) {
-                state.AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found outside an IF block");
+                AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found outside an IF block");
             }
             else {
                 enteringTrueBlock = !state.InTrueConditional;
@@ -1079,7 +1079,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.PopConditionalBlock();
             }
             else {
-                state.AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found outside a conditional (IF or ELSE) block");
+                AddError(AssemblyErrorCode.ConditionalOutOfScope, $"{opcode.ToUpper()} found outside a conditional (IF or ELSE) block");
             }
 
             return EndifLine.Instance;
@@ -1088,7 +1088,7 @@ namespace Konamiman.Nestor80.Assembler
         static (Stream, ProcessedSourceLine) ProcessIncludeLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a file path as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a file path as argument");
                 return (null, new IncludeLine());
             }
 
