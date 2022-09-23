@@ -16,6 +16,7 @@
         UnterminatedConditional,
         PhaseWithoutArgument,
         DephaseWithoutPhase,
+        UnterminatedPhase,
         UserWarning,
 
         FirstError = 64,

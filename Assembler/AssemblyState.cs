@@ -64,6 +64,7 @@ namespace Konamiman.Nestor80.Assembler
             InPass2 = true;
             CurrentLineNumber = 1;
             ProgramName = Configuration.DefaultProgramName;
+            CurrentPhasedLocationPointer = 0;
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
@@ -113,12 +114,12 @@ namespace Konamiman.Nestor80.Assembler
             _CurrentLocationArea = locationAreaBeforePhase;
         }
 
-        private ushort _CurrentLocationPointer;
+        private ushort currentDephasedLocationPointer;
         public ushort CurrentLocationPointer {
-            get => CurrentPhasedLocationPointer.GetValueOrDefault(_CurrentLocationPointer);
+            get => CurrentPhasedLocationPointer.GetValueOrDefault(currentDephasedLocationPointer);
             private set
             {
-                _CurrentLocationPointer = value;
+                currentDephasedLocationPointer = value;
             }
         }
 
@@ -183,7 +184,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public void IncreaseLocationPointer(int amount)
         {
-            _CurrentLocationPointer += (ushort)amount;
+            currentDephasedLocationPointer += (ushort)amount;
             if(IsCurrentlyPhased) {
                 CurrentPhasedLocationPointer += (ushort)amount;
             }

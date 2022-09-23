@@ -191,12 +191,16 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.UnterminatedConditional, "Unterminated conditional block", withLineNumber: false);
             }
 
-            if(!state.EndReached) {
-                AddError(AssemblyErrorCode.NoEndStatement, "No END statement found", withLineNumber: false);
-            }
-
             if(state.InsideMultiLineComment) {
                 AddError(AssemblyErrorCode.UnterminatedComment, $"Unterminated .COMMENT block (delimiter: '{state.MultiLineCommandDelimiter}')", withLineNumber: false);
+            }
+
+            if(state.IsCurrentlyPhased) {
+                AddError(AssemblyErrorCode.UnterminatedPhase, "Unterminated .PHASE block", withLineNumber: false);
+            }
+
+            if(!state.EndReached) {
+                AddError(AssemblyErrorCode.NoEndStatement, "No END statement found", withLineNumber: false);
             }
         }
 
