@@ -17,6 +17,17 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+ds 16
+foo:
+.phase 100h
+jp bar
+bar:
+db 0
+jp fizz
+.dephase
+fizz:
+end
+
 dw 1+(BAR## SHL 8)
 end
 

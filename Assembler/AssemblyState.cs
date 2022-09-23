@@ -82,14 +82,58 @@ namespace Konamiman.Nestor80.Assembler
             {AddressType.ASEG, 0}
         };
 
-        public AddressType CurrentLocationArea { get; private set; } = AddressType.CSEG;
+        private AddressType locationAreaBeforePhase;
+        private AddressType _CurrentLocationArea;
+        public AddressType CurrentLocationArea 
+        {
+            get => IsCurrentlyPhased ? AddressType.ASEG : _CurrentLocationArea;
+            private set
+            {
+                _CurrentLocationArea = value;
+            }
+        }
 
-        public ushort CurrentLocationPointer { get; private set; }
+        public void EnterPhase(ushort address)
+        {
+            if(IsCurrentlyPhased) {
+                throw new InvalidOperationException($"{nameof(EnterPhase)} isn't intended to be called while already in .PHASE mode");
+            }
+
+            locationAreaBeforePhase = _CurrentLocationArea;
+            CurrentPhasedLocationPointer = address;
+        }
+
+        public void ExitPhase()
+        {
+            if(!IsCurrentlyPhased) {
+                throw new InvalidOperationException($"{nameof(EnterPhase)} isn't intended to be called while not in .PHASE mode");
+            }
+
+            CurrentPhasedLocationPointer = null;
+            _CurrentLocationArea = locationAreaBeforePhase;
+        }
+
+        private ushort _CurrentLocationPointer;
+        public ushort CurrentLocationPointer {
+            get => CurrentPhasedLocationPointer.GetValueOrDefault(_CurrentLocationPointer);
+            private set
+            {
+                _CurrentLocationPointer = value;
+            }
+        }
+
+        public ushort? CurrentPhasedLocationPointer { get; private set; } = null;
+
+        public bool IsCurrentlyPhased => CurrentPhasedLocationPointer is not null;
 
         public Address GetCurrentLocation() => new(CurrentLocationArea, CurrentLocationPointer);
 
         public void SwitchToArea(AddressType area)
         {
+            if(IsCurrentlyPhased) {
+                throw new InvalidOperationException($"{nameof(SwitchToArea)} isn't intended to be executed while in .PHASE mode");
+            }
+
             //TODO: Handle sizes of commons
             if(area == CurrentLocationArea)
                 return;
@@ -108,6 +152,10 @@ namespace Konamiman.Nestor80.Assembler
 
         public void SwitchToLocation(ushort location)
         {
+            if(IsCurrentlyPhased) {
+                throw new InvalidOperationException($"{nameof(SwitchToLocation)} isn't intended to be executed while in .PHASE mode");
+            }
+
             //TODO: Handle commons
             CurrentLocationPointer = location;
             AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
@@ -133,7 +181,13 @@ namespace Konamiman.Nestor80.Assembler
             return 0;
         }
 
-        public void IncreaseLocationPointer(int amount) => CurrentLocationPointer += (ushort)amount;
+        public void IncreaseLocationPointer(int amount)
+        {
+            _CurrentLocationPointer += (ushort)amount;
+            if(IsCurrentlyPhased) {
+                CurrentPhasedLocationPointer += (ushort)amount;
+            }
+        }
 
         public void IncreaseLineNumber() => CurrentLineNumber++;
 

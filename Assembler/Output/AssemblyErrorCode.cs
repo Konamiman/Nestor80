@@ -3,7 +3,7 @@
     public enum AssemblyErrorCode : byte
     {
         None = 0,
-        NoEndStatement,
+        NoEndStatement = 1,
         UnexpectedContentAtEndOfLine,
         DollarAsLabel,
         LineHasNoEffect,
@@ -14,10 +14,12 @@
         ConfusingOffset,
         IgnoredForAbsoluteOutput,
         UnterminatedConditional,
+        PhaseWithoutArgument,
+        DephaseWithoutPhase,
         UserWarning,
 
         FirstError = 64,
-        InvalidExpression,
+        InvalidExpression = 64,
         InvalidArgument,
         MissingValue,
         InvalidLabel,
@@ -28,10 +30,12 @@
         ConditionalOutOfScope,
         UnknownSymbol,
         InvalidForRelocatable,
+        InvalidNestedPhase,
+        InvalidInPhased,
         UserError,
 
         FirstFatal = 128,
-        UnexpectedError,
+        UnexpectedError = 128,
         SourceLineTooLong,
         UnsupportedCpu,
         CantInclude,

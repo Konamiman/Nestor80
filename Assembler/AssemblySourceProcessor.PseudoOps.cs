@@ -53,6 +53,7 @@ namespace Konamiman.Nestor80.Assembler
             { ".PRINT1", ProcessPrint1Line },
             { ".PRINT2", ProcessPrint2Line },
             { "IF", ProcessIfTrueLine },
+            { "COND", ProcessIfTrueLine },
             { "IFT", ProcessIfTrueLine },
             { "IFE", ProcessIfFalseLine },
             { "IFF", ProcessIfFalseLine },
@@ -62,13 +63,16 @@ namespace Konamiman.Nestor80.Assembler
             { "IF2", ProcessIf2Line },
             { "ELSE", ProcessElseLine },
             { "ENDIF", ProcessEndifLine },
+            { "ENDC", ProcessEndifLine },
             { "IFB", ProcessIfBlankLine },
             { "IFNB", ProcessIfNotBlankLine },
             { "IFIDN", ProcessIfIdenticalLine },
             { "IFDIF", ProcessIfDifferentLine },
             { ".WARN", ProcessUserWarning },
             { ".ERROR", ProcessUserError },
-            { ".FATAL", ProcessUserFatal }
+            { ".FATAL", ProcessUserFatal },
+            { ".PHASE", ProcessPhase },
+            { ".DEPHASE", ProcessDephase },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -150,7 +154,7 @@ namespace Konamiman.Nestor80.Assembler
             line.RelocatableParts = relocatables.ToArray();
             line.NewLocationArea = state.CurrentLocationArea;
             line.NewLocationCounter = state.CurrentLocationPointer;
-            
+
             return line;
         }
 
@@ -163,35 +167,35 @@ namespace Konamiman.Nestor80.Assembler
             if(walker.AtEndOfLine) {
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs at least the length argument");
             }
-            else try{
-                var lengthExpressionText = walker.ExtractExpression();
-                var lengthExpression = Expression.Parse(lengthExpressionText);
-                lengthExpression.ValidateAndPostifixize();
-                var lengthAddress = lengthExpression.Evaluate();
-                if(!lengthAddress.IsAbsolute) {
-                    throw new InvalidExpressionException("the length argument must evaluate to an absolute value");
-                }
-                length = lengthAddress.Value;
+            else try {
+                    var lengthExpressionText = walker.ExtractExpression();
+                    var lengthExpression = Expression.Parse(lengthExpressionText);
+                    lengthExpression.ValidateAndPostifixize();
+                    var lengthAddress = lengthExpression.Evaluate();
+                    if(!lengthAddress.IsAbsolute) {
+                        throw new InvalidExpressionException("the length argument must evaluate to an absolute value");
+                    }
+                    length = lengthAddress.Value;
 
-                if(!walker.AtEndOfLine) {
-                    var valueExpressionText = walker.ExtractExpression();
-                    var valueExpression = Expression.Parse(valueExpressionText);
-                    valueExpression.ValidateAndPostifixize();
-                    var valueAddress = valueExpression.TryEvaluate();
-                    if(valueAddress is null) {
-                        state.RegisterPendingExpression(line, valueExpression, size: 1);
-                    }
-                    else if(!valueAddress.IsValidByte) {
-                        throw new InvalidExpressionException("the value argument must evaluate to a valid byte");
-                    }
-                    else {
-                        value = valueAddress.ValueAsByte;
+                    if(!walker.AtEndOfLine) {
+                        var valueExpressionText = walker.ExtractExpression();
+                        var valueExpression = Expression.Parse(valueExpressionText);
+                        valueExpression.ValidateAndPostifixize();
+                        var valueAddress = valueExpression.TryEvaluate();
+                        if(valueAddress is null) {
+                            state.RegisterPendingExpression(line, valueExpression, size: 1);
+                        }
+                        else if(!valueAddress.IsValidByte) {
+                            throw new InvalidExpressionException("the value argument must evaluate to a valid byte");
+                        }
+                        else {
+                            value = valueAddress.ValueAsByte;
+                        }
                     }
                 }
-            }
-            catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
-            }
+                catch(InvalidExpressionException ex) {
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                }
 
             state.IncreaseLocationPointer(length);
             line.NewLocationArea = state.CurrentLocationArea;
@@ -211,25 +215,25 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one string as argument");
             }
             else try {
-                var expressionText = walker.ExtractExpression();
-                var expression = Expression.Parse(expressionText, forDefb: true);
+                    var expressionText = walker.ExtractExpression();
+                    var expression = Expression.Parse(expressionText, forDefb: true);
 
-                if(expression.IsRawBytesOutput) {
-                    var bytes = (RawBytesOutput)expression.Parts[0];
-                    if(bytes.Any(b => b >= 0x80)) {
-                        AddError(AssemblyErrorCode.StringHasBytesWithHighBitSet, $"{opcode.ToUpper()}: the string already has bytes with the MSB set once encoded with {Expression.OutputStringEncoding.WebName}");
+                    if(expression.IsRawBytesOutput) {
+                        var bytes = (RawBytesOutput)expression.Parts[0];
+                        if(bytes.Any(b => b >= 0x80)) {
+                            AddError(AssemblyErrorCode.StringHasBytesWithHighBitSet, $"{opcode.ToUpper()}: the string already has bytes with the MSB set once encoded with {Expression.OutputStringEncoding.WebName}");
+                        }
+
+                        bytes[bytes.Length - 1] |= 0x80;
+                        outputBytes = bytes.ToArray();
                     }
-
-                    bytes[bytes.Length - 1] |= 0x80;
-                    outputBytes = bytes.ToArray();
+                    else {
+                        AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
+                    }
                 }
-                else {
-                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
+                catch(InvalidExpressionException ex) {
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
                 }
-            }
-            catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
-            }
 
             if(outputBytes is not null) {
                 state.IncreaseLocationPointer(outputBytes.Length);
@@ -251,11 +255,16 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessChangeAreaLine(AddressType area)
         {
-            state.SwitchToArea(area);
-
             if(buildType == BuildType.Absolute && area != AddressType.ASEG) {
                 AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing area to {area} when the output type is absolute has no effect");
             }
+
+            if(state.IsCurrentlyPhased) {
+                state.AddError(AssemblyErrorCode.InvalidInPhased, "Changing the location area is not allowed inside a .PHASE block");
+                return new ChangeAreaLine();
+            }
+
+            state.SwitchToArea(area);
 
             return new ChangeAreaLine() {
                 NewLocationArea = state.CurrentLocationArea,
@@ -265,6 +274,11 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessOrgLine(string opcode, SourceLineWalker walker)
         {
+            if(state.IsCurrentlyPhased) {
+                state.AddError(AssemblyErrorCode.InvalidInPhased, "Changing the location pointer is not allowed inside a .PHASE block");
+                return new ChangeOriginLine();
+            }
+
             if(walker.AtEndOfLine) {
                 AddError(AssemblyErrorCode.LineHasNoEffect, "ORG without value will have no effect");
                 return new ChangeOriginLine();
@@ -438,7 +452,7 @@ namespace Konamiman.Nestor80.Assembler
             line.Value = value.Value;
 
             var symbol = state.GetSymbol(name);
-            
+
             if(symbol is null) {
                 if(z80RegisterNames.Contains(name, StringComparer.OrdinalIgnoreCase)) {
                     AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{name.ToUpper()} is a Z80 register or flag name, defining it as a constant will prevent using it as a register or flag in Z80 instructions");
@@ -814,7 +828,7 @@ namespace Konamiman.Nestor80.Assembler
                 var expressionText = match.Value;
                 var originalExpressionText = expressionText;
                 var colonIndex = expressionText.LastIndexOf(':');
-                if(colonIndex != -1 && colonIndex != expressionText.Length-1 && colonIndex != 0) {
+                if(colonIndex != -1 && colonIndex != expressionText.Length - 1 && colonIndex != 0) {
                     formatSpecifier = expressionText[(colonIndex + 1)..].Replace('h', 'x').Replace('H', 'X');
                     expressionText = expressionText[..colonIndex];
                 }
@@ -891,12 +905,13 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessIfTrueLine(string opcode, SourceLineWalker walker)
             => ProcessIfExpressionLine(opcode, walker, true);
 
-        static ProcessedSourceLine ProcessIfFalseLine(string opcode, SourceLineWalker walker) 
+        static ProcessedSourceLine ProcessIfFalseLine(string opcode, SourceLineWalker walker)
             => ProcessIfExpressionLine(opcode, walker, false);
 
         static ProcessedSourceLine ProcessIfExpressionLine(string opcode, SourceLineWalker walker, bool mustEvaluateToTrue)
         {
-            bool? evaluator() { 
+            bool? evaluator()
+            {
                 if(walker.AtEndOfLine) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument");
                     return null;
@@ -1121,6 +1136,58 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return (stream, new IncludeLine() { FileName = fileName, FullPath = path });
+        }
+
+        /**
+         * Additional restrictions compared to Macro80:
+         * 
+         * - Address must be known when the instruction is reached
+         * - Address must be absolute
+         * - Area changes and ORGs are not allowed inside a .PHASE block
+         */
+        static ProcessedSourceLine ProcessPhase(string opcode, SourceLineWalker walker)
+        {
+            if(state.IsCurrentlyPhased) {
+                AddError(AssemblyErrorCode.InvalidNestedPhase, $"Nested {opcode.ToUpper()} instructions are not allowed");
+                return new PhaseLine();
+            }
+
+            Address phaseAddress;
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.PhaseWithoutArgument, $"{opcode.ToUpper()} instruction without argument, address 0 will be used");
+                phaseAddress = Address.AbsoluteZero;
+            }
+            else {
+                try {
+                    var phaseAddressText = walker.ExtractExpression();
+                    var phaseAddressExpression = Expression.Parse(phaseAddressText);
+                    phaseAddressExpression.ValidateAndPostifixize();
+                    phaseAddress = phaseAddressExpression.Evaluate();
+                }
+                catch(InvalidExpressionException ex) {
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    return new PhaseLine();
+                }
+            }
+
+            if(!phaseAddress.IsAbsolute) {
+                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid expression for {opcode.ToUpper()}: the value must be absolute");
+            }
+
+            state.EnterPhase(phaseAddress.Value);
+            return new PhaseLine() { Address = phaseAddress.Value };
+        }
+
+        static ProcessedSourceLine ProcessDephase(string opcode, SourceLineWalker walker)
+        {
+            if(state.IsCurrentlyPhased) {
+                state.ExitPhase();
+            }
+            else {
+                AddError(AssemblyErrorCode.DephaseWithoutPhase, $"{opcode.ToUpper()} found without a corresponding .PHASE");
+            }
+
+            return new DephaseLine();
         }
     }
 }
