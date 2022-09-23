@@ -12,6 +12,6 @@
 
         public string CommonName { get; set; }
 
-        public override string ToString() => $"{Name} = {ValueArea} {Value}, {Type}, {CommonName}";
+        public override string ToString() => $"{Name} = {ValueArea} {Value:X4}, {Type}, {CommonName}";
     }
 }

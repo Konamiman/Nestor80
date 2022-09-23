@@ -1149,6 +1149,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(state.IsCurrentlyPhased) {
                 AddError(AssemblyErrorCode.InvalidNestedPhase, $"Nested {opcode.ToUpper()} instructions are not allowed");
+                walker.DiscardRemaining();
                 return new PhaseLine();
             }
 
@@ -1172,10 +1173,12 @@ namespace Konamiman.Nestor80.Assembler
 
             if(!phaseAddress.IsAbsolute) {
                 AddError(AssemblyErrorCode.InvalidArgument, $"Invalid expression for {opcode.ToUpper()}: the value must be absolute");
+                walker.DiscardRemaining();
+                return new PhaseLine();
             }
 
             state.EnterPhase(phaseAddress.Value);
-            return new PhaseLine() { Address = phaseAddress.Value };
+            return new PhaseLine() { NewLocationArea = AddressType.ASEG, NewLocationCounter = state.CurrentLocationPointer };
         }
 
         static ProcessedSourceLine ProcessDephase(string opcode, SourceLineWalker walker)
@@ -1184,10 +1187,11 @@ namespace Konamiman.Nestor80.Assembler
                 state.ExitPhase();
             }
             else {
+                walker.DiscardRemaining();
                 AddError(AssemblyErrorCode.DephaseWithoutPhase, $"{opcode.ToUpper()} found without a corresponding .PHASE");
             }
 
-            return new DephaseLine();
+            return new DephaseLine() { NewLocationArea = state.CurrentLocationArea, NewLocationCounter = state.CurrentLocationPointer };
         }
     }
 }

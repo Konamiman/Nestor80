@@ -18,6 +18,7 @@ namespace Konamiman.Nestor80.N80
             var code =
 @"
 ds 16
+jp fizz
 foo:
 .phase 100h
 jp bar

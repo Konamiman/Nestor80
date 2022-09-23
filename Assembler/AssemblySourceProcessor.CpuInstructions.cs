@@ -444,7 +444,7 @@ namespace Konamiman.Nestor80.Assembler
                 return line;
             }
 
-            actualBytes ??= instruction.Opcodes;
+            actualBytes ??= instruction.Opcodes.ToArray();
             if(pendingExpression1 is not null) {
                 state.RegisterPendingExpression(line, pendingExpression1, instruction.ValuePosition, instruction.ValueSize);
             }
