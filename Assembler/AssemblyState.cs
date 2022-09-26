@@ -64,7 +64,7 @@ namespace Konamiman.Nestor80.Assembler
             InPass2 = true;
             CurrentLineNumber = 1;
             ProgramName = Configuration.DefaultProgramName;
-            CurrentPhasedLocationPointer = 0;
+            CurrentPhasedLocationPointer = null;
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;

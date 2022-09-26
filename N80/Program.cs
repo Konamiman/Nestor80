@@ -17,6 +17,14 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+FOO equ 1
+db 34
+db FOO
+db BAR
+db FIZZ##
+BAR equ 2
+end
+
 ds 16
 jp fizz
 foo:

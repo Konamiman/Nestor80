@@ -148,13 +148,24 @@ namespace Konamiman.Nestor80.Assembler
         public SymbolReference[] ReferencedSymbols => 
             Parts.Where(p => p is SymbolReference).Cast<SymbolReference>().ToArray();
 
-        public Address Evaluate() => EvaluateCore(true);
-        public Address TryEvaluate() => EvaluateCore(false);
+        public Address Evaluate() => EvaluateCore(false);
+        public Address TryEvaluate() => EvaluateCore(true);
 
-        private Address EvaluateCore(bool throwOnUnknownSymbol)
+        private Address EvaluateCore(bool stopOnSymbolFound)
         {
             if(!IsPostfixized) {
                 throw new InvalidOperationException($"{nameof(Expression)}: {nameof(ValidateAndPostifixize)} must be executed before {nameof(Evaluate)} or {nameof(TryEvaluate)}");
+            }
+
+            if(stopOnSymbolFound) {
+                var symbolParts = Parts.OfType<SymbolReference>();
+                if(symbolParts.Any()) {
+                    //We need each symbol to be registered, even if value is still unknown
+                    foreach(var sr in symbolParts) {
+                        GetSymbol(sr.SymbolName, sr.IsExternal);
+                    }
+                    return null;
+                }
             }
 
             var stack = new Stack<IExpressionPart>();
@@ -169,7 +180,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     var poppedItem = stack.Pop();
-                    var poppedAddress = ResolveAddressOrSymbol(poppedItem, throwOnUnknownSymbol);
+                    var poppedAddress = ResolveAddressOrSymbol(poppedItem);
                     if(poppedAddress is null) {
                         return null;
                     }
@@ -183,13 +194,13 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     var poppedItem2 = stack.Pop();
-                    var poppedAddress2 = ResolveAddressOrSymbol(poppedItem2, throwOnUnknownSymbol);
+                    var poppedAddress2 = ResolveAddressOrSymbol(poppedItem2);
                     if(poppedAddress2 is null) {
                         return null;
                     }
 
                     var poppedItem1 = stack.Pop();
-                    var poppedAddress1 = ResolveAddressOrSymbol(poppedItem1, throwOnUnknownSymbol);
+                    var poppedAddress1 = ResolveAddressOrSymbol(poppedItem1);
                     if(poppedAddress1 is null) {
                         return null;
                     }
@@ -198,7 +209,7 @@ namespace Konamiman.Nestor80.Assembler
                     stack.Push(operationResult);
                 }
                 else {
-                    var address = ResolveAddressOrSymbol(item, throwOnUnknownSymbol);
+                    var address = ResolveAddressOrSymbol(item);
                     if(address is null) {
                         hasUnknownSymbols = true;
                         address = Address.AbsoluteZero;
@@ -224,7 +235,7 @@ namespace Konamiman.Nestor80.Assembler
             return (Address)result;
         }
 
-        private Address ResolveAddressOrSymbol(IExpressionPart part, bool throwOnUnknownSymbol)
+        private Address ResolveAddressOrSymbol(IExpressionPart part)
         {
             if(part is Address address) {
                 return address;
@@ -241,16 +252,13 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(symbol.IsExternal) {
-                if(throwOnUnknownSymbol)
-                    throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed when the expression contains external symbols. Symbol: {sr.SymbolName}");
-                else
-                    return null;
+                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed when the expression contains external symbols. Symbol: {sr.SymbolName}");
             }
 
             if(symbol.HasKnownValue) {
                 return symbol.Value;
             }
-            else if(throwOnUnknownSymbol) {
+            else {
                 Throw($"Unknown symbol: {sr.SymbolName}");
             }
 
