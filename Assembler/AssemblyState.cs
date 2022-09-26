@@ -45,6 +45,13 @@ namespace Konamiman.Nestor80.Assembler
             ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, OutputSize = size } );
         }
 
+        public void UnregisterPendingExpressions(ProcessedSourceLine line)
+        {
+            if(ExpressionsPendingEvaluation.ContainsKey(line)) {
+                ExpressionsPendingEvaluation.Remove(line);
+            }
+        }
+
         public Dictionary<ProcessedSourceLine, List<ExpressionPendingEvaluation>> ExpressionsPendingEvaluation { get; } = new();
 
         public Address EndAddress { get; private set; }
@@ -131,7 +138,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public void SwitchToArea(AddressType area)
         {
-            if(IsCurrentlyPhased) {
+            if(IsCurrentlyPhased && area is not AddressType.ASEG) {
                 throw new InvalidOperationException($"{nameof(SwitchToArea)} isn't intended to be executed while in .PHASE mode");
             }
 
@@ -158,8 +165,10 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             //TODO: Handle commons
-            CurrentLocationPointer = location;
-            AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
+            if(location != CurrentLocationPointer) {
+                CurrentLocationPointer = location;
+                AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
+            }
         }
 
         public ushort GetLocationPointer(AddressType area)

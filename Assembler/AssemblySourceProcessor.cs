@@ -32,6 +32,8 @@ namespace Konamiman.Nestor80.Assembler
             "ELSE", "ENDIF"
         };
 
+        private static readonly string[] instructionsNeedingPass2Reevaluation;
+
         private static CpuType currentCpu;
         private static Dictionary<CpuType, Dictionary<string, CpuInstruction[]>> cpuInstructions;
         private static Dictionary<string, CpuInstruction[]> currentCpuInstructions;
@@ -67,6 +69,8 @@ namespace Konamiman.Nestor80.Assembler
             foreach(var entry in R800Instructions) {
                 cpuInstructions[CpuType.R800].Add(entry.Key, entry.Value);
             }
+
+            instructionsNeedingPass2Reevaluation = conditionalInstructions.Concat(new[] { ".PHASE", ".DEPHASE" }).ToArray();
         }
 
         public static AssemblyResult Assemble(string source, AssemblyConfiguration configuration = null)
@@ -162,7 +166,7 @@ namespace Konamiman.Nestor80.Assembler
             };
         }
 
-        private void DoPass1()
+        private static void DoPass1()
         {
             while(!state.EndReached) {
                 var sourceLine = state.SourceStreamReader.ReadLine();
@@ -204,15 +208,16 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private ProcessedSourceLine ProcessSourceLine(string line)
+        private static ProcessedSourceLine ProcessSourceLine(string line, int? formFeedCharsCount = null)
         {
             ProcessedSourceLine processedLine = null;
             SourceLineWalker walker;
 
-            var formFeedCharsCount = 0;
-            formFeedCharsCount = line.Count(ch => ch == '\f');
-            if(formFeedCharsCount > 0) {
-                line = line.Replace("\f", "");
+            if(formFeedCharsCount is null) {
+                formFeedCharsCount = line.Count(ch => ch == '\f');
+                if(formFeedCharsCount > 0) {
+                    line = line.Replace("\f", "");
+                }
             }
 
             if(state.InsideMultiLineComment) {
@@ -229,7 +234,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 processedLine.Line = line;
                 processedLine.EffectiveLineLength = 0;
-                processedLine.FormFeedsCount = formFeedCharsCount;
+                processedLine.FormFeedsCount = formFeedCharsCount.Value;
                 return processedLine;
             }
 
@@ -237,13 +242,13 @@ namespace Konamiman.Nestor80.Assembler
                 processedLine =
                     formFeedCharsCount == 0 ?
                     blankLineWithoutLabel :
-                    new BlankLine() { FormFeedsCount = formFeedCharsCount };
+                    new BlankLine() { FormFeedsCount = formFeedCharsCount.Value };
                 return processedLine;
             }
 
             walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
-                processedLine = new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength, FormFeedsCount = formFeedCharsCount };
+                processedLine = new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength, FormFeedsCount = formFeedCharsCount.Value };
                 return processedLine;
             }
 
@@ -276,11 +281,11 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(walker.AtEndOfLine) {
                     if(state.InFalseConditional) {
-                        processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount };
+                        processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount.Value };
                     }
                     else if(walker.EffectiveLength == walker.SourceLine.Length) {
                         ProcessLabelDefinition(label);
-                        processedLine =  new BlankLine() { Label = label};
+                        processedLine =  new BlankLine() { Line = line, Label = label};
                     }
                     else {
                         ProcessLabelDefinition(label);
@@ -320,12 +325,12 @@ namespace Konamiman.Nestor80.Assembler
                     //Note that we can still be inside a false conditional block even after an ENDIF, if there are nested conditional blocks,
                     //e.g: IF 0 - IF 1 - ENDIF (still in false block here) - ENDIF (out of false block now)
                     if(state.InFalseConditional) {
-                        processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount };
+                        processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount.Value };
                         return processedLine;
                     }
                 }
                 else {
-                    processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount };
+                    processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount.Value };
                     return processedLine;
                 }
             }
@@ -376,7 +381,7 @@ namespace Konamiman.Nestor80.Assembler
             processedLine.Line = line;
             if(processedLine.EffectiveLineLength == -1) processedLine.EffectiveLineLength = walker.DiscardRemaining();
             processedLine.Label = label;
-            processedLine.FormFeedsCount = formFeedCharsCount;
+            processedLine.FormFeedsCount = formFeedCharsCount.Value;
 
             if(includeStream is not null) {
                 state.PushIncludeState(includeStream, (IncludeLine)processedLine);
@@ -433,8 +438,40 @@ namespace Konamiman.Nestor80.Assembler
 
         private static ProcessedSourceLine ProcessLineForPass2(ProcessedSourceLine processedLine)
         {
-            //TODO - handle conditionals
-            //TODO - verify that labels dont get different values in pass 1 and 2
+            if(processedLine is not null && instructionsNeedingPass2Reevaluation.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
+                state.UnregisterPendingExpressions(processedLine);
+                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
+            }
+            else if(state.InConditionalBlock) {
+                if(state.InFalseConditional && processedLine is not SkippedLine) {
+                    state.UnregisterPendingExpressions(processedLine);
+                    processedLine = new SkippedLine() { Line = processedLine.Line, EffectiveLineLength = 0, FormFeedsCount = processedLine.FormFeedsCount };
+                }
+                else if(!state.InFalseConditional && processedLine is SkippedLine) {
+                    state.UnregisterPendingExpressions(processedLine);
+                    processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
+                }
+            }
+
+            if(processedLine.Label is not null) {
+                var currentLocation = state.GetCurrentLocation();
+                var labelSymbol = state.GetSymbol(processedLine.EffectiveLabel);
+                if(labelSymbol is null) {
+                    throw new Exception($"Unexpected: label {processedLine.Label} in instruction is not registered during pass 2");
+                }
+                if(!labelSymbol.IsLabel) {
+                    throw new Exception($"Unexpected: label {processedLine.Label} in instruction is of type {labelSymbol.Type} (not label) during pass 2");
+                }
+
+                if(labelSymbol.Value != currentLocation) {
+                    AddError(AssemblyErrorCode.DifferentPassValues, $"Label {labelSymbol.Name} has different values in pass 1 ({labelSymbol.Value:X4}h) and in pass 2 ({currentLocation:X4}h)");
+                }
+            }
+
+            if(processedLine is IChangesLocationCounter iclc) {
+                state.SwitchToArea(iclc.NewLocationArea);
+                state.SwitchToLocation(iclc.NewLocationCounter);
+            }
 
             if(state.ExpressionsPendingEvaluation.ContainsKey(processedLine)) {
                 ProcessExpressionPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation[processedLine].ToArray());
@@ -564,6 +601,13 @@ namespace Konamiman.Nestor80.Assembler
         {
             var isPublic = label.EndsWith("::");
             var labelValue = label.TrimEnd(':');
+
+            if(state.InPass2) {
+                if(isPublic) {
+                    state.GetSymbol(labelValue).IsPublic = true;
+                }
+                return;
+            }
 
             if(labelValue == "$") {
                 AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");

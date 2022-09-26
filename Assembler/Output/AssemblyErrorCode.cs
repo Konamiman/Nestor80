@@ -33,6 +33,7 @@
         InvalidForRelocatable,
         InvalidNestedPhase,
         InvalidInPhased,
+        DifferentPassValues,
         UserError,
 
         FirstFatal = 128,
@@ -41,6 +42,6 @@
         UnsupportedCpu,
         CantInclude,
         TooManyNestedIncludes,
-        UserFatal
+        UserFatal,
     }
 }
