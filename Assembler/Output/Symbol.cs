@@ -4,6 +4,8 @@
     {
         public string Name { get; set; }
 
+        public string EffectiveName { get; set; }
+
         public SymbolType Type { get; set; }
 
         public AddressType ValueArea { get; set; }

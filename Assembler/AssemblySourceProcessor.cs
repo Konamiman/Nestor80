@@ -129,6 +129,7 @@ namespace Konamiman.Nestor80.Assembler
             var symbols =
                 state.GetSymbols().Select(s => new Symbol() {
                     Name = s.Name,
+                    EffectiveName = s.EffectiveName,
                     Type = s.Type,
                     Value = s.Value?.Value ?? 0,
                     ValueArea = s.Value?.Type ?? AddressType.ASEG,
@@ -416,6 +417,23 @@ namespace Konamiman.Nestor80.Assembler
             var unknownSymbols = state.GetSymbolsOfUnknownType();
             foreach(var symbol in unknownSymbols) {
                 AddError(AssemblyErrorCode.UnknownSymbol, $"Unknown symbol: {symbol.Name}", withLineNumber: false);
+            }
+
+            var allSymbols = state.GetSymbols().Where(s => s.IsOfKnownType);
+            var externalSymbols = allSymbols.Where(s => s.IsExternal).ToArray();
+            var externalsByEffectiveName = externalSymbols.GroupBy(s => s.EffectiveName);
+            var conflictingExternals = externalsByEffectiveName.Where(s => s.Count() > 1);
+            foreach(var ce in conflictingExternals) {
+                var names = string.Join(", ", ce.Select(s => s.Name));
+                AddError(AssemblyErrorCode.SameEffectiveExternal, $"The following external labels are too long and are all equivalent to {ce.Key}: {names}", withLineNumber: false);
+            }
+
+            var publicSymbols = allSymbols.Where(s => s.IsPublic).ToArray();
+            var publicsByEffectiveName = publicSymbols.GroupBy(s => s.EffectiveName);
+            var conflictingPublics = publicsByEffectiveName.Where(s => s.Count() > 1);
+            foreach(var cp in conflictingPublics) {
+                var names = string.Join(", ", cp.Select(s => s.Name));
+                AddError(AssemblyErrorCode.SameEffectiveExternal, $"The following public labels are too long and have conflicting names (all equivalent to {cp.Key}): {names}", withLineNumber: false);
             }
 
             return lines;

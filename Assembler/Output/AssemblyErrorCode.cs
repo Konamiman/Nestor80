@@ -17,6 +17,7 @@
         PhaseWithoutArgument,
         DephaseWithoutPhase,
         UnterminatedPhase,
+        SameEffectiveExternal,
         UserWarning,
 
         FirstError = 64,
@@ -34,6 +35,7 @@
         InvalidNestedPhase,
         InvalidInPhased,
         DifferentPassValues,
+        SameEffectivePublic,
         UserError,
 
         FirstFatal = 128,
