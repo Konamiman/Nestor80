@@ -1,11 +1,14 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Expressions;
+using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
 
 namespace Konamiman.Nestor80.Assembler
 {
     internal partial class Expression
     {
         public bool IsPostfixized { get; private set; } = false;
+
+        public bool HasTypeOperator => Parts.Any(p => p is TypeOperator);
 
         public void ValidateAndPostifixize()
         {
@@ -148,6 +151,8 @@ namespace Konamiman.Nestor80.Assembler
         public SymbolReference[] ReferencedSymbols => 
             Parts.Where(p => p is SymbolReference).Cast<SymbolReference>().ToArray();
 
+        private bool externalSymbolFound;
+
         public Address Evaluate() => EvaluateCore(false);
         public Address TryEvaluate() => EvaluateCore(true);
 
@@ -168,9 +173,11 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
+            externalSymbolFound = false;
+
             var stack = new Stack<IExpressionPart>();
 
-            var hasUnknownSymbols = false;
+            Address operationResult;
 
             foreach(var part in Parts) {
                 var item = part;
@@ -185,7 +192,13 @@ namespace Konamiman.Nestor80.Assembler
                         return null;
                     }
 
-                    var operationResult = uop.Operate(poppedAddress, null);
+                    if(uop is TypeOperator && externalSymbolFound) {
+                        operationResult = Address.Absolute(0x80);
+                        externalSymbolFound = false;
+                    }
+                    else {
+                        operationResult = uop.Operate(poppedAddress, null);
+                    }
                     stack.Push(operationResult);
                 }
                 else if(item is BinaryOperator bop) {
@@ -205,26 +218,25 @@ namespace Konamiman.Nestor80.Assembler
                         return null;
                     }
 
-                    var operationResult = bop.Operate(poppedAddress1, poppedAddress2);
+                    operationResult = bop.Operate(poppedAddress1, poppedAddress2);
                     stack.Push(operationResult);
                 }
                 else {
                     var address = ResolveAddressOrSymbol(item);
                     if(address is null) {
-                        hasUnknownSymbols = true;
-                        address = Address.AbsoluteZero;
+                        throw new Exception($"Unexpected expression parse result: unknown symbol: {item}");
                     }
 
                     stack.Push(address);
                 }
             }
 
-            if(hasUnknownSymbols) {
-                return null;
-            }
-
             if(stack.Count != 1) {
                 throw new Exception($"Unexpected expression parse result: the resulting stack should have one item, but it has {stack.Count}.");
+            }
+
+            if(externalSymbolFound) {
+                throw new ExpressionReferencesExternalsException();
             }
 
             var result = stack.Pop();
@@ -252,7 +264,8 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(symbol.IsExternal) {
-                throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed when the expression contains external symbols. Symbol: {sr.SymbolName}");
+                externalSymbolFound = true;
+                return Address.AbsoluteZero;
             }
 
             if(symbol.HasKnownValue) {
@@ -262,6 +275,7 @@ namespace Konamiman.Nestor80.Assembler
                 Throw($"Unknown symbol: {sr.SymbolName}");
             }
 
+            //Never reached, but needed because the compiler doesn't know that "Throw", well... throws
             return null;
         }
     }

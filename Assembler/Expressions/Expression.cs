@@ -1,5 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Expressions;
+using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -504,7 +505,8 @@ namespace Konamiman.Nestor80.Assembler
             ShiftRightOperator.Instance,
             UnaryMinusOperator.Instance,
             UnaryPlusOperator.Instance,
-            XorOperator.Instance
+            XorOperator.Instance,
+            TypeOperator.Instance,
         }.ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
 
         public static bool operator ==(Expression expression1, Expression expression2)

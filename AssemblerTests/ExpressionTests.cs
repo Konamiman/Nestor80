@@ -611,6 +611,44 @@ namespace Konamiman.Nestor80.AssemblerTests
             Assert.AreEqual(new byte[] { 13, 10, 39, 34, 0x45, 0x5c }, bytes);
         }
 
+        [Test]
+        [TestCase("type 1234", 0x20)]
+        [TestCase("type CODEZ", 0x21)]
+        [TestCase("type DATAZ", 0x22)]
+        [TestCase("type COMONZ", 0x23)]
+        [TestCase("type EXT", 0x80)]
+        [TestCase("type (EXT+1)", 0x80)]
+        [TestCase("type EXT+1", 0x81)]
+        [TestCase("2+(type CODEZ)+1", 0x24)]
+        public void TestType(string line, int expectedResult)
+        {
+            Expression.GetSymbol = (name, isExternal) => {
+                if(name is "EXT") {
+                    return new SymbolInfo() { Name = "EXT", Type = SymbolType.External };
+                }
+                else if(name is "CODEZ") {
+                    return new SymbolInfo() { Name = "CODEZ", Type = SymbolType.Label, Value = Address.Code(0x1234) };
+                }
+                else if(name is "DATAZ") {
+                    return new SymbolInfo() { Name = "DATAZ", Type = SymbolType.Label, Value = Address.Data(0x5678) };
+                }
+                else if(name is "COMONZ") {
+                    return new SymbolInfo() { Name = "COMONZ", Type = SymbolType.Label, Value = new Address(AddressType.COMMON, 0xABCD, "TheCommonz") };
+                }
+                else if(name is "ABZ") {
+                    return new SymbolInfo() { Name = "ABZ", Type = SymbolType.Label, Value = Address.Absolute(0xABCD) };
+                }
+                else {
+                    return null;
+                }
+            };
+            
+            var exp = Expression.Parse(line);
+            exp.ValidateAndPostifixize();
+            var result = exp.Evaluate();
+            Assert.AreEqual(Address.Absolute((ushort)expectedResult), result);
+        }
+
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
             AssertIsNumber(Expression.Parse(expressionString), number);
 

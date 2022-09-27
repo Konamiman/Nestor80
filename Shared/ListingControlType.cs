@@ -7,6 +7,11 @@
         XList,
         Tfcond,
         Sfcond,
-        Lfcond
+        Lfcond,
+        Cref,
+        XCref,
+        Xall,
+        Sall,
+        Lall
     }
 }

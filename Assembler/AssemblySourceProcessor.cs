@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Expressions;
+using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Output;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
@@ -108,6 +109,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(!state.HasErrors) {
                     state.SwitchToPass2();
                     state.SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
+                    state.SwitchToLocation(0);
                     processedLines = DoPass2();
                 }
             }
@@ -506,8 +508,26 @@ namespace Konamiman.Nestor80.Assembler
             foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
                 var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => s.SymbolName);
                 var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbol(s));
-                
-                if(referencedSymbols.Any(s => s.IsExternal)) {
+                var hasExternalsOutsideTypeOperator = false;
+                Address expressionValue = null;
+
+                if(!expressionPendingEvaluation.Expression.HasTypeOperator && referencedSymbols.Any(s => s.IsExternal)) {
+                    hasExternalsOutsideTypeOperator = true;
+                }
+                else {
+                    try {
+                        expressionValue = expressionPendingEvaluation.Expression.Evaluate();
+                    }
+                    catch(ExpressionReferencesExternalsException) {
+                        hasExternalsOutsideTypeOperator = true;
+                    }
+                    catch(InvalidExpressionException ex) {
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: {ex.Message}");
+                        continue;
+                    }
+                }
+
+                if(hasExternalsOutsideTypeOperator) {
                     var unknownSymbols = referencedSymbols.Where(s => !s.IsExternal && !s.HasKnownValue);
                     foreach(var symbol in unknownSymbols) {
                         AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: unknown symbol {symbol.Name}");
@@ -523,15 +543,6 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else {
-                    Address expressionValue = null;
-                    try {
-                        expressionValue = expressionPendingEvaluation.Expression.Evaluate();
-                    }
-                    catch(InvalidExpressionException ex) {
-                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: {ex.Message}");
-                        continue;
-                    }
-
                     if(expressionValue.IsAbsolute) {
                         if(expressionPendingEvaluation.OutputSize == 1) {
                             if(!expressionValue.IsValidByte) {
@@ -576,6 +587,10 @@ namespace Konamiman.Nestor80.Assembler
                     items.Add(LinkItem.ForExternalReference(symbol.EffectiveName));
                 }
                 else if(part is ArithmeticOperator op) {
+                    if(op is TypeOperator) {
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Operator TYPE is not allowed in expressions involving external references (except when the external reference is the argument for TYPE)");
+                        return null;
+                    }
                     if(op.ExtendedLinkItemType is null) {
                         AddError(AssemblyErrorCode.InvalidForRelocatable, $"Operator {op} is not allowed in expressions involving external references");
                         return null;
