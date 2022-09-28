@@ -72,6 +72,7 @@ namespace Konamiman.Nestor80.Assembler
             CurrentLineNumber = 1;
             ProgramName = Configuration.DefaultProgramName;
             CurrentPhasedLocationPointer = null;
+            EndAddress = null;
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
@@ -307,7 +308,7 @@ namespace Konamiman.Nestor80.Assembler
             InsideIncludedFile = true;
 
             CurrentIncludeFilename = includeLine.FileName;
-            SourceStreamReader = new StreamReader(newStream, sourceStreamEncoding, true, 4096);
+            SourceStreamReader = newStream is null ? null : new StreamReader(newStream, sourceStreamEncoding, true, 4096);
             CurrentLineNumber = 0; //0 because the line number will be increased right after this method
 
             //Don't just clear the existing list, we really need a new one!
@@ -320,11 +321,13 @@ namespace Konamiman.Nestor80.Assembler
                 throw new InvalidOperationException("Can't exit included file because we aren't in one");
             }
 
-            SourceStreamReader.Dispose();
+            SourceStreamReader?.Dispose();
 
             var previousState = includeStates.Pop();
 
-            previousState.ProcessedLine.Lines = ProcessedLines.ToArray();
+            if(SourceStreamReader is not null) {
+                previousState.ProcessedLine.Lines = ProcessedLines.ToArray();
+            }
 
             CurrentLineNumber = previousState.PreviousLineNumber + 1; //+1 because line number was increased after the call to PushIncludeState
             SourceStreamReader = previousState.PreviousSourceStreamReader;

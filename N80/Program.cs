@@ -17,6 +17,18 @@ namespace Konamiman.Nestor80.N80
 
             var code =
 @"
+db 0
+if1
+include foo/bar.asm
+endif
+.warn Warn in main file
+db 1
+end
+
+foo:
+ld a,foo
+end
+
 x:
 dseg
 y:
@@ -623,11 +635,11 @@ DSEG3:
                 GetStreamForInclude = (name) => {
                     string code;
                     if(name == "foo/bar.asm") {
-                        code = "db 34\r\n.warn Warn in include 1\r\ninclude bar/fizz.asm\r\ndb 89\r\n";
+                        code = "bars: db 34\r\n.warn Warn in include 1\r\ninclude bar/fizz.asm\r\ndb 89\r\n";
                         //code = "include foo/bar.asm\r\n";
                     }
                     else {
-                        code = ".warn Warn in include 2\r\ndw 2324h\r\n";
+                        code = "fizzs: .warn Warn in include 2\r\ndw 2324h\r\n";
                     }
                     return new MemoryStream(Encoding.ASCII.GetBytes(code));
                 }

@@ -19,6 +19,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private static BuildType buildType;
 
+        private static Stream includeStream;
+
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
             "AF", "HL", "BC", "DE", "IX", "IY",
@@ -90,6 +92,7 @@ namespace Konamiman.Nestor80.Assembler
             ProcessedSourceLine[] processedLines = null;
 
             try {
+                includeStream = null;
                 state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
 
                 SetCurrentCpu(configuration.CpuName);
@@ -186,6 +189,14 @@ namespace Konamiman.Nestor80.Assembler
 
                 var processedLine = ProcessSourceLine(sourceLine);
                 state.ProcessedLines.Add(processedLine);
+
+                if(processedLine is IncludeLine il) {
+                    if(includeStream is null) {
+                        throw new Exception($"That's unexpected: got an INCLUDE line, but {nameof(includeStream)} is null");
+                    }
+                    state.PushIncludeState(includeStream, il);
+                }
+
                 state.IncreaseLineNumber();
             }
 
@@ -338,7 +349,6 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            Stream includeStream = null;
             if(processedLine is null) {
                 if(label is not null) {
                     ProcessLabelDefinition(label);
@@ -386,9 +396,6 @@ namespace Konamiman.Nestor80.Assembler
             processedLine.Label = label;
             processedLine.FormFeedsCount = formFeedCharsCount.Value;
 
-            if(includeStream is not null) {
-                state.PushIncludeState(includeStream, (IncludeLine)processedLine);
-            }
 
             if(buildType == BuildType.Automatic) {
                 //Build type is also automatically selected when a constant/label
@@ -446,12 +453,11 @@ namespace Konamiman.Nestor80.Assembler
             for(var lineIndex=0; lineIndex<processedLines.Length; lineIndex++) {
                 var originalLine = processedLines[lineIndex];
 
-                //TODO - handle include
-
                 var maybeNewLine = ProcessLineForPass2(originalLine);
                 if(!ReferenceEquals(originalLine, maybeNewLine)) {
                     processedLines[lineIndex] = maybeNewLine;
                 }
+
                 state.IncreaseLineNumber();
             }
         }
@@ -459,17 +465,22 @@ namespace Konamiman.Nestor80.Assembler
         private static ProcessedSourceLine ProcessLineForPass2(ProcessedSourceLine processedLine)
         {
             if(processedLine is not null && instructionsNeedingPass2Reevaluation.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
-                state.UnregisterPendingExpressions(processedLine);
+                UnregisterPendingExpressions(processedLine);
                 processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
             }
             else if(state.InConditionalBlock) {
                 if(state.InFalseConditional && processedLine is not SkippedLine) {
-                    state.UnregisterPendingExpressions(processedLine);
+                    UnregisterPendingExpressions(processedLine);
                     processedLine = new SkippedLine() { Line = processedLine.Line, EffectiveLineLength = 0, FormFeedsCount = processedLine.FormFeedsCount };
                 }
                 else if(!state.InFalseConditional && processedLine is SkippedLine) {
-                    state.UnregisterPendingExpressions(processedLine);
+                    UnregisterPendingExpressions(processedLine);
                     processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
+                    if(processedLine is IncludeLine) {
+                        //Incompatibility with Macro80:
+                        //we don't allow pass 2-only INCLUDEs to simplify processing.
+                        ThrowFatal(AssemblyErrorCode.IncludeInPass2Only, "INCLUDE statements that are processed only in pass 2 aren't allowed");
+                    }
                 }
             }
 
@@ -569,6 +580,18 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             line.RelocatableParts = relocatables.ToArray();
+        }
+
+        private static void UnregisterPendingExpressions(ProcessedSourceLine line)
+        {
+            if(line is IncludeLine il) {
+                foreach(var subline in il.Lines) {
+                    UnregisterPendingExpressions(subline);
+                }
+            }
+            else {
+                state.UnregisterPendingExpressions(line);
+            }
         }
 
         private static LinkItemsGroup GetLinkItemsGroupFromExpression(ProcessedSourceLine processedLine, ExpressionPendingEvaluation expressionPendingEvaluation)

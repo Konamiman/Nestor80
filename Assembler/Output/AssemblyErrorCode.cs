@@ -44,6 +44,7 @@
         UnsupportedCpu,
         CantInclude,
         TooManyNestedIncludes,
+        IncludeInPass2Only,
         UserFatal,
     }
 }
