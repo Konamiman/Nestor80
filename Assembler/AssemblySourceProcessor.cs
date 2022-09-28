@@ -499,13 +499,13 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
+            if(state.ExpressionsPendingEvaluation.ContainsKey(processedLine)) {
+                ProcessExpressionPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation[processedLine].ToArray());
+            }
+
             if(processedLine is IChangesLocationCounter iclc) {
                 state.SwitchToArea(iclc.NewLocationArea);
                 state.SwitchToLocation(iclc.NewLocationCounter);
-            }
-
-            if(state.ExpressionsPendingEvaluation.ContainsKey(processedLine)) {
-                ProcessExpressionPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation[processedLine].ToArray());
             }
 
             return processedLine;
@@ -555,6 +555,20 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     if(expressionValue.IsAbsolute) {
+                        if(expressionPendingEvaluation.IsRelativeJump) {
+                            if(expressionValue.Type != state.CurrentLocationArea) {
+                                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction: the target address must be in the same area of the instruction");
+                                continue;
+                            }
+                            var offset = expressionValue.Value - (state.CurrentLocationPointer + 2);
+                            if(offset is < -128 or > 127) {
+                                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction: the target address is out of range");
+                                continue;
+                            }
+
+                            expressionValue = Address.Absolute((ushort)offset);
+                        }
+                        
                         if(expressionPendingEvaluation.OutputSize == 1) {
                             if(!expressionValue.IsValidByte) {
                                 AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: value {expressionValue.Value:X4}h can't be stored as a byte");
@@ -655,6 +669,10 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void ProcessLabelDefinition(string label)
         {
+            if(label is null) {
+                return;
+            }
+
             var isPublic = label.EndsWith("::");
             var labelValue = label.TrimEnd(':');
 

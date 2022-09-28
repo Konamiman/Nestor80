@@ -1,13 +1,50 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 
 namespace Konamiman.Nestor80.N80
 {
     internal class Program
     {
+
         static void Main(string[] args)
         {
+            var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../HELLO.ASM");
+            var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
+            var rx = AssemblySourceProcessor.Assemble(sourceStream, Encoding.UTF8);
+            var msx = new MemoryStream();
+            OutputGenerator.GenerateAbsolute(rx, msx);
+            var theBytexz = msx.ToArray();
+            File.WriteAllBytes(@"c:\bin\NestorHello.rom", theBytexz);
+            return;
+
+            var abscode = @"
+org 0fffeh
+ds 3,34
+ds 2,12
+end
+
+org 0FFFEh
+db 1,2,3
+db 4
+end
+
+org 4000h
+db 1,2,3,4
+org 4100h
+db 5,6,7,8
+org 4010h
+db 9,10,11,12
+org 3F00h
+db 13,14,15,16
+";
+            var r = AssemblySourceProcessor.Assemble(abscode, new AssemblyConfiguration() { BuildType = BuildType.Absolute });
+            var ms = new MemoryStream();
+            OutputGenerator.GenerateAbsolute(r, ms);
+            var theBytez = ms.ToArray();
+            var x = 0;
+
             //Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             //var x = Encoding.GetEncodings().Select(e => new { e.CodePage, e.Name }).OrderBy(x=>x.CodePage).ToArray();
 

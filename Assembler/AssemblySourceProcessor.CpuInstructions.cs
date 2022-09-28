@@ -36,7 +36,7 @@ namespace Konamiman.Nestor80.Assembler
 
             // From here we know that we received at least one argument
 
-            if(instructionsForOpcode[0].FirstArgument is null) {
+            if(instructionsForOpcode.All(i => i.FirstArgument is null)) {
                 //e.g. "NOP foo", handle anyway and generate a warning
                 //(for compatibility with Macro80)
                 AddError(AssemblyErrorCode.UnexpectedContentAtEndOfLine, $"Unexpected arguments(s) for the {currentCpu} instruction {opcode.ToUpper()}");
@@ -230,7 +230,7 @@ namespace Konamiman.Nestor80.Assembler
 
             byte[] bytes = matchingInstruction.Opcodes.ToArray();
 
-            if(matchingInstruction.FirstArgument == "d") {
+            if(matchingInstruction.FirstArgument == "d" || matchingInstruction.SecondArgument == "d") {
                 return ProcessArgumentForDTypeInstruction(matchingInstruction, bytes, firstArgumentValue) ?
                     GenerateInstructionLine(matchingInstruction, bytes) :
                     GenerateInstructionLine(null);
@@ -446,7 +446,8 @@ namespace Konamiman.Nestor80.Assembler
 
             actualBytes ??= instruction.Opcodes.ToArray();
             if(pendingExpression1 is not null) {
-                state.RegisterPendingExpression(line, pendingExpression1, instruction.ValuePosition, instruction.ValueSize);
+                var isRelativeJump = instruction.FirstArgument == "d" || instruction.SecondArgument == "d";
+                state.RegisterPendingExpression(line, pendingExpression1, instruction.ValuePosition, instruction.ValueSize, isRelativeJump: isRelativeJump);
             }
             if(pendingExpression2 is not null) {
                 state.RegisterPendingExpression(line, pendingExpression2, instruction.SecondValuePosition.Value, instruction.SecondValueSize.Value);

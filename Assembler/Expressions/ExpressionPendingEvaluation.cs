@@ -8,6 +8,8 @@
 
         public int OutputSize { get; set; }
 
-        public override string ToString() => $"@{LocationInOutput}, {OutputSize} bytes: {Expression}";
+        public bool IsRelativeJump { get; set; }
+
+        public override string ToString() => $"@{LocationInOutput}, {OutputSize} bytes: {Expression}{(IsRelativeJump ? "IsRelJump" : "")}";
     }
 }

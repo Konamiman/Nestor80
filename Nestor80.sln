@@ -9,6 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{49C74F4D-1B8E-41C6-A973-7123185EB696}"
 	ProjectSection(SolutionItems) = preProject
+		HELLO.ASM = HELLO.ASM
 		D:\Dropbox\Dropbox\m80l80.txt = D:\Dropbox\Dropbox\m80l80.txt
 		SOURCE.MAC = SOURCE.MAC
 	EndProjectSection
@@ -17,7 +18,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Assembler", "Assembler\Asse
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "N80", "N80\N80.csproj", "{9D69D520-8F65-4386-BACF-0E5D57B3B265}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AssemblerTests", "AssemblerTests\AssemblerTests.csproj", "{32B2214E-14F9-4F29-9B57-AC6C8A0E6425}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssemblerTests", "AssemblerTests\AssemblerTests.csproj", "{32B2214E-14F9-4F29-9B57-AC6C8A0E6425}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
