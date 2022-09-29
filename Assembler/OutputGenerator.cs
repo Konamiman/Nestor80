@@ -21,11 +21,20 @@ namespace Konamiman.Nestor80.Assembler
                 firstAddress = first_chol.NewLocationCounter;
             }
 
+            //We do a deferred location counter update to prevent an ORG at the end of the file
+            //(not followed by more output) from affecting the final output size
+            int newLocationCounter = -1;
+
             foreach(var line in lines) {
+                if(newLocationCounter != -1 && line is IProducesOutput or DefineSpaceLine) {
+                    firstAddress = Math.Min(firstAddress, newLocationCounter);
+                    lastAddressPlusOne = Math.Max(lastAddressPlusOne, newLocationCounter);
+                    currentAddress = newLocationCounter;
+                    newLocationCounter = -1;
+                }
+
                 if(line is ChangeOriginLine chol) {
-                    firstAddress = Math.Min(firstAddress, chol.NewLocationCounter);
-                    lastAddressPlusOne = Math.Max(lastAddressPlusOne, chol.NewLocationCounter);
-                    currentAddress = chol.NewLocationCounter;
+                    newLocationCounter = chol.NewLocationCounter;
                 }
                 else if(line is IProducesOutput ipo) {
                     var length = ipo.OutputBytes.Length;
