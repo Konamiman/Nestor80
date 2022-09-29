@@ -78,6 +78,7 @@ namespace Konamiman.Nestor80.Assembler
             { ".FATAL", ProcessUserFatal },
             { ".PHASE", ProcessPhase },
             { ".DEPHASE", ProcessDephase },
+            { "ENDOUT", ProcessEndout }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -392,7 +393,13 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(walker.AtEndOfLine) {
                 state.End(Address.AbsoluteZero);
-                return new AssemblyEndLine() { Line = walker.SourceLine, Opcode = opcode };
+                return new AssemblyEndLine() { Line = walker.SourceLine };
+            }
+
+            if(buildType == BuildType.Absolute) {
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, "The argument of the END statement is ignored when tthe output type is absolute");
+                state.End(Address.AbsoluteZero);
+                return new AssemblyEndLine() { Line = walker.SourceLine, EffectiveLineLength = walker.DiscardRemaining() };
             }
 
             try {
@@ -1197,6 +1204,11 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return new DephaseLine() { NewLocationArea = state.CurrentLocationArea, NewLocationCounter = state.CurrentLocationPointer };
+        }
+
+        static ProcessedSourceLine ProcessEndout(string opcode, SourceLineWalker walker)
+        {
+            return new EndOutputLine();
         }
     }
 }

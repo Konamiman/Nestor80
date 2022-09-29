@@ -69,6 +69,9 @@ namespace Konamiman.Nestor80.Assembler
                         lastAddressPlusOne = 65536;
                     }
                 }
+                else if(line is AssemblyEndLine or EndOutputLine) {
+                    break;
+                }
 
                 if(currentAddress >= 65536) {
                     firstAddress = 0;

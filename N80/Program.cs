@@ -10,7 +10,7 @@ namespace Konamiman.Nestor80.N80
 
         static void Main(string[] args)
         {
-            /*
+            
             var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../HELLO.ASM");
             var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
             var rx = AssemblySourceProcessor.Assemble(sourceStream, Encoding.UTF8);
@@ -46,7 +46,7 @@ db 13,14,15,16
             OutputGenerator.GenerateAbsolute(r, ms);
             var theBytez = ms.ToArray();
             var x = 0;
-            */
+            
 
             //Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             //var x = Encoding.GetEncodings().Select(e => new { e.CodePage, e.Name }).OrderBy(x=>x.CodePage).ToArray();
