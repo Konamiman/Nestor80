@@ -44,6 +44,11 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { 2, "01", 1 },
             new object[] { 2, "1010", 0b1010 },
 
+            // Radix 2, percent prefix
+            new object[] { 10, "%0", 0 },
+            new object[] { 10, "%01", 1 },
+            new object[] { 10, "%1010", 0b1010 },
+
             // Radix 2, suffixes
             new object[] { 2, "01d", 1 },
             new object[] { 2, "1234d", 1234 },
@@ -100,6 +105,11 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { 16, "1000Q", 512 },
             new object[] { 16, "12EFh", 0x12EF },
             new object[] { 16, "12efH", 0x12EF },
+
+            // Radix 16, hash prefix
+            new object[] { 10, "#12ef", 0x12ef },
+            new object[] { 10, "#abcd", 0xabcd },
+            new object[] { 10, "#0", 0 },
 
             // Arbitrary radixes, including suffixes
 
