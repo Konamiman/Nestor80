@@ -555,37 +555,19 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     if(expressionValue.IsAbsolute) {
-                        if(expressionPendingEvaluation.IsRelativeJump) {
-                            if(expressionValue.Type != state.CurrentLocationArea) {
-                                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction: the target address must be in the same area of the instruction");
-                                continue;
-                            }
-                            var offset = expressionValue.Value - (state.CurrentLocationPointer + 2);
-                            if(offset is < -128 or > 127) {
-                                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction: the target address is out of range");
-                                continue;
-                            }
+                        ProcessArgumentForInstruction(
+                            expressionPendingEvaluation.ArgumentType,
+                            line.OutputBytes, 
+                            expressionValue, 
+                            expressionPendingEvaluation.LocationInOutput,
+                            expressionPendingEvaluation.IxRegisterName,
+                            expressionPendingEvaluation.IxRegisterSign);
 
-                            expressionValue = Address.Absolute((ushort)offset);
-                        }
-                        
-                        if(expressionPendingEvaluation.OutputSize == 1) {
-                            if(!expressionValue.IsValidByte) {
-                                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: value {expressionValue.Value:X4}h can't be stored as a byte");
-                            }
-                            else {
-                                line.OutputBytes[expressionPendingEvaluation.LocationInOutput] = expressionValue.ValueAsByte;
-                            }
-                        }
-                        else {
-                            line.OutputBytes[expressionPendingEvaluation.LocationInOutput] = expressionValue.ValueAsByte;
-                            line.OutputBytes[expressionPendingEvaluation.LocationInOutput + 1] = (byte)((expressionValue.Value & 0xFF00) >> 8);
-                        }
                     }
                     else {
                         relocatables.Add(new RelocatableAddress() { 
                             Index = expressionPendingEvaluation.LocationInOutput, 
-                            IsByte = expressionPendingEvaluation.OutputSize == 1,
+                            IsByte = expressionPendingEvaluation.IsByte,
                             Type = expressionValue.Type, 
                             Value = expressionValue.Value
                         });
@@ -639,9 +621,9 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            items.Add(LinkItem.ForArithmeticOperator(expressionPendingEvaluation.OutputSize == 1 ? ArithmeticOperatorCode.StoreAsByte : ArithmeticOperatorCode.StoreAsWord));
+            items.Add(LinkItem.ForArithmeticOperator(expressionPendingEvaluation.IsByte ? ArithmeticOperatorCode.StoreAsByte : ArithmeticOperatorCode.StoreAsWord));
 
-            return new LinkItemsGroup() { Index = expressionPendingEvaluation.LocationInOutput, IsByte = expressionPendingEvaluation.OutputSize == 1, LinkItems = items.ToArray() };
+            return new LinkItemsGroup() { Index = expressionPendingEvaluation.LocationInOutput, IsByte = expressionPendingEvaluation.IsByte, LinkItems = items.ToArray() };
         }
 
         private static SymbolInfo GetSymbolForExpression(string name, bool isExternal)

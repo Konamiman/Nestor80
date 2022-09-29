@@ -131,7 +131,7 @@ namespace Konamiman.Nestor80.Assembler
                     var value = expression.TryEvaluate();
                     if(value is null) {
                         AddZero();
-                        state.RegisterPendingExpression(line, expression, index, isByte ? 1 : 2);
+                        state.RegisterPendingExpression(line, expression, index, argumentType: isByte ? CpuInstructionArgumentType.Byte : CpuInstructionArgumentType.Word);
                     }
                     else if(isByte && !value.IsValidByte) {
                         AddZero();
@@ -188,7 +188,7 @@ namespace Konamiman.Nestor80.Assembler
                         valueExpression.ValidateAndPostifixize();
                         var valueAddress = valueExpression.TryEvaluate();
                         if(valueAddress is null) {
-                            state.RegisterPendingExpression(line, valueExpression, size: 1);
+                            state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstructionArgumentType.Byte);
                         }
                         else if(!valueAddress.IsValidByte) {
                             throw new InvalidExpressionException("the value argument must evaluate to a valid byte");
@@ -296,7 +296,7 @@ namespace Konamiman.Nestor80.Assembler
                 var value = valueExpression.TryEvaluate();
                 if(value is null) {
                     var line = new ChangeOriginLine();
-                    state.RegisterPendingExpression(line, valueExpression);
+                    state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstructionArgumentType.Word);
                     return line;
                 }
                 else {

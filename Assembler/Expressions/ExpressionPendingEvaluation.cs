@@ -6,10 +6,14 @@
 
         public int LocationInOutput { get; set; }
 
-        public int OutputSize { get; set; }
+        public bool IsByte => ArgumentType is not CpuInstructionArgumentType.Word;
 
-        public bool IsRelativeJump { get; set; }
+        public string IxRegisterName { get; set; }
 
-        public override string ToString() => $"@{LocationInOutput}, {OutputSize} bytes: {Expression}{(IsRelativeJump ? "IsRelJump" : "")}";
+        public string IxRegisterSign { get; set; }
+
+        public CpuInstructionArgumentType ArgumentType { get; set; }
+
+        public override string ToString() => $"@{LocationInOutput}, {Expression}, {ArgumentType} {IxRegisterName}{IxRegisterSign}";
     }
 }

@@ -36,13 +36,19 @@ namespace Konamiman.Nestor80.Assembler
 
         public List<ProcessedSourceLine> ProcessedLines { get; private set; } = new();
 
-        public void RegisterPendingExpression(ProcessedSourceLine line, Expression expression, int location = 0, int size = 2, bool isRelativeJump = false)
+        public void RegisterPendingExpression(
+            ProcessedSourceLine line, 
+            Expression expression, 
+            int location = 0,
+            CpuInstructionArgumentType argumentType = CpuInstructionArgumentType.None,
+            string ixRegisterName = null,
+            string ixRegisterSign = null)
         {
             if(!ExpressionsPendingEvaluation.ContainsKey(line)) {
                 ExpressionsPendingEvaluation[line] = new List<ExpressionPendingEvaluation>();
             }
 
-            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, OutputSize = size, IsRelativeJump = isRelativeJump } );
+            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IxRegisterName = ixRegisterName, IxRegisterSign = ixRegisterSign } );
         }
 
         public void UnregisterPendingExpressions(ProcessedSourceLine line)

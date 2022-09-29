@@ -10,6 +10,7 @@ namespace Konamiman.Nestor80.N80
 
         static void Main(string[] args)
         {
+            /*
             var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../HELLO.ASM");
             var sourceStream = new FileStream(sourceFileName, FileMode.Open, FileAccess.Read);
             var rx = AssemblySourceProcessor.Assemble(sourceStream, Encoding.UTF8);
@@ -39,11 +40,13 @@ db 9,10,11,12
 org 3F00h
 db 13,14,15,16
 ";
+            
             var r = AssemblySourceProcessor.Assemble(abscode, new AssemblyConfiguration() { BuildType = BuildType.Absolute });
             var ms = new MemoryStream();
             OutputGenerator.GenerateAbsolute(r, ms);
             var theBytez = ms.ToArray();
             var x = 0;
+            */
 
             //Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             //var x = Encoding.GetEncodings().Select(e => new { e.CodePage, e.Name }).OrderBy(x=>x.CodePage).ToArray();
@@ -54,6 +57,18 @@ db 13,14,15,16
 
             var code =
 @"
+foo equ 99h
+ld a,(ix+90h)
+ld a,(iy-foo)
+here:
+jr here
+aseg
+org 100h
+horo:
+jr horo
+jr 105h
+end
+
 db 0
 if1
 include foo/bar.asm
