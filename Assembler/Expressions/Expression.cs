@@ -416,6 +416,13 @@ namespace Konamiman.Nestor80.Assembler
             var symbol = match.Groups["symbol"].Value;
             var isExternalRef = match.Groups["external"].Length > 0;
 
+            if(symbol == "$") {
+                var currentLocationSymbolRef = GetSymbol("$", false);
+                AddExpressionPart(currentLocationSymbolRef.Value);
+                IncreaseParsedStringPointer(1);
+                return;
+            }
+
             if(string.Equals(symbol, "NUL", StringComparison.OrdinalIgnoreCase)) {
                 /*
                  * The NUL operator is a special case.

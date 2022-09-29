@@ -57,6 +57,9 @@ db 13,14,15,16
 
             var code =
 @"
+jr $+1
+end
+
 foo equ 99h
 ld a,(ix+90h)
 ld a,(iy-foo)
