@@ -145,7 +145,7 @@ namespace Konamiman.Nestor80.Assembler
                     return GenerateInstructionLine(null);
                 }
 
-                firstArgumentValue = firstArgumentExpression.TryEvaluate();
+                firstArgumentValue = firstArgumentExpression.EvaluateIfNoSymbols();
 
                 firstArgumentIsFixed = false;
             }
@@ -166,7 +166,7 @@ namespace Konamiman.Nestor80.Assembler
                     return GenerateInstructionLine(null);
                 }
 
-                secondArgumentValue = secondArgumentExpression.TryEvaluate();
+                secondArgumentValue = secondArgumentExpression.EvaluateIfNoSymbols();
 
                 secondArgumentIsFixed = false;
             }

@@ -5,7 +5,7 @@ db 41h,42h
 dw START
 org #4010
 START:
-	ld a,foo
+	;ld a,foo
 	ld hl,hola
 LOOP:
 	ld a,(hl)
@@ -24,13 +24,15 @@ hola:
 	dz "¡Cómo mola el Nestor80!\r\nY sin ñoñerías, ¿eh?"
 	.strenc default
 
-	org #7FFF
-	db 0
+	ds 8000h-$
 
-	endout
+;	org #7FFF
+;	db 0
 
-	ds 1000h
-foo equ 34h
+;	endout
+
+;	ds 1000h
+;foo equ 34h
 
 	end
 

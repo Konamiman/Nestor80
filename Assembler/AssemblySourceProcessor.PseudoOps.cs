@@ -129,7 +129,7 @@ namespace Konamiman.Nestor80.Assembler
                         continue;
                     }
 
-                    var value = expression.TryEvaluate();
+                    var value = expression.EvaluateIfNoSymbols();
                     if(value is null) {
                         AddZero();
                         state.RegisterPendingExpression(line, expression, index, argumentType: isByte ? CpuInstructionArgumentType.Byte : CpuInstructionArgumentType.Word);
@@ -187,7 +187,7 @@ namespace Konamiman.Nestor80.Assembler
                         var valueExpressionText = walker.ExtractExpression();
                         var valueExpression = Expression.Parse(valueExpressionText);
                         valueExpression.ValidateAndPostifixize();
-                        var valueAddress = valueExpression.TryEvaluate();
+                        var valueAddress = valueExpression.EvaluateIfNoSymbols();
                         if(valueAddress is null) {
                             state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstructionArgumentType.Byte);
                         }
@@ -294,7 +294,7 @@ namespace Konamiman.Nestor80.Assembler
                 var valueExpressionString = walker.ExtractExpression();
                 var valueExpression = Expression.Parse(valueExpressionString);
                 valueExpression.ValidateAndPostifixize();
-                var value = valueExpression.TryEvaluate();
+                var value = valueExpression.EvaluateIfNoSymbols();
                 if(value is null) {
                     var line = new ChangeOriginLine();
                     state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstructionArgumentType.Word);
@@ -433,12 +433,12 @@ namespace Konamiman.Nestor80.Assembler
             return new DelimitedCommandLine() { Delimiter = delimiter };
         }
 
-        static ProcessedSourceLine ProcessConstantDefinition(string opcode, string name, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessConstantDefinition(string opcode, string name, SourceLineWalker walker = null, Expression expression = null)
         {
             var isRedefinition = !opcode.Equals("EQU", StringComparison.OrdinalIgnoreCase);
             var line = new ConstantDefinitionLine() { Name = name, IsRedefinible = isRedefinition };
 
-            if(walker.AtEndOfLine) {
+            if(walker is not null && walker.AtEndOfLine) {
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a value");
                 return line;
             }
@@ -446,13 +446,18 @@ namespace Konamiman.Nestor80.Assembler
             Address value;
 
             try {
-                var valueExpressionString = walker.ExtractExpression();
-                var valueExpression = Expression.Parse(valueExpressionString);
-                valueExpression.ValidateAndPostifixize();
-                value = valueExpression.TryEvaluate();
-                if(value is null) {
-                    state.RegisterPendingExpression(line, valueExpression);
-                    return line;
+                if(expression is null) {
+                    var valueExpressionString = walker.ExtractExpression();
+                    var valueExpression = Expression.Parse(valueExpressionString);
+                    valueExpression.ValidateAndPostifixize();
+                    value = valueExpression.TryEvaluate();
+                    if(value is null) {
+                        state.RegisterPendingExpression(line, valueExpression);
+                        return line;
+                    }
+                }
+                else {
+                    value = expression.Evaluate();
                 }
             }
             catch(InvalidExpressionException ex) {
@@ -848,7 +853,7 @@ namespace Konamiman.Nestor80.Assembler
                 try {
                     var expression = Expression.Parse(expressionText);
                     expression.ValidateAndPostifixize();
-                    expressionValue = expression.TryEvaluate();
+                    expressionValue = expression.EvaluateIfNoSymbols();
                 }
                 catch(InvalidExpressionException ex) {
                     AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");

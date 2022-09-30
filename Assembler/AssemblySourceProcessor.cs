@@ -51,6 +51,9 @@ namespace Konamiman.Nestor80.Assembler
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
         private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "SET", "ASET" };
 
+        //Constant definition opcodes that are allowed after a symbol name followed by a colon
+        private static readonly string[] constantDefinitionOpcodesMinusSet = { "EQU", "DEFL", "ASET" };
+
         private static readonly ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
 
         public static event EventHandler<AssemblyError> AssemblyErrorGenerated;
@@ -124,6 +127,7 @@ namespace Konamiman.Nestor80.Assembler
                     code: AssemblyErrorCode.UnexpectedError,
                     message: $"Unexpected error: ({ex.GetType().Name}) {ex.Message}"
                 );
+                throw;
             }
             finally {
                 processedLines ??= state.ProcessedLines.ToArray();
@@ -319,15 +323,22 @@ namespace Konamiman.Nestor80.Assembler
             //
             // TITLE EQU 1      ---> defines constant "TITLE" with value 1
             // FOO: TITLE EQU 1 ---> sets the program title as "EQU 1"
-            if(!state.InFalseConditional && label is null && !walker.AtEndOfLine) {
-                walker.BackupPointer();
-                var symbol2 = walker.ExtractSymbol();
-                if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
-                    opcode = symbol2;
-                    processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
+            if(!state.InFalseConditional && !walker.AtEndOfLine) {
+                if(label is not null && constantDefinitionOpcodesMinusSet.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
+                    opcode = symbol;
+                    processedLine = ProcessConstantDefinition(opcode: opcode, name: label.TrimEnd(':'), walker: walker);
+                    label = null;
                 }
-                else {
-                    walker.RestorePointer();
+                else if(label is null) {
+                    walker.BackupPointer();
+                    var symbol2 = walker.ExtractSymbol();
+                    if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
+                        opcode = symbol2;
+                        processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
+                    }
+                    else {
+                        walker.RestorePointer();
+                    }
                 }
             }
 
@@ -464,11 +475,12 @@ namespace Konamiman.Nestor80.Assembler
 
         private static ProcessedSourceLine ProcessLineForPass2(ProcessedSourceLine processedLine)
         {
-            if(processedLine is not null && instructionsNeedingPass2Reevaluation.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
-                UnregisterPendingExpressions(processedLine);
-                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
-            }
-            else if(state.InConditionalBlock) {
+            if(state.InConditionalBlock) {
+                if(conditionalInstructions.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
+                    UnregisterPendingExpressions(processedLine);
+                    processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
+                }
+
                 if(state.InFalseConditional && processedLine is not SkippedLine) {
                     UnregisterPendingExpressions(processedLine);
                     processedLine = new SkippedLine() { Line = processedLine.Line, EffectiveLineLength = 0, FormFeedsCount = processedLine.FormFeedsCount };
@@ -482,6 +494,13 @@ namespace Konamiman.Nestor80.Assembler
                         ThrowFatal(AssemblyErrorCode.IncludeInPass2Only, "INCLUDE statements that are processed only in pass 2 aren't allowed");
                     }
                 }
+            }
+            else if(processedLine is not null && instructionsNeedingPass2Reevaluation.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
+                UnregisterPendingExpressions(processedLine);
+                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
+            }
+            else if(processedLine is ConstantDefinitionLine cdl && cdl.IsRedefinible) {
+                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
             }
 
             if(processedLine.Label is not null) {
@@ -513,6 +532,13 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void ProcessExpressionPendingEvaluation(ProcessedSourceLine processedLine, ExpressionPendingEvaluation[] expressionsPendingEvaluation)
         {
+            if(processedLine is ConstantDefinitionLine cdl) {
+                foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
+                    ProcessConstantDefinition(cdl.Opcode, cdl.Name, expression: expressionPendingEvaluation.Expression);
+                }
+                return;
+            }
+
             var line = (IProducesOutput)processedLine;
             var relocatables = new List<RelocatableOutputPart>();
 

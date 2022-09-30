@@ -153,13 +153,14 @@ namespace Konamiman.Nestor80.Assembler
 
         private bool externalSymbolFound;
 
-        public Address Evaluate() => EvaluateCore(false);
-        public Address TryEvaluate() => EvaluateCore(true);
+        public Address Evaluate() => EvaluateCore(false, true);
+        public Address EvaluateIfNoSymbols() => EvaluateCore(true, false);
+        public Address TryEvaluate() => EvaluateCore(false, false);
 
-        private Address EvaluateCore(bool stopOnSymbolFound)
+        private Address EvaluateCore(bool stopOnSymbolFound, bool throwOnUnknownSymbol)
         {
             if(!IsPostfixized) {
-                throw new InvalidOperationException($"{nameof(Expression)}: {nameof(ValidateAndPostifixize)} must be executed before {nameof(Evaluate)} or {nameof(TryEvaluate)}");
+                throw new InvalidOperationException($"{nameof(Expression)}: {nameof(ValidateAndPostifixize)} must be executed before {nameof(Evaluate)} or {nameof(EvaluateIfNoSymbols)}");
             }
 
             if(stopOnSymbolFound) {
@@ -224,7 +225,12 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     var address = ResolveAddressOrSymbol(item);
                     if(address is null) {
-                        throw new Exception($"Unexpected expression parse result: unknown symbol: {item}");
+                        if(throwOnUnknownSymbol) {
+                            Throw($"Unknown symbol: {((SymbolReference)item).SymbolName}");
+                        }
+                        else {
+                            return null;
+                        }
                     }
 
                     stack.Push(address);
@@ -272,11 +278,8 @@ namespace Konamiman.Nestor80.Assembler
                 return symbol.Value;
             }
             else {
-                Throw($"Unknown symbol: {sr.SymbolName}");
+                return null;
             }
-
-            //Never reached, but needed because the compiler doesn't know that "Throw", well... throws
-            return null;
         }
     }
 }
