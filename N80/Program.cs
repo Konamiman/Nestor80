@@ -1,14 +1,44 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using System.Diagnostics;
-using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
+using static System.Console;
 
 namespace Konamiman.Nestor80.N80
 {
-    internal class Program
+    internal partial class Program
     {
+        const int ERR_SUCCESS = 0;
+        const int ERR_BAD_ARGUMENTS = 1;
+        const int ERR_CANT_OPEN_INPUT_FILE = 2;
+        const int ERR_CANT_CREATE_OUTPUT_FILE = 3;
+        const int ERR_ASSEMBLY_ERROR = 4;
+        const int ERR_ASSEMBLY_FATAL = 5;
 
-        static void Main(string[] args)
+        static int Main(string[] args)
+        {
+            if(args.Length > 0 && args[0] is "-v" or "--version") {
+                Write(versionText);
+                return ERR_SUCCESS;
+            }
+
+            WriteLine(bannerText);
+
+            if(args.Length == 0) {
+                WriteLine(simpleHelpText);
+            }
+            else if(args[0] is "-h" or "--help") {
+                WriteLine(extendedHelpText);
+            }
+            else {
+                WriteLine("Invalid arguments");
+                return ERR_BAD_ARGUMENTS;
+            }
+
+            return ERR_SUCCESS;
+        }
+
+        static void Main_old(string[] args)
         {
             /*
             var sourceFileName = Path.Combine(Assembly.GetExecutingAssembly().Location, @"../../../../../HELLO.ASM");
