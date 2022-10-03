@@ -518,6 +518,11 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
+            if(state.InstructionsPendingSelection.ContainsKey(processedLine)) {
+                var (instructions, selector) = state.InstructionsPendingSelection[processedLine];
+                ProcessInstructionsPendingSelection(processedLine, instructions, selector);
+            }
+
             if(state.ExpressionsPendingEvaluation.ContainsKey(processedLine)) {
                 ProcessExpressionPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation[processedLine].ToArray());
             }
@@ -528,6 +533,29 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return processedLine;
+        }
+
+        private static void ProcessInstructionsPendingSelection(ProcessedSourceLine processedLine, CpuInstruction[] instructions, Expression selector)
+        {
+            //state.UnregisterInstructionsPendingSelection(processedLine);
+
+            Address selectorValue = null;
+            try {
+                selectorValue = selector.Evaluate();
+            }
+            catch(InvalidExpressionException ex) {
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: {ex.Message}");
+            }
+
+            if(selectorValue != null) {
+                var selectedInstruction = instructions.SingleOrDefault(i => i.FirstArgumentFixedValue == selectorValue.Value);
+                if(selectedInstruction is null) {
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for instruction {processedLine.Opcode.ToUpper()}: expression yields an unsupported value");
+                }
+                else {
+                    ((IProducesOutput)processedLine).OutputBytes = selectedInstruction.Opcodes.ToArray();
+                }
+            }
         }
 
         private static void ProcessExpressionPendingEvaluation(ProcessedSourceLine processedLine, ExpressionPendingEvaluation[] expressionsPendingEvaluation)
@@ -613,6 +641,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else {
                 state.UnregisterPendingExpressions(line);
+                state.UnregisterInstructionsPendingSelection(line);
             }
         }
 

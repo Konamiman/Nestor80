@@ -58,6 +58,19 @@ db 13,14,15,16
 
             var code =
 @"
+FOO: equ 2
+RESETE: equ 18h
+rst RESETE
+rst FOO
+bit BAR,(ix+FOO)
+bit 7,b
+bit 1,(ix+3)
+bit BAR,c
+bit BAR,(ix+4)
+BAR: equ 5
+end
+
+
 ld a,FOO
 FOO defl BAR
 BAR defl FOO+1

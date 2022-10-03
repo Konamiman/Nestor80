@@ -346,5 +346,19 @@ namespace Konamiman.Nestor80.Assembler
         public bool InsideIncludedFile { get; private set; }
 
         public int CurrentIncludesDeepLevel => includeStates.Count;
+
+        public Dictionary<ProcessedSourceLine, (CpuInstruction[], Expression)> InstructionsPendingSelection { get; set; } = new();
+
+        public void RegisterInstructionsPendingSelection(ProcessedSourceLine line, CpuInstruction[] instructions, Expression selectorExpression)
+        {
+            InstructionsPendingSelection.Add(line, (instructions, selectorExpression));
+        }
+
+        public void UnregisterInstructionsPendingSelection(ProcessedSourceLine line)
+        {
+            if(InstructionsPendingSelection.ContainsKey(line)) {
+                InstructionsPendingSelection.Remove(line);
+            }
+        }
     }
 }

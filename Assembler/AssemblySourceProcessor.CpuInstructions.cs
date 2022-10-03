@@ -153,7 +153,7 @@ namespace Konamiman.Nestor80.Assembler
             if(secondArgument is not null && !IsFixedPattern(secondArgumentPattern)) {
                 //Assumption: zero or one of the arguments are (IXY+-n), but not both
                 string secondArgumentExpressionText = secondArgument;
-                if(indexOffsetSign is null && !matchingInstruction.SecondValuePosition.HasValue) {
+                if(indexOffsetSign is null && !matchingInstructions.First().SecondValuePosition.HasValue) {
                     var match = indexPlusArgumentRegex.Match(secondArgument);
                     if(match.Success) {
                         indexOffsetSign = match.Groups["sign"].Value;
@@ -171,12 +171,13 @@ namespace Konamiman.Nestor80.Assembler
                 secondArgumentIsFixed = false;
             }
 
+            Expression instructionSelector = null;
             if(firstArgumentIsSpecificValue) {
                 if(firstArgumentValue is null) {
-                    //This is one case where Nestor80 isn't compatible with Macro80
-                    //(in Macro80 the "specific value" arguments can be evaluated in pass 2)
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {opcode.ToUpper()}: all the referenced symbols must be known beforehand");
-                    return GenerateInstructionLine(null);
+                    //Select one of the possible instructions "at random",
+                    //we'll replace it with the proper one in pass 2
+                    matchingInstruction = matchingInstructions.First();
+                    instructionSelector = firstArgumentExpression;
                 }
                 else {
                     matchingInstruction = matchingInstructions.SingleOrDefault(i => i.FirstArgumentFixedValue == firstArgumentValue.Value);
@@ -184,12 +185,16 @@ namespace Konamiman.Nestor80.Assembler
                         AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {opcode.ToUpper()}: expression yields an unsupported value");
                         return GenerateInstructionLine(null);
                     }
+                    matchingInstructions = null;
                 }
 
                 if(secondArgument is null || secondArgumentIsFixed) {
                     //e.g. "RST n" or "BIT n,A" - nothing to further evaluate so use the instruction as is
-                    return GenerateInstructionLine(matchingInstruction);
+                    return GenerateInstructionLine(matchingInstruction, candidateInstructions: matchingInstructions, candidateSelector: instructionSelector);
                 }
+            }
+            else {
+                matchingInstructions = null;
             }
 
             //If the first argument doesn't need evaluation,
@@ -232,7 +237,9 @@ namespace Konamiman.Nestor80.Assembler
                     pendingExpression2: secondArgumentExpression,
                     argumentType: argumentType,
                     ixRegisterName: ixRegName,
-                    ixRegisterSign: indexOffsetSign);
+                    ixRegisterSign: indexOffsetSign,
+                    candidateInstructions: matchingInstructions, 
+                    candidateSelector: instructionSelector);
             }
 
             //Here we know that the required expressions have been successfully evaluated,
@@ -245,7 +252,7 @@ namespace Konamiman.Nestor80.Assembler
                 return GenerateInstructionLine(null);
             }
             else if(argumentType is CpuInstructionArgumentType.OffsetFromCurrentLocation) {
-                return GenerateInstructionLine(matchingInstruction, bytes);
+                return GenerateInstructionLine(matchingInstruction, bytes, candidateInstructions: matchingInstructions, candidateSelector: instructionSelector);
             }
 
             if(secondArgument is null || secondArgumentIsFixed) {
@@ -254,7 +261,9 @@ namespace Konamiman.Nestor80.Assembler
                     bytes, 
                     relocatables: new RelocatableOutputPart[] {
                         RelocatableFromAddress(firstArgumentValue, matchingInstruction.ValuePosition, matchingInstruction.ValueSize)
-                    });
+                    },
+                    candidateInstructions: matchingInstructions, 
+                    candidateSelector: instructionSelector);
             }
 
             if(matchingInstruction.SecondValuePosition is null) {
@@ -277,7 +286,9 @@ namespace Konamiman.Nestor80.Assembler
                 relocatables: new RelocatableOutputPart[] {
                     RelocatableFromAddress(firstArgumentValue, matchingInstruction.ValuePosition, matchingInstruction.ValueSize),
                     RelocatableFromAddress(secondArgumentValue, matchingInstruction.SecondValuePosition.Value, matchingInstruction.SecondValueSize.Value),
-                });
+                },
+                candidateInstructions: matchingInstructions, 
+                candidateSelector: instructionSelector);
         }
 
         private static bool ProcessEvaluatedInstructionArgument(string opcode, byte[] bytes, string argumentText, Address argumentValue, string indexOffsetSign, int valueSize, int valuePosition)
@@ -505,7 +516,9 @@ namespace Konamiman.Nestor80.Assembler
             Expression pendingExpression2 = null, 
             CpuInstructionArgumentType argumentType = CpuInstructionArgumentType.None,
             string ixRegisterName = null,
-            string ixRegisterSign = null)
+            string ixRegisterSign = null,
+            CpuInstruction[] candidateInstructions = null,
+            Expression candidateSelector = null)
         {
             var line = new CpuInstructionLine();
             if(instruction is null) {
@@ -534,6 +547,10 @@ namespace Konamiman.Nestor80.Assembler
             state.IncreaseLocationPointer(actualBytes.Length);
             line.NewLocationArea = state.CurrentLocationArea;
             line.NewLocationCounter = state.CurrentLocationPointer;
+
+            if(candidateInstructions is not null) {
+                state.RegisterInstructionsPendingSelection(line, candidateInstructions, candidateSelector);
+            }
 
             return line;
         }
