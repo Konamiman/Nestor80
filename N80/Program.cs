@@ -22,6 +22,7 @@ namespace Konamiman.Nestor80.N80
         static string outputFilePath = null;
         static bool generateOutputFile = true;
         static string inputFileEncoding = "utf-8";
+        static bool mustChangeOutputFileExtension = false;
 
         static int Main(string[] args)
         {
@@ -92,8 +93,17 @@ namespace Konamiman.Nestor80.N80
                 return ERR_BAD_ARGUMENTS;
             }
 
+            if(mustChangeOutputFileExtension) {
+                outputFilePath = Path.ChangeExtension(outputFilePath, ".BIN");
+            }
+
             WriteLine($"Input file:  {inputFilePath}");
-            WriteLine($"Output file: {outputFilePath}");
+
+            if(generateOutputFile) {
+                WriteLine($"Output file: {outputFilePath}");
+            } else {
+                WriteLine("No output file generated");
+            }
 
             return ERR_SUCCESS;
         }
@@ -108,7 +118,7 @@ namespace Konamiman.Nestor80.N80
                 return "File not found";
             }
 
-            inputFilePath = fileSpecification;
+            inputFilePath = Path.GetFullPath(fileSpecification);
             inputFileDirectory = Path.GetDirectoryName(Path.GetFullPath(fileSpecification));
             inputFileName = Path.GetFileName(fileSpecification);
 
@@ -117,33 +127,31 @@ namespace Konamiman.Nestor80.N80
 
         private static string? ProcessOutputFileArgument(string fileSpecification)
         {
-            var mustChangeExtension = true;
-
             if(fileSpecification is "") {
-                fileSpecification = Path.Combine(Directory.GetCurrentDirectory(), inputFileName);
+                outputFilePath = Path.Combine(Directory.GetCurrentDirectory(), inputFileName);
+                mustChangeOutputFileExtension = true;
+                return null;
             }
-            else if(fileSpecification is "$") {
+            
+            if(fileSpecification is "$") {
                 fileSpecification = Path.Combine(inputFileDirectory, inputFileName);
+                mustChangeOutputFileExtension = true;
             }
-            else if(fileSpecification[0] is '$') {
-                fileSpecification = Path.Combine(inputFileDirectory, fileSpecification[1..].TrimStart('\\', '/'));
+            else if(fileSpecification.StartsWith("$/")) {
+                fileSpecification = Path.Combine(inputFileDirectory, fileSpecification[2..]);
             }
 
             fileSpecification = Path.GetFullPath(fileSpecification);
 
             if(Directory.Exists(fileSpecification)) {
                 outputFilePath = Path.Combine(fileSpecification, inputFileName);
+                mustChangeOutputFileExtension = true;
             }
             else if(Directory.Exists(Path.GetDirectoryName(fileSpecification))) {
                 outputFilePath = fileSpecification;
-                mustChangeExtension = false;
             }
             else {
                 return "Directory not found";
-            }
-
-            if(mustChangeExtension) {
-                outputFilePath = Path.ChangeExtension(outputFilePath, ".BIN");
             }
 
             return null;
