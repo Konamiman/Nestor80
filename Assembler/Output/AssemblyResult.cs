@@ -21,5 +21,9 @@
         public ushort EndAddress { get; init; }
 
         public BuildType BuildType { get; set; }
+
+        public bool HasErrors => Errors.Any(e => !e.IsWarning && !e.IsFatal);
+
+        public bool HasFatals => Errors.Any(e => e.IsFatal);
     }
 }

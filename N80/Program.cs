@@ -21,7 +21,7 @@ namespace Konamiman.Nestor80.N80
         static string inputFileName = null;
         static string outputFilePath = null;
         static bool generateOutputFile = true;
-        static string inputFileEncoding = "utf-8";
+        static Encoding inputFileEncoding = Encoding.UTF8;
         static bool mustChangeOutputFileExtension = false;
 
         static int Main(string[] args)
@@ -99,6 +99,11 @@ namespace Konamiman.Nestor80.N80
 
             WriteLine($"Input file:  {inputFilePath}");
 
+            var errCode = DoAssembly();
+            if(errCode != ERR_SUCCESS) {
+                return errCode;
+            }
+
             if(generateOutputFile) {
                 WriteLine($"Output file: {outputFilePath}");
             } else {
@@ -166,9 +171,21 @@ namespace Konamiman.Nestor80.N80
                 }
                 else if(arg is "-ie" or "--input-encoding") {
                     if(i == args.Length-1 || args[i + 1][0] == '-') {
-                        return $"The {arg} argument needs to be followed by an ecoding page or name";
+                        return $"The {arg} argument needs to be followed by an encoding page or name";
                     }
-                    inputFileEncoding = args[i + 1];
+                    Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+                    var inputFileEncodingName = args[i + 1];
+                    try {
+                        if(int.TryParse(inputFileEncodingName, out int encodingPage)) {
+                            inputFileEncoding = Encoding.GetEncoding(encodingPage);
+                        }
+                        else {
+                            inputFileEncoding = Encoding.GetEncoding(inputFileEncodingName);
+                        }
+                    }
+                    catch {
+                        return $"Unknown source file encoding '{inputFileEncodingName}'";
+                    }
                     i++;
                 }
                 else {
@@ -177,6 +194,66 @@ namespace Konamiman.Nestor80.N80
             }
 
             return null;
+        }
+
+        private static int DoAssembly()
+        {
+            Stream inputStream;
+
+            try {
+                inputStream = File.OpenRead(inputFilePath);
+            }
+            catch(Exception ex) {
+                WriteLine($"Can't open input file: {ex.Message}");
+                return ERR_CANT_OPEN_INPUT_FILE;
+            }
+
+            AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated1;
+            AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage1;
+
+            var config = new AssemblyConfiguration();
+            var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding);
+            if(result.HasFatals) {
+                return ERR_ASSEMBLY_FATAL;
+            }
+            else if(result.HasErrors) {
+                return ERR_ASSEMBLY_ERROR;
+            }
+
+            Stream outputStream;
+
+            try {
+                outputStream = File.Create(outputFilePath);
+            }
+            catch(Exception ex) {
+                WriteLine($"Can't create output file: {ex.Message}");
+                return ERR_CANT_CREATE_OUTPUT_FILE;
+            }
+
+            int length;
+            try {
+                length = OutputGenerator.GenerateAbsolute(result, outputStream);
+            }
+            catch(Exception ex) {
+                WriteLine($"Can't write to output file: {ex.Message}");
+                return ERR_CANT_CREATE_OUTPUT_FILE;
+            }
+
+            outputStream.Close();
+
+            WriteLine($"{length} bytes written");
+
+            return ERR_SUCCESS;
+        }
+
+        private static void AssemblySourceProcessor_PrintMessage1(object? sender, string e)
+        {
+            WriteLine(e);
+        }
+
+        private static void AssemblySourceProcessor_AssemblyErrorGenerated1(object? sender, Assembler.Output.AssemblyError e)
+        {
+            WriteLine(e.ToString());
         }
 
         static void Main_old(string[] args)
