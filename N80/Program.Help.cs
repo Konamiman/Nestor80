@@ -2,30 +2,23 @@
 {
     internal partial class Program
     {
-        static string bannerText = """
+        static readonly string bannerText = """
             Nestor80 - The Z80 assembler for the 21th century
             (c) Konamiman 2023
 
             """;
 
-        static string versionText = "1.0";
+        static readonly string versionText = "1.0";
 
-        static string simpleHelpText = """
+        static readonly string simpleHelpText = """
             Usage: N80 <source file> [<output file>] [<arguments>]
                    N80 -v|--version
                    N80 -h|--help
             """;
 
-        static string extendedHelpText = """
-            Usage: N80 <source file> [<output file>] [<arguments>]
+        static readonly string extendedHelpText = """
 
             Arguments:
-
-            -v, --version
-                Display the N80 version.
-
-            -h, --help
-                Display this help text.
 
             <source file>
                 Full path of the Z80 assembly source file to process,
@@ -51,11 +44,11 @@
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
-            -no, --no-output
-                Process the input file but don't generate the output file.
-
             -ie, --input-encoding
                 Text encoding of the source file, default is UTF-8.
+
+            -no, --no-output
+                Process the input file but don't generate the output file.
             """;
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using System.Diagnostics;
+using System.IO.Enumeration;
 using System.Runtime.InteropServices;
 using System.Text;
 using static System.Console;
@@ -15,27 +16,159 @@ namespace Konamiman.Nestor80.N80
         const int ERR_ASSEMBLY_ERROR = 4;
         const int ERR_ASSEMBLY_FATAL = 5;
 
+        static string inputFilePath = null;
+        static string inputFileDirectory = null;
+        static string inputFileName = null;
+        static string outputFilePath = null;
+        static bool generateOutputFile = true;
+        static string inputFileEncoding = "utf-8";
+
         static int Main(string[] args)
         {
-            if(args.Length > 0 && args[0] is "-v" or "--version") {
+            if(args.Length == 0) {
+                WriteLine(bannerText);
+                WriteLine(simpleHelpText);
+                return ERR_SUCCESS;
+            }
+
+            if(args[0] is "-v" or "--version") {
                 Write(versionText);
                 return ERR_SUCCESS;
             }
 
-            WriteLine(bannerText);
-
-            if(args.Length == 0) {
+            if(args[0] is "-h" or "--help") {
+                WriteLine(bannerText);
                 WriteLine(simpleHelpText);
-            }
-            else if(args[0] is "-h" or "--help") {
                 WriteLine(extendedHelpText);
+                return ERR_SUCCESS;
             }
-            else {
-                WriteLine("Invalid arguments");
+
+            if(args[0][0] is '-') {
+                WriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version or --help");
                 return ERR_BAD_ARGUMENTS;
             }
 
+            WriteLine(bannerText);
+
+            string errorMessage = null;
+
+            try {
+                errorMessage = ProcessInputFileArgument(args[0]);
+            }
+            catch(Exception ex) {
+                errorMessage = ex.Message;
+            }
+
+            if(errorMessage is not null) {
+                WriteLine($"Can't open input file: {errorMessage}");
+                return ERR_CANT_OPEN_INPUT_FILE;
+            }
+
+            string outputFileArgument;
+            if(args.Length == 1 || args[1][0] == '-') {
+                outputFileArgument = "";
+                args = args.Skip(1).ToArray();
+            }
+            else {
+                outputFileArgument = args[1];
+                args = args.Skip(2).ToArray();
+            }
+
+            try {
+                errorMessage = ProcessOutputFileArgument(outputFileArgument);
+            }
+            catch(Exception ex) {
+                errorMessage = ex.Message;
+            }
+
+            if(errorMessage is not null) {
+                WriteLine($"Can't create output file: {errorMessage}");
+                return ERR_CANT_CREATE_OUTPUT_FILE;
+            }
+
+            errorMessage = ProcessArguments(args);
+            if(errorMessage is not null) {
+                WriteLine($"Invalid arguments: {errorMessage}");
+                return ERR_BAD_ARGUMENTS;
+            }
+
+            WriteLine($"Input file:  {inputFilePath}");
+            WriteLine($"Output file: {outputFilePath}");
+
             return ERR_SUCCESS;
+        }
+
+        private static string? ProcessInputFileArgument(string fileSpecification)
+        {
+            if(!Path.IsPathRooted(fileSpecification)) {
+                fileSpecification = Path.Combine(Directory.GetCurrentDirectory(), fileSpecification);
+            }
+
+            if(!File.Exists(fileSpecification)) {
+                return "File not found";
+            }
+
+            inputFilePath = fileSpecification;
+            inputFileDirectory = Path.GetDirectoryName(Path.GetFullPath(fileSpecification));
+            inputFileName = Path.GetFileName(fileSpecification);
+
+            return null;
+        }
+
+        private static string? ProcessOutputFileArgument(string fileSpecification)
+        {
+            var mustChangeExtension = true;
+
+            if(fileSpecification is "") {
+                fileSpecification = Path.Combine(Directory.GetCurrentDirectory(), inputFileName);
+            }
+            else if(fileSpecification is "$") {
+                fileSpecification = Path.Combine(inputFileDirectory, inputFileName);
+            }
+            else if(fileSpecification[0] is '$') {
+                fileSpecification = Path.Combine(inputFileDirectory, fileSpecification[1..].TrimStart('\\', '/'));
+            }
+
+            fileSpecification = Path.GetFullPath(fileSpecification);
+
+            if(Directory.Exists(fileSpecification)) {
+                outputFilePath = Path.Combine(fileSpecification, inputFileName);
+            }
+            else if(Directory.Exists(Path.GetDirectoryName(fileSpecification))) {
+                outputFilePath = fileSpecification;
+                mustChangeExtension = false;
+            }
+            else {
+                return "Directory not found";
+            }
+
+            if(mustChangeExtension) {
+                outputFilePath = Path.ChangeExtension(outputFilePath, ".BIN");
+            }
+
+            return null;
+        }
+
+        private static string? ProcessArguments(string[] args)
+        {
+            for(int i=0; i<args.Length; i++) {
+                var arg = args[i];
+                if(arg is "-no" or "--no-output") {
+                    generateOutputFile = false;
+                }
+                else if(arg is "-ie" or "--input-encoding") {
+                    if(i == args.Length-1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by an ecoding page or name";
+                    }
+                    inputFileEncoding = args[i + 1];
+                    i++;
+                }
+                else {
+                    return $"Unknwon argument '{arg}'";
+                }
+            }
+
+            return null;
         }
 
         static void Main_old(string[] args)
