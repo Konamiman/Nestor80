@@ -36,6 +36,7 @@
         InvalidInPhased,
         DifferentPassValues,
         SameEffectivePublic,
+        UnknownInstruction,
         UserError,
 
         FirstFatal = 128,

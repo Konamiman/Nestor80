@@ -44,11 +44,26 @@
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
+            -co, --color-output
+                Display assembly process messages and errors in color (default).
+
             -ie, --input-encoding
                 Text encoding of the source file, default is UTF-8.
 
             -no, --no-output
                 Process the input file but don't generate the output file.
+
+            -nco, --no-color-output
+                Don't display assembly process messages and errors in color.
+
+            -nsb, --nshow-banner
+                Don't display the program title and copyright notice banner.
+
+            -sb, --show-banner
+                Display the program title and copyright notice banner (default).
+            
+            Full documentation (and donation links, wink wink):
+            https://github.com/Konamiman/Nestor80
             """;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler;
+using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
 using System.IO.Enumeration;
 using System.Runtime.InteropServices;
@@ -23,6 +24,12 @@ namespace Konamiman.Nestor80.N80
         static bool generateOutputFile = true;
         static Encoding inputFileEncoding = Encoding.UTF8;
         static bool mustChangeOutputFileExtension = false;
+        static bool colorPrint = true;
+        static bool showBanner = true;
+
+        static bool printInstructionExecuted = false;
+        static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
+        static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
 
         static int Main(string[] args)
         {
@@ -32,26 +39,29 @@ namespace Konamiman.Nestor80.N80
                 return ERR_SUCCESS;
             }
 
+            SetShowBannerFlag(args);
+
             if(args[0] is "-v" or "--version") {
                 Write(versionText);
                 return ERR_SUCCESS;
             }
 
             if(args[0] is "-h" or "--help") {
-                WriteLine(bannerText);
+                if(showBanner) WriteLine(bannerText);
                 WriteLine(simpleHelpText);
                 WriteLine(extendedHelpText);
                 return ERR_SUCCESS;
             }
 
             if(args[0][0] is '-') {
-                WriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version or --help");
+                if(showBanner) WriteLine(bannerText);
+                Console.Error.WriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version or --help");
                 return ERR_BAD_ARGUMENTS;
             }
 
-            WriteLine(bannerText);
+            if(showBanner) WriteLine(bannerText);
 
-            string errorMessage = null;
+            string errorMessage;
 
             try {
                 errorMessage = ProcessInputFileArgument(args[0]);
@@ -61,7 +71,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(errorMessage is not null) {
-                WriteLine($"Can't open input file: {errorMessage}");
+                PrintFatal($"Can't open input file: {errorMessage}");
                 return ERR_CANT_OPEN_INPUT_FILE;
             }
 
@@ -83,13 +93,13 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(errorMessage is not null) {
-                WriteLine($"Can't create output file: {errorMessage}");
+                PrintFatal($"Can't create output file: {errorMessage}");
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
 
             errorMessage = ProcessArguments(args);
             if(errorMessage is not null) {
-                WriteLine($"Invalid arguments: {errorMessage}");
+                Console.Error.WriteLine($"Invalid arguments: {errorMessage}");
                 return ERR_BAD_ARGUMENTS;
             }
 
@@ -97,20 +107,28 @@ namespace Konamiman.Nestor80.N80
                 outputFilePath = Path.ChangeExtension(outputFilePath, ".BIN");
             }
 
-            WriteLine($"Input file:  {inputFilePath}");
+            PrintProgress($"Input file: {inputFilePath}");
 
-            var errCode = DoAssembly();
+            var errCode = DoAssembly(out int writtenBytes);
             if(errCode != ERR_SUCCESS) {
-                return errCode;
+                generateOutputFile = false;
             }
 
             if(generateOutputFile) {
-                WriteLine($"Output file: {outputFilePath}");
+                PrintProgress($"\r\nOutput file: {outputFilePath}");
+                PrintProgress($"{writtenBytes} bytes written");
             } else {
-                WriteLine("No output file generated");
+                PrintProgress("\r\nNo output file generated");
             }
 
-            return ERR_SUCCESS;
+            return errCode;
+        }
+
+        private static void SetShowBannerFlag(string[] args)
+        {
+            var indexOfLastShowBanner = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-sb" or "--show-banner")?.index ?? -1;
+            var indexOfLastNoShowBanner = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-nsb" or "--no-show-banner")?.index ?? -1;
+            showBanner = indexOfLastNoShowBanner == -1 || indexOfLastShowBanner > indexOfLastNoShowBanner;
         }
 
         private static string? ProcessInputFileArgument(string fileSpecification)
@@ -188,6 +206,15 @@ namespace Konamiman.Nestor80.N80
                     }
                     i++;
                 }
+                else if(arg is "-co" or "--color-output") {
+                    colorPrint = true;
+                }
+                else if(arg is "-nco" or "--no-color-output") {
+                    colorPrint = false;
+                }
+                else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner") {
+                    //already handled
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -196,9 +223,10 @@ namespace Konamiman.Nestor80.N80
             return null;
         }
 
-        private static int DoAssembly()
+        private static int DoAssembly(out int writtenBytes)
         {
             Stream inputStream;
+            writtenBytes = 0;
 
             try {
                 inputStream = File.OpenRead(inputFilePath);
@@ -230,9 +258,8 @@ namespace Konamiman.Nestor80.N80
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
 
-            int length;
             try {
-                length = OutputGenerator.GenerateAbsolute(result, outputStream);
+                writtenBytes = OutputGenerator.GenerateAbsolute(result, outputStream);
             }
             catch(Exception ex) {
                 WriteLine($"Can't write to output file: {ex.Message}");
@@ -241,19 +268,112 @@ namespace Konamiman.Nestor80.N80
 
             outputStream.Close();
 
-            WriteLine($"{length} bytes written");
-
             return ERR_SUCCESS;
+        }
+
+        private static string FormatAssemblyError(AssemblyError error, string prefix)
+        {
+            var fileName = error.IncludeFileName is null ? "" : $"[{error.IncludeFileName}] ";
+
+            return $"{prefix}: {fileName}in line {error.LineNumber}: {error.Message}";
         }
 
         private static void AssemblySourceProcessor_PrintMessage1(object? sender, string e)
         {
-            WriteLine(e);
+            PrintAssemblyPrint(e);
         }
 
-        private static void AssemblySourceProcessor_AssemblyErrorGenerated1(object? sender, Assembler.Output.AssemblyError e)
+        private static void AssemblySourceProcessor_AssemblyErrorGenerated1(object? sender, AssemblyError error)
         {
-            WriteLine(e.ToString());
+            WriteLine();
+
+            if(error.IsWarning) {
+                PrintWarning(error);
+            }
+            else if(error.IsFatal) {
+                PrintFatal(error);
+            }
+            else {
+                PrintError(error);
+            }
+        }
+
+        private static void PrintWarning(AssemblyError error)
+        {
+            var text = FormatAssemblyError(error, "WARN");
+            if(colorPrint) {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.BackgroundColor = defaultBackgroundColor;
+                Console.Error.WriteLine(text);
+                Console.ForegroundColor = defaultForegroundColor;
+            }
+            else {
+                Console.Error.WriteLine(text);
+            }
+        }
+
+        private static void PrintError(AssemblyError error)
+        {
+            var text = FormatAssemblyError(error, "ERROR");
+            if(colorPrint) {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.BackgroundColor = defaultBackgroundColor;
+                Console.Error.WriteLine(text);
+                Console.ForegroundColor = defaultForegroundColor;
+            }
+            else {
+                Console.Error.WriteLine(text);
+            }
+        }
+
+        private static void PrintFatal(AssemblyError error)
+        {
+            PrintFatal(FormatAssemblyError(error, "FATAL"));
+        }
+
+        private static void PrintFatal(string text)
+        {
+            if(colorPrint) {
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.BackgroundColor = ConsoleColor.Red;
+                Console.Error.WriteLine(text);
+                Console.ForegroundColor = defaultForegroundColor;
+                Console.BackgroundColor = defaultBackgroundColor;
+            }
+            else {
+                Console.Error.WriteLine(text);
+            }
+        }
+
+        private static void PrintAssemblyPrint(string text)
+        {
+            if(!printInstructionExecuted) {
+                WriteLine();
+                printInstructionExecuted = true;
+            }
+
+            if(colorPrint) {
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.BackgroundColor = defaultBackgroundColor;
+                Console.WriteLine(text);
+                Console.ForegroundColor = defaultForegroundColor;
+            }
+            else {
+                Console.WriteLine(text);
+            }
+        }
+
+        private static void PrintProgress(string text)
+        {
+            if(colorPrint) {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.BackgroundColor = defaultBackgroundColor;
+                Console.WriteLine(text);
+                Console.ForegroundColor = defaultForegroundColor;
+            }
+            else {
+                Console.WriteLine(text);
+            }
         }
 
         static void Main_old(string[] args)
@@ -991,17 +1111,18 @@ DSEG3:
 
         private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected(object? sender, (int, BuildType) e)
         {
-            Debug.WriteLine($"In line {e.Item1} build type was automatically selected as {e.Item2.ToString().ToUpper()}");
+            WriteLine($"In line {e.Item1} build type was automatically selected as {e.Item2.ToString().ToUpper()}");
         }
 
         private static void AssemblySourceProcessor_AssemblyErrorGenerated(object? sender, Assembler.Output.AssemblyError e)
         {
-            Debug.WriteLine(e.ToString());
+            WriteLine(e.ToString());
         }
 
         private static void AssemblySourceProcessor_PrintMessage(object? sender, string e)
         {
-            Debug.WriteLine(e);
+ 
+            WriteLine(e);
         }
     }
 }

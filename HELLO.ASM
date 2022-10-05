@@ -34,5 +34,11 @@ hola:
 ;	ds 1000h
 ;foo equ 34h
 
+.print foo{2+2}
+;aaa
+.warn Hola!!
+;.error Huy...
+;.fatal Nooo!!!
+
 	end
 

@@ -390,7 +390,9 @@ namespace Konamiman.Nestor80.Assembler
                     processedLine = ProcessLegacySetListingSubtitle(opcode, walker, symbol[6..] + (walker.AtEndOfLine ? "" : " " + walker.GetUntil(')')));
                 }
                 else {
-                    throw new NotImplementedException("Can't parse line (yet): " + line);
+                    opcode = symbol;
+                    AddError(AssemblyErrorCode.UnknownInstruction, $"Unknown instruction: {opcode}");
+                    processedLine = new UnknownInstructionLine() { Opcode = opcode, EffectiveLineLength = 0 };
                 }
             }
 
