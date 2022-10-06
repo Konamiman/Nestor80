@@ -26,6 +26,7 @@ namespace Konamiman.Nestor80.N80
         static bool mustChangeOutputFileExtension = false;
         static bool colorPrint = true;
         static bool showBanner = true;
+        static List<string> includeDirectories = new();
 
         static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
@@ -96,6 +97,8 @@ namespace Konamiman.Nestor80.N80
                 PrintFatal($"Can't create output file: {errorMessage}");
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
+
+            includeDirectories.Add(inputFileDirectory);
 
             errorMessage = ProcessArguments(args);
             if(errorMessage is not null) {
@@ -188,7 +191,7 @@ namespace Konamiman.Nestor80.N80
                     generateOutputFile = false;
                 }
                 else if(arg is "-ie" or "--input-encoding") {
-                    if(i == args.Length-1 || args[i + 1][0] == '-') {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
                         return $"The {arg} argument needs to be followed by an encoding page or name";
                     }
                     Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -215,6 +218,35 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner") {
                     //already handled
                 }
+                else if(arg is "-v" or "--version" or "-h" or "--help") {
+                    return $"The {arg} argument must be the first one";
+                }
+                else if(arg is "-id" or "--include-directory") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a directory path";
+                    }
+                    i++;
+                    var dirName = args[i];
+                    if(dirName is "$") {
+                        dirName = inputFileDirectory;
+                    }
+                    else if(dirName.StartsWith("$/")) {
+                        dirName = Path.Combine(inputFileDirectory, dirName[2..]);
+                    }
+
+                    dirName = Path.GetFullPath(dirName);
+
+                    if(!Directory.Exists(dirName)) {
+                        return "Directory not found";
+                    }
+
+                    if(!includeDirectories.Contains(dirName)) {
+                        includeDirectories.Add(dirName);
+                    }
+                }
+                else if(arg is "-cid" or "--clear-include-directories") {
+                    includeDirectories.Clear();
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -239,8 +271,10 @@ namespace Konamiman.Nestor80.N80
             AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated1;
             AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage1;
 
-            var config = new AssemblyConfiguration();
-            var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding);
+            var config = new AssemblyConfiguration() {
+                GetStreamForInclude = GetStreamForInclude
+            };
+            var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding, config);
             if(result.HasFatals) {
                 return ERR_ASSEMBLY_FATAL;
             }
@@ -375,6 +409,20 @@ namespace Konamiman.Nestor80.N80
             else {
                 Console.WriteLine(text);
             }
+        }
+
+        private static Stream GetStreamForInclude(string includeFilePath)
+        {
+            foreach(var directory in includeDirectories) {
+                var filePath = Path.Combine(directory, includeFilePath);
+                if(!File.Exists(filePath)) {
+                    return null;
+                }
+
+                return File.OpenRead(filePath);
+            }
+
+            return null;
         }
 
         static void Main_old(string[] args)

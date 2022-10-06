@@ -15,7 +15,7 @@ namespace Konamiman.Nestor80.Assembler
                 throw new ArgumentException("Absolute output can be genereated only for assembly results with a built type of 'Absolute'");
             }
 
-            var lines = assemblyResult.ProcessedLines;
+            var lines = FlatLinesList(assemblyResult.ProcessedLines);
             var addressDecidingLine = lines.First(l => l is ChangeOriginLine or IProducesOutput);
             if(addressDecidingLine is ChangeOriginLine first_chol) {
                 firstAddress = first_chol.NewLocationCounter;
@@ -89,6 +89,28 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return outputSize;
+        }
+
+        private static ProcessedSourceLine[] FlatLinesList(ProcessedSourceLine[] lines)
+        {
+            if(!lines.Any(l => l is IncludeLine)) {
+                return lines;
+            }
+
+            var result = new List<ProcessedSourceLine>();
+
+            foreach(var line in lines) {
+                if(line is IncludeLine il) {
+                    result.Add(line);
+                    result.AddRange(FlatLinesList(il.Lines));
+                    result.Add(new IncludeLine());
+                }
+                else {
+                    result.Add(line);
+                }
+            }
+
+            return result.ToArray();
         }
     }
 }

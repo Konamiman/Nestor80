@@ -44,11 +44,35 @@
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
+            -cid, --clear-include-directories
+                Clear the list of the directories where relative INCLUDEd files
+                will be searched for. If this argument isn't followed by any
+                instance of --include-directory, any INCLUDE instruction
+                referencing a relative file will fail.
+
             -co, --color-output
                 Display assembly process messages and errors in color (default).
 
-            -ie, --input-encoding
-                Text encoding of the source file, default is UTF-8.
+            -id, --include-directory <directory path>
+                By default relative paths referenced in INCLUDE instructions will be
+                considered to be relative to the input file. This argument allows to
+                specify an extra directory where INCLUDEd files will be searched for;
+                use the argument multiple times to add more than one directory.
+                Directories are scanned in the order they are declared.
+
+                If <directory path> isn't absolute it will be considered relative
+                to the current directory.
+
+                If <directory path> starts with '$/' it will be considered relative to
+                the directory of the source file.
+
+                If <directory path> is just '$' then it's the directory of the source file
+                (already included by default, but you may need to re-add it if you have
+                removed it with --clear-include-directories).
+
+            -ie, --input-encoding <encoding>
+                Text encoding of the source file, it can be an encoding name or a codepage number.
+                Default is UTF-8.
 
             -no, --no-output
                 Process the input file but don't generate the output file.
