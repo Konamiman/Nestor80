@@ -486,7 +486,7 @@ namespace Konamiman.Nestor80.Assembler
             if(match.Success) {
                 var register = match.Groups[1].Value;
                 if((reg = allowedSymbols.SingleOrDefault(s => s.Equals($"({register})", StringComparison.OrdinalIgnoreCase))) is not null) {
-                    return $"({register})";
+                    return $"({register.ToUpper()})";
                 }
                 return "(n)";
             }

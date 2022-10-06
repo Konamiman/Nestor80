@@ -274,8 +274,9 @@ namespace Konamiman.Nestor80.N80
         private static string FormatAssemblyError(AssemblyError error, string prefix)
         {
             var fileName = error.IncludeFileName is null ? "" : $"[{error.IncludeFileName}] ";
+            var lineNumber = error.LineNumber is null ? "" : $"in line {error.LineNumber}: ";
 
-            return $"{prefix}: {fileName}in line {error.LineNumber}: {error.Message}";
+            return $"{prefix}: {fileName}{lineNumber}{error.Message}";
         }
 
         private static void AssemblySourceProcessor_PrintMessage1(object? sender, string e)

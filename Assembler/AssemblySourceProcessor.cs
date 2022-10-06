@@ -238,6 +238,10 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
+            if(line.Any(ch => char.IsControl(ch) && ch != '\t')) {
+                line = new string(line.Where(ch => ch == '\t' || !char.IsControl(ch)).ToArray());
+            }
+
             if(state.InsideMultiLineComment) {
                 if(string.IsNullOrWhiteSpace(line) || (walker = new SourceLineWalker(line)).AtEndOfLine) {
                     processedLine = new DelimitedCommandLine();
@@ -419,9 +423,10 @@ namespace Konamiman.Nestor80.Assembler
                 else if(processedLine is ChangeAreaLine cal && cal.NewLocationArea != AddressType.ASEG) {
                     SetBuildType(BuildType.Relocatable);
                 }
-                else if(processedLine is ChangeOriginLine) {
+                else if(processedLine is ChangeOriginLine col) {
                     SetBuildType(BuildType.Absolute);
                     state.SwitchToArea(AddressType.ASEG);
+                    state.SwitchToLocation(col.NewLocationCounter);
                 }
                 else if(processedLine is IProducesOutput or DefineSpaceLine) {
                     SetBuildType(BuildType.Relocatable);

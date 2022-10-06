@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "N80": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\code\\fun\\msx\\SRC\\MISC\\RAMDD.ASM"
+    }
+  }
+}
