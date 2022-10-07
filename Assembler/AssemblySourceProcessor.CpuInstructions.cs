@@ -420,7 +420,7 @@ namespace Konamiman.Nestor80.Assembler
         private static bool IsFixedPattern(string argumentPattern)
         {
             //R, RR or (RR)
-            return char.IsUpper(argumentPattern[0]) || (argumentPattern[0] == '(' && char.IsUpper(argumentPattern[1]) && argumentPattern.Length == 4);
+            return char.IsUpper(argumentPattern[0]) || (argumentPattern[0] == '(' && char.IsUpper(argumentPattern[1]) && (argumentPattern.Length is 3 or 4));
         }
 
         private static CpuInstruction[] FindMatchingInstructions(CpuInstruction[] candidateInstructions, string firstArgument, string firstArgumentPattern, string secondArgument, string secondArgumentPattern, string[] allowedRegisters1, string[] allowedRegisters2)

@@ -283,6 +283,7 @@
             var endPointer = previousWasQuote ? linePointer - 1 : linePointer;
             var line = sourceLine[originalPointer..endPointer].Replace("\"\"", "\"");
             linePointer++;
+            SkipBlanks();
             return line;
         }
 

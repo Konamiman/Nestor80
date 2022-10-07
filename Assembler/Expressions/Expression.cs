@@ -105,7 +105,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private static readonly Dictionary<char, string> OperatorsAsStrings = new() {
             { '+', "+" }, { '-', "-" }, { '*', "*" },
-            { '/', "/" }, { '(', "(" }, { ')', ")" }
+            { '/', "/" }, { '(', "(" }, { ')', ")" },
+            { '=', "=" }
         };
 
         private static readonly Dictionary<char, string> UnaryOperatorsAsStrings = new() {
@@ -194,7 +195,7 @@ namespace Konamiman.Nestor80.Assembler
             else if(currentChar is '+' or '-') {
                 ProcessPlusOrMinus(currentChar);
             }
-            else if(currentChar is '*' or '/' or '(' or ')') {
+            else if(currentChar is '*' or '/' or '(' or ')' or '=') {
                 ProcessOperator(OperatorsAsStrings[currentChar]);
             }
             else if(IsValidSymbolChar(currentChar)) {
@@ -293,7 +294,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             IncreaseParsedStringPointer(increaseStringPointerBy);
-            if(!AtEndOfString && (parsedString[parsedStringPointer] is not ' ' and not '\t' and not '+' and not '-' and not '*' and not '/' and not ')')) {
+            if(!AtEndOfString && (parsedString[parsedStringPointer] is not ' ' and not '\t' and not '+' and not '-' and not '*' and not '/' and not ')' and not '=')) {
                 Throw($"Unexpected character found after number: {parsedString[parsedStringPointer]}");
             }
 
@@ -386,7 +387,10 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void ProcessOperator(string theOperator)
         {
-            if(theOperator is "(") {
+            if(theOperator is "=") {
+                AddExpressionPart(operators["EQ"]);
+            }
+            else if(theOperator is "(") {
                 AddExpressionPart(OpeningParenthesis.Value);
             }
             else if(theOperator is ")") {

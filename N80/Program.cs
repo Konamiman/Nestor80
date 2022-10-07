@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Enumeration;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -27,13 +28,18 @@ namespace Konamiman.Nestor80.N80
         static bool colorPrint = true;
         static bool showBanner = true;
         static List<string> includeDirectories = new();
+        static bool orgAsPhase = false;
 
         static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
+        static readonly Stopwatch assemblyTimeMeasurer = new();
+        static readonly Stopwatch totalTimeMeasurer = new();
 
         static int Main(string[] args)
         {
+            totalTimeMeasurer.Start();
+
             if(args.Length == 0) {
                 WriteLine(bannerText);
                 WriteLine(simpleHelpText);
@@ -117,6 +123,11 @@ namespace Konamiman.Nestor80.N80
                 generateOutputFile = false;
             }
 
+            totalTimeMeasurer.Stop();
+            PrintProgress("\r\nAssembly completed!");
+            PrintProgress($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
+            PrintProgress($"Total time: {FormatTimespan(totalTimeMeasurer.Elapsed)}");
+
             if(generateOutputFile) {
                 PrintProgress($"\r\nOutput file: {outputFilePath}");
                 PrintProgress($"{writtenBytes} bytes written");
@@ -125,6 +136,15 @@ namespace Konamiman.Nestor80.N80
             }
 
             return errCode;
+        }
+
+        private static string FormatTimespan(TimeSpan ts)
+        {
+            if(ts.TotalSeconds < 1) {
+                return $"{ts.TotalMilliseconds:0} ms";
+            }
+
+            return $"{(int)ts.TotalMinutes}:{ts.Seconds:00}.{ts.Milliseconds:0}";
         }
 
         private static void SetShowBannerFlag(string[] args)
@@ -247,6 +267,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-cid" or "--clear-include-directories") {
                     includeDirectories.Clear();
                 }
+                else if(arg is "-oap" or "--org-as-phase") {
+                    orgAsPhase = true;
+                }
+                else if(arg is "-noap" or "--no-org-as-phase") {
+                    orgAsPhase = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -270,11 +296,15 @@ namespace Konamiman.Nestor80.N80
 
             AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated1;
             AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage1;
+            AssemblySourceProcessor.BuildTypeAutomaticallySelected += AssemblySourceProcessor_BuildTypeAutomaticallySelected1;
+            AssemblySourceProcessor.Pass2Started += AssemblySourceProcessor_Pass2Started;
 
             var config = new AssemblyConfiguration() {
                 GetStreamForInclude = GetStreamForInclude
             };
+            assemblyTimeMeasurer.Start();
             var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding, config);
+            assemblyTimeMeasurer.Stop();
             if(result.HasFatals) {
                 return ERR_ASSEMBLY_FATAL;
             }
@@ -293,7 +323,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             try {
-                writtenBytes = OutputGenerator.GenerateAbsolute(result, outputStream);
+                writtenBytes = OutputGenerator.GenerateAbsolute(result, outputStream, orgAsPhase);
             }
             catch(Exception ex) {
                 WriteLine($"Can't write to output file: {ex.Message}");
@@ -303,6 +333,17 @@ namespace Konamiman.Nestor80.N80
             outputStream.Close();
 
             return ERR_SUCCESS;
+        }
+
+        private static void AssemblySourceProcessor_Pass2Started(object? sender, EventArgs e)
+        {
+            PrintProgress("\r\nPass 2 started");
+        }
+
+        private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected1(object? sender, (string, int, BuildType) e)
+        {
+            var fileName = e.Item1 is null ? "" : $"[{e.Item1}]: ";
+            PrintProgress($"\r\n{fileName}Line {e.Item2}: Output type automatically selected: {e.Item3}");
         }
 
         private static string FormatAssemblyError(AssemblyError error, string prefix)
@@ -1158,7 +1199,7 @@ DSEG3:
             //var result = AssemblySourceProcessor.Assemble(sourceStream, Encoding.GetEncoding("iso-8859-1"), config);
         }
 
-        private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected(object? sender, (int, BuildType) e)
+        private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected(object? sender, (string, int, BuildType) e)
         {
             WriteLine($"In line {e.Item1} build type was automatically selected as {e.Item2.ToString().ToUpper()}");
         }

@@ -58,7 +58,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public static event EventHandler<AssemblyError> AssemblyErrorGenerated;
         public static event EventHandler<string> PrintMessage;
-        public static event EventHandler<(int, BuildType)> BuildTypeAutomaticallySelected;
+        public static event EventHandler<(string, int, BuildType)> BuildTypeAutomaticallySelected;
+        public static event EventHandler Pass2Started;
 
         private AssemblySourceProcessor()
         {
@@ -209,21 +210,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.PopIncludeState();
             }
 
-            if(state.InConditionalBlock) {
-                AddError(AssemblyErrorCode.UnterminatedConditional, "Unterminated conditional block", withLineNumber: false);
-            }
-
-            if(state.InsideMultiLineComment) {
-                AddError(AssemblyErrorCode.UnterminatedComment, $"Unterminated .COMMENT block (delimiter: '{state.MultiLineCommandDelimiter}')", withLineNumber: false);
-            }
-
-            if(state.IsCurrentlyPhased) {
-                AddError(AssemblyErrorCode.UnterminatedPhase, "Unterminated .PHASE block", withLineNumber: false);
-            }
-
-            if(!state.EndReached) {
-                AddError(AssemblyErrorCode.NoEndStatement, "No END statement found", withLineNumber: false);
-            }
+            AssemblyEndWarnings();
         }
 
         private static ProcessedSourceLine ProcessSourceLine(string line, int? formFeedCharsCount = null)
@@ -428,7 +415,7 @@ namespace Konamiman.Nestor80.Assembler
                     state.SwitchToArea(AddressType.ASEG);
                     state.SwitchToLocation(col.NewLocationCounter);
                 }
-                else if(processedLine is IProducesOutput or DefineSpaceLine) {
+                else if(processedLine is IProducesOutput or DefineSpaceLine or LinkerFileReadRequestLine) {
                     SetBuildType(BuildType.Relocatable);
                 }
             }
@@ -438,6 +425,10 @@ namespace Konamiman.Nestor80.Assembler
 
         private static ProcessedSourceLine[] DoPass2()
         {
+            if(Pass2Started is not null) {
+                Pass2Started(null, EventArgs.Empty);
+            }
+
             var lines = state.ProcessedLines.ToArray();
             ProcessLinesForPass2(lines);
 
@@ -463,7 +454,28 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.SameEffectiveExternal, $"The following public labels are too long and have conflicting names (all equivalent to {cp.Key}): {names}", withLineNumber: false);
             }
 
+            AssemblyEndWarnings();
+
             return lines;
+        }
+
+        private static void AssemblyEndWarnings()
+        {
+            if(state.InConditionalBlock) {
+                AddError(AssemblyErrorCode.UnterminatedConditional, "Unterminated conditional block", withLineNumber: false);
+            }
+
+            if(state.InsideMultiLineComment) {
+                AddError(AssemblyErrorCode.UnterminatedComment, $"Unterminated .COMMENT block (delimiter: '{state.MultiLineCommandDelimiter}')", withLineNumber: false);
+            }
+
+            if(state.IsCurrentlyPhased) {
+                AddError(AssemblyErrorCode.UnterminatedPhase, "Unterminated .PHASE block", withLineNumber: false);
+            }
+
+            if(!state.EndReached && buildType != BuildType.Absolute) {
+                AddError(AssemblyErrorCode.NoEndStatement, "No END statement found", withLineNumber: false);
+            }
         }
 
         private static void ProcessLinesForPass2(ProcessedSourceLine[] processedLines)
@@ -502,10 +514,6 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
             }
-            else if(processedLine is not null && instructionsNeedingPass2Reevaluation.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
-                UnregisterPendingExpressions(processedLine);
-                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
-            }
             else if(processedLine is ConstantDefinitionLine cdl && cdl.IsRedefinible) {
                 processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
             }
@@ -534,9 +542,26 @@ namespace Konamiman.Nestor80.Assembler
                 ProcessExpressionPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation[processedLine].ToArray());
             }
 
-            if(processedLine is IChangesLocationCounter iclc) {
-                state.SwitchToArea(iclc.NewLocationArea);
-                state.SwitchToLocation(iclc.NewLocationCounter);
+            if(processedLine is IProducesOutput ipo) {
+                state.IncreaseLocationPointer(ipo.OutputBytes.Length);
+            }
+            else if(processedLine is DefineSpaceLine dsl) {
+                state.IncreaseLocationPointer(dsl.Size);
+            }
+            else if(processedLine is PhaseLine phl) {
+                state.EnterPhase(phl.NewLocationCounter);
+            }
+            else if(processedLine is DephaseLine) {
+                state.ExitPhase();
+            }
+            else if(processedLine is IChangesLocationCounter clc) {
+                state.SwitchToArea(clc.NewLocationArea);
+                state.SwitchToLocation(clc.NewLocationCounter);
+            }
+            else if(processedLine is IncludeLine il) {
+                state.PushIncludeState(null, il);
+                ProcessLinesForPass2(il.Lines);
+                state.PopIncludeState();
             }
 
             return processedLine;
@@ -741,15 +766,12 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 state.AddSymbol(labelValue, SymbolType.Label, state.GetCurrentLocation(), isPublic: isPublic);
 
-                if(isPublic) {
-                    if(buildType == BuildType.Automatic) {
-                        SetBuildType(BuildType.Relocatable);
-                    }
-                    else if(buildType == BuildType.Absolute) {
-                        AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Label {labelValue.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
-                    }
+                if(buildType == BuildType.Automatic) {
+                    SetBuildType(BuildType.Relocatable);
                 }
-
+                else if(isPublic && buildType == BuildType.Absolute) {
+                    AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Label {labelValue.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
+                }
             }
             else if(symbol.IsExternal) {
                 AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol has been declared already as external: {labelValue}");
@@ -777,7 +799,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             buildType = type;
             if(BuildTypeAutomaticallySelected is not null) {
-                BuildTypeAutomaticallySelected(null, (state.CurrentLineNumber, buildType));
+                BuildTypeAutomaticallySelected(null, (state.CurrentIncludeFilename, state.CurrentLineNumber, buildType));
             }
         }
 

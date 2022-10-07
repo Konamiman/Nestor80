@@ -133,6 +133,7 @@ namespace Konamiman.Nestor80.Assembler
                     if(value is null) {
                         AddZero();
                         state.RegisterPendingExpression(line, expression, index, argumentType: isByte ? CpuInstructionArgumentType.Byte : CpuInstructionArgumentType.Word);
+                        if(!isByte) index++;
                     }
                     else if(isByte && !value.IsValidByte) {
                         AddZero();
@@ -770,7 +771,11 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(walker.AtEndOfLine) {
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by at least one file name");
-                return new ExternalDeclarationLine();
+                return new LinkerFileReadRequestLine();
+            }
+
+            if(buildType == BuildType.Absolute) {
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} is ignored when the output type is absolute");
             }
 
             var filenames = new List<string>();

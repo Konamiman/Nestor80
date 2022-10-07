@@ -557,6 +557,10 @@ namespace Konamiman.Nestor80.AssemblerTests
 
             new object[] { "1 EQ 1", 0xFFFF},
             new object[] { "1 EQ 0", 0},
+            new object[] { "1 = 1", 0xFFFF},
+            new object[] { "1 = 0", 0},
+            new object[] { "1=1", 0xFFFF},
+            new object[] { "1=0", 0},
             new object[] { "1 NE 0", 0xFFFF},
             new object[] { "1 NE 1", 0},
             new object[] { "1 GT 0", 0xFFFF},

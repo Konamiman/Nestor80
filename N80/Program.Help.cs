@@ -80,8 +80,29 @@
             -nco, --no-color-output
                 Don't display assembly process messages and errors in color.
 
+            -noap, --no-org-as-phase
+                Don't treat ORG statements as .PHASE statements.
+
             -nsb, --nshow-banner
                 Don't display the program title and copyright notice banner.
+
+            -oap, --org-as-phase
+                Treat ORG statements as .PHASE statements. This argument has effect only
+                when the build type is absolute.
+
+                The effect of this argument is that all the generated output will be written
+                consecutively to the output file, regardless of their location in memory.
+                Example:
+
+                org 100
+                db 1,2,3,4
+                org 200
+                db 5,6,7,8
+                org 102
+                db 9,10
+
+                Output without this argument: 1,2,9,10,0,...,0,5,6,7,8 (total 104 bytes)
+                Output with this argument: 1,2,3,4,5,6,7,8,9,10
 
             -sb, --show-banner
                 Display the program title and copyright notice banner (default).

@@ -4,7 +4,7 @@ namespace Konamiman.Nestor80.Assembler
 {
     public static class OutputGenerator
     {
-        public static int GenerateAbsolute(AssemblyResult assemblyResult, Stream outputStream)
+        public static int GenerateAbsolute(AssemblyResult assemblyResult, Stream outputStream, bool orgAsPhase = false)
         {
             var memory = new byte[65536];
             var firstAddress = 0;
@@ -19,6 +19,7 @@ namespace Konamiman.Nestor80.Assembler
             var addressDecidingLine = lines.First(l => l is ChangeOriginLine or IProducesOutput);
             if(addressDecidingLine is ChangeOriginLine first_chol) {
                 firstAddress = first_chol.NewLocationCounter;
+                currentAddress = firstAddress;
             }
 
             //We do a deferred location counter update to prevent an ORG at the end of the file
@@ -34,7 +35,9 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(line is ChangeOriginLine chol) {
-                    newLocationCounter = chol.NewLocationCounter;
+                    if(!orgAsPhase) {
+                        newLocationCounter = chol.NewLocationCounter;
+                    }
                 }
                 else if(line is IProducesOutput ipo) {
                     var length = ipo.OutputBytes.Length;
