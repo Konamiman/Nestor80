@@ -19,5 +19,7 @@ namespace Konamiman.Nestor80.Assembler
         public Action<string> Print { get; init; } = _ => { };
 
         public (string, ushort)[] PredefinedSymbols = Array.Empty<(string, ushort)>();
+
+        public int MaxErrors { get; init; } = 0;
     }
 }

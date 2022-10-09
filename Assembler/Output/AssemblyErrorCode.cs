@@ -46,6 +46,7 @@
         CantInclude,
         TooManyNestedIncludes,
         IncludeInPass2Only,
+        MaxErrorsReached,
         UserFatal,
     }
 }

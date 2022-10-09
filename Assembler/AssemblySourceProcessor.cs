@@ -21,6 +21,9 @@ namespace Konamiman.Nestor80.Assembler
 
         private static Stream includeStream;
 
+        private static int maxErrors = 0;
+        private static int errorsGenerated = 0;
+
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
             "AF", "HL", "BC", "DE", "IX", "IY",
@@ -95,6 +98,7 @@ namespace Konamiman.Nestor80.Assembler
                 state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
 
                 ProcessPredefinedsymbols(configuration.PredefinedSymbols);
+                maxErrors = configuration.MaxErrors;
 
                 SetCurrentCpu(configuration.CpuName);
                 buildType = configuration.BuildType;
@@ -118,7 +122,10 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             catch(FatalErrorException ex) {
-                AddError(ex.Error);
+                state.AddError(ex.Error);
+                if(AssemblyErrorGenerated is not null) {
+                    AssemblyErrorGenerated(null, ex.Error);
+                }
             }
             catch(Exception ex) {
                 AddError(
@@ -851,19 +858,21 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        static void AddError(AssemblyError error)
-        {
-            state.AddError(error);
-            if(AssemblyErrorGenerated is not null) {
-                AssemblyErrorGenerated(null, error);
-            }
-        }
-
         static void AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {
             var error = state.AddError(code, message, withLineNumber);
             if(AssemblyErrorGenerated is not null) {
                 AssemblyErrorGenerated(null, error);
+            }
+
+            if(!error.IsWarning && maxErrors != 0) {
+                errorsGenerated++;
+                if(errorsGenerated >= maxErrors) {
+                    message = errorsGenerated == 1 ?
+                        "Assembly stopped after first error" :
+                        $"Assembly stopped after reaching {errorsGenerated} errors";
+                    ThrowFatal(AssemblyErrorCode.MaxErrorsReached, message);
+                }
             }
         }
 

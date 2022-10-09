@@ -16,7 +16,7 @@
                    N80 -h|--help
             """;
 
-        static readonly string extendedHelpText = """
+        static readonly string extendedHelpText = $"""
 
             Arguments:
 
@@ -81,6 +81,11 @@
             -ie, --input-encoding <encoding>
                 Text encoding of the source file, it can be an encoding name or a codepage number.
                 Default is UTF-8.
+
+            -me, --max-errors <count>
+                Stop the assembly process after reaching the specified number of errors
+                (not including warnings, and the process will still stop on the first fatal error).
+                0 means "infinite". Default: {DEFAULT_MAX_ERRORS}.
 
             -no, --no-output
                 Process the input file but don't generate the output file.

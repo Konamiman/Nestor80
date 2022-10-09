@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "symdef.asm -ds sym1=34h"
+      "commandLineArgs": "symdef.asm -me 3"
     }
   }
 }

@@ -18,6 +18,8 @@ namespace Konamiman.Nestor80.N80
         const int ERR_ASSEMBLY_ERROR = 4;
         const int ERR_ASSEMBLY_FATAL = 5;
 
+        const int DEFAULT_MAX_ERRORS = 34;
+
         static string inputFilePath = null;
         static string inputFileDirectory = null;
         static string inputFileName = null;
@@ -30,6 +32,7 @@ namespace Konamiman.Nestor80.N80
         static readonly List<string> includeDirectories = new();
         static bool orgAsPhase = false;
         static readonly List<(string, ushort)> symbolDefinitions = new();
+        static int maxErrors = DEFAULT_MAX_ERRORS;
 
         static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
@@ -320,6 +323,18 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nds" or "--no-define-symbols") {
                     symbolDefinitions.Clear();
                 }
+                else if(arg is "-me" or "--max-errors") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by an errors count";
+                    }
+                    i++;
+                    try {
+                        maxErrors = int.Parse(args[i]);
+                    }
+                    catch {
+                        return $"Invalid number following the {arg} argument";
+                    }
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -348,7 +363,8 @@ namespace Konamiman.Nestor80.N80
 
             var config = new AssemblyConfiguration() {
                 GetStreamForInclude = GetStreamForInclude,
-                PredefinedSymbols = symbolDefinitions.ToArray()
+                PredefinedSymbols = symbolDefinitions.ToArray(),
+                MaxErrors = maxErrors
             };
             assemblyTimeMeasurer.Start();
             var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding, config);
@@ -453,7 +469,16 @@ namespace Konamiman.Nestor80.N80
 
         private static void PrintFatal(AssemblyError error)
         {
-            PrintFatal(FormatAssemblyError(error, "FATAL"));
+            if(error.Code is AssemblyErrorCode.MaxErrorsReached) {
+                if(printInstructionExecuted) {
+                    PrintProgress("");
+                    printInstructionExecuted = true;
+                }
+                PrintProgress(error.Message);
+            }
+            else {
+                PrintFatal(FormatAssemblyError(error, "FATAL"));
+            }
         }
 
         private static void PrintFatal(string text)
