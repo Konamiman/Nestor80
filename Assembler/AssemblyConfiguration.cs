@@ -17,5 +17,7 @@ namespace Konamiman.Nestor80.Assembler
         public Func<string, Stream> GetStreamForInclude { get; init; } = _ => null;
 
         public Action<string> Print { get; init; } = _ => { };
+
+        public (string, ushort)[] PredefinedSymbols = Array.Empty<(string, ushort)>();
     }
 }

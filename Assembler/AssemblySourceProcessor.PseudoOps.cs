@@ -716,19 +716,17 @@ namespace Konamiman.Nestor80.Assembler
             var delimiter = text[0];
             var endDelimiterPosition = text.IndexOf(delimiter, 1);
             if(endDelimiterPosition == -1) {
-                TriggerPrintEvent(text);
                 return new PrintLine() { PrintedText = text, EffectiveLineLength = walker.SourceLine.Length };
             }
 
             var effectiveText = text[..(endDelimiterPosition + 1)];
-            TriggerPrintEvent(effectiveText);
             return new PrintLine() { PrintedText = effectiveText, EffectiveLineLength = walker.SourceLine.Length - (text.Length - endDelimiterPosition) + 1 };
         }
 
-        static void TriggerPrintEvent(string message, int? ifPass = null)
+        static void TriggerPrintEvent(PrintLine line)
         {
-            if(PrintMessage is not null && ((ifPass is null) || (state.InPass1 && ifPass == 1) || (state.InPass2 && ifPass == 2)))
-                PrintMessage(null, message);
+            if(PrintMessage is not null && line.PrintedText is not null && ((state.InPass1 && line.PrintInPass1) || (state.InPass2 && line.PrintInPass2)))
+                PrintMessage(null, line.PrintedText);
         }
 
         static ProcessedSourceLine ProcessDefineZeroTerminatedStringLine(string opcode, SourceLineWalker walker)
@@ -858,7 +856,7 @@ namespace Konamiman.Nestor80.Assembler
                 try {
                     var expression = Expression.Parse(expressionText);
                     expression.ValidateAndPostifixize();
-                    expressionValue = expression.EvaluateIfNoSymbols();
+                    expressionValue = expression.Evaluate();
                 }
                 catch(InvalidExpressionException ex) {
                     AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
@@ -910,7 +908,6 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine GetLineForPrintOrUserError(string text, SourceLineWalker walker, int? pass, AssemblyErrorSeverity severity)
         {
             if(severity is AssemblyErrorSeverity.None) {
-                TriggerPrintEvent(text, pass);
                 return new PrintLine() { PrintedText = text, EffectiveLineLength = walker.SourceLine.Length, PrintInPass = pass };
             }
             else if(severity is AssemblyErrorSeverity.Fatal) {

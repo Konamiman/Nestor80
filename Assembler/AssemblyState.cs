@@ -32,8 +32,6 @@ namespace Konamiman.Nestor80.Assembler
 
         public int CurrentLineNumber { get; private set; } = 1;
 
-        public string ProgramName { get; set; }
-
         public List<ProcessedSourceLine> ProcessedLines { get; private set; } = new();
 
         public void RegisterPendingExpression(
@@ -76,7 +74,6 @@ namespace Konamiman.Nestor80.Assembler
         {
             InPass2 = true;
             CurrentLineNumber = 1;
-            ProgramName = Configuration.DefaultProgramName;
             CurrentPhasedLocationPointer = null;
             EndAddress = null;
 

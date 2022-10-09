@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "C:\\code\\fun\\RookieDrive\\msx\\rookiefdd.asm -oap"
+      "commandLineArgs": "symdef.asm -ds sym1=34h"
     }
   }
 }

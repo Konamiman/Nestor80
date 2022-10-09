@@ -38,7 +38,7 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly string[] instructionsNeedingPass2Reevaluation;
 
         private static CpuType currentCpu;
-        private static Dictionary<CpuType, Dictionary<string, CpuInstruction[]>> cpuInstructions;
+        private static readonly Dictionary<CpuType, Dictionary<string, CpuInstruction[]>> cpuInstructions;
         private static Dictionary<string, CpuInstruction[]> currentCpuInstructions;
 
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -86,18 +86,15 @@ namespace Konamiman.Nestor80.Assembler
             return Assemble(sourceStream, Encoding.UTF8, configuration ?? new AssemblyConfiguration());
         }
 
-        public static AssemblyResult Assemble(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration = null)
-        {
-            return new AssemblySourceProcessor().AssembleCore(sourceStream, sourceStreamEncoding, configuration ?? new AssemblyConfiguration());
-        }
-
-        private AssemblyResult AssembleCore(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
+        public static AssemblyResult Assemble(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
         {
             ProcessedSourceLine[] processedLines = null;
 
             try {
                 includeStream = null;
                 state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
+
+                ProcessPredefinedsymbols(configuration.PredefinedSymbols);
 
                 SetCurrentCpu(configuration.CpuName);
                 buildType = configuration.BuildType;
@@ -164,7 +161,6 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return new AssemblyResult() {
-                ProgramName = state.ProgramName,
                 ProgramAreaSize = programSize,
                 DataAreaSize = state.GetAreaSize(AddressType.DSEG),
                 CommonAreaSizes = new(), //TODO: Handle commons
@@ -175,6 +171,26 @@ namespace Konamiman.Nestor80.Assembler
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
                 BuildType = buildType
             };
+        }
+
+        private static void ProcessPredefinedsymbols((string, ushort)[] predefinedSymbols)
+        {
+            foreach((var symbol, var value) in predefinedSymbols) {
+                if(!labelRegex.IsMatch(symbol)) {
+                    AddError(AssemblyErrorCode.InvalidLabel, $"{symbol} is not a valid symbol name");
+                    continue;
+                }
+
+                if(state.HasSymbol(symbol)) {
+                    //Since this runs before processing the source code,
+                    //if the symbol exists it must have been added by this same method,
+                    //thus it's a DEFL and can be safely redefined.
+                    state.GetSymbol(symbol).Value = Address.Absolute(value);
+                }
+                else {
+                    state.AddSymbol(symbol, SymbolType.Defl, Address.Absolute(value));
+                }
+            }
         }
 
         private static void DoPass1()
@@ -200,6 +216,9 @@ namespace Konamiman.Nestor80.Assembler
                         throw new Exception($"That's unexpected: got an INCLUDE line, but {nameof(includeStream)} is null");
                     }
                     state.PushIncludeState(includeStream, il);
+                }
+                else if(processedLine is PrintLine pl) {
+                    TriggerPrintEvent(pl);
                 }
 
                 state.IncreaseLineNumber();
@@ -473,7 +492,7 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.UnterminatedPhase, "Unterminated .PHASE block", withLineNumber: false);
             }
 
-            if(!state.EndReached && buildType != BuildType.Absolute) {
+            if(!state.EndReached && buildType == BuildType.Relocatable) {
                 AddError(AssemblyErrorCode.NoEndStatement, "No END statement found", withLineNumber: false);
             }
         }
@@ -494,12 +513,15 @@ namespace Konamiman.Nestor80.Assembler
 
         private static ProcessedSourceLine ProcessLineForPass2(ProcessedSourceLine processedLine)
         {
-            if(state.InConditionalBlock) {
-                if(conditionalInstructions.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
-                    UnregisterPendingExpressions(processedLine);
-                    processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
-                }
+            if(conditionalInstructions.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
+                UnregisterPendingExpressions(processedLine);
+                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
+            }
+            else if(processedLine is ConstantDefinitionLine cdl && cdl.IsRedefinible) {
+                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
+            }
 
+            if(state.InConditionalBlock) {
                 if(state.InFalseConditional && processedLine is not SkippedLine) {
                     UnregisterPendingExpressions(processedLine);
                     processedLine = new SkippedLine() { Line = processedLine.Line, EffectiveLineLength = 0, FormFeedsCount = processedLine.FormFeedsCount };
@@ -513,9 +535,6 @@ namespace Konamiman.Nestor80.Assembler
                         ThrowFatal(AssemblyErrorCode.IncludeInPass2Only, "INCLUDE statements that are processed only in pass 2 aren't allowed");
                     }
                 }
-            }
-            else if(processedLine is ConstantDefinitionLine cdl && cdl.IsRedefinible) {
-                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
             }
 
             if(processedLine.Label is not null) {
@@ -562,6 +581,9 @@ namespace Konamiman.Nestor80.Assembler
                 state.PushIncludeState(null, il);
                 ProcessLinesForPass2(il.Lines);
                 state.PopIncludeState();
+            }
+            else if(processedLine is PrintLine pl) {
+                TriggerPrintEvent(pl);
             }
 
             return processedLine;

@@ -16,7 +16,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var lines = FlatLinesList(assemblyResult.ProcessedLines);
-            var addressDecidingLine = lines.First(l => l is ChangeOriginLine or IProducesOutput);
+            var addressDecidingLine = lines.FirstOrDefault(l => l is ChangeOriginLine or IProducesOutput);
             if(addressDecidingLine is ChangeOriginLine first_chol) {
                 firstAddress = first_chol.NewLocationCounter;
                 currentAddress = firstAddress;

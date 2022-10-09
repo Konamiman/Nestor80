@@ -27,8 +27,9 @@ namespace Konamiman.Nestor80.N80
         static bool mustChangeOutputFileExtension = false;
         static bool colorPrint = true;
         static bool showBanner = true;
-        static List<string> includeDirectories = new();
+        static readonly List<string> includeDirectories = new();
         static bool orgAsPhase = false;
+        static readonly List<(string, ushort)> symbolDefinitions = new();
 
         static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
@@ -124,9 +125,14 @@ namespace Konamiman.Nestor80.N80
             }
 
             totalTimeMeasurer.Stop();
-            PrintProgress("\r\nAssembly completed!");
-            PrintProgress($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
-            PrintProgress($"Total time: {FormatTimespan(totalTimeMeasurer.Elapsed)}");
+            if(errCode == ERR_SUCCESS) {
+                PrintProgress("\r\nAssembly completed!");
+                PrintProgress($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
+                PrintProgress($"Total time: {FormatTimespan(totalTimeMeasurer.Elapsed)}");
+            }
+            else {
+                PrintProgress("\r\nAssembly failed");
+            }
 
             if(generateOutputFile) {
                 PrintProgress($"\r\nOutput file: {outputFilePath}");
@@ -273,6 +279,47 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-noap" or "--no-org-as-phase") {
                     orgAsPhase = false;
                 }
+                else if(arg is "-ds" or "--define-symbols") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a list of symbol definitions";
+                    }
+                    else {
+                        i++;
+                        var symbolDefinitionStrings = args[i].Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        foreach(var symbolDefinitionString in symbolDefinitionStrings) {
+                            var parts = symbolDefinitionString.Split('=');
+                            if(parts.Length > 2) {
+                                return $"{arg}: two '=' found in the same symbol definition";
+                            }
+                            if(parts.Any(p => p is "")) {
+                                return $"{arg}: found symbol definition with missing name or value";
+                            }
+                            ushort value;
+                            var name = parts[0];
+                            if(parts.Length == 1) {
+                                value = 0xFFFF;
+                            }
+                            else {
+                                try {
+                                    if(parts[1].EndsWith("h", StringComparison.OrdinalIgnoreCase)) {
+                                        value = Convert.ToUInt16(parts[1][..^1], 16);
+                                    }
+                                    else {
+                                        value = ushort.Parse(parts[1]);
+                                    }
+                                }
+                                catch {
+                                    return $"{arg}: Invalid value for symbol '{name}', values must decimal numbers or hexadecimal numbers with the 'h' suffix, and be in the range 0-65535/FFFFh";
+                                }
+                            }
+
+                            symbolDefinitions.Add((name, value));
+                        }
+                    }
+                }
+                else if(arg is "-nds" or "--no-define-symbols") {
+                    symbolDefinitions.Clear();
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -300,7 +347,8 @@ namespace Konamiman.Nestor80.N80
             AssemblySourceProcessor.Pass2Started += AssemblySourceProcessor_Pass2Started;
 
             var config = new AssemblyConfiguration() {
-                GetStreamForInclude = GetStreamForInclude
+                GetStreamForInclude = GetStreamForInclude,
+                PredefinedSymbols = symbolDefinitions.ToArray()
             };
             assemblyTimeMeasurer.Start();
             var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding, config);
@@ -338,6 +386,7 @@ namespace Konamiman.Nestor80.N80
         private static void AssemblySourceProcessor_Pass2Started(object? sender, EventArgs e)
         {
             PrintProgress("\r\nPass 2 started");
+            printInstructionExecuted = false;
         }
 
         private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected1(object? sender, (string, int, BuildType) e)

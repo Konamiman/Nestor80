@@ -2,8 +2,6 @@
 {
     public class AssemblyResult
     {
-        public string ProgramName { get; init; }
-
         public int ProgramAreaSize { get; init; }
 
         public int DataAreaSize { get; init; }

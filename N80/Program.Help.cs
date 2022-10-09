@@ -53,6 +53,14 @@
             -co, --color-output
                 Display assembly process messages and errors in color (default).
 
+            -ds, --define-symbols <symbol>[=<value>][,<symbol>[=<value>][,...]]
+                Predefine symbols for the assembled program.
+                The default value if no <value> is provided is FFFFh. 
+                The symbols will be created as if they had been defined with DEFL,
+                therefore they can be redefined in the source code using the same instruction.
+
+                Example: -ds symbol1,symbol2=1234,symbol3=ABCDh
+            
             -id, --include-directory <directory path>
                 By default relative paths referenced in INCLUDE instructions will be
                 considered to be relative to the input file. This argument allows to
@@ -80,8 +88,11 @@
             -nco, --no-color-output
                 Don't display assembly process messages and errors in color.
 
+            -nds, --no-define-symbols
+                Forget all symbols that had been predefined with --define-symbols.
+
             -noap, --no-org-as-phase
-                Don't treat ORG statements as .PHASE statements.
+                Don't treat ORG statements as .PHASE statements (default).
 
             -nsb, --nshow-banner
                 Don't display the program title and copyright notice banner.
@@ -106,7 +117,7 @@
 
             -sb, --show-banner
                 Display the program title and copyright notice banner (default).
-            
+
             Full documentation (and donation links, wink wink):
             https://github.com/Konamiman/Nestor80
             """;
