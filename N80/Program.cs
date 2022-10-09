@@ -33,6 +33,9 @@ namespace Konamiman.Nestor80.N80
         static bool orgAsPhase = false;
         static readonly List<(string, ushort)> symbolDefinitions = new();
         static int maxErrors = DEFAULT_MAX_ERRORS;
+        static AssemblyErrorCode[] skippedWarnings = Array.Empty<AssemblyErrorCode>();
+        static bool silenceStatus = false;
+        static bool silenceAssemblyPrints = false;
 
         static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
@@ -335,6 +338,51 @@ namespace Konamiman.Nestor80.N80
                         return $"Invalid number following the {arg} argument";
                     }
                 }
+                else if(arg is "-sw" or "--silence-warnings" or "-nsw" or "--no-silence-warnings") {
+                    AssemblyErrorCode[] warningCodes;
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        warningCodes = Enum
+                            .GetValues<AssemblyErrorCode>()
+                            .Cast<AssemblyErrorCode>()
+                            .Where(c => c < AssemblyErrorCode.FirstError)
+                            .Distinct()
+                            .ToArray();
+                    }
+                    else {
+                        i++;
+                        var warningCodesString = args[i];
+                        try {
+                            warningCodes =
+                                warningCodesString
+                                .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                                .Select(c => (AssemblyErrorCode)int.Parse(c))
+                                .Where(c => c < AssemblyErrorCode.FirstError)
+                                .ToArray();
+                        }
+                        catch {
+                            return $"The {arg} argument needs to be followed by a comma-separated list of valid warning codes";
+                        }
+                    }
+
+                    if(arg is "-sw" or "--silence-warnings") {
+                        skippedWarnings = skippedWarnings.Concat(warningCodes).Distinct().ToArray();
+                    }
+                    else {
+                        skippedWarnings = skippedWarnings.Except(warningCodes).ToArray();
+                    }
+                }
+                else if(arg is "-ss" or "--silence-status") {
+                    silenceStatus = true;
+                }
+                else if(arg is "-nss" or "--no-silence-status") {
+                    silenceStatus = false;
+                }
+                else if(arg is "-sap" or "--silence-assembly-print") {
+                    silenceAssemblyPrints = true;
+                }
+                else if(arg is "-nsap" or "--no-silence-assembly-print") {
+                    silenceAssemblyPrints = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -357,9 +405,12 @@ namespace Konamiman.Nestor80.N80
             }
 
             AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated1;
-            AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage1;
             AssemblySourceProcessor.BuildTypeAutomaticallySelected += AssemblySourceProcessor_BuildTypeAutomaticallySelected1;
             AssemblySourceProcessor.Pass2Started += AssemblySourceProcessor_Pass2Started;
+
+            if(!silenceAssemblyPrints) {
+                AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage1;
+            }
 
             var config = new AssemblyConfiguration() {
                 GetStreamForInclude = GetStreamForInclude,
@@ -426,8 +477,6 @@ namespace Konamiman.Nestor80.N80
 
         private static void AssemblySourceProcessor_AssemblyErrorGenerated1(object? sender, AssemblyError error)
         {
-            WriteLine();
-
             if(error.IsWarning) {
                 PrintWarning(error);
             }
@@ -441,6 +490,11 @@ namespace Konamiman.Nestor80.N80
 
         private static void PrintWarning(AssemblyError error)
         {
+            if(skippedWarnings.Contains(error.Code)) {
+                return;
+            }
+
+            Console.Error.WriteLine();
             var text = FormatAssemblyError(error, "WARN");
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.Yellow;
@@ -455,6 +509,7 @@ namespace Konamiman.Nestor80.N80
 
         private static void PrintError(AssemblyError error)
         {
+            Console.Error.WriteLine();
             var text = FormatAssemblyError(error, "ERROR");
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -470,6 +525,7 @@ namespace Konamiman.Nestor80.N80
         private static void PrintFatal(AssemblyError error)
         {
             if(error.Code is AssemblyErrorCode.MaxErrorsReached) {
+                PrintProgress("");
                 if(printInstructionExecuted) {
                     PrintProgress("");
                     printInstructionExecuted = true;
@@ -483,6 +539,7 @@ namespace Konamiman.Nestor80.N80
 
         private static void PrintFatal(string text)
         {
+            Console.Error.WriteLine();
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.BackgroundColor = ConsoleColor.Red;
@@ -515,6 +572,10 @@ namespace Konamiman.Nestor80.N80
 
         private static void PrintProgress(string text)
         {
+            if(silenceStatus) {
+                return;
+            }
+
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.DarkGray;
                 Console.BackgroundColor = defaultBackgroundColor;

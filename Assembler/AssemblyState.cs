@@ -118,7 +118,7 @@ namespace Konamiman.Nestor80.Assembler
         public void ExitPhase()
         {
             if(!IsCurrentlyPhased) {
-                throw new InvalidOperationException($"{nameof(EnterPhase)} isn't intended to be called while not in .PHASE mode");
+                throw new InvalidOperationException($"{nameof(ExitPhase)} isn't intended to be called while not in .PHASE mode");
             }
 
             CurrentPhasedLocationPointer = null;

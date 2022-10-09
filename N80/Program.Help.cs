@@ -102,6 +102,19 @@
             -nsb, --nshow-banner
                 Don't display the program title and copyright notice banner.
 
+            -nsw, --no-silence-warnings [<code>[,<code>[,...]]]
+                Remove the specified warning codes from the list of warnings to silence
+                as specified with --silence-warnings. If no codes are provided, 
+                clear the list (so display all warnings again).
+
+            -nsap, --no-silence-assembly-print
+                Display messages generated during assembly via .PRINTX, .PRINT, .PRINT1
+                and .PRINT2 instructions (default).
+
+            -nss, --no-silence-status
+                Don't display assembly status messages (input and output filenames,
+                start of pass 2, assembly duration...) (default)
+
             -oap, --org-as-phase
                 Treat ORG statements as .PHASE statements. This argument has effect only
                 when the build type is absolute.
@@ -120,8 +133,20 @@
                 Output without this argument: 1,2,9,10,0,...,0,5,6,7,8 (total 104 bytes)
                 Output with this argument: 1,2,3,4,5,6,7,8,9,10
 
+            -sap, --silence-assembly-print
+                Don't display messages generated during assembly via .PRINTX, .PRINT, .PRINT1
+                and .PRINT2 instructions.
+
             -sb, --show-banner
                 Display the program title and copyright notice banner (default).
+
+            -ss, --silence-status
+                Don't display assembly status messages (input and output filenames,
+                start of pass 2, assembly duration...)
+
+            -sw, --silence-warnings [<code>[,<code>[,...]]]
+                Don't display the warnings with the specified codes.
+                If no codes are specified, don't display any warning at all.
 
             Full documentation (and donation links, wink wink):
             https://github.com/Konamiman/Nestor80

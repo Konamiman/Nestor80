@@ -515,6 +515,10 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 state.IncreaseLineNumber();
+                if(maybeNewLine is AssemblyEndLine ael) {
+                    state.End(Address.Absolute(ael.EndAddress));
+                    break;
+                }
             }
         }
 
@@ -575,10 +579,20 @@ namespace Konamiman.Nestor80.Assembler
                 state.IncreaseLocationPointer(dsl.Size);
             }
             else if(processedLine is PhaseLine phl) {
-                state.EnterPhase(phl.NewLocationCounter);
+                if(state.IsCurrentlyPhased) {
+                    AddError(AssemblyErrorCode.InvalidNestedPhase, $"Nested {processedLine.Opcode.ToUpper()} instructions are not allowed");
+                }
+                else {
+                    state.EnterPhase(phl.NewLocationCounter);
+                }
             }
             else if(processedLine is DephaseLine) {
-                state.ExitPhase();
+                if(state.IsCurrentlyPhased) {
+                    state.ExitPhase();
+                }
+                else {
+                    AddError(AssemblyErrorCode.DephaseWithoutPhase, $"{processedLine.Opcode} found without a corresponding .PHASE");
+                }
             }
             else if(processedLine is IChangesLocationCounter clc) {
                 state.SwitchToArea(clc.NewLocationArea);
@@ -591,6 +605,17 @@ namespace Konamiman.Nestor80.Assembler
             }
             else if(processedLine is PrintLine pl) {
                 TriggerPrintEvent(pl);
+            }
+            else if(processedLine is UserErrorLine uel) {
+                if(AssemblyErrorGenerated is not null) {
+                    var errorCode = uel.Severity switch {
+                        AssemblyErrorSeverity.Warning => AssemblyErrorCode.UserWarning,
+                        AssemblyErrorSeverity.Error => AssemblyErrorCode.UserError,
+                        AssemblyErrorSeverity.Fatal => AssemblyErrorCode.UserFatal,
+                        _ => throw new Exception($"Unexpected severity for user error in pass 2: {uel.Severity}")
+                    };
+                    AssemblyErrorGenerated(null, new AssemblyError(errorCode, uel.Message, state.CurrentLineNumber, state.CurrentIncludeFilename));
+                }
             }
 
             return processedLine;
