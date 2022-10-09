@@ -148,6 +148,10 @@
                 Don't display the warnings with the specified codes.
                 If no codes are specified, don't display any warning at all.
 
+            --rc, --reset-config
+                Reset all the assembly configuration back to default values
+                (in other words: ignore all the previous arguments except input and output files)
+
             Full documentation (and donation links, wink wink):
             https://github.com/Konamiman/Nestor80
             """;

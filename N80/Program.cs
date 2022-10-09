@@ -1,9 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
-using System.Globalization;
-using System.IO.Enumeration;
-using System.Runtime.InteropServices;
 using System.Text;
 using static System.Console;
 
@@ -25,17 +22,17 @@ namespace Konamiman.Nestor80.N80
         static string inputFileName = null;
         static string outputFilePath = null;
         static bool generateOutputFile = true;
-        static Encoding inputFileEncoding = Encoding.UTF8;
-        static bool mustChangeOutputFileExtension = false;
-        static bool colorPrint = true;
-        static bool showBanner = true;
+        static Encoding inputFileEncoding;
+        static bool mustChangeOutputFileExtension;
+        static bool colorPrint;
+        static bool showBanner;
         static readonly List<string> includeDirectories = new();
-        static bool orgAsPhase = false;
+        static bool orgAsPhase;
         static readonly List<(string, ushort)> symbolDefinitions = new();
-        static int maxErrors = DEFAULT_MAX_ERRORS;
-        static AssemblyErrorCode[] skippedWarnings = Array.Empty<AssemblyErrorCode>();
-        static bool silenceStatus = false;
-        static bool silenceAssemblyPrints = false;
+        static int maxErrors;
+        static AssemblyErrorCode[] skippedWarnings;
+        static bool silenceStatus;
+        static bool silenceAssemblyPrints;
 
         static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
@@ -77,6 +74,7 @@ namespace Konamiman.Nestor80.N80
 
             string errorMessage;
 
+            ResetConfig();
             try {
                 errorMessage = ProcessInputFileArgument(args[0]);
             }
@@ -107,7 +105,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(errorMessage is not null) {
-                PrintFatal($"Can't create output file: {errorMessage}");
+                PrintFatal($"Can't create output file ({outputFilePath}): {errorMessage}");
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
 
@@ -148,6 +146,21 @@ namespace Konamiman.Nestor80.N80
             }
 
             return errCode;
+        }
+
+        static void ResetConfig()
+        {
+            inputFileEncoding = Encoding.UTF8;
+            mustChangeOutputFileExtension = false;
+            colorPrint = true;
+            showBanner = true;
+            includeDirectories.Clear();
+            orgAsPhase = false;
+            symbolDefinitions.Clear();
+            maxErrors = DEFAULT_MAX_ERRORS;
+            skippedWarnings = Array.Empty<AssemblyErrorCode>();
+            silenceStatus = false;
+            silenceAssemblyPrints = false;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -383,6 +396,9 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nsap" or "--no-silence-assembly-print") {
                     silenceAssemblyPrints = false;
                 }
+                else if(arg is "-rc" or "--reset-config") {
+                    ResetConfig();
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -400,7 +416,7 @@ namespace Konamiman.Nestor80.N80
                 inputStream = File.OpenRead(inputFilePath);
             }
             catch(Exception ex) {
-                WriteLine($"Can't open input file: {ex.Message}");
+                PrintFatal($"Can't open input file: {ex.Message}");
                 return ERR_CANT_OPEN_INPUT_FILE;
             }
 
@@ -433,7 +449,7 @@ namespace Konamiman.Nestor80.N80
                 outputStream = File.Create(outputFilePath);
             }
             catch(Exception ex) {
-                WriteLine($"Can't create output file: {ex.Message}");
+                PrintFatal($"Can't create output file: {ex.Message}");
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
 
@@ -441,7 +457,7 @@ namespace Konamiman.Nestor80.N80
                 writtenBytes = OutputGenerator.GenerateAbsolute(result, outputStream, orgAsPhase);
             }
             catch(Exception ex) {
-                WriteLine($"Can't write to output file: {ex.Message}");
+                PrintFatal($"Can't write to output file ({outputFilePath}): {ex.Message}");
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
 
