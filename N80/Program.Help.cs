@@ -46,14 +46,34 @@
             
             - A N80_ARGS environment variable (can be disabled with --no-env-args)
             - A .N80 file in the same directory of the input file
-              (can be disabled with --no-file-args)
+              (can be disabled with --no-default-file-args); see --arguments-file
+              for the file contents format.
             - In the command line
+            - In argument files (with --argument-file)
             
             If you need to include a space as part of an argument (e.g. a directory name) 
-            in N80_ARGS or in the .N80 file, escape it with a backslash (so "\ "
+            in N80_ARGS or in an arguments file, escape it with a backslash (so "\ "
             to represent " "). Escaping for command line arguments depends on your shell.
 
             Available arguments:
+
+            -af, --arguments-file <file path>
+                Read additional arguments from the specified file. The arguments are
+                processed immediately. Recursivity is not supported (additional
+                --arguments-file arguments aren't allowed inside an arguments file).
+
+                If the path is relative it will be considered relative to
+                the current directory.
+            
+                If the path starts with '$/' it will be considered relative to
+                the directory of the source file.
+
+                Arguments inside the file can be all in one single line or
+                spread across multiple lines. Lines starting with ; or #
+                (not counting leading spaces) will be ignored.
+
+                This option can't be undone (there's not "--no-arguments-file" argument),
+                but if necessary you can use --reset-config to start over.
 
             -cid, --clear-include-directories
                 Clear the list of the directories where relative INCLUDEd files
@@ -64,6 +84,10 @@
             -co, --color-output
                 Display assembly process messages and errors in color (default).
 
+            -dfa, --default-file-args
+                Read arguments from the .N80 file in the directory of the input file (default).
+                This argument is ignored when found inside an arguments file (.N80 or any other).
+            
             -ds, --define-symbols <symbol>[=<value>][,<symbol>[=<value>][,...]]
                 Predefine symbols for the assembled program.
                 The default value if no <value> is provided is FFFFh. 
@@ -72,10 +96,6 @@
 
                 Example: -ds symbol1,symbol2=1234,symbol3=ABCDh
 
-            -fa, --file-args
-                Read arguments from the .N80 file in the directory of the input file (default).
-                This argument is ignored when found inside a .N80 file.
-            
             -id, --include-directory <directory path>
                 By default relative paths referenced in INCLUDE instructions will be
                 considered to be relative to the input file. This argument allows to
@@ -108,16 +128,17 @@
             -nco, --no-color-output
                 Don't display assembly process messages and errors in color.
 
+            -ndfa, --no-default-file-args
+                Don't read arguments from the .N80 file in the directory of the input file.
+                This argument is ignored when found inside an arguments file (.N80 or any other).
+
             -nds, --no-define-symbols
                 Forget all symbols that had been predefined with --define-symbols.
 
             -nea, --no-env-args
                 Don't read arguments from the N80_ARGS environment variable.
-                This argument is ignored when found inside N80_ARGS or a .N80 file.
-
-            -nfa, --no-file-args
-                Don't read arguments from the .N80 file in the directory of the input file.
-                This argument is ignored when found inside the .N80 file.
+                This argument is ignored when found inside N80_ARGS or an arguments file
+                (.N80 or any other).
 
             -noap, --no-org-as-phase
                 Don't treat ORG statements as .PHASE statements (default).
@@ -159,6 +180,10 @@
                 Output without this argument: 1,2,9,10,0,...,0,5,6,7,8 (total 104 bytes)
                 Output with this argument: 1,2,3,4,5,6,7,8,9,10
 
+            --rc, --reset-config
+                Reset all the assembly configuration back to default values
+                (in other words: ignore all the previous arguments except input and output files).
+
             -sad, --show-assembly-duration
                 Display the time that took the assembly process and the entire process
                 (only on successful completion).
@@ -177,10 +202,6 @@
             -sw, --silence-warnings [<code>[,<code>[,...]]]
                 Don't display the warnings with the specified codes.
                 If no codes are specified, don't display any warning at all.
-
-            --rc, --reset-config
-                Reset all the assembly configuration back to default values
-                (in other words: ignore all the previous arguments except input and output files)
 
             Full documentation (and donation links, wink wink):
             https://github.com/Konamiman/Nestor80

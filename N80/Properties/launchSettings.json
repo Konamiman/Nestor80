@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "symdef.asm -sb -oap",
+      "commandLineArgs": "symdef.asm -af args.txt",
       "environmentVariables": {
         "N80_ARGS": "-nsb"
       }

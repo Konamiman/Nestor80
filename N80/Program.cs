@@ -40,7 +40,7 @@ namespace Konamiman.Nestor80.N80
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
         static readonly Stopwatch assemblyTimeMeasurer = new();
         static readonly Stopwatch totalTimeMeasurer = new();
-        static string n80FilePath = null;
+        static readonly List<(string, string[])> argsByFile = new();
 
         static int Main(string[] args)
         {
@@ -167,15 +167,14 @@ namespace Konamiman.Nestor80.N80
 
             var cmdAndEnvArgs = envArgs is null ? commandLineArgs : envArgs.Concat(commandLineArgs).ToArray();
 
-            var indexOfLastFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-fa" or "--file-args")?.index ?? -1;
-            var indexOfLastNoFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-nfa" or "--no-file-args")?.index ?? -1;
+            var indexOfLastFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-dfa" or "--default-file-args")?.index ?? -1;
+            var indexOfLastNoFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-ndfa" or "--no-default-file-args")?.index ?? -1;
             if(indexOfLastNoFileArgs != -1 && indexOfLastFileArgs < indexOfLastNoFileArgs) {
                 return cmdAndEnvArgs;
             }
 
-            n80FilePath = Path.GetFullPath(Path.Combine(inputFileDirectory, ".N80"));
+            var n80FilePath = Path.GetFullPath(Path.Combine(inputFileDirectory, ".N80"));
             if(!File.Exists(n80FilePath)) {
-                n80FilePath = null;
                 return cmdAndEnvArgs;
             }
 
@@ -184,11 +183,12 @@ namespace Konamiman.Nestor80.N80
                 var fileArgsLine = string.Join(' ', fileLines);
                 fileArgs = SplitWithEscapedSpaces(fileArgsLine);
 
+                argsByFile.Add((n80FilePath, fileArgs));
+
                 return cmdAndEnvArgs.Concat(fileArgs).ToArray();
             }
             catch(Exception ex) {
                 PrintFatal($"Can't read arguments from file {n80FilePath}: {ex.Message}. Use the -nfa / --no-file-args option to skip it.");
-                n80FilePath = null;
                 return cmdAndEnvArgs;
             }
         }
@@ -281,7 +281,7 @@ namespace Konamiman.Nestor80.N80
             return null;
         }
 
-        private static string? ProcessArguments(string[] args)
+        private static string? ProcessArguments(string[] args, bool fromFile = false)
         {
             for(int i=0; i<args.Length; i++) {
                 var arg = args[i];
@@ -458,12 +458,56 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nsad" or "--no-show-assembly-duration") {
                     showAssemblyDuration = false;
                 }
+                else if(arg is "-af" or "--args-file") {
+                    if(fromFile) {
+                        return $"{arg} argument can't be used from inside an arguments file";
+                    }
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a file specification";
+                    }
+
+                    i++;
+                    string errorMessage;
+                    try {
+                        errorMessage = ProcessArgsFromFile(args[i]);
+                    }
+                    catch(Exception ex) {
+                        errorMessage = ex.Message;
+                    }
+
+                    if(errorMessage is not null) {
+                        return $"Error when processing arguments file {args[i]}: {errorMessage}";
+                    }
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
             }
 
             return null;
+        }
+
+        private static string ProcessArgsFromFile(string fileName)
+        {
+            string filePath;
+
+            if(fileName.StartsWith("$/")) {
+                filePath = Path.GetFullPath(Path.Combine(inputFileDirectory, fileName[2..]));
+            }
+            else {
+                filePath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, fileName));
+            }
+
+            if(!File.Exists(filePath)) {
+                return $"File not found";
+            }
+   
+            var fileLines = File.ReadLines(filePath).Select(l => l.Trim()).Where(l => l[0] is not ';' and not '#').ToArray();
+            var fileArgsString = string.Join(' ', fileLines);
+            var fileArgs = SplitWithEscapedSpaces(fileArgsString);
+
+            argsByFile.Add((filePath, fileArgs));
+            return ProcessArguments(fileArgs, true);
         }
 
         private static int DoAssembly(out int writtenBytes)
