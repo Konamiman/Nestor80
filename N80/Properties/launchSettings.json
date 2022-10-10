@@ -2,7 +2,10 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "symdef.asm"
+      "commandLineArgs": "symdef.asm cosa -f g h",
+      "environmentVariables": {
+        "N80_ARGS": "a b c\\ d e"
+      }
     }
   }
 }

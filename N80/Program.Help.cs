@@ -18,31 +18,37 @@
 
         static readonly string extendedHelpText = $"""
 
-            Arguments:
-
             <source file>
                 Full path of the Z80 assembly source file to process,
                 can be absolute or relative to the current directory.
-
+            
             <output file>
                 Full path of the assembled absolute or relocatable file to generate.
                 
                 If omitted, a file with the same name of the source file and
                 .BIN or .REL extension will be generated in the current directory.
-
+            
                 If it's a directory (instead of a file), the output file will be
                 generated in that directory, and the file name will be as when
                 the argument is omitted.
-
+            
                 If the path is relative it will be considered relative to
                 the current directory.
-
+            
                 If the path starts with '$/' it will be considered relative to
                 the directory of the source file.
-
+            
                 If the path is just '$' then the file will be geenerated in
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
+
+            Arguments can be specified in the command line and in the N80_ARGS environment variable;
+            when present, N80_ARGS arguments are applied first, then the command line arguments.
+            If you need to include a space as part of an argument in N80_ARGS (e.g. a directory name),
+            escape it with a backslash (so "\ " to represent " "). Escaping for command line
+            arguments depends on your shell.
+
+            Available arguments:
 
             -cid, --clear-include-directories
                 Clear the list of the directories where relative INCLUDEd files
@@ -96,10 +102,14 @@
             -nds, --no-define-symbols
                 Forget all symbols that had been predefined with --define-symbols.
 
+            -nea, --no-env-args
+                Don't read arguments from the N80_ARGS environment variable.
+                This argument is ignored when found inside N80_ARGS.
+
             -noap, --no-org-as-phase
                 Don't treat ORG statements as .PHASE statements (default).
 
-            -nsb, --nshow-banner
+            -nsb, --no-show-banner
                 Don't display the program title and copyright notice banner.
 
             -nsw, --no-silence-warnings [<code>[,<code>[,...]]]

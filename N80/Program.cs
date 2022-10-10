@@ -50,14 +50,16 @@ namespace Konamiman.Nestor80.N80
                 return ERR_SUCCESS;
             }
 
+            var cmdLineArgs = args;
+            args = MaybeMergeArgsWithEnv(args);
             SetShowBannerFlag(args);
 
-            if(args[0] is "-v" or "--version") {
+            if(cmdLineArgs[0] is "-v" or "--version") {
                 Write(versionText);
                 return ERR_SUCCESS;
             }
 
-            if(args[0] is "-h" or "--help") {
+            if(cmdLineArgs[0] is "-h" or "--help") {
                 if(showBanner) WriteLine(bannerText);
                 WriteLine(simpleHelpText);
                 WriteLine(extendedHelpText);
@@ -146,6 +148,43 @@ namespace Konamiman.Nestor80.N80
             }
 
             return errCode;
+        }
+
+        private static string[] MaybeMergeArgsWithEnv(string[] commandLineArgs)
+        {
+            if(commandLineArgs.Any(a => a is "-nea" or "--no-env-args")) {
+                return commandLineArgs;
+            }
+
+            var envVariable = Environment.GetEnvironmentVariable("N80_ARGS");
+            if(envVariable is null) {
+                return commandLineArgs;
+            }
+
+            string inputFile = null, outputFile = null;
+            if(!commandLineArgs[0].StartsWith('-')) {
+                inputFile = commandLineArgs[0];
+                commandLineArgs = commandLineArgs[1..].ToArray();
+            }
+            if(commandLineArgs.Length > 1 && !commandLineArgs[0].StartsWith('-')) {
+                outputFile = commandLineArgs[0];
+                commandLineArgs = commandLineArgs[1..].ToArray();
+            }
+
+            envVariable = envVariable.Replace(@"\ ", "\u0001");
+            var envVariableParts = envVariable.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+            envVariableParts = envVariableParts.Select(p => p.Replace("\u0001", " ")).ToArray();
+            var allArgs = envVariableParts.Concat(commandLineArgs).ToArray();
+
+            if(inputFile is null) {
+                return allArgs;
+            }
+            else if(outputFile is null) {
+                return new[] { inputFile }.Concat(allArgs).ToArray();
+            }
+            else {
+                return new[] { inputFile, outputFile }.Concat(allArgs).ToArray();
+            }
         }
 
         static void ResetConfig()
@@ -260,7 +299,7 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nco" or "--no-color-output") {
                     colorPrint = false;
                 }
-                else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner") {
+                else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner" or "-nea" or "--no-env-args") {
                     //already handled
                 }
                 else if(arg is "-v" or "--version" or "-h" or "--help") {
