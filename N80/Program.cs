@@ -33,6 +33,7 @@ namespace Konamiman.Nestor80.N80
         static AssemblyErrorCode[] skippedWarnings;
         static bool silenceStatus;
         static bool silenceAssemblyPrints;
+        static bool showAssemblyDuration;
 
         static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
@@ -133,8 +134,10 @@ namespace Konamiman.Nestor80.N80
             totalTimeMeasurer.Stop();
             if(errCode == ERR_SUCCESS) {
                 PrintProgress("\r\nAssembly completed!");
-                PrintProgress($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
-                PrintProgress($"Total time: {FormatTimespan(totalTimeMeasurer.Elapsed)}");
+                if(showAssemblyDuration) {
+                    PrintDuration($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
+                    PrintDuration($"Total time:    {FormatTimespan(totalTimeMeasurer.Elapsed)}");
+                }
             }
             else {
                 PrintProgress("\r\nAssembly failed");
@@ -200,6 +203,7 @@ namespace Konamiman.Nestor80.N80
             skippedWarnings = Array.Empty<AssemblyErrorCode>();
             silenceStatus = false;
             silenceAssemblyPrints = false;
+            showAssemblyDuration = false;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -438,6 +442,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-rc" or "--reset-config") {
                     ResetConfig();
                 }
+                else if(arg is "-sad" or "--show-assembly-duration") {
+                    showAssemblyDuration = true;
+                }
+                else if(arg is "-nsad" or "--no-show-assembly-duration") {
+                    showAssemblyDuration = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -472,9 +482,9 @@ namespace Konamiman.Nestor80.N80
                 PredefinedSymbols = symbolDefinitions.ToArray(),
                 MaxErrors = maxErrors
             };
-            assemblyTimeMeasurer.Start();
+            if(showAssemblyDuration) assemblyTimeMeasurer.Start();
             var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding, config);
-            assemblyTimeMeasurer.Stop();
+            if(showAssemblyDuration) assemblyTimeMeasurer.Stop();
             if(result.HasFatals) {
                 return ERR_ASSEMBLY_FATAL;
             }
@@ -633,6 +643,19 @@ namespace Konamiman.Nestor80.N80
 
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.BackgroundColor = defaultBackgroundColor;
+                Console.WriteLine(text);
+                Console.ForegroundColor = defaultForegroundColor;
+            }
+            else {
+                Console.WriteLine(text);
+            }
+        }
+
+        private static void PrintDuration(string text)
+        {
+            if(colorPrint) {
+                Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.BackgroundColor = defaultBackgroundColor;
                 Console.WriteLine(text);
                 Console.ForegroundColor = defaultForegroundColor;

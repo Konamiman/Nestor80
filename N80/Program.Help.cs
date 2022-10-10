@@ -117,6 +117,9 @@
                 as specified with --silence-warnings. If no codes are provided, 
                 clear the list (so display all warnings again).
 
+            -nsad, --no-show-assembly-duration
+                Don't display the time that took the assembly process and the entire process.
+
             -nsap, --no-silence-assembly-print
                 Display messages generated during assembly via .PRINTX, .PRINT, .PRINT1
                 and .PRINT2 instructions (default).
@@ -142,6 +145,10 @@
 
                 Output without this argument: 1,2,9,10,0,...,0,5,6,7,8 (total 104 bytes)
                 Output with this argument: 1,2,3,4,5,6,7,8,9,10
+
+            -sad, --show-assembly-duration
+                Display the time that took the assembly process and the entire process
+                (only on successful completion).
 
             -sap, --silence-assembly-print
                 Don't display messages generated during assembly via .PRINTX, .PRINT, .PRINT1
