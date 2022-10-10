@@ -40,6 +40,7 @@ namespace Konamiman.Nestor80.N80
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
         static readonly Stopwatch assemblyTimeMeasurer = new();
         static readonly Stopwatch totalTimeMeasurer = new();
+        static string n80FilePath = null;
 
         static int Main(string[] args)
         {
@@ -51,74 +52,74 @@ namespace Konamiman.Nestor80.N80
                 return ERR_SUCCESS;
             }
 
-            var cmdLineArgs = args;
-            args = MaybeMergeArgsWithEnv(args);
-            SetShowBannerFlag(args);
-
-            if(cmdLineArgs[0] is "-v" or "--version") {
+            if(args[0] is "-v" or "--version") {
                 Write(versionText);
                 return ERR_SUCCESS;
             }
 
-            if(cmdLineArgs[0] is "-h" or "--help") {
-                if(showBanner) WriteLine(bannerText);
+            if(args[0] is "-h" or "--help") {
+                WriteLine(bannerText);
                 WriteLine(simpleHelpText);
                 WriteLine(extendedHelpText);
                 return ERR_SUCCESS;
             }
 
-            if(args[0][0] is '-') {
-                if(showBanner) WriteLine(bannerText);
+            string inputFile = null, outputFile = null;
+            if(!args[0].StartsWith('-')) {
+                inputFile = args[0];
+                args = args[1..].ToArray();
+            }
+            if(args.Length > 1 && !args[0].StartsWith('-')) {
+                outputFile = args[0];
+                args = args[1..].ToArray();
+            }
+
+
+            if(inputFile is null) {
                 Console.Error.WriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version or --help");
                 return ERR_BAD_ARGUMENTS;
             }
 
-            if(showBanner) WriteLine(bannerText);
-
-            string errorMessage;
+            string inputFileErrorMessage = null;
 
             ResetConfig();
             try {
-                errorMessage = ProcessInputFileArgument(args[0]);
+                inputFileErrorMessage = ProcessInputFileArgument(inputFile);
             }
             catch(Exception ex) {
-                errorMessage = ex.Message;
+                inputFileErrorMessage = $"Can't open input file: {ex.Message}";
             }
 
-            if(errorMessage is not null) {
-                PrintFatal($"Can't open input file: {errorMessage}");
+            args = MaybeMergeArgsWithEnvAndFile(args);
+            SetShowBannerFlag(args);
+
+            if(showBanner) WriteLine(bannerText);
+
+            inputFileErrorMessage = ProcessArguments(args);
+            if(inputFileErrorMessage is not null) {
+                Console.Error.WriteLine($"Invalid arguments: {inputFileErrorMessage}");
+                return ERR_BAD_ARGUMENTS;
+            }
+
+            if(inputFileErrorMessage is not null) {
+                PrintFatal(inputFileErrorMessage);
                 return ERR_CANT_OPEN_INPUT_FILE;
             }
 
-            string outputFileArgument;
-            if(args.Length == 1 || args[1][0] == '-') {
-                outputFileArgument = "";
-                args = args.Skip(1).ToArray();
-            }
-            else {
-                outputFileArgument = args[1];
-                args = args.Skip(2).ToArray();
-            }
-
+            string outputFileErrorMessage = null;
             try {
-                errorMessage = ProcessOutputFileArgument(outputFileArgument);
+                outputFileErrorMessage = ProcessOutputFileArgument(outputFile);
             }
             catch(Exception ex) {
-                errorMessage = ex.Message;
+                outputFileErrorMessage = ex.Message;
             }
 
-            if(errorMessage is not null) {
-                PrintFatal($"Can't create output file ({outputFilePath}): {errorMessage}");
+            if(outputFileErrorMessage is not null) {
+                PrintFatal($"Can't create output file ({outputFilePath}): {outputFileErrorMessage}");
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
 
             includeDirectories.Add(inputFileDirectory);
-
-            errorMessage = ProcessArguments(args);
-            if(errorMessage is not null) {
-                Console.Error.WriteLine($"Invalid arguments: {errorMessage}");
-                return ERR_BAD_ARGUMENTS;
-            }
 
             if(mustChangeOutputFileExtension) {
                 outputFilePath = Path.ChangeExtension(outputFilePath, ".BIN");
@@ -153,41 +154,50 @@ namespace Konamiman.Nestor80.N80
             return errCode;
         }
 
-        private static string[] MaybeMergeArgsWithEnv(string[] commandLineArgs)
+        private static string[] MaybeMergeArgsWithEnvAndFile(string[] commandLineArgs)
         {
-            if(commandLineArgs.Any(a => a is "-nea" or "--no-env-args")) {
-                return commandLineArgs;
+            string[] envArgs = null, fileArgs = null;
+
+            if(!commandLineArgs.Any(a => a is "-nea" or "--no-env-args")) {
+                var envVariable = Environment.GetEnvironmentVariable("N80_ARGS");
+                if(envVariable is not null) {
+                    envArgs = SplitWithEscapedSpaces(envVariable);
+                }
             }
 
-            var envVariable = Environment.GetEnvironmentVariable("N80_ARGS");
-            if(envVariable is null) {
-                return commandLineArgs;
+            var cmdAndEnvArgs = envArgs is null ? commandLineArgs : envArgs.Concat(commandLineArgs).ToArray();
+
+            var indexOfLastFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-fa" or "--file-args")?.index ?? -1;
+            var indexOfLastNoFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-nfa" or "--no-file-args")?.index ?? -1;
+            if(indexOfLastNoFileArgs != -1 && indexOfLastFileArgs < indexOfLastNoFileArgs) {
+                return cmdAndEnvArgs;
             }
 
-            string inputFile = null, outputFile = null;
-            if(!commandLineArgs[0].StartsWith('-')) {
-                inputFile = commandLineArgs[0];
-                commandLineArgs = commandLineArgs[1..].ToArray();
-            }
-            if(commandLineArgs.Length > 1 && !commandLineArgs[0].StartsWith('-')) {
-                outputFile = commandLineArgs[0];
-                commandLineArgs = commandLineArgs[1..].ToArray();
+            n80FilePath = Path.GetFullPath(Path.Combine(inputFileDirectory, ".N80"));
+            if(!File.Exists(n80FilePath)) {
+                n80FilePath = null;
+                return cmdAndEnvArgs;
             }
 
-            envVariable = envVariable.Replace(@"\ ", "\u0001");
-            var envVariableParts = envVariable.Split(" ", StringSplitOptions.RemoveEmptyEntries);
-            envVariableParts = envVariableParts.Select(p => p.Replace("\u0001", " ")).ToArray();
-            var allArgs = envVariableParts.Concat(commandLineArgs).ToArray();
+            try {
+                var fileLines = File.ReadAllLines(n80FilePath).Select(l => l.Trim()).Where(l => l[0] is not ';' and not '#').ToArray();
+                var fileArgsLine = string.Join(' ', fileLines);
+                fileArgs = SplitWithEscapedSpaces(fileArgsLine);
 
-            if(inputFile is null) {
-                return allArgs;
+                return cmdAndEnvArgs.Concat(fileArgs).ToArray();
             }
-            else if(outputFile is null) {
-                return new[] { inputFile }.Concat(allArgs).ToArray();
+            catch(Exception ex) {
+                PrintFatal($"Can't read arguments from file {n80FilePath}: {ex.Message}. Use the -nfa / --no-file-args option to skip it.");
+                n80FilePath = null;
+                return cmdAndEnvArgs;
             }
-            else {
-                return new[] { inputFile, outputFile }.Concat(allArgs).ToArray();
-            }
+        }
+
+        private static string[] SplitWithEscapedSpaces(string argsString)
+        {
+            argsString = argsString.Replace(@"\ ", "\u0001");
+            var parts = argsString.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+            return parts.Select(p => p.Replace("\u0001", " ")).ToArray();
         }
 
         static void ResetConfig()
@@ -241,7 +251,7 @@ namespace Konamiman.Nestor80.N80
 
         private static string? ProcessOutputFileArgument(string fileSpecification)
         {
-            if(fileSpecification is "") {
+            if(fileSpecification is null) {
                 outputFilePath = Path.Combine(Directory.GetCurrentDirectory(), inputFileName);
                 mustChangeOutputFileExtension = true;
                 return null;
@@ -303,7 +313,7 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nco" or "--no-color-output") {
                     colorPrint = false;
                 }
-                else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner" or "-nea" or "--no-env-args") {
+                else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner" or "-nea" or "--no-env-args" or "-nfa" or "--no-file-args") {
                     //already handled
                 }
                 else if(arg is "-v" or "--version" or "-h" or "--help") {

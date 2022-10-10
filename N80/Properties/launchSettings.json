@@ -2,9 +2,9 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "symdef.asm cosa -f g h",
+      "commandLineArgs": "symdef.asm -sb -oap",
       "environmentVariables": {
-        "N80_ARGS": "a b c\\ d e"
+        "N80_ARGS": "-nsb"
       }
     }
   }

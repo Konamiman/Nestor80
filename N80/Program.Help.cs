@@ -42,11 +42,16 @@
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
-            Arguments can be specified in the command line and in the N80_ARGS environment variable;
-            when present, N80_ARGS arguments are applied first, then the command line arguments.
-            If you need to include a space as part of an argument in N80_ARGS (e.g. a directory name),
-            escape it with a backslash (so "\ " to represent " "). Escaping for command line
-            arguments depends on your shell.
+            Arguments can be specified as follows (all are combined in that order):
+            
+            - A N80_ARGS environment variable (can be disabled with --no-env-args)
+            - A .N80 file in the same directory of the input file
+              (can be disabled with --no-file-args)
+            - In the command line
+            
+            If you need to include a space as part of an argument (e.g. a directory name) 
+            in N80_ARGS or in the .N80 file, escape it with a backslash (so "\ "
+            to represent " "). Escaping for command line arguments depends on your shell.
 
             Available arguments:
 
@@ -66,6 +71,10 @@
                 therefore they can be redefined in the source code using the same instruction.
 
                 Example: -ds symbol1,symbol2=1234,symbol3=ABCDh
+
+            -fa, --file-args
+                Read arguments from the .N80 file in the directory of the input file (default).
+                This argument is ignored when found inside a .N80 file.
             
             -id, --include-directory <directory path>
                 By default relative paths referenced in INCLUDE instructions will be
@@ -104,7 +113,11 @@
 
             -nea, --no-env-args
                 Don't read arguments from the N80_ARGS environment variable.
-                This argument is ignored when found inside N80_ARGS.
+                This argument is ignored when found inside N80_ARGS or a .N80 file.
+
+            -nfa, --no-file-args
+                Don't read arguments from the .N80 file in the directory of the input file.
+                This argument is ignored when found inside the .N80 file.
 
             -noap, --no-org-as-phase
                 Don't treat ORG statements as .PHASE statements (default).
