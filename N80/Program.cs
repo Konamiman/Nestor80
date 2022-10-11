@@ -2,7 +2,6 @@
 using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
 using System.Text;
-using static System.Console;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -35,7 +34,6 @@ namespace Konamiman.Nestor80.N80
         static bool showAssemblyDuration;
         static int verbosityLevel;
 
-        static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
         static readonly Stopwatch assemblyTimeMeasurer = new();
@@ -58,7 +56,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(args[0] is "-v" or "--version") {
-                Write(versionText);
+                Console.Write(versionText);
                 return ERR_SUCCESS;
             }
 
@@ -81,7 +79,7 @@ namespace Konamiman.Nestor80.N80
 
 
             if(inputFile is null) {
-                Console.Error.WriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version or --help");
+                ErrorWriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version or --help");
                 return ERR_BAD_ARGUMENTS;
             }
 
@@ -104,7 +102,7 @@ namespace Konamiman.Nestor80.N80
 
             inputFileErrorMessage = ProcessArguments(args);
             if(inputFileErrorMessage is not null) {
-                Console.Error.WriteLine($"Invalid arguments: {inputFileErrorMessage}");
+                ErrorWriteLine($"Invalid arguments: {inputFileErrorMessage}");
                 return ERR_BAD_ARGUMENTS;
             }
 
@@ -130,7 +128,7 @@ namespace Konamiman.Nestor80.N80
                 outputFilePath = Path.ChangeExtension(outputFilePath, ".BIN");
             }
 
-            PrintProgress($"Input file: {inputFilePath}", 1);
+            PrintProgress($"Input file: {inputFilePath}\r\n", 1);
 
             PrintArgumentsAndIncludeDirs();
 
@@ -140,6 +138,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             totalTimeMeasurer.Stop();
+
             if(errCode == ERR_SUCCESS) {
                 PrintProgress("\r\nAssembly completed!", 1);
                 if(showAssemblyDuration) {
@@ -159,6 +158,34 @@ namespace Konamiman.Nestor80.N80
             }
 
             return errCode;
+        }
+
+        static bool blankLinePrinted = false;
+        static void WriteLine(string text = "")
+        {
+            if(blankLinePrinted) {
+                if(text.StartsWith("\r\n")) {
+                    text = text[2..];
+                }
+                if(text != "") {
+                    Console.WriteLine(text);
+                }
+            }
+            else {
+                Console.WriteLine(text);
+            }
+
+            blankLinePrinted = text == "" || text.EndsWith("\r\n");
+        }
+
+        static void ErrorWriteLine(string text = "")
+        {
+            if(Console.IsErrorRedirected) {
+                Console.Error.WriteLine(text.Trim('\r', '\n'));
+            }
+            else {
+                WriteLine(text);
+            }
         }
 
         private static string[] MaybeMergeArgsWithEnvAndFile(string[] commandLineArgs)
@@ -210,7 +237,7 @@ namespace Konamiman.Nestor80.N80
                 return;
             }
 
-            var info = "\r\n";
+            var info = "";
             if(envArgs is not null) {
                 info += $"Args from N80_ARGS: {string.Join(' ', envArgs)}\r\n";
             }
@@ -652,8 +679,7 @@ namespace Konamiman.Nestor80.N80
         private static void AssemblySourceProcessor_Pass2Started(object? sender, EventArgs e)
         {
             inPass2 = true;
-            PrintProgress("\r\nPass 2 started", 2);
-            printInstructionExecuted = false;
+            PrintProgress($"\r\nPass 2 started\r\n", 2);
         }
 
         private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected1(object? sender, (string, int, BuildType) e)
@@ -668,7 +694,7 @@ namespace Konamiman.Nestor80.N80
             var lineNumber = error.LineNumber is null ? "" : $"in line {error.LineNumber}: ";
             var errorCode = verbosityLevel >= 2 ? $"({(int)error.Code}) " : "";
 
-            return $"{prefix}: {errorCode}{fileName}{lineNumber}{error.Message}";
+            return $"\r\n{prefix}: {errorCode}{fileName}{lineNumber}{error.Message}\r\n";
         }
 
         private static void AssemblySourceProcessor_PrintMessage1(object? sender, string e)
@@ -678,6 +704,10 @@ namespace Konamiman.Nestor80.N80
 
         private static void AssemblySourceProcessor_AssemblyErrorGenerated1(object? sender, AssemblyError error)
         {
+            if(error.IsWarning && skippedWarnings.Contains(error.Code)) {
+                return;
+            }
+
             if(error.IsWarning) {
                 PrintWarning(error);
             }
@@ -691,10 +721,6 @@ namespace Konamiman.Nestor80.N80
 
         private static void PrintWarning(AssemblyError error)
         {
-            if(skippedWarnings.Contains(error.Code)) {
-                return;
-            }
-
             var isDuplicateWarning = warningsFromPass1.Contains((error.Code, error.LineNumber.GetValueOrDefault()));
             if(inPass2) {
                 if(verbosityLevel < 2 && isDuplicateWarning) {
@@ -705,43 +731,36 @@ namespace Konamiman.Nestor80.N80
                 warningsFromPass1.Add((error.Code, error.LineNumber.GetValueOrDefault()));
             }
 
-            Console.Error.WriteLine();
             var text = FormatAssemblyError(error, "WARN");
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.BackgroundColor = defaultBackgroundColor;
-                Console.Error.WriteLine(text);
+                ErrorWriteLine(text);
                 Console.ForegroundColor = defaultForegroundColor;
             }
             else {
-                Console.Error.WriteLine(text);
+                ErrorWriteLine(text);
             }
         }
 
         private static void PrintError(AssemblyError error)
         {
-            Console.Error.WriteLine();
             var text = FormatAssemblyError(error, "ERROR");
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.BackgroundColor = defaultBackgroundColor;
-                Console.Error.WriteLine(text);
+                ErrorWriteLine(text);
                 Console.ForegroundColor = defaultForegroundColor;
             }
             else {
-                Console.Error.WriteLine(text);
+                ErrorWriteLine(text);
             }
         }
 
         private static void PrintFatal(AssemblyError error)
         {
             if(error.Code is AssemblyErrorCode.MaxErrorsReached) {
-                PrintProgress("", 1);
-                if(printInstructionExecuted) {
-                    PrintProgress("", 1);
-                    printInstructionExecuted = true;
-                }
-                PrintProgress(error.Message, 1);
+                PrintProgress("\r\n" + error.Message, 1);
             }
             else {
                 PrintFatal(FormatAssemblyError(error, "FATAL"));
@@ -750,34 +769,28 @@ namespace Konamiman.Nestor80.N80
 
         private static void PrintFatal(string text)
         {
-            Console.Error.WriteLine();
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.BackgroundColor = ConsoleColor.Red;
-                Console.Error.WriteLine(text);
+                ErrorWriteLine(text);
                 Console.ForegroundColor = defaultForegroundColor;
                 Console.BackgroundColor = defaultBackgroundColor;
             }
             else {
-                Console.Error.WriteLine(text);
+                ErrorWriteLine(text);
             }
         }
 
         private static void PrintAssemblyPrint(string text)
         {
-            if(!printInstructionExecuted) {
-                WriteLine();
-                printInstructionExecuted = true;
-            }
-
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.BackgroundColor = defaultBackgroundColor;
-                Console.WriteLine(text);
+                WriteLine(text);
                 Console.ForegroundColor = defaultForegroundColor;
             }
             else {
-                Console.WriteLine(text);
+                WriteLine(text);
             }
         }
 
@@ -790,11 +803,11 @@ namespace Konamiman.Nestor80.N80
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.DarkGray;
                 Console.BackgroundColor = defaultBackgroundColor;
-                Console.WriteLine(text);
+                WriteLine(text);
                 Console.ForegroundColor = defaultForegroundColor;
             }
             else {
-                Console.WriteLine(text);
+                WriteLine(text);
             }
         }
 
@@ -803,11 +816,11 @@ namespace Konamiman.Nestor80.N80
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.BackgroundColor = defaultBackgroundColor;
-                Console.WriteLine(text);
+                WriteLine(text);
                 Console.ForegroundColor = defaultForegroundColor;
             }
             else {
-                Console.WriteLine(text);
+                WriteLine(text);
             }
         }
 

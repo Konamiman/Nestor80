@@ -212,6 +212,8 @@
             -sw, --silence-warnings [<code>[,<code>[,...]]]
                 Don't display the warnings with the specified codes.
                 If no codes are specified, don't display any warning at all.
+                Use --status-verbosity with a level of at least 2 to see the codes
+                of the generated warnings.
 
             Full documentation (and donation links, wink wink):
             https://github.com/Konamiman/Nestor80
