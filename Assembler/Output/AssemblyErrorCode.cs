@@ -19,6 +19,7 @@
         UnterminatedPhase,
         SameEffectiveExternal,
         UserWarning,
+        LastWarning = UserWarning,
 
         FirstError = 64,
         InvalidExpression = 64,

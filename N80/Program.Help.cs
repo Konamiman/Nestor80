@@ -42,14 +42,14 @@
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
-            Arguments can be specified as follows (all are combined in that order):
+            Arguments can be specified as follows (and are combined in that order):
             
             - A N80_ARGS environment variable (can be disabled with --no-env-args)
             - A .N80 file in the same directory of the input file
               (can be disabled with --no-default-file-args); see --arguments-file
               for the file contents format.
-            - In the command line
-            - In argument files (with --argument-file)
+            - The command line
+            - Argument files (with --argument-file)
             
             If you need to include a space as part of an argument (e.g. a directory name) 
             in N80_ARGS or in an arguments file, escape it with a backslash (so "\ "
@@ -158,16 +158,12 @@
                 Display messages generated during assembly via .PRINTX, .PRINT, .PRINT1
                 and .PRINT2 instructions (default).
 
-            -nss, --no-silence-status
-                Don't display assembly status messages (input and output filenames,
-                start of pass 2, assembly duration...) (default)
-
             -oap, --org-as-phase
                 Treat ORG statements as .PHASE statements. This argument has effect only
                 when the build type is absolute.
 
                 The effect of this argument is that all the generated output will be written
-                consecutively to the output file, regardless of their location in memory.
+                consecutively to the output file, regardless of location in memory.
                 Example:
 
                 org 100
@@ -195,9 +191,23 @@
             -sb, --show-banner
                 Display the program title and copyright notice banner (default).
 
-            -ss, --silence-status
-                Don't display assembly status messages (input and output filenames,
-                start of pass 2, assembly duration...)
+            -sv, --status-verbosity <level>
+                Selects the verbosity of the status messages shown during the assembly process.
+                The information shown for each level is as follows (each level includes the
+                information from all the previous levels):
+
+                0: Nothing.
+                1: Input and output file paths, assembly succeeded or not, output file size (default).
+                2: Pass 2 started, build type automatically selected.
+                   Also warnings will include their code (useful for --silence-warnings),
+                   and warnings that were already printed in pass 1 will be printed in pass 2
+                   again (except when they are inside an IF1 block or similar).
+                3: All the command line arguments from all the sources, all the directories
+                   for INCLUDE, all the predefined symbols, the entire configuration resulting
+                   from applying all the arguments.
+
+                To silence other types of output see: --silence-warnings, --no-show-banner,
+                --silence-assembly-print, --no-show-assembly-duration.
 
             -sw, --silence-warnings [<code>[,<code>[,...]]]
                 Don't display the warnings with the specified codes.

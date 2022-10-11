@@ -31,9 +31,9 @@ namespace Konamiman.Nestor80.N80
         static readonly List<(string, ushort)> symbolDefinitions = new();
         static int maxErrors;
         static AssemblyErrorCode[] skippedWarnings;
-        static bool silenceStatus;
         static bool silenceAssemblyPrints;
         static bool showAssemblyDuration;
+        static int verbosityLevel;
 
         static bool printInstructionExecuted = false;
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
@@ -41,6 +41,11 @@ namespace Konamiman.Nestor80.N80
         static readonly Stopwatch assemblyTimeMeasurer = new();
         static readonly Stopwatch totalTimeMeasurer = new();
         static readonly List<(string, string[])> argsByFile = new();
+        static bool n80FileUsed = false;
+        static readonly List<(AssemblyErrorCode, int)> warningsFromPass1 = new();
+        static bool inPass2 = false;
+        static string[] envArgs = null;
+        static string[] commandLineArgs;
 
         static int Main(string[] args)
         {
@@ -82,7 +87,6 @@ namespace Konamiman.Nestor80.N80
 
             string inputFileErrorMessage = null;
 
-            ResetConfig();
             try {
                 inputFileErrorMessage = ProcessInputFileArgument(inputFile);
             }
@@ -90,6 +94,9 @@ namespace Konamiman.Nestor80.N80
                 inputFileErrorMessage = $"Can't open input file: {ex.Message}";
             }
 
+            ResetConfig();
+
+            commandLineArgs = args;
             args = MaybeMergeArgsWithEnvAndFile(args);
             SetShowBannerFlag(args);
 
@@ -119,13 +126,13 @@ namespace Konamiman.Nestor80.N80
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
 
-            includeDirectories.Add(inputFileDirectory);
-
             if(mustChangeOutputFileExtension) {
                 outputFilePath = Path.ChangeExtension(outputFilePath, ".BIN");
             }
 
-            PrintProgress($"Input file: {inputFilePath}");
+            PrintProgress($"Input file: {inputFilePath}", 1);
+
+            PrintArgumentsAndIncludeDirs();
 
             var errCode = DoAssembly(out int writtenBytes);
             if(errCode != ERR_SUCCESS) {
@@ -134,21 +141,21 @@ namespace Konamiman.Nestor80.N80
 
             totalTimeMeasurer.Stop();
             if(errCode == ERR_SUCCESS) {
-                PrintProgress("\r\nAssembly completed!");
+                PrintProgress("\r\nAssembly completed!", 1);
                 if(showAssemblyDuration) {
                     PrintDuration($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
                     PrintDuration($"Total time:    {FormatTimespan(totalTimeMeasurer.Elapsed)}");
                 }
             }
             else {
-                PrintProgress("\r\nAssembly failed");
+                PrintProgress("\r\nAssembly failed", 1);
             }
 
             if(generateOutputFile) {
-                PrintProgress($"\r\nOutput file: {outputFilePath}");
-                PrintProgress($"{writtenBytes} bytes written");
+                PrintProgress($"\r\nOutput file: {outputFilePath}", 1);
+                PrintProgress($"{writtenBytes} bytes written", 1);
             } else {
-                PrintProgress("\r\nNo output file generated");
+                PrintProgress("\r\nNo output file generated", 1);
             }
 
             return errCode;
@@ -156,16 +163,19 @@ namespace Konamiman.Nestor80.N80
 
         private static string[] MaybeMergeArgsWithEnvAndFile(string[] commandLineArgs)
         {
-            string[] envArgs = null, fileArgs = null;
+            string[] fileArgs = null;
 
             if(!commandLineArgs.Any(a => a is "-nea" or "--no-env-args")) {
                 var envVariable = Environment.GetEnvironmentVariable("N80_ARGS");
                 if(envVariable is not null) {
                     envArgs = SplitWithEscapedSpaces(envVariable);
                 }
+                else {
+                    envArgs = Array.Empty<string>();
+                }
             }
 
-            var cmdAndEnvArgs = envArgs is null ? commandLineArgs : envArgs.Concat(commandLineArgs).ToArray();
+            var cmdAndEnvArgs = envArgs.Concat(commandLineArgs).ToArray();
 
             var indexOfLastFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-dfa" or "--default-file-args")?.index ?? -1;
             var indexOfLastNoFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-ndfa" or "--no-default-file-args")?.index ?? -1;
@@ -185,12 +195,72 @@ namespace Konamiman.Nestor80.N80
 
                 argsByFile.Add((n80FilePath, fileArgs));
 
-                return cmdAndEnvArgs.Concat(fileArgs).ToArray();
+                n80FileUsed = true;
+                return envArgs.Concat(fileArgs).Concat(commandLineArgs).ToArray();
             }
             catch(Exception ex) {
                 PrintFatal($"Can't read arguments from file {n80FilePath}: {ex.Message}. Use the -nfa / --no-file-args option to skip it.");
                 return cmdAndEnvArgs;
             }
+        }
+
+        private static void PrintArgumentsAndIncludeDirs()
+        {
+            if(verbosityLevel < 3) {
+                return;
+            }
+
+            var info = "\r\n";
+            if(envArgs is not null) {
+                info += $"Args from N80_ARGS: {string.Join(' ', envArgs)}\r\n";
+            }
+
+            var filesFirstIndex = 0;
+            if(n80FileUsed) {
+                info += $"Args from {argsByFile[0].Item1}: {string.Join(' ', argsByFile[0].Item2)}\r\n";
+                filesFirstIndex++;
+            }
+
+            info += $"Args from command line: {string.Join(' ', commandLineArgs)}\r\n";
+
+            for(int i = filesFirstIndex; i < argsByFile.Count; i++) {
+                info += $"Args from {argsByFile[i].Item1}: {string.Join(' ', argsByFile[i].Item2)}\r\n";
+            }
+
+            if(includeDirectories.Count > 0) {
+                info += "\r\nDirectories for INCLUDE:\r\n";
+                foreach(var id in includeDirectories) {
+                    info += "  " + id + "\r\n";
+                }
+            }
+            else {
+                info += "\r\nNo directories for INCLUDE\r\n";
+            }
+
+            if(symbolDefinitions.Count > 0) {
+                var symbolDefinitionsAsStrings = symbolDefinitions.OrderBy(d => d.Item1).Select(d => $"{d.Item1}={d.Item2:X4}h").ToArray();
+                info += $"\r\nSymbol definitions: {string.Join(", ", symbolDefinitionsAsStrings)}\r\n";
+            }
+
+            info += $"\r\nInput file encoding: {inputFileEncoding.WebName}\r\n";
+            info += $"Color output: {YesOrNo(colorPrint)}\r\n";
+            info += $"Show program banner: {YesOrNo(showBanner)}\r\n";
+            info += $"ORG as PHASE: {YesOrNo(orgAsPhase)}\r\n";
+            info += $"Max errors: {(maxErrors == 0 ? "infinite" : maxErrors.ToString())}\r\n";
+            if(skippedWarnings.Length > 0) {
+                var silencedWarningsString = skippedWarnings.Length == (int)AssemblyErrorCode.LastWarning ? "all" : string.Join(", ", skippedWarnings.Select(w => (int)w).ToArray());
+                info += $"Silenced warnings: {silencedWarningsString}\r\n";
+            }
+            info += $"Show assembly prints: {YesOrNo(!silenceAssemblyPrints)}\r\n";
+            info += $"Show assembly duration: {YesOrNo(showAssemblyDuration)}\r\n";
+            info += $"Status verbosity level: {verbosityLevel}\r\n";
+
+            PrintProgress(info, 3);
+        }
+
+        private static string YesOrNo(bool what)
+        {
+            return what ? "YES" : "NO";
         }
 
         private static string[] SplitWithEscapedSpaces(string argsString)
@@ -207,13 +277,14 @@ namespace Konamiman.Nestor80.N80
             colorPrint = true;
             showBanner = true;
             includeDirectories.Clear();
+            includeDirectories.Add(inputFileDirectory);
             orgAsPhase = false;
             symbolDefinitions.Clear();
             maxErrors = DEFAULT_MAX_ERRORS;
             skippedWarnings = Array.Empty<AssemblyErrorCode>();
-            silenceStatus = false;
             silenceAssemblyPrints = false;
             showAssemblyDuration = false;
+            verbosityLevel = 1;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -256,7 +327,7 @@ namespace Konamiman.Nestor80.N80
                 mustChangeOutputFileExtension = true;
                 return null;
             }
-            
+
             if(fileSpecification is "$") {
                 fileSpecification = Path.Combine(inputFileDirectory, inputFileName);
                 mustChangeOutputFileExtension = true;
@@ -330,6 +401,9 @@ namespace Konamiman.Nestor80.N80
                     }
                     else if(dirName.StartsWith("$/")) {
                         dirName = Path.Combine(inputFileDirectory, dirName[2..]);
+                    }
+                    else {
+                        dirName = Path.Combine(Environment.CurrentDirectory, dirName);
                     }
 
                     dirName = Path.GetFullPath(dirName);
@@ -410,7 +484,7 @@ namespace Konamiman.Nestor80.N80
                         warningCodes = Enum
                             .GetValues<AssemblyErrorCode>()
                             .Cast<AssemblyErrorCode>()
-                            .Where(c => c < AssemblyErrorCode.FirstError)
+                            .Where(c => c != AssemblyErrorCode.None && c < AssemblyErrorCode.FirstError)
                             .Distinct()
                             .ToArray();
                     }
@@ -422,7 +496,8 @@ namespace Konamiman.Nestor80.N80
                                 warningCodesString
                                 .Split(",", StringSplitOptions.RemoveEmptyEntries)
                                 .Select(c => (AssemblyErrorCode)int.Parse(c))
-                                .Where(c => c < AssemblyErrorCode.FirstError)
+                                .Where(c => c != AssemblyErrorCode.None && c < AssemblyErrorCode.FirstError)
+                                .Distinct()
                                 .ToArray();
                         }
                         catch {
@@ -436,12 +511,6 @@ namespace Konamiman.Nestor80.N80
                     else {
                         skippedWarnings = skippedWarnings.Except(warningCodes).ToArray();
                     }
-                }
-                else if(arg is "-ss" or "--silence-status") {
-                    silenceStatus = true;
-                }
-                else if(arg is "-nss" or "--no-silence-status") {
-                    silenceStatus = false;
                 }
                 else if(arg is "-sap" or "--silence-assembly-print") {
                     silenceAssemblyPrints = true;
@@ -478,6 +547,17 @@ namespace Konamiman.Nestor80.N80
                     if(errorMessage is not null) {
                         return $"Error when processing arguments file {args[i]}: {errorMessage}";
                     }
+                }
+                else if(arg is "-sv" or "--status-verbosity") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a verbosity level (a number between 0 and 3)";
+                    }
+
+                    i++;
+                    if(!int.TryParse(args[i], out verbosityLevel)) {
+                        return $"The {arg} argument needs to be followed by a verbosity level (a number between 0 and 3)";
+                    }
+                    verbosityLevel = Math.Clamp(verbosityLevel, 0, 3);
                 }
                 else {
                     return $"Unknwon argument '{arg}'";
@@ -571,22 +651,24 @@ namespace Konamiman.Nestor80.N80
 
         private static void AssemblySourceProcessor_Pass2Started(object? sender, EventArgs e)
         {
-            PrintProgress("\r\nPass 2 started");
+            inPass2 = true;
+            PrintProgress("\r\nPass 2 started", 2);
             printInstructionExecuted = false;
         }
 
         private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected1(object? sender, (string, int, BuildType) e)
         {
             var fileName = e.Item1 is null ? "" : $"[{e.Item1}]: ";
-            PrintProgress($"\r\n{fileName}Line {e.Item2}: Output type automatically selected: {e.Item3}");
+            PrintProgress($"\r\n{fileName}Line {e.Item2}: Output type automatically selected: {e.Item3}", 2);
         }
 
         private static string FormatAssemblyError(AssemblyError error, string prefix)
         {
             var fileName = error.IncludeFileName is null ? "" : $"[{error.IncludeFileName}] ";
             var lineNumber = error.LineNumber is null ? "" : $"in line {error.LineNumber}: ";
+            var errorCode = verbosityLevel >= 2 ? $"({(int)error.Code}) " : "";
 
-            return $"{prefix}: {fileName}{lineNumber}{error.Message}";
+            return $"{prefix}: {errorCode}{fileName}{lineNumber}{error.Message}";
         }
 
         private static void AssemblySourceProcessor_PrintMessage1(object? sender, string e)
@@ -611,6 +693,16 @@ namespace Konamiman.Nestor80.N80
         {
             if(skippedWarnings.Contains(error.Code)) {
                 return;
+            }
+
+            var isDuplicateWarning = warningsFromPass1.Contains((error.Code, error.LineNumber.GetValueOrDefault()));
+            if(inPass2) {
+                if(verbosityLevel < 2 && isDuplicateWarning) {
+                    return;
+                }
+            }
+            else if(!isDuplicateWarning) {
+                warningsFromPass1.Add((error.Code, error.LineNumber.GetValueOrDefault()));
             }
 
             Console.Error.WriteLine();
@@ -644,12 +736,12 @@ namespace Konamiman.Nestor80.N80
         private static void PrintFatal(AssemblyError error)
         {
             if(error.Code is AssemblyErrorCode.MaxErrorsReached) {
-                PrintProgress("");
+                PrintProgress("", 1);
                 if(printInstructionExecuted) {
-                    PrintProgress("");
+                    PrintProgress("", 1);
                     printInstructionExecuted = true;
                 }
-                PrintProgress(error.Message);
+                PrintProgress(error.Message, 1);
             }
             else {
                 PrintFatal(FormatAssemblyError(error, "FATAL"));
@@ -689,9 +781,9 @@ namespace Konamiman.Nestor80.N80
             }
         }
 
-        private static void PrintProgress(string text)
+        private static void PrintProgress(string text, int requiredVerbosity)
         {
-            if(silenceStatus) {
+            if(verbosityLevel < requiredVerbosity) {
                 return;
             }
 
