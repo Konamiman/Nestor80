@@ -2,6 +2,7 @@
 {
     public enum BuildType
     {
+        Invalid,
         Automatic,
         Relocatable,
         Absolute

@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 namespace Konamiman.Nestor80.N80
@@ -33,6 +34,10 @@ namespace Konamiman.Nestor80.N80
         static bool silenceAssemblyPrints;
         static bool showAssemblyDuration;
         static int verbosityLevel;
+        static string stringEncoding;
+        static BuildType buildType;
+        static bool stringEscapes;
+        static string defaultCpu;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -281,6 +286,10 @@ namespace Konamiman.Nestor80.N80
             info += $"Show assembly prints: {YesOrNo(!silenceAssemblyPrints)}\r\n";
             info += $"Show assembly duration: {YesOrNo(showAssemblyDuration)}\r\n";
             info += $"Status verbosity level: {verbosityLevel}\r\n";
+            info += $"Encoding for strings in code: {stringEncoding}\r\n";
+            info += $"Parse escape sequences in strings: {YesOrNo(stringEscapes)}\r\n";
+            info += $"Build type: {buildType}\r\n";
+            info += $"Default CPU: {defaultCpu.ToUpper()}\r\n";
 
             PrintProgress(info, 3);
         }
@@ -312,6 +321,10 @@ namespace Konamiman.Nestor80.N80
             silenceAssemblyPrints = false;
             showAssemblyDuration = false;
             verbosityLevel = 1;
+            stringEncoding = "ASCII";
+            stringEscapes = true;
+            buildType = BuildType.Automatic;
+            defaultCpu = "Z80";
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -586,6 +599,44 @@ namespace Konamiman.Nestor80.N80
                     }
                     verbosityLevel = Math.Clamp(verbosityLevel, 0, 3);
                 }
+                else if(arg is "-se" or "--string-encoding") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by an encoding page or name";
+                    }
+                    i++;
+                    stringEncoding = args[i];
+                }
+                else if(arg is "-bt" or "--build-type") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by the build type (abs, rel or auto)";
+                    }
+                    i++;
+                    var buildTypeString = args[i];
+
+                    buildType = buildTypeString switch {
+                        "abs" => BuildType.Absolute,
+                        "rel" => BuildType.Relocatable,
+                        "auto" => BuildType.Automatic,
+                        _ => BuildType.Invalid
+                    };
+
+                    if(buildType is BuildType.Invalid) {
+                        return $"{arg}: the build type must be one of: abs, rel, auto";
+                    }
+                }
+                else if(arg is "-sx" or "--string-escapes") {
+                    stringEscapes = true;
+                }
+                else if(arg is "-nsx" or "--no-string-escapes") {
+                    stringEscapes = false;
+                }
+                else if(arg is "-cpu" or "--default-cpu") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a CPU name";
+                    }
+                    i++;
+                    defaultCpu = args[i];
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -639,18 +690,29 @@ namespace Konamiman.Nestor80.N80
             }
 
             var config = new AssemblyConfiguration() {
+                OutputStringEncoding = stringEncoding,
+                AllowEscapesInStrings = stringEscapes,
+                BuildType = buildType,
                 GetStreamForInclude = GetStreamForInclude,
                 PredefinedSymbols = symbolDefinitions.ToArray(),
-                MaxErrors = maxErrors
+                MaxErrors = maxErrors,
+                CpuName = defaultCpu
             };
+
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();
             var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding, config);
             if(showAssemblyDuration) assemblyTimeMeasurer.Stop();
+
             if(result.HasFatals) {
                 return ERR_ASSEMBLY_FATAL;
             }
             else if(result.HasErrors) {
                 return ERR_ASSEMBLY_ERROR;
+            }
+
+            if(result.BuildType is BuildType.Relocatable) {
+                PrintFatal("The relocatable build type is not implemented yet");
+                return ERR_ASSEMBLY_FATAL;
             }
 
             Stream outputStream;
@@ -685,7 +747,7 @@ namespace Konamiman.Nestor80.N80
         private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected1(object? sender, (string, int, BuildType) e)
         {
             var fileName = e.Item1 is null ? "" : $"[{e.Item1}]: ";
-            PrintProgress($"\r\n{fileName}Line {e.Item2}: Output type automatically selected: {e.Item3}", 2);
+            PrintProgress($"\r\n{fileName}Line {e.Item2}: Build type automatically selected: {e.Item3}", 2);
         }
 
         private static string FormatAssemblyError(AssemblyError error, string prefix)
@@ -779,6 +841,7 @@ namespace Konamiman.Nestor80.N80
             else {
                 ErrorWriteLine(text);
             }
+            ErrorWriteLine();
         }
 
         private static void PrintAssemblyPrint(string text)
@@ -1545,7 +1608,6 @@ DSEG2: db 1
 DSEG3:
 ";
             var config = new AssemblyConfiguration() {
-                DefaultProgramName = "SOURCE",
                 Print = (s) => Debug.WriteLine(s),
                 OutputStringEncoding = "ascii",
                 AllowEscapesInStrings = true,

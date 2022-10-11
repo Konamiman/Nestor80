@@ -4,8 +4,6 @@ namespace Konamiman.Nestor80.Assembler
 {
     public class AssemblyConfiguration
     {
-        public string DefaultProgramName { get; init; }
-
         public string OutputStringEncoding { get; init; } = "ASCII";
 
         public BuildType BuildType { get; init; } = BuildType.Automatic;
