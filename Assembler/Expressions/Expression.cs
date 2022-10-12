@@ -15,7 +15,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static readonly Dictionary<int, Regex> numberRegexes = new();
         private static readonly Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex symbolRegex = new("(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex symbolRegex = new("(?<root>:?)(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Dictionary<char, Regex> unescapedStringRegexes = new() {
             {'\'', new Regex("(?<=')((?<quot>'')|[^'])*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
             {'"',  new Regex("(?<=\")((?<quot>\"\")|[^\"])*(?=\")", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
@@ -54,7 +54,7 @@ namespace Konamiman.Nestor80.Assembler
         }
 
 
-        public static Func<string, bool, SymbolInfo> GetSymbol { get; set; } = (_, _) => null;
+        public static Func<string, bool, bool, SymbolInfo> GetSymbol { get; set; } = (_, _, _) => null;
 
         public IExpressionPart[] Parts { get; private set; }
 
@@ -198,7 +198,7 @@ namespace Konamiman.Nestor80.Assembler
             else if(currentChar is '*' or '/' or '(' or ')' or '=') {
                 ProcessOperator(OperatorsAsStrings[currentChar]);
             }
-            else if(IsValidSymbolChar(currentChar)) {
+            else if(currentChar is ':' || IsValidSymbolChar(currentChar)) {
                 ExtractSymbolOrOperator();
             }
             else {
@@ -419,9 +419,10 @@ namespace Konamiman.Nestor80.Assembler
 
             var symbol = match.Groups["symbol"].Value;
             var isExternalRef = match.Groups["external"].Length > 0;
+            var isRoot = match.Groups["root"].Length > 0;
 
             if(symbol == "$") {
-                var currentLocationSymbolRef = GetSymbol("$", false);
+                var currentLocationSymbolRef = GetSymbol("$", false, false);
                 AddExpressionPart(currentLocationSymbolRef.Value);
                 IncreaseParsedStringPointer(1);
                 return;
@@ -442,7 +443,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var theOperator = operators.GetValueOrDefault(symbol);
             if(theOperator is null) {
-                var part = new SymbolReference() { SymbolName = symbol, IsExternal = isExternalRef };
+                var part = new SymbolReference() { SymbolName = symbol, IsExternal = isExternalRef, IsRoot = isRoot };
                 AddExpressionPart(part);
                 IncreaseParsedStringPointer(match.Length);
             }

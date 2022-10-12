@@ -18,6 +18,7 @@
         DephaseWithoutPhase,
         UnterminatedPhase,
         SameEffectiveExternal,
+        UnterminatedModule,
         UserWarning,
         LastWarning = UserWarning,
 
@@ -38,6 +39,7 @@
         DifferentPassValues,
         SameEffectivePublic,
         UnknownInstruction,
+        EndModuleOutOfScope,
         UserError,
 
         FirstFatal = 128,

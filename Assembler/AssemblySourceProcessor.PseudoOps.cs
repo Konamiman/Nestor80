@@ -1,5 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -78,7 +79,9 @@ namespace Konamiman.Nestor80.Assembler
             { ".FATAL", ProcessUserFatal },
             { ".PHASE", ProcessPhase },
             { ".DEPHASE", ProcessDephase },
-            { "ENDOUT", ProcessEndout }
+            { "ENDOUT", ProcessEndout },
+            { "MODULE", ProcessModule },
+            { "ENDMOD", ProcessEndModule }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1216,6 +1219,38 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessEndout(string opcode, SourceLineWalker walker)
         {
             return new EndOutputLine();
+        }
+
+        static ProcessedSourceLine ProcessModule(string opcode, SourceLineWalker walker)
+        {
+            string name = null;
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs a module name as argument");
+            }
+            else {
+                name = walker.ExtractSymbol();
+                if(!labelRegex.IsMatch(name)) {
+                    AddError(AssemblyErrorCode.InvalidLabel, $"'{name}' is not a valid module name");
+                    name = null;
+                }
+            }
+
+            if(name is not null) {
+                state.EnterModule(name);
+            }
+            return new ModuleStartLine() { Name = name };
+        }
+
+        static ProcessedSourceLine ProcessEndModule(string opcode, SourceLineWalker walker)
+        {
+            if(state.CurrentModule is null) {
+                AddError(AssemblyErrorCode.EndModuleOutOfScope, $"{opcode.ToUpper()} found while not in a module");
+            }
+            else {
+                state.ExitModule();
+            }
+
+            return new ModuleEndLine();
         }
     }
 }

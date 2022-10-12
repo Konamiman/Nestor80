@@ -541,7 +541,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [Test]
         public void TestExpressionEvaluationWithSymbol()
         {
-            Expression.GetSymbol = (name, isExternal) => name is "FOO" ? new SymbolInfo() { Name = "FOO", Value = Address.Absolute(3) } : null;
+            Expression.GetSymbol = (name, isExternal, isRoot) => name is "FOO" ? new SymbolInfo() { Name = "FOO", Value = Address.Absolute(3) } : null;
             var exp = Expression.Parse("1+2+FOO");
             exp.ValidateAndPostifixize();
             var result = exp.Evaluate();
@@ -636,7 +636,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("2+(type CODEZ)+1", 0x24)]
         public void TestType(string line, int expectedResult)
         {
-            Expression.GetSymbol = (name, isExternal) => {
+            Expression.GetSymbol = (name, isExternal, isRoot) => {
                 if(name is "EXT") {
                     return new SymbolInfo() { Name = "EXT", Type = SymbolType.External };
                 }

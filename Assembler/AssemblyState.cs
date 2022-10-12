@@ -76,6 +76,8 @@ namespace Konamiman.Nestor80.Assembler
             CurrentLineNumber = 1;
             CurrentPhasedLocationPointer = null;
             EndAddress = null;
+            CurrentModule = null;
+            modules.Clear();
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
@@ -356,6 +358,30 @@ namespace Konamiman.Nestor80.Assembler
             if(InstructionsPendingSelection.ContainsKey(line)) {
                 InstructionsPendingSelection.Remove(line);
             }
+        }
+
+        private Stack<string> modules = new();
+
+        public string CurrentModule { get; private set; } = null;
+
+        public void EnterModule(string name)
+        {
+            modules.Push(CurrentModule);
+            CurrentModule = CurrentModule is null ? name : $"{CurrentModule}.{name}";
+        }
+
+        public void ExitModule()
+        {
+            if(CurrentModule is null) {
+                throw new InvalidOperationException($"{nameof(ExitModule)} called while not in a module");
+            }
+
+            CurrentModule = modules.Pop();
+        }
+
+        public string Modularize(string symbol)
+        {
+            return CurrentModule is null ? symbol : $"{CurrentModule}:{symbol}";
         }
     }
 }

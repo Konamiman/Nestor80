@@ -10,6 +10,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool IsExternal { get; set; }
 
+        public bool IsRoot { get; set; }
+
         public static bool operator ==(SymbolReference symbolref1, object symbolref2)
         {
             if(symbolref2 is not Address)
@@ -32,7 +34,7 @@ namespace Konamiman.Nestor80.Assembler
                 return false;
 
             var b2 = (SymbolReference)obj;
-            return SymbolName == b2.SymbolName && IsExternal == b2.IsExternal;
+            return SymbolName == b2.SymbolName && IsExternal == b2.IsExternal && IsRoot == b2.IsRoot;
         }
 
         public override int GetHashCode()
@@ -42,7 +44,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public override string ToString()
         {
-            return IsExternal ? $"{SymbolName}##" : SymbolName;
+            return IsExternal ? $"{SymbolName}##" : IsRoot ? $":{SymbolName}" : SymbolName;
         }
     }
 }

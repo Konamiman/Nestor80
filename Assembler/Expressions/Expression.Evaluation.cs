@@ -168,7 +168,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(symbolParts.Any()) {
                     //We need each symbol to be registered, even if value is still unknown
                     foreach(var sr in symbolParts) {
-                        GetSymbol(sr.SymbolName, sr.IsExternal);
+                        GetSymbol(sr.SymbolName, sr.IsExternal, sr.IsRoot);
                     }
                     return null;
                 }
@@ -264,7 +264,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var sr = (SymbolReference)part;
 
-            var symbol = GetSymbol(sr.SymbolName, sr.IsExternal);
+            var symbol = GetSymbol(sr.SymbolName, sr.IsExternal, sr.IsRoot);
             if(symbol is null) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)} isn't supposed to be executed before all the referenced symbols are registered (even if the symbol value isn't yet known). Symbol: {sr.SymbolName}");
             }

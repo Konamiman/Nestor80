@@ -78,7 +78,7 @@ namespace Konamiman.Nestor80.N80
                 inputFile = args[0];
                 args = args[1..].ToArray();
             }
-            if(args.Length > 1 && !args[0].StartsWith('-')) {
+            if(args.Length > 0 && !args[0].StartsWith('-')) {
                 outputFile = args[0];
                 args = args[1..].ToArray();
             }

@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Konamiman.Nestor80.Assembler.ArithmeticOperations;
@@ -507,6 +508,10 @@ namespace Konamiman.Nestor80.Assembler
             if(!state.EndReached && buildType == BuildType.Relocatable) {
                 AddError(AssemblyErrorCode.NoEndStatement, "No END statement found", withLineNumber: false);
             }
+
+            if(state.CurrentModule is not null) {
+                AddError(AssemblyErrorCode.UnterminatedModule, $"Unterminated module: {state.CurrentModule}");
+            }
         }
 
         private static void ProcessLinesForPass2(ProcessedSourceLine[] processedLines)
@@ -555,7 +560,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(processedLine.Label is not null) {
                 var currentLocation = state.GetCurrentLocation();
-                var labelSymbol = state.GetSymbol(processedLine.EffectiveLabel);
+                var labelSymbol = state.GetSymbol(state.Modularize(processedLine.EffectiveLabel));
                 if(labelSymbol is null) {
                     throw new Exception($"Unexpected: label {processedLine.Label} in instruction is not registered during pass 2");
                 }
@@ -622,6 +627,17 @@ namespace Konamiman.Nestor80.Assembler
                     AssemblyErrorGenerated(null, new AssemblyError(errorCode, uel.Message, state.CurrentLineNumber, state.CurrentIncludeFilename));
                 }
             }
+            else if(processedLine is ModuleStartLine msl && msl.Name is not null) {
+                state.EnterModule(msl.Name);
+            }
+            else if(processedLine is ModuleEndLine) {
+                if(state.CurrentModule is null) {
+                    AddError(AssemblyErrorCode.EndModuleOutOfScope, $"ENDMOD found while not in a module");
+                }
+                else {
+                    state.ExitModule();
+                }
+            }
 
             return processedLine;
         }
@@ -662,8 +678,8 @@ namespace Konamiman.Nestor80.Assembler
             var relocatables = new List<RelocatableOutputPart>();
 
             foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
-                var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => s.SymbolName);
-                var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbol(s));
+                var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => new { s.SymbolName, s.IsRoot });
+                var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbol(s.IsRoot ? s.SymbolName : state.Modularize(s.SymbolName)));
                 var hasExternalsOutsideTypeOperator = false;
                 Address expressionValue = null;
 
@@ -772,10 +788,14 @@ namespace Konamiman.Nestor80.Assembler
             return new LinkItemsGroup() { Index = expressionPendingEvaluation.LocationInOutput, IsByte = expressionPendingEvaluation.IsByte, LinkItems = items.ToArray() };
         }
 
-        private static SymbolInfo GetSymbolForExpression(string name, bool isExternal)
+        private static SymbolInfo GetSymbolForExpression(string name, bool isExternal, bool isRoot)
         {
             if(name == "$")
                 return new SymbolInfo() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
+
+            if(!isRoot && !isExternal) {
+                name = state.Modularize(name);
+            }
 
             var symbol = state.GetSymbol(name);
             if(symbol is null) {
@@ -802,7 +822,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var isPublic = label.EndsWith("::");
-            var labelValue = label.TrimEnd(':');
+            var labelValue = state.Modularize(label.TrimEnd(':'));
 
             if(state.InPass2) {
                 if(isPublic) {
