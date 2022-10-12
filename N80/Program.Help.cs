@@ -84,6 +84,10 @@
             -co, --color-output
                 Display assembly process messages and errors in color (default).
 
+            -cpu, --default-cpu
+                Set the target CPU of the source code (default is Z80).
+                The target CPU can also be changed in code with the .CPU instruction.
+
             -dfa, --default-file-args
                 Read arguments from the .N80 file in the directory of the input file (default).
                 This argument is ignored when found inside an arguments file (.N80 or any other).
@@ -158,6 +162,14 @@
                 Display messages generated during assembly via .PRINTX, .PRINT, .PRINT1
                 and .PRINT2 instructions (default).
 
+            -nsx, --no-string-escapes
+                Disallows escape sequences in the strings in source code.
+                See "--string-escapes" for the escaping format.
+
+                Escape sequences can also be turned on and off by using the .STRESC ON/OFF
+                instruction directly in code. You may want to disallow escape sequences
+                when compiling old sources that were intended to be assembled with Macro80.
+
             -oap, --org-as-phase
                 Treat ORG statements as .PHASE statements. This argument has effect only
                 when the build type is absolute.
@@ -176,7 +188,7 @@
                 Output without this argument: 1,2,9,10,0,...,0,5,6,7,8 (total 104 bytes)
                 Output with this argument: 1,2,3,4,5,6,7,8,9,10
 
-            --rc, --reset-config
+            -rc, --reset-config
                 Reset all the assembly configuration back to default values
                 (in other words: ignore all the previous arguments except input and output files).
 
@@ -190,6 +202,24 @@
 
             -sb, --show-banner
                 Display the program title and copyright notice banner (default).
+
+            -se, --string-encoding
+                Default text encoding to be used to convert the strings found in the source code
+                to sequences of bytes, it can be an encoding name or a codepage number.
+                Default is ASCII.
+
+                This encoding can also be change directly in the source code by using the
+                .STRENC instruction. In this case the special encoding name "default" (or "def")
+                can be used to go back to the default encoding that was specified with this argument
+                (or to ASCII if the argument was provided).
+
+            -bt, --build-type abs|rel|auto
+                The type of output to build. Default is auto.
+
+                In auto mode the build type will be set as automatic if an ORG statement is found
+                in the code before a CPU instruction, a label defined as public with "::", or any
+                of the following instructions: CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DS,
+                PUBLIC, EXTRN, .REQUEST; otherwise the build type will be set as relocatable.
 
             -sv, --status-verbosity <level>
                 Selects the verbosity of the status messages shown during the assembly process.
@@ -214,6 +244,27 @@
                 If no codes are specified, don't display any warning at all.
                 Use --status-verbosity with a level of at least 2 to see the codes
                 of the generated warnings.
+
+            -sx, --string-escapes
+                Allows escape sequences in the strings in source code (this is the default).
+
+                When escape sequences are turned on, double quote (") delimited strings
+                can contain any of the escape sequences supported by .NET, e.g.
+                \r or \unnnn; note that the backslash and the double quote characters
+                themselves will always need to be escaped (\" or \\);
+                e.g. db "The \"perfect\" code\r\nis this one".
+                
+                When escape sequences are turned off, the only escape sequence allowed in 
+                double quote delimited strings will be doubling the double quotes;
+                e.g. db "The ""perfect"" code".
+
+                Single quote (') delimited strings only support escaping the single quotes
+                (by doubling them) regardless of string escaping being allowed or not;
+                e.g. db 'The "perfect" code can''t be wrong'.
+
+                Escape sequences can also be turned on and off by using the .STRESC ON/OFF
+                instruction directly in code. You may want to disallow escape sequences
+                when compiling old sources that were intended to be assembled with Macro80.
 
             Full documentation (and donation links, wink wink):
             https://github.com/Konamiman/Nestor80
