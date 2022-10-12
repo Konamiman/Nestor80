@@ -38,6 +38,7 @@ namespace Konamiman.Nestor80.N80
         static BuildType buildType;
         static bool stringEscapes;
         static string defaultCpu;
+        static string outputFileExtension = null;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -116,7 +117,7 @@ namespace Konamiman.Nestor80.N80
                 return ERR_CANT_OPEN_INPUT_FILE;
             }
 
-            string outputFileErrorMessage = null;
+            string outputFileErrorMessage;
             try {
                 outputFileErrorMessage = ProcessOutputFileArgument(outputFile);
             }
@@ -127,10 +128,6 @@ namespace Konamiman.Nestor80.N80
             if(outputFileErrorMessage is not null) {
                 PrintFatal($"Can't create output file ({outputFilePath}): {outputFileErrorMessage}");
                 return ERR_CANT_CREATE_OUTPUT_FILE;
-            }
-
-            if(mustChangeOutputFileExtension) {
-                outputFilePath = Path.ChangeExtension(outputFilePath, ".BIN");
             }
 
             PrintProgress($"Input file: {inputFilePath}\r\n", 1);
@@ -291,6 +288,16 @@ namespace Konamiman.Nestor80.N80
             info += $"Build type: {buildType}\r\n";
             info += $"Default CPU: {defaultCpu.ToUpper()}\r\n";
 
+            if(mustChangeOutputFileExtension) {
+                var outputExtension =
+                    outputFileExtension ?? buildType switch {
+                        BuildType.Absolute => ".BIN",
+                        BuildType.Relocatable => ".REL",
+                        _ => ".BIN or .REL"
+                    };
+                info += $"Output file extension: {outputExtension}\r\n";
+            }
+
             PrintProgress(info, 3);
         }
 
@@ -325,6 +332,7 @@ namespace Konamiman.Nestor80.N80
             stringEscapes = true;
             buildType = BuildType.Automatic;
             defaultCpu = "Z80";
+            outputFileExtension = null;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -640,6 +648,13 @@ namespace Konamiman.Nestor80.N80
                         return $"'{defaultCpu}' is not a supported CPU.";
                     }
                 }
+                else if(arg is "-ofe" or "--output-file-extension") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a file extension";
+                    }
+                    i++;
+                    outputFileExtension = args[i];
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -716,6 +731,11 @@ namespace Konamiman.Nestor80.N80
             if(result.BuildType is BuildType.Relocatable) {
                 PrintFatal("\r\nThe relocatable build type is not implemented yet");
                 return ERR_ASSEMBLY_FATAL;
+            }
+
+            if(mustChangeOutputFileExtension) {
+                outputFileExtension ??= result.BuildType is BuildType.Relocatable ? ".REL" : ".BIN";
+                outputFilePath = Path.ChangeExtension(outputFilePath, outputFileExtension);
             }
 
             Stream outputStream;

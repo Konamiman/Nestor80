@@ -26,7 +26,8 @@
                 Full path of the assembled absolute or relocatable file to generate.
                 
                 If omitted, a file with the same name of the source file and
-                .BIN or .REL extension will be generated in the current directory.
+                .BIN or .REL extension (unless a different extension is specified with 
+                --output-file-extension) will be generated in the current directory.
             
                 If it's a directory (instead of a file), the output file will be
                 generated in that directory, and the file name will be as when
@@ -74,6 +75,14 @@
 
                 This option can't be undone (there's not "--no-arguments-file" argument),
                 but if necessary you can use --reset-config to start over.
+            
+            -bt, --build-type abs|rel|auto
+                The type of output to build. Default is auto.
+            
+                In auto mode the build type will be set as automatic if an ORG statement is found
+                in the code before a CPU instruction, a label defined as public with "::", or any
+                of the following instructions: CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DS,
+                PUBLIC, EXTRN, .REQUEST; otherwise the build type will be set as relocatable.
 
             -cid, --clear-include-directories
                 Clear the list of the directories where relative INCLUDEd files
@@ -188,6 +197,13 @@
                 Output without this argument: 1,2,9,10,0,...,0,5,6,7,8 (total 104 bytes)
                 Output with this argument: 1,2,3,4,5,6,7,8,9,10
 
+            -ofe, --output-file-extension [.]<extension>
+                The extension for the generated output file. This value is used only when the
+                name of the output file is chosen as the same name of the output file
+                (because no output file path is specified, or because the specified path
+                is a directory). Default is .BIN when the build type is absolute and .REL
+                when the build type is relocatable.
+
             -rc, --reset-config
                 Reset all the assembly configuration back to default values
                 (in other words: ignore all the previous arguments except input and output files).
@@ -212,14 +228,6 @@
                 .STRENC instruction. In this case the special encoding name "default" (or "def")
                 can be used to go back to the default encoding that was specified with this argument
                 (or to ASCII if the argument was provided).
-
-            -bt, --build-type abs|rel|auto
-                The type of output to build. Default is auto.
-
-                In auto mode the build type will be set as automatic if an ORG statement is found
-                in the code before a CPU instruction, a label defined as public with "::", or any
-                of the following instructions: CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DS,
-                PUBLIC, EXTRN, .REQUEST; otherwise the build type will be set as relocatable.
 
             -sv, --status-verbosity <level>
                 Selects the verbosity of the status messages shown during the assembly process.
