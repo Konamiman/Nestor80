@@ -83,6 +83,11 @@ namespace Konamiman.Nestor80.Assembler
             instructionsNeedingPass2Reevaluation = conditionalInstructions.Concat(new[] { ".PHASE", ".DEPHASE" }).ToArray();
         }
 
+        public static bool IsValidCpu(string cpuName)
+        {
+            return Enum.GetNames<CpuType>().Contains(cpuName, StringComparer.OrdinalIgnoreCase);
+        }
+
         public static AssemblyResult Assemble(string source, AssemblyConfiguration configuration = null)
         {
             var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(source));

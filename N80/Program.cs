@@ -636,6 +636,9 @@ namespace Konamiman.Nestor80.N80
                     }
                     i++;
                     defaultCpu = args[i];
+                    if(!AssemblySourceProcessor.IsValidCpu(defaultCpu)) {
+                        return $"'{defaultCpu}' is not a supported CPU.";
+                    }
                 }
                 else {
                     return $"Unknwon argument '{arg}'";
@@ -711,7 +714,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(result.BuildType is BuildType.Relocatable) {
-                PrintFatal("The relocatable build type is not implemented yet");
+                PrintFatal("\r\nThe relocatable build type is not implemented yet");
                 return ERR_ASSEMBLY_FATAL;
             }
 
