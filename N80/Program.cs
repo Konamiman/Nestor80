@@ -39,6 +39,7 @@ namespace Konamiman.Nestor80.N80
         static bool stringEscapes;
         static string defaultCpu;
         static string outputFileExtension = null;
+        static bool allowBareExpressions;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -150,6 +151,7 @@ namespace Konamiman.Nestor80.N80
                 else {
                     PrintProgress($"\r\nAssembly completed with {warnCount} warnings", 1);
                 }
+
                 if(showAssemblyDuration) {
                     PrintDuration($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
                     PrintDuration($"Total time:    {FormatTimespan(totalTimeMeasurer.Elapsed)}");
@@ -312,6 +314,7 @@ namespace Konamiman.Nestor80.N80
             info += $"Parse escape sequences in strings: {YesOrNo(stringEscapes)}\r\n";
             info += $"Build type: {buildType}\r\n";
             info += $"Default CPU: {defaultCpu.ToUpper()}\r\n";
+            info += $"Allow bare expressions: {YesOrNo(allowBareExpressions)}\r\n";
 
             if(mustChangeOutputFileExtension) {
                 var outputExtension =
@@ -358,6 +361,7 @@ namespace Konamiman.Nestor80.N80
             buildType = BuildType.Automatic;
             defaultCpu = "Z80";
             outputFileExtension = null;
+            allowBareExpressions = false;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -681,6 +685,12 @@ namespace Konamiman.Nestor80.N80
                     i++;
                     outputFileExtension = args[i];
                 }
+                else if(arg is "-abe" or "--allow-bare-expressions") {
+                    allowBareExpressions = true;
+                }
+                else if(arg is "-nabe" or "--no-allow-bare-expressions") {
+                    allowBareExpressions = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -740,7 +750,8 @@ namespace Konamiman.Nestor80.N80
                 GetStreamForInclude = GetStreamForInclude,
                 PredefinedSymbols = symbolDefinitions.ToArray(),
                 MaxErrors = maxErrors,
-                CpuName = defaultCpu
+                CpuName = defaultCpu,
+                AllowBareExpressions = allowBareExpressions
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();

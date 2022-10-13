@@ -1,5 +1,4 @@
-﻿using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Konamiman.Nestor80.Assembler.ArithmeticOperations;
@@ -411,6 +410,10 @@ namespace Konamiman.Nestor80.Assembler
                 else if(symbol.StartsWith("$TITLE(", StringComparison.OrdinalIgnoreCase)) {
                     opcode = symbol[..6];
                     processedLine = ProcessLegacySetListingSubtitle(opcode, walker, symbol[6..] + (walker.AtEndOfLine ? "" : " " + walker.GetUntil(')')));
+                }
+                else if(state.Configuration.AllowBareExpressions) {
+                    opcode = "RAW DB";
+                    processedLine = ProcessDefbLine(opcode, new SourceLineWalker(symbol + " " + walker.GetRemainingRaw()));
                 }
                 else {
                     opcode = symbol;

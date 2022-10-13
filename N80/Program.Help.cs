@@ -58,6 +58,13 @@
 
             Available arguments:
 
+            -abe, --allow-bare-expressions
+                Treat a line containing one or more bare expressions as a DB line
+                (e.g. the line 'FOO: 1,2,3,4' will be equivalent to 'FOO: db 1,2,3,4').
+                You may need this when compiling old code intended for Macro80, but
+                using bare expressions is otherwise not recommended because it masks
+                mistyped instructions as "symbol not found" errors.
+
             -af, --arguments-file <file path>
                 Read additional arguments from the specified file. The arguments are
                 processed immediately. Recursivity is not supported (additional
@@ -136,6 +143,10 @@
                 Stop the assembly process after reaching the specified number of errors
                 (not including warnings, and the process will still stop on the first fatal error).
                 0 means "infinite". Default: {DEFAULT_MAX_ERRORS}.
+
+            -nabe, --no-allow-bare-expressions
+                Don't treat a line containing a list of comma-separated expressions as a DB line
+                (so e.g. 'FOO: db 1,2,3,4' will throw an error). This is the default behavior.
 
             -no, --no-output
                 Process the input file but don't generate the output file.
