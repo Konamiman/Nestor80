@@ -83,7 +83,6 @@ namespace Konamiman.Nestor80.N80
                 args = args[1..].ToArray();
             }
 
-
             if(inputFile is null) {
                 ErrorWriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version or --help");
                 return ERR_BAD_ARGUMENTS;
@@ -95,7 +94,7 @@ namespace Konamiman.Nestor80.N80
                 inputFileErrorMessage = ProcessInputFileArgument(inputFile);
             }
             catch(Exception ex) {
-                inputFileErrorMessage = $"Can't open input file: {ex.Message}";
+                inputFileErrorMessage = ex.Message;
             }
 
             ResetConfig();
@@ -106,14 +105,14 @@ namespace Konamiman.Nestor80.N80
 
             if(showBanner) WriteLine(bannerText);
 
-            inputFileErrorMessage = ProcessArguments(args);
-            if(inputFileErrorMessage is not null) {
-                ErrorWriteLine($"Invalid arguments: {inputFileErrorMessage}");
+            var argsErrorMessage = ProcessArguments(args);
+            if(argsErrorMessage is not null) {
+                ErrorWriteLine($"Invalid arguments: {argsErrorMessage}");
                 return ERR_BAD_ARGUMENTS;
             }
 
             if(inputFileErrorMessage is not null) {
-                PrintFatal(inputFileErrorMessage);
+                PrintFatal($"Can't open input file: {inputFileErrorMessage}");
                 return ERR_CANT_OPEN_INPUT_FILE;
             }
 
@@ -134,7 +133,7 @@ namespace Konamiman.Nestor80.N80
 
             PrintArgumentsAndIncludeDirs();
 
-            var errCode = DoAssembly(out int writtenBytes);
+            var errCode = DoAssembly(out int writtenBytes, out int warnCount, out int errCount, out int fatalCount);
             if(errCode != ERR_SUCCESS) {
                 generateOutputFile = false;
             }
@@ -142,14 +141,35 @@ namespace Konamiman.Nestor80.N80
             totalTimeMeasurer.Stop();
 
             if(errCode == ERR_SUCCESS) {
-                PrintProgress("\r\nAssembly completed!", 1);
+                if(warnCount == 0) {
+                    PrintProgress("\r\nAssembly completed!", 1);
+                }
+                else if(warnCount == 1) {
+                    PrintProgress("\r\nAssembly completed with 1 warning", 1);
+                }
+                else {
+                    PrintProgress($"\r\nAssembly completed with {warnCount} warnings", 1);
+                }
                 if(showAssemblyDuration) {
                     PrintDuration($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
                     PrintDuration($"Total time:    {FormatTimespan(totalTimeMeasurer.Elapsed)}");
                 }
             }
             else {
-                PrintProgress("\r\nAssembly failed", 1);
+                List<string> errorCounts = new();
+                if(warnCount > 0) {
+                    errorCounts.Add(warnCount == 1 ? "1 warning" : $"{warnCount} warnings");
+                }
+                if(errCount > 0) {
+                    errorCounts.Add(errCount == 1 ? "1 error" : $"{errCount} errors");
+                }
+                if(fatalCount > 0) {
+                    errorCounts.Add(fatalCount == 1 ? "1 fatal" : $"{fatalCount} fatals");
+                }
+
+                var failedWithString = warnCount + errCount + fatalCount == 0 ? "" : $" with {string.Join(", ", errorCounts.ToArray())}";
+
+                PrintProgress($"\r\nAssembly failed{failedWithString}", 1);
             }
 
             if(generateOutputFile) {
@@ -209,6 +229,11 @@ namespace Konamiman.Nestor80.N80
             var indexOfLastFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-dfa" or "--default-file-args")?.index ?? -1;
             var indexOfLastNoFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-ndfa" or "--no-default-file-args")?.index ?? -1;
             if(indexOfLastNoFileArgs != -1 && indexOfLastFileArgs < indexOfLastNoFileArgs) {
+                return cmdAndEnvArgs;
+            }
+
+            if(inputFileDirectory is null) {
+                //This condition will result in an error anyway
                 return cmdAndEnvArgs;
             }
 
@@ -686,10 +711,10 @@ namespace Konamiman.Nestor80.N80
             return ProcessArguments(fileArgs, true);
         }
 
-        private static int DoAssembly(out int writtenBytes)
+        private static int DoAssembly(out int writtenBytes, out int warnCount, out int errCount, out int fatalCount)
         {
             Stream inputStream;
-            writtenBytes = 0;
+            writtenBytes = warnCount = errCount = fatalCount = 0;
 
             try {
                 inputStream = File.OpenRead(inputFilePath);
@@ -720,6 +745,10 @@ namespace Konamiman.Nestor80.N80
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();
             var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding, config);
             if(showAssemblyDuration) assemblyTimeMeasurer.Stop();
+
+            warnCount = result.Errors.Count(e => e.IsWarning);
+            errCount = result.Errors.Count(e => !e.IsWarning && !e.IsFatal);
+            fatalCount = result.Errors.Count(e => e.IsFatal);
 
             if(result.HasFatals) {
                 return ERR_ASSEMBLY_FATAL;

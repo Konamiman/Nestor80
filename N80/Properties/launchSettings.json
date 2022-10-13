@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "modules.asm modules.bin",
+      "commandLineArgs": "\\code\\fun\\MSX\\src\\MISC\\NESTAC.ASM",
       "environmentVariables": {
         "N80_ARGS": "-nsb"
       }

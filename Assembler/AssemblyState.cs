@@ -381,7 +381,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public string Modularize(string symbol)
         {
-            return CurrentModule is null ? symbol : $"{CurrentModule}:{symbol}";
+            return CurrentModule is null ? symbol : $"{CurrentModule}.{symbol}";
         }
     }
 }

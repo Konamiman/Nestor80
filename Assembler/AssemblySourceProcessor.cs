@@ -610,6 +610,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else if(processedLine is IncludeLine il) {
                 state.PushIncludeState(null, il);
+                state.IncreaseLineNumber();
                 ProcessLinesForPass2(il.Lines);
                 state.PopIncludeState();
             }
