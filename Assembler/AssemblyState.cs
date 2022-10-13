@@ -334,7 +334,7 @@ namespace Konamiman.Nestor80.Assembler
                 previousState.ProcessedLine.Lines = ProcessedLines.ToArray();
             }
 
-            CurrentLineNumber = previousState.PreviousLineNumber + 1; //+1 because line number was increased after the call to PushIncludeState
+            CurrentLineNumber = previousState.PreviousLineNumber + (InPass2 ? 0 : 1); //+1 in pass 1 because line number was increased after the call to PushIncludeState
             SourceStreamReader = previousState.PreviousSourceStreamReader;
             ProcessedLines = previousState.PreviousLines;
             CurrentIncludeFilename = previousState.PreviousFileName;

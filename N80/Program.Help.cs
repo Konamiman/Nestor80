@@ -84,6 +84,8 @@
                 of the following instructions: CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DS,
                 PUBLIC, EXTRN, .REQUEST; otherwise the build type will be set as relocatable.
 
+                The --org-as-phase argument will also set the build type to absolute.
+
             -cid, --clear-include-directories
                 Clear the list of the directories where relative INCLUDEd files
                 will be searched for. If this argument isn't followed by any
@@ -181,7 +183,8 @@
 
             -oap, --org-as-phase
                 Treat ORG statements as .PHASE statements. This argument has effect only
-                when the build type is absolute.
+                when the build type is absolute (and in fact, it sets the build type
+                to absolute by itself).
 
                 The effect of this argument is that all the generated output will be written
                 consecutively to the output file, regardless of location in memory.

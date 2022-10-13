@@ -494,6 +494,7 @@ namespace Konamiman.Nestor80.N80
                 }
                 else if(arg is "-oap" or "--org-as-phase") {
                     orgAsPhase = true;
+                    buildType = BuildType.Absolute;
                 }
                 else if(arg is "-noap" or "--no-org-as-phase") {
                     orgAsPhase = false;
