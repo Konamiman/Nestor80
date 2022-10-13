@@ -203,12 +203,12 @@
 
                 org 100
                 db 1,2,3,4
-                org 200
+                org 110
                 db 5,6,7,8
                 org 102
                 db 9,10
 
-                Output without this argument: 1,2,9,10,0,...,0,5,6,7,8 (total 104 bytes)
+                Output without this argument: 1,2,9,10,0,0,0,0,0,0,5,6,7,8
                 Output with this argument: 1,2,3,4,5,6,7,8,9,10
 
             -ofe, --output-file-extension [.]<extension>
