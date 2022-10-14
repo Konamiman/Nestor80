@@ -151,6 +151,7 @@ namespace Konamiman.Nestor80.Assembler
                     Name = s.Name,
                     EffectiveName = s.EffectiveName,
                     Type = s.Type,
+                    IsPublic = s.IsPublic,
                     Value = s.Value?.Value ?? 0,
                     ValueArea = s.Value?.Type ?? AddressType.ASEG,
                     CommonName = s.Value?.CommonBlockName
@@ -564,7 +565,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(processedLine.Label is not null) {
                 var currentLocation = state.GetCurrentLocation();
-                var labelSymbol = state.GetSymbol(state.Modularize(processedLine.EffectiveLabel));
+                var labelSymbol = state.GetSymbol(processedLine.LabelIsPublic ? processedLine.EffectiveLabel : state.Modularize(processedLine.EffectiveLabel));
                 if(labelSymbol is null) {
                     throw new Exception($"Unexpected: label {processedLine.Label} in instruction is not registered during pass 2");
                 }
@@ -607,6 +608,9 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     AddError(AssemblyErrorCode.DephaseWithoutPhase, $"{processedLine.Opcode} found without a corresponding .PHASE");
                 }
+            }
+            else if(processedLine is ChangeOriginLine col) {
+                state.SwitchToLocation(col.NewLocationCounter);
             }
             else if(processedLine is IChangesLocationCounter clc) {
                 state.SwitchToArea(clc.NewLocationArea);
@@ -827,7 +831,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var isPublic = label.EndsWith("::");
-            var labelValue = state.Modularize(label.TrimEnd(':'));
+            var labelValue = isPublic ? label.TrimEnd(':') : state.Modularize(label.TrimEnd(':'));
 
             if(state.InPass2) {
                 if(isPublic) {

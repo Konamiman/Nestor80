@@ -8,6 +8,8 @@
 
         public SymbolType Type { get; set; }
 
+        public bool IsPublic { get; set; }
+
         public AddressType ValueArea { get; set; }
 
         public ushort Value { get; set; }

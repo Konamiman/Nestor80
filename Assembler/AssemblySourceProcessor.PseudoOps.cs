@@ -306,7 +306,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     state.SwitchToLocation(value.Value);
-                    return new ChangeOriginLine() { NewLocationArea = value.Type, NewLocationCounter = value.Value };
+                    return new ChangeOriginLine() { NewLocationArea = state.CurrentLocationArea, NewLocationCounter = value.Value };
                 }
             }
             catch(InvalidExpressionException ex) {

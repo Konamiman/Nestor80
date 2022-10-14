@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "\\code\\fun\\RookieDrive\\msx\\rookiefdd.asm",
+      "commandLineArgs": "modules.asm -bt rel",
       "environmentVariables": {
         "N80_ARGS": "-nsb"
       }
