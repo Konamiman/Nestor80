@@ -477,7 +477,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(symbol is null) {
                 if(z80RegisterNames.Contains(name, StringComparer.OrdinalIgnoreCase)) {
-                    AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{name.ToUpper()} is a Z80 register or flag name, defining it as a constant will prevent using it as a register or flag in Z80 instructions");
+                    AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{name.ToUpper()} is a {currentCpu} register or flag name, so it won't be possible to use it as a symbol in {currentCpu} instructions");
                 }
                 state.AddSymbol(name, isRedefinition ? SymbolType.Defl : SymbolType.Equ, value);
             }
