@@ -8,7 +8,7 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Regex ixPlusArgumentRegex = new(@"^\(\s*IX\s*[+-][^)]+\)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex iyPlusArgumentRegex = new(@"^\(\s*IY\s*[+-][^)]+\)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly Regex indexPlusArgumentRegex = new(@"^\(\s*I(X|Y)\s*(?<sign>[+-])(?<expression>[^)]+)\)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex memPointedByRegisterRegex = new(@"^\(\s*(?<reg>[A-Z]+)\s*\)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex memPointedByRegisterRegex = new(@"^\(\s*(?<reg>HL|DE|BC|IX|IY|SP|C)\s*\)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex registerRegex = new(@"^[A-Z]{1,3}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private static ProcessedSourceLine ProcessCpuInstruction(string opcode, SourceLineWalker walker)
@@ -54,6 +54,9 @@ namespace Konamiman.Nestor80.Assembler
             }
             else {
                 secondArgument = walker.ExtractExpression();
+                if(opcode.Equals("EX", StringComparison.OrdinalIgnoreCase) && secondArgument.Equals("AF'", StringComparison.OrdinalIgnoreCase)) {
+                    secondArgument = "AF";
+                }
                 candidateInstructions = instructionsForOpcode.Where(i => i.FirstArgument is not null && i.SecondArgument is not null).ToArray();
                 if(candidateInstructions.Length == 0) {
                     //e.g. "INC A,foo", handle anyway and generate a warning
@@ -82,19 +85,10 @@ namespace Konamiman.Nestor80.Assembler
             CpuInstruction matchingInstruction = null;
             bool firstArgumentIsSpecificValue = true;   //e.g. IM n
 
-            var allowedRegisters1 = 
-                candidateInstructions
-                .Where(ci => IsRegisterReferencingPattern(ci.FirstArgument))
-                .Select(ci => ci.FirstArgument).Distinct().ToArray();
-            var firstArgumentPattern = GetCpuInstructionArgumentPattern(firstArgument, allowedRegisters1);
-            
-            var allowedRegisters2 =
-                candidateInstructions
-                .Where(ci => ci.SecondArgument is not null && IsRegisterReferencingPattern(ci.SecondArgument))
-                .Select(ci => ci.SecondArgument).Distinct().ToArray();
-            var secondArgumentPattern = GetCpuInstructionArgumentPattern(secondArgument, allowedRegisters2);
-            
-            var matchingInstructions = FindMatchingInstructions(candidateInstructions, firstArgument, firstArgumentPattern, secondArgument, secondArgumentPattern, allowedRegisters1, allowedRegisters2);
+            var firstArgumentPattern = GetCpuInstructionArgumentPattern(firstArgument);
+            var secondArgumentPattern = GetCpuInstructionArgumentPattern(secondArgument);
+
+            var matchingInstructions = FindMatchingInstructions(candidateInstructions, firstArgument, firstArgumentPattern, secondArgument, secondArgumentPattern);
             if(matchingInstructions.Length == 0) {
                 AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for the {currentCpu} instruction {opcode.ToUpper()}");
                 return GenerateInstructionLine(null);
@@ -423,7 +417,7 @@ namespace Konamiman.Nestor80.Assembler
             return char.IsUpper(argumentPattern[0]) || (argumentPattern[0] == '(' && char.IsUpper(argumentPattern[1]) && (argumentPattern.Length is 3 or 4));
         }
 
-        private static CpuInstruction[] FindMatchingInstructions(CpuInstruction[] candidateInstructions, string firstArgument, string firstArgumentPattern, string secondArgument, string secondArgumentPattern, string[] allowedRegisters1, string[] allowedRegisters2)
+        private static CpuInstruction[] FindMatchingInstructions(CpuInstruction[] candidateInstructions, string firstArgument, string firstArgumentPattern, string secondArgument, string secondArgumentPattern)
         {
             if(firstArgumentPattern == "n") {
                 candidateInstructions = candidateInstructions.Where(ci => ci.FirstArgument is "n" or "f" or "d").ToArray();
@@ -475,24 +469,17 @@ namespace Konamiman.Nestor80.Assembler
             return candidateInstructions.ToArray();
         }
 
-        private static string GetCpuInstructionArgumentPattern(string argument, string[] allowedSymbols)
+        private static string GetCpuInstructionArgumentPattern(string argument)
         {
             if(argument is null)
                 return null;
 
-            string reg;
-
             var match = memPointedByRegisterRegex.Match(argument);
             if(match.Success) {
-                var register = match.Groups[1].Value;
-                if((reg = allowedSymbols.SingleOrDefault(s => s.Equals($"({register})", StringComparison.OrdinalIgnoreCase))) is not null) {
-                    return $"({register.ToUpper()})";
-                }
-                return "(n)";
+                return $"({match.Groups[1].Value.ToUpper()})";
             }
-
-            if((reg = allowedSymbols.SingleOrDefault(s => s.Equals(argument, StringComparison.OrdinalIgnoreCase))) is not null) {
-                return reg;
+            if(z80RegisterNames.Contains(argument, StringComparer.OrdinalIgnoreCase)) {
+                return argument.ToUpper();
             }
             if(ixPlusArgumentRegex.IsMatch(argument)) {
                 return "(IX+s)";

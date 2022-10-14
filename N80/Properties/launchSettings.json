@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "cosa.asm -abe",
+      "commandLineArgs": "\\code\\fun\\RookieDrive\\msx\\rookiefdd.asm",
       "environmentVariables": {
         "N80_ARGS": "-nsb"
       }

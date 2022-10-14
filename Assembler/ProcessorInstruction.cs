@@ -18,7 +18,14 @@
             ValuePosition = valuePosition;
             ValueSize = valueSize;
             IsUndocumented = isUndocumented;
+
+            FirstArgIsRegisterReference = firstArgument is not "n" and not "f" and not "(n)";
+            SecondArgIsRegisterReference = secondArgument is not "n" and not "f" and not "(n)";
         }
+
+        public bool FirstArgIsRegisterReference { get; private set; }
+
+        public bool SecondArgIsRegisterReference { get; private set; }
 
         public string Instruction { get; set; }
 

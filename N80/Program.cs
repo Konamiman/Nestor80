@@ -1,7 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 namespace Konamiman.Nestor80.N80

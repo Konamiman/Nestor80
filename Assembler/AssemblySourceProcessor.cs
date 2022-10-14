@@ -28,7 +28,7 @@ namespace Konamiman.Nestor80.Assembler
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
             "AF", "HL", "BC", "DE", "IX", "IY",
             "SP", "IXH", "IXL", "IYH", "IYL",
-            "NC", "Z", "NZ", "P", "PE", "PO"
+            "NC", "Z", "NZ", "P", "M", "PE", "PO"
         };
 
         private static readonly string[] conditionalInstructions = new[] {
@@ -137,6 +137,7 @@ namespace Konamiman.Nestor80.Assembler
                     code: AssemblyErrorCode.UnexpectedError,
                     message: $"Unexpected error: ({ex.GetType().Name}) {ex.Message}"
                 );
+                
                 throw;
             }
             finally {
@@ -845,7 +846,7 @@ namespace Konamiman.Nestor80.Assembler
                     AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
                 };
                 if(z80RegisterNames.Contains(labelValue, StringComparer.OrdinalIgnoreCase)) {
-                    AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{labelValue.ToUpper()} is a {currentCpu} register name, defining it as a label will prevent using it as a register in {currentCpu} instructions");
+                    AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{labelValue.ToUpper()} is a {currentCpu} register name, so it won't be possible to use it as a symbol in {currentCpu} instructions");
                 }
                 state.AddSymbol(labelValue, SymbolType.Label, state.GetCurrentLocation(), isPublic: isPublic);
 
