@@ -74,15 +74,15 @@ namespace Konamiman.Nestor80.Assembler
             { "IFNB", ProcessIfNotBlankLine },
             { "IFIDN", ProcessIfIdenticalLine },
             { "IFDIF", ProcessIfDifferentLine },
-            { ".WARN", ProcessUserWarning },
-            { ".ERROR", ProcessUserError },
-            { ".FATAL", ProcessUserFatal },
-            { ".PHASE", ProcessPhase },
-            { ".DEPHASE", ProcessDephase },
-            { "ENDOUT", ProcessEndout },
-            { "MODULE", ProcessModule },
-            { "ENDMOD", ProcessEndModule },
-            { "ROOT", ProcessRoot },
+            { ".WARN", ProcessUserWarningLine },
+            { ".ERROR", ProcessUserErrorLine },
+            { ".FATAL", ProcessUserFatalLine },
+            { ".PHASE", ProcessPhaseLine },
+            { ".DEPHASE", ProcessDephaseLine },
+            { "ENDOUT", ProcessEndoutLine },
+            { "MODULE", ProcessModuleLine },
+            { "ENDMOD", ProcessEndModuleLine },
+            { "ROOT", ProcessRootLine },
             { "IFABS", ProcessIfAbsLine },
             { "IFREL", ProcessIfRelLine }
         };
@@ -816,13 +816,13 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessPrint2Line(string opcode, SourceLineWalker walker)
             => ProcessPrintOrUserErrorLine(opcode, walker, 2);
 
-        static ProcessedSourceLine ProcessUserWarning(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessUserWarningLine(string opcode, SourceLineWalker walker)
             => ProcessPrintOrUserErrorLine(opcode, walker, errorSeverity: AssemblyErrorSeverity.Warning);
 
-        static ProcessedSourceLine ProcessUserError(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessUserErrorLine(string opcode, SourceLineWalker walker)
             => ProcessPrintOrUserErrorLine(opcode, walker, errorSeverity: AssemblyErrorSeverity.Error);
 
-        static ProcessedSourceLine ProcessUserFatal(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessUserFatalLine(string opcode, SourceLineWalker walker)
             => ProcessPrintOrUserErrorLine(opcode, walker, errorSeverity: AssemblyErrorSeverity.Fatal);
 
         // {expression}
@@ -1191,7 +1191,7 @@ namespace Konamiman.Nestor80.Assembler
          * - Address must be absolute
          * - Area changes and ORGs are not allowed inside a .PHASE block
          */
-        static ProcessedSourceLine ProcessPhase(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessPhaseLine(string opcode, SourceLineWalker walker)
         {
             if(state.IsCurrentlyPhased) {
                 AddError(AssemblyErrorCode.InvalidNestedPhase, $"Nested {opcode.ToUpper()} instructions are not allowed");
@@ -1227,7 +1227,7 @@ namespace Konamiman.Nestor80.Assembler
             return new PhaseLine() { NewLocationArea = AddressType.ASEG, NewLocationCounter = state.CurrentLocationPointer };
         }
 
-        static ProcessedSourceLine ProcessDephase(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessDephaseLine(string opcode, SourceLineWalker walker)
         {
             if(state.IsCurrentlyPhased) {
                 state.ExitPhase();
@@ -1240,12 +1240,12 @@ namespace Konamiman.Nestor80.Assembler
             return new DephaseLine() { NewLocationArea = state.CurrentLocationArea, NewLocationCounter = state.CurrentLocationPointer };
         }
 
-        static ProcessedSourceLine ProcessEndout(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessEndoutLine(string opcode, SourceLineWalker walker)
         {
             return new EndOutputLine();
         }
 
-        static ProcessedSourceLine ProcessModule(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessModuleLine(string opcode, SourceLineWalker walker)
         {
             string name = null;
             if(walker.AtEndOfLine) {
@@ -1265,7 +1265,7 @@ namespace Konamiman.Nestor80.Assembler
             return new ModuleStartLine() { Name = name };
         }
 
-        static ProcessedSourceLine ProcessEndModule(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessEndModuleLine(string opcode, SourceLineWalker walker)
         {
             if(state.CurrentModule is null) {
                 AddError(AssemblyErrorCode.EndModuleOutOfScope, $"{opcode.ToUpper()} found while not in a module");
@@ -1277,7 +1277,7 @@ namespace Konamiman.Nestor80.Assembler
             return new ModuleEndLine();
         }
 
-        static ProcessedSourceLine ProcessRoot(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessRootLine(string opcode, SourceLineWalker walker)
         {
             if(state.CurrentModule is null) {
                 AddError(AssemblyErrorCode.RootWithoutModule, $"{opcode.ToUpper()} is ignored while not in a module");
