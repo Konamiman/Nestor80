@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "modules.asm -bt rel",
+      "commandLineArgs": "modules.asm -bt abs",
       "environmentVariables": {
         "N80_ARGS": "-nsb"
       }

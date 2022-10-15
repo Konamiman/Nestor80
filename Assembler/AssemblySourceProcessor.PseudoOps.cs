@@ -81,7 +81,8 @@ namespace Konamiman.Nestor80.Assembler
             { ".DEPHASE", ProcessDephase },
             { "ENDOUT", ProcessEndout },
             { "MODULE", ProcessModule },
-            { "ENDMOD", ProcessEndModule }
+            { "ENDMOD", ProcessEndModule },
+            { "ROOT", ProcessRoot }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1253,5 +1254,35 @@ namespace Konamiman.Nestor80.Assembler
 
             return new ModuleEndLine();
         }
+
+        static ProcessedSourceLine ProcessRoot(string opcode, SourceLineWalker walker)
+        {
+            if(state.CurrentModule is null) {
+                AddError(AssemblyErrorCode.RootWithoutModule, $"{opcode.ToUpper()} is ignored while not in a module");
+            }
+            else if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires one or more symbol names as argument");
+                return new RootLine();
+            }
+
+            var symbols = new List<string>();
+            while(!walker.AtEndOfLine) {
+                var symbol = walker.ExtractExpression();
+                if(!labelRegex.IsMatch(symbol)) {
+                    AddError(AssemblyErrorCode.InvalidLabel, $"'{symbol}' is not a valid symbol name");
+                    return new RootLine();
+                }
+                if(symbol != "") {
+                    symbols.Add(symbol);
+                }
+            }
+
+            if(state.CurrentModule is not null) {
+                state.RegisterRootSymbols(symbols);
+            }
+
+            return new RootLine() { RootSymbols = symbols.ToArray() };
+        }
+
     }
 }

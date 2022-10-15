@@ -77,6 +77,7 @@ namespace Konamiman.Nestor80.Assembler
             CurrentPhasedLocationPointer = null;
             EndAddress = null;
             CurrentModule = null;
+            currentRootSymbols = null;
             modules.Clear();
 
             LocationPointersByArea[AddressType.CSEG] = 0;
@@ -360,14 +361,19 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private Stack<string> modules = new();
+        private Stack<(string, HashSet<string>)> modules = new();
 
         public string CurrentModule { get; private set; } = null;
 
+        private HashSet<string> currentRootSymbols = null;
+
         public void EnterModule(string name)
         {
-            modules.Push(CurrentModule);
+            modules.Push((CurrentModule, currentRootSymbols));
             CurrentModule = CurrentModule is null ? name : $"{CurrentModule}.{name}";
+            currentRootSymbols = new HashSet<string>(
+                currentRootSymbols is null ? Array.Empty<string>() : currentRootSymbols,
+                StringComparer.OrdinalIgnoreCase);
         }
 
         public void ExitModule()
@@ -376,12 +382,23 @@ namespace Konamiman.Nestor80.Assembler
                 throw new InvalidOperationException($"{nameof(ExitModule)} called while not in a module");
             }
 
-            CurrentModule = modules.Pop();
+            (CurrentModule, currentRootSymbols) = modules.Pop();
+        }
+
+        public void RegisterRootSymbols(IEnumerable<string> symbols)
+        {
+            if(currentRootSymbols is null) {
+                throw new InvalidOperationException($"{nameof(RegisterRootSymbols)} called while not in a module");
+            }
+
+            foreach(var symbol in symbols) {
+                currentRootSymbols.Add(symbol);
+            }
         }
 
         public string Modularize(string symbol)
         {
-            return CurrentModule is null ? symbol : $"{CurrentModule}.{symbol}";
+            return CurrentModule is null || currentRootSymbols.Contains(symbol) ? symbol : $"{CurrentModule}.{symbol}";
         }
     }
 }

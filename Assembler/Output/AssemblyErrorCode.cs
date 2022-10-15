@@ -19,6 +19,7 @@
         UnterminatedPhase,
         SameEffectiveExternal,
         UnterminatedModule,
+        RootWithoutModule,
         UserWarning,
         LastWarning = UserWarning,
 
@@ -41,6 +42,7 @@
         UnknownInstruction,
         EndModuleOutOfScope,
         UserError,
+        LasetError = UserError,
 
         FirstFatal = 128,
         UnexpectedError = 128,
@@ -51,5 +53,6 @@
         IncludeInPass2Only,
         MaxErrorsReached,
         UserFatal,
+        LastFatal = UserFatal
     }
 }

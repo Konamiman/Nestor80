@@ -647,6 +647,9 @@ namespace Konamiman.Nestor80.Assembler
                     state.ExitModule();
                 }
             }
+            else if(processedLine is RootLine rl) {
+                state.RegisterRootSymbols(rl.RootSymbols);
+            }
 
             return processedLine;
         }
