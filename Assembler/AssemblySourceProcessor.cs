@@ -687,7 +687,7 @@ namespace Konamiman.Nestor80.Assembler
             var relocatables = new List<RelocatableOutputPart>();
 
             foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
-                var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => new { s.SymbolName, s.IsRoot });
+                var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => new { s.SymbolName, IsRoot = s.IsRoot || s.IsExternal });
                 var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbol(s.IsRoot ? s.SymbolName : state.Modularize(s.SymbolName)));
                 var hasExternalsOutsideTypeOperator = false;
                 Address expressionValue = null;

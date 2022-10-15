@@ -11,6 +11,7 @@
         protected override Address OperateCore(Address value1, Address value2)
         {
             // The second operator must be absolute
+            // <mode> SHL Absolute = <mode>
 
             if(!value1.IsAbsolute || !value2.IsAbsolute) {
                 throw new InvalidExpressionException($"SHL: The second operand must be absolute (attempted {value1.Type} SHL {value2.Type}");

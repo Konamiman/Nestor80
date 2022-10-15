@@ -12,7 +12,7 @@
 
         protected override Address OperateCore(Address value1, Address value2)
         {
-            // NOT: The result is of the same type
+            // The result is of the same type
 
             unchecked {
                 return new Address(value1.Type, (ushort)~value1.Value);

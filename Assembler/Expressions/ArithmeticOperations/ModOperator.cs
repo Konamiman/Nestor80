@@ -12,18 +12,15 @@
 
         protected override Address OperateCore(Address value1, Address value2)
         {
-            // One of the operands must be absolute
+            // The second operator must be absolute
             // <mode> MOD Absolute = <mode>
-            // Absolute MOD <mode> = <mode>
 
-            if(!value1.IsAbsolute && !value2.IsAbsolute) {
-                throw new InvalidExpressionException($"MOD: One of the operands must be absolute (attempted {value1.Type} MOD {value2.Type}");
+            if(!value2.IsAbsolute) {
+                throw new InvalidExpressionException($"MOD: The second operand must be absolute (attempted {value1.Type} MOD {value2.Type}");
             }
 
-            var type = value1.IsAbsolute ? value2.Type : value1.Type;
-
             unchecked {
-                return new Address(type, (ushort)(value1.Value % value2.Value));
+                return new Address(value1.Type, (ushort)(value1.Value % value2.Value));
             }
         }
     }
