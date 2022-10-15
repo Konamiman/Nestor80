@@ -82,7 +82,9 @@ namespace Konamiman.Nestor80.Assembler
             { "ENDOUT", ProcessEndout },
             { "MODULE", ProcessModule },
             { "ENDMOD", ProcessEndModule },
-            { "ROOT", ProcessRoot }
+            { "ROOT", ProcessRoot },
+            { "IFABS", ProcessIfAbsLine },
+            { "IFREL", ProcessIfRelLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1080,6 +1082,26 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 return text1 != text2;
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfAbsLine(string opcode, SourceLineWalker walker)
+        {
+            static bool? evaluator()
+            {
+                return buildType == BuildType.Absolute;
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfRelLine(string opcode, SourceLineWalker walker)
+        {
+            static bool? evaluator()
+            {
+                return buildType == BuildType.Relocatable;
             }
 
             return ProcessIfLine(opcode, evaluator);
