@@ -35,7 +35,7 @@ namespace Konamiman.Nestor80.Assembler
             "IF", "IFT", "IFE", "IFF",
             "IFDEF", "IFNDEF", "IF1", "IF2",
             "IFB", "IFNB", "IFIDN", "IFDIF",
-            "ELSE", "ENDIF"
+            "IFABS", "IFREL", "ELSE", "ENDIF"
         };
 
         private static readonly string[] instructionsNeedingPass2Reevaluation;
@@ -190,7 +190,7 @@ namespace Konamiman.Nestor80.Assembler
         private static void ProcessPredefinedsymbols((string, ushort)[] predefinedSymbols)
         {
             foreach((var symbol, var value) in predefinedSymbols) {
-                if(!labelRegex.IsMatch(symbol)) {
+                if(!IsValidSymbolName(symbol)) {
                     AddError(AssemblyErrorCode.InvalidLabel, $"{symbol} is not a valid symbol name");
                     continue;
                 }
@@ -314,11 +314,11 @@ namespace Konamiman.Nestor80.Assembler
             //That's why we don't register the label beforehand unless the line contains only the label.
 
             if(symbol.EndsWith(':')) {
-                if(labelRegex.IsMatch(symbol)) {
+                if(IsValidSymbolName(symbol)) {
                     label = symbol;
                 }
                 else {
-                    AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label (contains illegal characters): {symbol}");
+                    AddError(AssemblyErrorCode.InvalidLabel, $"Invalid label: {symbol}");
                 }
 
                 if(walker.AtEndOfLine) {
@@ -647,7 +647,7 @@ namespace Konamiman.Nestor80.Assembler
                     state.ExitModule();
                 }
             }
-            else if(processedLine is RootLine rl) {
+            else if(processedLine is RootLine rl && state.CurrentModule is not null) {
                 state.RegisterRootSymbols(rl.RootSymbols);
             }
 
@@ -885,6 +885,9 @@ namespace Konamiman.Nestor80.Assembler
                 symbol.Type = SymbolType.Label;
             };
         }
+
+        private static bool IsValidSymbolName(string name) =>
+            !string.IsNullOrWhiteSpace(name) && labelRegex.IsMatch(name) && !char.IsDigit(name[0]);
 
         private static void SetBuildType(BuildType type)
         {

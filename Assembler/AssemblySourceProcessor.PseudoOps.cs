@@ -1253,7 +1253,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else {
                 name = walker.ExtractSymbol();
-                if(!labelRegex.IsMatch(name)) {
+                if(!IsValidSymbolName(name)) {
                     AddError(AssemblyErrorCode.InvalidLabel, $"'{name}' is not a valid module name");
                     name = null;
                 }
@@ -1290,7 +1290,7 @@ namespace Konamiman.Nestor80.Assembler
             var symbols = new List<string>();
             while(!walker.AtEndOfLine) {
                 var symbol = walker.ExtractExpression();
-                if(!labelRegex.IsMatch(symbol)) {
+                if(!IsValidSymbolName(symbol)) {
                     AddError(AssemblyErrorCode.InvalidLabel, $"'{symbol}' is not a valid symbol name");
                     return new RootLine();
                 }
