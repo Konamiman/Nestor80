@@ -3,6 +3,7 @@ using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -626,26 +627,35 @@ namespace Konamiman.Nestor80.Assembler
             return ProcessSetProgramName(opcode, walker, programName);
         }
 
-        static ProcessedSourceLine ProcessSetProgramName(string opcode, SourceLineWalker walker, string programName)
+        static ProcessedSourceLine ProcessSetProgramName(string opcode, SourceLineWalker walker, string rawName)
         {
             var effectiveLineLength = walker.SourceLine.IndexOf(';');
             if(effectiveLineLength < 0) {
                 effectiveLineLength = walker.SourceLine.Length;
             }
 
-            var match = ProgramNameRegex.Match(programName);
+            var match = ProgramNameRegex.Match(rawName);
             if(!match.Success) {
                 AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the program name must be in the format ('NAME')");
                 return new ProgramNameLine() { EffectiveLineLength = effectiveLineLength };
             }
 
             var name = match.Groups["name"].Value;
-            return new ProgramNameLine() { Name = name, EffectiveLineLength = effectiveLineLength };
+
+            programName = (name.Length > MaxEffectiveExternalNameLength ? name[..MaxEffectiveExternalNameLength] : name).ToUpper();
+
+            return new ProgramNameLine() { Name = rawName, EffectiveLineLength = effectiveLineLength };
         }
 
         static ProcessedSourceLine ProcessSetListingTitleLine(string opcode, SourceLineWalker walker)
         {
             var title = walker.GetRemaining();
+
+            if(programName is null) {
+                var firstWord = title.Split(' ', '\t')[0];
+                programName = firstWord.Length > MaxEffectiveExternalNameLength ? firstWord[..MaxEffectiveExternalNameLength] : firstWord;
+            }
+
             return new SetListingTitleLine() { Title = title, EffectiveLineLength = walker.SourceLine.Length };
         }
 

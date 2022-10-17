@@ -2,6 +2,7 @@
 using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
 using System.Text;
+using System.Xml.Linq;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -768,11 +769,6 @@ namespace Konamiman.Nestor80.N80
                 return ERR_ASSEMBLY_ERROR;
             }
 
-            if(result.BuildType is BuildType.Relocatable) {
-                PrintFatal("\r\nThe relocatable build type is not implemented yet");
-                return ERR_ASSEMBLY_FATAL;
-            }
-
             if(mustChangeOutputFileExtension) {
                 outputFileExtension ??= result.BuildType is BuildType.Relocatable ? ".REL" : ".BIN";
                 outputFilePath = Path.ChangeExtension(outputFilePath, outputFileExtension);
@@ -788,8 +784,19 @@ namespace Konamiman.Nestor80.N80
                 return ERR_CANT_CREATE_OUTPUT_FILE;
             }
 
+            if(result.ProgramName is null) {
+                var inputFileNameNoExt = Path.GetFileNameWithoutExtension(inputFileName).ToUpper();
+                result.ProgramName =
+                    inputFileNameNoExt.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
+                    inputFileNameNoExt[..AssemblySourceProcessor.MaxEffectiveExternalNameLength] :
+                    inputFileNameNoExt;
+            }
+
             try {
-                writtenBytes = OutputGenerator.GenerateAbsolute(result, outputStream, orgAsPhase);
+                writtenBytes =
+                    result.BuildType is BuildType.Relocatable ?
+                    OutputGenerator.GenerateRelocatable(result, outputStream):
+                    OutputGenerator.GenerateAbsolute(result, outputStream, orgAsPhase);
             }
             catch(Exception ex) {
                 PrintFatal($"Can't write to output file ({outputFilePath}): {ex.Message}");

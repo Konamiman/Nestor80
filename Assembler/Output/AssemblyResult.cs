@@ -2,21 +2,23 @@
 {
     public class AssemblyResult
     {
-        public int ProgramAreaSize { get; init; }
+        public string ProgramName { get; set; }
 
-        public int DataAreaSize { get; init; }
+        public int ProgramAreaSize { get; set; }
 
-        public Dictionary<string, int> CommonAreaSizes { get; init; }
+        public int DataAreaSize { get; set; }
 
-        public AssemblyError[] Errors { get; init; }
+        public Dictionary<string, int> CommonAreaSizes { get; set; }
 
-        public ProcessedSourceLine[] ProcessedLines { get; init; }
+        public AssemblyError[] Errors { get; set; }
 
-        public Symbol[] Symbols { get; init; }
+        public ProcessedSourceLine[] ProcessedLines { get; set; }
 
-        public AddressType EndAddressArea { get; init; }
+        public Symbol[] Symbols { get; set; }
 
-        public ushort EndAddress { get; init; }
+        public AddressType EndAddressArea { get; set; }
+
+        public ushort EndAddress { get; set; }
 
         public BuildType BuildType { get; set; }
 

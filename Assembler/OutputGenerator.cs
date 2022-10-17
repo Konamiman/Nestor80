@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Output;
+using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -115,5 +116,78 @@ namespace Konamiman.Nestor80.Assembler
 
             return result.ToArray();
         }
+
+        static BitStreamWriter bitWriter;
+
+        public static int GenerateRelocatable(AssemblyResult assemblyResult, Stream outputStream)
+        {
+            var output = new List<byte>();
+            bitWriter = new BitStreamWriter(output);
+            ushort endAddress = 0;
+
+            WriteLinkItem(LinkItemType.ProgramName, symbolBytes: Encoding.ASCII.GetBytes(assemblyResult.ProgramName));
+            WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.ASEG, (ushort)assemblyResult.ProgramAreaSize);
+            WriteLinkItem(LinkItemType.DataAreaSize, AddressType.ASEG, (ushort)assemblyResult.DataAreaSize);
+
+            foreach(var line in assemblyResult.ProcessedLines) {
+                //WIP
+                if(line is EndOutputLine) {
+                    break;
+                }
+                else if(line is AssemblyEndLine ael) {
+                    endAddress = ael.EndAddress;
+                    break;
+                }
+            }
+
+            WriteLinkItem(LinkItemType.EndProgram, AddressType.ASEG, endAddress);
+
+            bitWriter.ForceByteBoundary();
+            WriteLinkItem(LinkItemType.EndFile);
+
+            outputStream.Write(output.ToArray());
+            return output.Count;
+        }
+
+        private static void WriteLinkItem(LinkItemType type, Address address = null, byte[] symbolBytes = null)
+        {
+            WriteLinkItem(type, address?.Type, address?.Value ?? 0, symbolBytes);
+        }
+
+        private static void WriteLinkItem(LinkItemType type, AddressType? addressType, ushort addressValue, byte[] symbolBytes = null)
+        {
+            bitWriter.Write(0b100, 3);
+            bitWriter.Write((byte)type, 4);
+            if(addressType is not null) {
+                bitWriter.Write((byte)addressType, 2);
+                bitWriter.Write((byte)(addressValue & 0xFF), 8);
+                bitWriter.Write((byte)((addressValue >> 8) & 0xFF), 8);
+            }
+            if(symbolBytes is not null) {
+                bitWriter.Write((byte)symbolBytes.Length, 3);
+                foreach(var b in symbolBytes) {
+                    bitWriter.Write(b, 8);
+                }
+            }
+        }
+
+        /*
+        private static void WriteLinkItem(BitStreamWriter writer, LinkItem item)
+        {
+            writer.Write(0b100, 3);
+            writer.Write((byte)item.Type, 4);
+            if(item.HasAddress) {
+                writer.Write((byte)item.AddressType, 2);
+                writer.Write((byte)(item.AddressValue & 0xFF), 8);
+                writer.Write((byte)((item.AddressValue >> 8) & 0xFF), 8);
+            }
+            if(item.HasSymbolBytes) {
+                writer.Write((byte)item.SymbolBytes.Length, 3);
+                foreach(var b in item.SymbolBytes) {
+                    writer.Write(b, 8);
+                }
+            }
+        }
+        */
     }
 }

@@ -2,8 +2,6 @@
 {
     internal class SymbolInfo
     {
-        internal const int MaxEffectiveExternalNameLength = 6;
-
         private SymbolType _Type;
         public SymbolType Type
         {
@@ -62,8 +60,8 @@
 
         private void SetEffectiveName()
         {
-            if((IsExternal || IsPublic) && Name.Length > MaxEffectiveExternalNameLength)
-                EffectiveName = Name[..MaxEffectiveExternalNameLength].ToUpper();
+            if((IsExternal || IsPublic) && Name.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength)
+                EffectiveName = Name[..AssemblySourceProcessor.MaxEffectiveExternalNameLength].ToUpper();
             else
                 EffectiveName = Name.ToUpper();
         }

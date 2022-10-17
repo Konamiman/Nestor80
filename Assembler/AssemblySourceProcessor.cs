@@ -15,6 +15,8 @@ namespace Konamiman.Nestor80.Assembler
         const int MAX_LINE_LENGTH = 1034;
         const int MAX_INCLUDE_NESTING = 34;
 
+        public const int MaxEffectiveExternalNameLength = 6;
+
         private static AssemblyState state;
 
         private static BuildType buildType;
@@ -23,6 +25,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static int maxErrors = 0;
         private static int errorsGenerated = 0;
+        private static string programName = null;
 
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
@@ -175,6 +178,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return new AssemblyResult() {
+                ProgramName = programName,
                 ProgramAreaSize = programSize,
                 DataAreaSize = state.GetAreaSize(AddressType.DSEG),
                 CommonAreaSizes = new(), //TODO: Handle commons
