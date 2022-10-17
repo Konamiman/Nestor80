@@ -170,8 +170,12 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else if(line is IProducesOutput ipo) {
-                    WriteBytes(ipo.OutputBytes);
-                    //WIP (relocatables)
+                    if(ipo.RelocatableParts.Length == 0) {
+                        WriteBytes(ipo.OutputBytes);
+                    } 
+                    else {
+                        WriteInstructionWithRelocatables(ipo);
+                    }
                     locationCounters[currentLocationArea] += (ushort)ipo.OutputBytes.Length;
                 }
                 else if(line is LinkerFileReadRequestLine lfr) {
@@ -201,10 +205,56 @@ namespace Konamiman.Nestor80.Assembler
             return output.Count;
         }
 
+        private static void WriteInstructionWithRelocatables(IProducesOutput instruction)
+        {
+            var outputBytes = instruction.OutputBytes;
+            var currentRelocatableItemIndex = 0;
+            var currentRelocatablePart = instruction.RelocatableParts[0];
+            var currentRelocatableByteIndex = currentRelocatablePart.Index;
+            var outputByteIndex = 0;
+
+            while(outputByteIndex < outputBytes.Length) {
+                if(outputByteIndex < currentRelocatableByteIndex) {
+                    WriteByte(outputBytes[outputByteIndex]);
+                    outputByteIndex++;
+                    continue;
+                }
+
+                if(currentRelocatablePart is RelocatableAddress rad) {
+                    WriteAddress(rad.Type, rad.Value);
+                }
+                else {
+                    //WIP
+                    throw new NotImplementedException("Soon...");
+                }
+                outputByteIndex += currentRelocatablePart.IsByte ? 1 : 2;
+
+                currentRelocatableItemIndex++;
+                if(currentRelocatableItemIndex < instruction.RelocatableParts.Length) {
+                    currentRelocatablePart = instruction.RelocatableParts[currentRelocatableItemIndex];
+                    currentRelocatableByteIndex = currentRelocatablePart.Index;
+                }
+                else {
+                    for(int i=outputByteIndex; i<outputBytes.Length; i++) {
+                        WriteByte(outputBytes[i]);
+                    }
+                    break;
+                }
+            }
+        }
+
         private static void WriteByte(byte b)
         {
             bitWriter.Write(0, 1);
             bitWriter.Write(b, 8);
+        }
+
+        private static void WriteAddress(AddressType type, ushort value)
+        {
+            bitWriter.Write(1, 1);
+            bitWriter.Write((byte)type, 2);
+            bitWriter.Write((byte)(value & 0xFF), 8);
+            bitWriter.Write((byte)((value >> 8) & 0xFF), 8);
         }
 
         private static void WriteBytes(byte[] bytes)

@@ -148,8 +148,10 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else if(value.IsAbsolute) {
                         outputBytes.Add(value.ValueAsByte);
-                        if(!isByte)
+                        if(!isByte) {
                             outputBytes.Add((byte)((value.Value & 0xFF00) >> 8));
+                            index++;
+                        }
                     }
                     else {
                         AddZero();
