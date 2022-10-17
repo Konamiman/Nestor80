@@ -20,6 +20,7 @@
         SameEffectiveExternal,
         UnterminatedModule,
         RootWithoutModule,
+        TruncatedRequestFilename,
         UserWarning,
         LastWarning = UserWarning,
 
@@ -53,6 +54,6 @@
         IncludeInPass2Only,
         MaxErrorsReached,
         UserFatal,
-        LastFatal = UserFatal
+        LastFatal = UserFatal,
     }
 }

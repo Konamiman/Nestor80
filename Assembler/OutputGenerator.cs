@@ -124,20 +124,53 @@ namespace Konamiman.Nestor80.Assembler
             var output = new List<byte>();
             bitWriter = new BitStreamWriter(output);
             ushort endAddress = 0;
+            AddressType currentLocationArea = AddressType.CSEG;
+            var locationCounters = new Dictionary<AddressType, ushort>() {
+                { AddressType.CSEG, 0 },
+                { AddressType.DSEG, 0 },
+                { AddressType.ASEG, 0 },
+            };
 
-            WriteLinkItem(LinkItemType.ProgramName, symbolBytes: Encoding.ASCII.GetBytes(assemblyResult.ProgramName));
-            WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.ASEG, (ushort)assemblyResult.ProgramAreaSize);
+            var publicSymbols = assemblyResult.Symbols.Where(s => s.IsPublic).ToArray();
+
+            WriteLinkItem(LinkItemType.ProgramName, assemblyResult.ProgramName);
+            foreach(var symbol in publicSymbols) {
+                WriteLinkItem(LinkItemType.EntrySymbol, symbol.Name.ToUpper());
+            }
             WriteLinkItem(LinkItemType.DataAreaSize, AddressType.ASEG, (ushort)assemblyResult.DataAreaSize);
+            WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.CSEG, (ushort)assemblyResult.ProgramAreaSize);
 
             foreach(var line in assemblyResult.ProcessedLines) {
-                //WIP
-                if(line is EndOutputLine) {
+                if(line is ChangeAreaLine cal) {
+                    WriteLinkItem(LinkItemType.SetLocationCounter, cal.NewLocationArea, cal.NewLocationCounter);
+                    currentLocationArea = cal.NewLocationArea;
+                }
+                else if(line is ChangeOriginLine col) {
+                    locationCounters[currentLocationArea] = col.NewLocationCounter;
+                    WriteLinkItem(LinkItemType.SetLocationCounter, currentLocationArea, col.NewLocationCounter);
+                }
+                //WIP (ds)
+                else if(line is IProducesOutput ipo) {
+                    WriteBytes(ipo.OutputBytes);
+                    //WIP (relocatables)
+                    locationCounters[currentLocationArea] += (ushort)ipo.OutputBytes.Length;
+                }
+                else if(line is LinkerFileReadRequestLine lfr) {
+                    foreach(var filename in lfr.Filenames) {
+                        WriteLinkItem(LinkItemType.RequestLibrarySearch, filename.ToUpper());
+                    }
+                }
+                else if(line is EndOutputLine) {
                     break;
                 }
                 else if(line is AssemblyEndLine ael) {
                     endAddress = ael.EndAddress;
                     break;
                 }
+            }
+
+            foreach(var symbol in publicSymbols) {
+                WriteLinkItem(LinkItemType.DefineEntryPoint, symbol.ValueArea, symbol.Value, symbol.Name.ToUpper());
             }
 
             WriteLinkItem(LinkItemType.EndProgram, AddressType.ASEG, endAddress);
@@ -149,9 +182,27 @@ namespace Konamiman.Nestor80.Assembler
             return output.Count;
         }
 
+        private static void WriteBytes(byte[] bytes)
+        {
+            foreach(var b in bytes) {
+                bitWriter.Write(0, 1);
+                bitWriter.Write(b, 8);
+            }
+        }
+
+        private static void WriteLinkItem(LinkItemType type, string symbol)
+        {
+            WriteLinkItem(type, symbolBytes: Encoding.ASCII.GetBytes(symbol));
+        }
+
         private static void WriteLinkItem(LinkItemType type, Address address = null, byte[] symbolBytes = null)
         {
             WriteLinkItem(type, address?.Type, address?.Value ?? 0, symbolBytes);
+        }
+
+        private static void WriteLinkItem(LinkItemType type, AddressType? addressType, ushort addressValue, string symbolBytes)
+        {
+            WriteLinkItem(type, addressType, addressValue, Encoding.ASCII.GetBytes(symbolBytes));
         }
 
         private static void WriteLinkItem(LinkItemType type, AddressType? addressType, ushort addressValue, byte[] symbolBytes = null)
