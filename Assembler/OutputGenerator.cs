@@ -221,7 +221,14 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(currentRelocatablePart is RelocatableAddress rad) {
-                    WriteAddress(rad.Type, rad.Value);
+                    if(rad.IsByte) {
+                        WriteExtensionLinkItem(SpecialLinkItemType.Address, (byte)rad.Type, (byte)(rad.Value & 0xFF), (byte)((rad.Value >> 8) & 0xFF));
+                        WriteExtensionLinkItem(SpecialLinkItemType.ArithmeticOperator, (byte)ArithmeticOperatorCode.StoreAsByte);
+                        WriteByte(0);
+                    }
+                    else {
+                        WriteAddress(rad.Type, rad.Value);
+                    }
                 }
                 else {
                     //WIP
@@ -265,6 +272,18 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        private static void WriteExtensionLinkItem(SpecialLinkItemType type, params byte[] symbolBytes)
+        {
+            bitWriter.Write(0b100, 3);
+            bitWriter.Write((byte)LinkItemType.ExtensionLinkItem, 4);
+
+            bitWriter.Write((byte)(symbolBytes.Length+1), 3);
+            bitWriter.Write((byte)type, 8);
+            foreach(var b in symbolBytes) {
+                bitWriter.Write(b, 8);
+            }
+        }
+
         private static void WriteLinkItem(LinkItemType type, string symbol)
         {
             WriteLinkItem(type, symbolBytes: Encoding.ASCII.GetBytes(symbol));
@@ -296,24 +315,5 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
         }
-
-        /*
-        private static void WriteLinkItem(BitStreamWriter writer, LinkItem item)
-        {
-            writer.Write(0b100, 3);
-            writer.Write((byte)item.Type, 4);
-            if(item.HasAddress) {
-                writer.Write((byte)item.AddressType, 2);
-                writer.Write((byte)(item.AddressValue & 0xFF), 8);
-                writer.Write((byte)((item.AddressValue >> 8) & 0xFF), 8);
-            }
-            if(item.HasSymbolBytes) {
-                writer.Write((byte)item.SymbolBytes.Length, 3);
-                foreach(var b in item.SymbolBytes) {
-                    writer.Write(b, 8);
-                }
-            }
-        }
-        */
     }
 }
