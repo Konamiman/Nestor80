@@ -40,6 +40,7 @@ namespace Konamiman.Nestor80.N80
         static string defaultCpu;
         static string outputFileExtension = null;
         static bool allowBareExpressions;
+        static bool initDefs;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -315,6 +316,7 @@ namespace Konamiman.Nestor80.N80
             info += $"Build type: {buildType}\r\n";
             info += $"Default CPU: {defaultCpu.ToUpper()}\r\n";
             info += $"Allow bare expressions: {YesOrNo(allowBareExpressions)}\r\n";
+            info += $"Expand DEFS instructions: {YesOrNo(initDefs)}\r\n";
 
             if(mustChangeOutputFileExtension) {
                 var outputExtension =
@@ -362,6 +364,7 @@ namespace Konamiman.Nestor80.N80
             defaultCpu = "Z80";
             outputFileExtension = null;
             allowBareExpressions = false;
+            initDefs = false;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -691,6 +694,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nabe" or "--no-allow-bare-expressions") {
                     allowBareExpressions = false;
                 }
+                else if(arg is "-ids" or "--initialize-defs") {
+                    initDefs = true;
+                }
+                else if(arg is "-nids" or "--no-initialize-defs") {
+                    initDefs = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -795,7 +804,7 @@ namespace Konamiman.Nestor80.N80
             try {
                 writtenBytes =
                     result.BuildType is BuildType.Relocatable ?
-                    OutputGenerator.GenerateRelocatable(result, outputStream):
+                    OutputGenerator.GenerateRelocatable(result, outputStream, initDefs):
                     OutputGenerator.GenerateAbsolute(result, outputStream, orgAsPhase);
             }
             catch(Exception ex) {

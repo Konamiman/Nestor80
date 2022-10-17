@@ -119,7 +119,7 @@ namespace Konamiman.Nestor80.Assembler
 
         static BitStreamWriter bitWriter;
 
-        public static int GenerateRelocatable(AssemblyResult assemblyResult, Stream outputStream)
+        public static int GenerateRelocatable(AssemblyResult assemblyResult, Stream outputStream, bool initDefs)
         {
             var output = new List<byte>();
             bitWriter = new BitStreamWriter(output);
@@ -131,11 +131,19 @@ namespace Konamiman.Nestor80.Assembler
                 { AddressType.ASEG, 0 },
             };
 
-            var publicSymbols = assemblyResult.Symbols.Where(s => s.IsPublic).ToArray();
+            var publicSymbols = assemblyResult.Symbols
+                .Where(s => s.IsPublic)
+                .Select(s => new {
+                    Name = s.Name.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
+                        s.Name[..AssemblySourceProcessor.MaxEffectiveExternalNameLength].ToUpper() :
+                        s.Name.ToUpper(),
+                    s.ValueArea,
+                    s.Value})
+                .ToArray();
 
             WriteLinkItem(LinkItemType.ProgramName, assemblyResult.ProgramName);
             foreach(var symbol in publicSymbols) {
-                WriteLinkItem(LinkItemType.EntrySymbol, symbol.Name.ToUpper());
+                WriteLinkItem(LinkItemType.EntrySymbol, symbol.Name);
             }
             WriteLinkItem(LinkItemType.DataAreaSize, AddressType.ASEG, (ushort)assemblyResult.DataAreaSize);
             WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.CSEG, (ushort)assemblyResult.ProgramAreaSize);
@@ -149,7 +157,18 @@ namespace Konamiman.Nestor80.Assembler
                     locationCounters[currentLocationArea] = col.NewLocationCounter;
                     WriteLinkItem(LinkItemType.SetLocationCounter, currentLocationArea, col.NewLocationCounter);
                 }
-                //WIP (ds)
+                else if(line is DefineSpaceLine dsl) {
+                    locationCounters[currentLocationArea] += dsl.Size;
+                    if(dsl.Value.HasValue || initDefs) {
+                        var byteToWrite = dsl.Value.GetValueOrDefault(0);
+                        for(int i=0; i<dsl.Size; i++) {
+                            WriteByte(byteToWrite);
+                        }
+                    }
+                    else {
+                        WriteLinkItem(LinkItemType.SetLocationCounter, currentLocationArea, locationCounters[currentLocationArea]);
+                    }
+                }
                 else if(line is IProducesOutput ipo) {
                     WriteBytes(ipo.OutputBytes);
                     //WIP (relocatables)
@@ -170,7 +189,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             foreach(var symbol in publicSymbols) {
-                WriteLinkItem(LinkItemType.DefineEntryPoint, symbol.ValueArea, symbol.Value, symbol.Name.ToUpper());
+                WriteLinkItem(LinkItemType.DefineEntryPoint, symbol.ValueArea, symbol.Value, symbol.Name);
             }
 
             WriteLinkItem(LinkItemType.EndProgram, AddressType.ASEG, endAddress);
@@ -180,6 +199,12 @@ namespace Konamiman.Nestor80.Assembler
 
             outputStream.Write(output.ToArray());
             return output.Count;
+        }
+
+        private static void WriteByte(byte b)
+        {
+            bitWriter.Write(0, 1);
+            bitWriter.Write(b, 8);
         }
 
         private static void WriteBytes(byte[] bytes)

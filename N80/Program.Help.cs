@@ -135,6 +135,11 @@
                 (already included by default, but you may need to re-add it if you have
                 removed it with --clear-include-directories).
 
+            -ids, --initialize-defs
+                This argument has effect only when the build type is relocatable. It will cause areas
+                defined with "DEFS <size>" statements to be initialized with zeros, that is, these
+                will be treated as equivalent to "DEFS <size>,0".
+
             -ie, --input-encoding <encoding>
                 Text encoding of the source file, it can be an encoding name or a codepage number.
                 Default is UTF-8.
@@ -165,6 +170,11 @@
                 Don't read arguments from the N80_ARGS environment variable.
                 This argument is ignored when found inside N80_ARGS or an arguments file
                 (.N80 or any other).
+
+            -nids, --no-initialize-defs
+                This argument has effect only when the build type is relocatable. It will cause areas
+                defined with "DEFS <size>" statements to not be initialized (the DEFS instruction
+                will be treated as equivalent to "ORG $+<size>"). This is the default behavior.
 
             -noap, --no-org-as-phase
                 Don't treat ORG statements as .PHASE statements (default).
