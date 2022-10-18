@@ -118,14 +118,18 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         static BitStreamWriter bitWriter;
+        static Dictionary<string, Address> externalChains;
+        static AddressType currentLocationArea;
+        static Dictionary<AddressType, ushort> locationCounters;
 
         public static int GenerateRelocatable(AssemblyResult assemblyResult, Stream outputStream, bool initDefs)
         {
             var output = new List<byte>();
             bitWriter = new BitStreamWriter(output);
+            externalChains = new Dictionary<string, Address>(StringComparer.OrdinalIgnoreCase);
             ushort endAddress = 0;
-            AddressType currentLocationArea = AddressType.CSEG;
-            var locationCounters = new Dictionary<AddressType, ushort>() {
+            currentLocationArea = AddressType.CSEG;
+            locationCounters = new Dictionary<AddressType, ushort>() {
                 { AddressType.CSEG, 0 },
                 { AddressType.DSEG, 0 },
                 { AddressType.ASEG, 0 },
@@ -172,11 +176,11 @@ namespace Konamiman.Nestor80.Assembler
                 else if(line is IProducesOutput ipo) {
                     if(ipo.RelocatableParts.Length == 0) {
                         WriteBytes(ipo.OutputBytes);
+                        locationCounters[currentLocationArea] += (ushort)ipo.OutputBytes.Length;
                     } 
                     else {
                         WriteInstructionWithRelocatables(ipo);
                     }
-                    locationCounters[currentLocationArea] += (ushort)ipo.OutputBytes.Length;
                 }
                 else if(line is LinkerFileReadRequestLine lfr) {
                     foreach(var filename in lfr.Filenames) {
@@ -194,6 +198,10 @@ namespace Konamiman.Nestor80.Assembler
 
             foreach(var symbol in publicSymbols) {
                 WriteLinkItem(LinkItemType.DefineEntryPoint, symbol.ValueArea, symbol.Value, symbol.Name);
+            }
+
+            foreach(var external in externalChains) {
+                WriteLinkItem(LinkItemType.ChainExternal, external.Value.Type, external.Value.Value, external.Key.ToUpper());
             }
 
             WriteLinkItem(LinkItemType.EndProgram, AddressType.ASEG, endAddress);
@@ -217,6 +225,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(outputByteIndex < currentRelocatableByteIndex) {
                     WriteByte(outputBytes[outputByteIndex]);
                     outputByteIndex++;
+                    locationCounters[currentLocationArea]++;
                     continue;
                 }
 
@@ -225,14 +234,15 @@ namespace Konamiman.Nestor80.Assembler
                         WriteExtensionLinkItem(SpecialLinkItemType.Address, (byte)rad.Type, (byte)(rad.Value & 0xFF), (byte)((rad.Value >> 8) & 0xFF));
                         WriteExtensionLinkItem(SpecialLinkItemType.ArithmeticOperator, (byte)ArithmeticOperatorCode.StoreAsByte);
                         WriteByte(0);
+                        locationCounters[currentLocationArea]++;
                     }
                     else {
                         WriteAddress(rad.Type, rad.Value);
+                        locationCounters[currentLocationArea] += 2;
                     }
                 }
                 else {
-                    //WIP
-                    throw new NotImplementedException("Soon...");
+                    WriteLinkItemsGroup((LinkItemsGroup)currentRelocatablePart);
                 }
                 outputByteIndex += currentRelocatablePart.IsByte ? 1 : 2;
 
@@ -250,10 +260,63 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        private static void WriteLinkItemsGroup(LinkItemsGroup group)
+        {
+            if(!group.IsByte && group.LinkItems.Length == 1) {
+                var item = group.LinkItems[0];
+                if(!item.IsExternalReference) {
+                    throw new Exception($"Single item in link items group is not an external reference, it's: {item}");
+                }
+                WriteExternalChainItem(item.GetSymbolName());
+                locationCounters[currentLocationArea] += 2;
+                return;
+            }
+
+            //EXT+n, EXT-n, n+EXT with absolute n generate "External + offset"
+            if(!group.IsByte && group.LinkItems.Length == 3 &&
+                ((group.LinkItems[0].IsExternalReference && group.LinkItems[1].IsAddressReference && group.LinkItems[2].IsPlusOrMinus) ||
+                (group.LinkItems[1].IsExternalReference && group.LinkItems[0].IsAddressReference && group.LinkItems[2].ArithmeticOperator is ArithmeticOperatorCode.Plus))
+                ) {
+                var (addressType, value) = group.LinkItems[0].IsAddressReference ? group.LinkItems[0].GetReferencedAddress() : group.LinkItems[1].GetReferencedAddress();
+                if(addressType == AddressType.ASEG) {
+                    var symbolName = group.LinkItems[0].IsExternalReference ? group.LinkItems[0].GetSymbolName() : group.LinkItems[1].GetSymbolName();
+                    if(group.LinkItems[2].ArithmeticOperator is ArithmeticOperatorCode.Minus) {
+                        value = (ushort)-value;
+                    }
+
+                    WriteLinkItem(LinkItemType.ExternalPlusOffset, AddressType.ASEG, value);
+                    WriteExternalChainItem(symbolName);
+                    locationCounters[currentLocationArea] += 2;
+                    return;
+                }
+            }
+
+            //wip
+            throw new NotImplementedException();
+        }
+
+        private static void WriteExternalChainItem(string symbolName)
+        {
+            if(externalChains.ContainsKey(symbolName)) {
+                WriteAddress(externalChains[symbolName]);
+                externalChains[symbolName] = new Address(currentLocationArea, locationCounters[currentLocationArea]);
+            }
+            else {
+                externalChains.Add(symbolName, new Address(currentLocationArea, locationCounters[currentLocationArea]));
+                WriteByte(0);
+                WriteByte(0);
+            }
+        }
+
         private static void WriteByte(byte b)
         {
             bitWriter.Write(0, 1);
             bitWriter.Write(b, 8);
+        }
+
+        private static void WriteAddress(Address address)
+        {
+            WriteAddress(address.Type, address.Value);
         }
 
         private static void WriteAddress(AddressType type, ushort value)

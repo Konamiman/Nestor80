@@ -74,6 +74,20 @@ namespace Konamiman.Nestor80
 
         public bool HasSymbolBytes => Type <= LinkItemType.DefineEntryPoint;
 
+        public bool IsExternalReference => Type == LinkItemType.ExtensionLinkItem && (SpecialLinkItemType)SymbolBytes[0] == SpecialLinkItemType.ReferenceExternal;
+
+        public bool IsAddressReference => Type == LinkItemType.ExtensionLinkItem && (SpecialLinkItemType)SymbolBytes[0] == SpecialLinkItemType.Address;
+
+        public ArithmeticOperatorCode? ArithmeticOperator =>
+            Type == LinkItemType.ExtensionLinkItem && (SpecialLinkItemType)SymbolBytes[0] == SpecialLinkItemType.ArithmeticOperator ?
+            (ArithmeticOperatorCode)SymbolBytes[1] : null;
+
+        public bool IsPlusOrMinus => ArithmeticOperator is ArithmeticOperatorCode.Plus or ArithmeticOperatorCode.Minus;
+
+        public string GetSymbolName() => Encoding.ASCII.GetString(SymbolBytes.Skip(1).ToArray());
+
+        public (AddressType, ushort) GetReferencedAddress() => ((AddressType)SymbolBytes[1], (ushort)(SymbolBytes[2] | (SymbolBytes[3] << 8)));
+
         public override string ToString()
         {
             var s = nameof(LinkItem);
@@ -86,7 +100,7 @@ namespace Konamiman.Nestor80
                     s += $", Reference address, {addressType} {addressValue:X4}";
                 }
                 else if(specialLinkItemType == SpecialLinkItemType.ReferenceExternal) {
-                    s += $", Reference external, {Encoding.ASCII.GetString(SymbolBytes.Skip(1).ToArray())}";
+                    s += $", Reference external, {GetSymbolName()}";
                 }
                 else if(specialLinkItemType == SpecialLinkItemType.ArithmeticOperator) {
                     s += $", Arithmetic operator, {(ArithmeticOperatorCode)SymbolBytes[1]}";

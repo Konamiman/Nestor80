@@ -799,8 +799,6 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            items.Add(LinkItem.ForArithmeticOperator(expressionPendingEvaluation.IsByte ? ArithmeticOperatorCode.StoreAsByte : ArithmeticOperatorCode.StoreAsWord));
-
             return new LinkItemsGroup() { Index = expressionPendingEvaluation.LocationInOutput, IsByte = expressionPendingEvaluation.IsByte, LinkItems = items.ToArray() };
         }
 
