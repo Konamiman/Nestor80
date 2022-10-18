@@ -281,7 +281,9 @@ namespace Konamiman.Nestor80.Assembler
                 return;
             }
 
-            //EXT+n, EXT-n, n+EXT with absolute n generate "External + offset"
+            MaybeConvertToExtPlusOffset(group);
+
+            //EXT+n, EXT-n, n+EXT, with absolute n that store two bytes, generate "External + offset"
             if(!group.IsByte && group.LinkItems.Length == 3 &&
                 ((group.LinkItems[0].IsExternalReference && group.LinkItems[1].IsAddressReference && group.LinkItems[2].IsPlusOrMinus) ||
                 (group.LinkItems[1].IsExternalReference && group.LinkItems[0].IsAddressReference && group.LinkItems[2].ArithmeticOperator is ArithmeticOperatorCode.Plus))
@@ -324,6 +326,83 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             locationCounters[currentLocationArea] += (ushort)(group.IsByte ? 1 : 2);
+        }
+
+        private static void MaybeConvertToExtPlusOffset(LinkItemsGroup group)
+        {
+            var items = group.LinkItems;
+
+            if(group.IsByte || items.Count(i => i.IsExternalReference) != 1) {
+                return;
+            }
+
+            var value = MaybeEvaluate(items);
+            if(value is not null) {
+                group.LinkItems = new[] {
+                    LinkItem.ForExternalReference(items.Single(i => i.IsExternalReference).GetSymbolName()),
+                    LinkItem.ForAddressReference(AddressType.ASEG, value.Value),
+                    LinkItem.ForArithmeticOperator(ArithmeticOperatorCode.Plus)
+                };
+            }
+        }
+
+        static ushort? MaybeEvaluate(LinkItem[] items)
+        {
+            var stack = new Stack<ushort>();
+
+            bool lastWasExternal = false;
+
+            foreach(var item in items) {
+                if(item.IsExternalReference) {
+                    stack.Push(0);
+                    lastWasExternal = true;
+                    continue;
+                }
+
+                if(item.IsAddressReference) {
+                    if(item.ReferencedAddressType != AddressType.ASEG) {
+                        return null;
+                    }
+
+                    var value = item.ReferencedAddressValue;
+                    stack.Push(value);
+                    lastWasExternal = false;
+                    continue;
+                }
+
+                var op = item.ArithmeticOperator;
+
+                if(op is ArithmeticOperatorCode.UnaryMinus) {
+                    if(lastWasExternal) {
+                        return null;
+                    }
+                    var poppedItem = stack.Pop();
+                    var operationResult = (ushort)-poppedItem;
+                    stack.Push(operationResult);
+                }
+                else if(op is ArithmeticOperatorCode.Plus) {
+                    var poppedItem2 = stack.Pop();
+                    var poppedItem1 = stack.Pop();
+                    var operationResult = (ushort)(poppedItem1 + poppedItem2);
+                    stack.Push(operationResult);
+                }
+                else if(op is ArithmeticOperatorCode.Minus) {
+                    if(lastWasExternal) {
+                        return null;
+                    }
+                    var poppedItem2 = stack.Pop();
+                    var poppedItem1 = stack.Pop();
+                    var operationResult = (ushort)(poppedItem1 - poppedItem2);
+                    stack.Push(operationResult);
+                }
+                else {
+                    return null;
+                }
+
+                lastWasExternal = false;
+            }
+
+            return stack.Count == 1 ? stack.Pop() : null;
         }
 
         private static void WriteExternalChainItem(string symbolName)

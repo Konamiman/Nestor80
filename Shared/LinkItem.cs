@@ -78,6 +78,10 @@ namespace Konamiman.Nestor80
 
         public bool IsAddressReference => Type == LinkItemType.ExtensionLinkItem && (SpecialLinkItemType)SymbolBytes[0] == SpecialLinkItemType.Address;
 
+        public ushort ReferencedAddressValue => (ushort)(SymbolBytes[2] | (SymbolBytes[3] << 8));
+
+        public AddressType ReferencedAddressType => (AddressType)SymbolBytes[1];
+
         public ArithmeticOperatorCode? ArithmeticOperator =>
             Type == LinkItemType.ExtensionLinkItem && (SpecialLinkItemType)SymbolBytes[0] == SpecialLinkItemType.ArithmeticOperator ?
             (ArithmeticOperatorCode)SymbolBytes[1] : null;

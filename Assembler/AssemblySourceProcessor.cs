@@ -793,11 +793,13 @@ namespace Konamiman.Nestor80.Assembler
                         AddError(AssemblyErrorCode.InvalidExpression, $"Operator TYPE is not allowed in expressions involving external references (except when the external reference is the argument for TYPE)");
                         return null;
                     }
-                    if(op.ExtendedLinkItemType is null) {
-                        AddError(AssemblyErrorCode.InvalidForRelocatable, $"Operator {op} is not allowed in expressions involving external references");
-                        return null;
+                    if(op is not UnaryPlusOperator) {
+                        if(op.ExtendedLinkItemType is null) {
+                            AddError(AssemblyErrorCode.InvalidForRelocatable, $"Operator {op} is not allowed in expressions involving external references");
+                            return null;
+                        }
+                        items.Add(LinkItem.ForArithmeticOperator((ArithmeticOperatorCode)op.ExtendedLinkItemType));
                     }
-                    items.Add(LinkItem.ForArithmeticOperator((ArithmeticOperatorCode)op.ExtendedLinkItemType));
                 }
                 else {
                     throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: unexpected expression part: {part}");
