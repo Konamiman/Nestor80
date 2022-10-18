@@ -121,12 +121,14 @@ namespace Konamiman.Nestor80.Assembler
         static Dictionary<string, Address> externalChains;
         static AddressType currentLocationArea;
         static Dictionary<AddressType, ushort> locationCounters;
+        static List<string> referencedExternals;
 
         public static int GenerateRelocatable(AssemblyResult assemblyResult, Stream outputStream, bool initDefs)
         {
             var output = new List<byte>();
             bitWriter = new BitStreamWriter(output);
             externalChains = new Dictionary<string, Address>(StringComparer.OrdinalIgnoreCase);
+            referencedExternals = new List<string>();
             ushort endAddress = 0;
             currentLocationArea = AddressType.CSEG;
             locationCounters = new Dictionary<AddressType, ushort>() {
@@ -150,7 +152,9 @@ namespace Konamiman.Nestor80.Assembler
                 WriteLinkItem(LinkItemType.EntrySymbol, symbol.Name);
             }
             WriteLinkItem(LinkItemType.DataAreaSize, AddressType.ASEG, (ushort)assemblyResult.DataAreaSize);
-            WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.CSEG, (ushort)assemblyResult.ProgramAreaSize);
+            if(assemblyResult.ProgramAreaSize > 0) {
+                WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.CSEG, (ushort)assemblyResult.ProgramAreaSize);
+            }
 
             foreach(var line in assemblyResult.ProcessedLines) {
                 if(line is ChangeAreaLine cal) {
@@ -202,6 +206,11 @@ namespace Konamiman.Nestor80.Assembler
 
             foreach(var external in externalChains) {
                 WriteLinkItem(LinkItemType.ChainExternal, external.Value.Type, external.Value.Value, external.Key.ToUpper());
+            }
+
+            var externalsWithoutChain = referencedExternals.Except(externalChains.Keys, StringComparer.OrdinalIgnoreCase);
+            foreach(var item in externalsWithoutChain) {
+                WriteLinkItem(LinkItemType.ChainExternal, Address.AbsoluteZero, Encoding.ASCII.GetBytes(item.ToUpper()));
             }
 
             WriteLinkItem(LinkItemType.EndProgram, AddressType.ASEG, endAddress);
@@ -291,8 +300,30 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            //wip
-            throw new NotImplementedException();
+            foreach(var item in group.LinkItems) {
+                if(item.IsExternalReference) {
+                    WriteExtensionLinkItem(SpecialLinkItemType.ReferenceExternal, Encoding.ASCII.GetBytes(item.GetSymbolName().ToUpper()));
+                    referencedExternals.Add(item.GetSymbolName());
+                }
+                else if(item.IsAddressReference) {
+                    WriteExtensionLinkItem(SpecialLinkItemType.Address, item.SymbolBytes[1], item.SymbolBytes[2], item.SymbolBytes[3]);
+                }
+                else {
+                    var op = item.ArithmeticOperator;
+                    if(op is null) {
+                        throw new Exception($"Unexpected type of link item found in group: {item}");
+                    }
+                    WriteExtensionLinkItem(SpecialLinkItemType.ArithmeticOperator, (byte)op);
+                }
+            }
+
+            WriteExtensionLinkItem(SpecialLinkItemType.ArithmeticOperator, group.IsByte ? (byte)ArithmeticOperatorCode.StoreAsByte : (byte)ArithmeticOperatorCode.StoreAsWord);
+            WriteByte(0);
+            if(!group.IsByte) {
+                WriteByte(0);
+            }
+
+            locationCounters[currentLocationArea] += (ushort)(group.IsByte ? 1 : 2);
         }
 
         private static void WriteExternalChainItem(string symbolName)

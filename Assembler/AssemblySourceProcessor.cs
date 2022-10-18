@@ -778,10 +778,15 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else if(part is SymbolReference sr) {
                     var symbol = state.GetSymbol(sr.SymbolName);
-                    if(symbol is null || ! symbol.IsExternal) {
-                        throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: {symbol} doesn't exist or is not external (this should have been catched earlier)");
+                    if(symbol is null) {
+                        throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: {symbol} doesn't exist (this should have been catched earlier)");
                     }
-                    items.Add(LinkItem.ForExternalReference(symbol.EffectiveName));
+                    if(symbol.IsExternal) {
+                        items.Add(LinkItem.ForExternalReference(symbol.EffectiveName));
+                    }
+                    else {
+                        items.Add(LinkItem.ForAddressReference(symbol.Value.Type, symbol.Value.Value));
+                    }
                 }
                 else if(part is ArithmeticOperator op) {
                     if(op is TypeOperator) {
