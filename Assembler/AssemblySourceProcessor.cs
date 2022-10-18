@@ -731,7 +731,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else {
-                    if(expressionValue.IsAbsolute) {
+                    if(expressionValue.IsAbsolute || expressionPendingEvaluation.ArgumentType == CpuInstructionArgumentType.OffsetFromCurrentLocation) {
                         ProcessArgumentForInstruction(
                             expressionPendingEvaluation.ArgumentType,
                             line.OutputBytes, 
