@@ -1,8 +1,8 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
-using System.Xml.Linq;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -64,7 +64,13 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(args[0] is "-v" or "--version") {
-                Console.Write(versionText);
+                //Yeah I know, not very clean/performant...
+                //but how often do you check the version number of the programs you use?
+                var version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                while(version.EndsWith(".0") && version.Count(ch => ch is '.') > 1) {
+                    version = version[..^2];
+                }
+                Console.Write(version);
                 return ERR_SUCCESS;
             }
 

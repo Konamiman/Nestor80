@@ -8,8 +8,6 @@
 
             """;
 
-        static readonly string versionText = "1.0";
-
         static readonly string simpleHelpText = """
             Usage: N80 <source file> [<output file>] [<arguments>]
                    N80 -v|--version

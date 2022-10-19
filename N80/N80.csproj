@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Konamiman.Nestor80.N80</RootNamespace>
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <Version>$(VersionPrefix)</Version>
+    <AssemblyVersion>1.0</AssemblyVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
