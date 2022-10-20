@@ -48,7 +48,7 @@ namespace Konamiman.Nestor80.N80
         static readonly Stopwatch totalTimeMeasurer = new();
         static readonly List<(string, string[])> argsByFile = new();
         static bool n80FileUsed = false;
-        static readonly List<(AssemblyErrorCode, int)> warningsFromPass1 = new();
+        static readonly List<AssemblyError> warningsFromPass1 = new();
         static bool inPass2 = false;
         static string[] envArgs = null;
         static string[] commandLineArgs;
@@ -838,10 +838,11 @@ namespace Konamiman.Nestor80.N80
         private static string FormatAssemblyError(AssemblyError error, string prefix)
         {
             var fileName = error.IncludeFileName is null ? "" : $"[{error.IncludeFileName}] ";
+            var macroInfo = error.IsMacroLine ? $"<{string.Join(" --> ", error.MacroNamesAndLines.Select(nl => $"{nl.Item1}:{nl.Item2}").ToArray())}> " : "";
             var lineNumber = error.LineNumber is null ? "" : $"in line {error.LineNumber}: ";
             var errorCode = verbosityLevel >= 2 ? $"({(int)error.Code}) " : "";
 
-            return $"\r\n{prefix}: {errorCode}{fileName}{lineNumber}{error.Message}\r\n";
+            return $"\r\n{prefix}: {errorCode}{fileName}{macroInfo}{lineNumber}{error.Message}\r\n";
         }
 
         private static void AssemblySourceProcessor_PrintMessage1(object? sender, string e)
@@ -868,14 +869,14 @@ namespace Konamiman.Nestor80.N80
 
         private static void PrintWarning(AssemblyError error)
         {
-            var isDuplicateWarning = warningsFromPass1.Contains((error.Code, error.LineNumber.GetValueOrDefault()));
+            var isDuplicateWarning = warningsFromPass1.Contains(error);
             if(inPass2) {
                 if(verbosityLevel < 2 && isDuplicateWarning) {
                     return;
                 }
             }
             else if(!isDuplicateWarning) {
-                warningsFromPass1.Add((error.Code, error.LineNumber.GetValueOrDefault()));
+                warningsFromPass1.Add(error);
             }
 
             var text = FormatAssemblyError(error, "WARN");

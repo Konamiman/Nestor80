@@ -211,8 +211,8 @@ namespace Konamiman.Nestor80.Assembler
         public void AddError(AssemblyError error) => Errors.Add(error);
 
         public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
-        {
-            var error = new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null, CurrentIncludeFilename );
+        {   //TODO: Include macro name and line
+            var error = new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null, CurrentIncludeFilename);
             AddError(error);
             return error;
         }

@@ -2,14 +2,14 @@
 {
     public class AssemblyError
     {
-        public AssemblyError(AssemblyErrorCode code, string message, int? lineNumber, string includeFileName = null)
+        public AssemblyError(AssemblyErrorCode code, string message, int? lineNumber, string includeFileName = null, (string, int)[] macroNamesAndLines = null)
         {
             Code = code;
             Message = message;
             LineNumber = lineNumber;
             IncludeFileName = includeFileName;
-            Severity = code switch
-            {
+            MacroNamesAndLines = macroNamesAndLines;
+            Severity = code switch {
                 < AssemblyErrorCode.FirstError => AssemblyErrorSeverity.Warning,
                 < AssemblyErrorCode.FirstFatal => AssemblyErrorSeverity.Error,
                 _ => AssemblyErrorSeverity.Fatal
@@ -22,11 +22,15 @@
 
         public string Message { get; init; }
 
+        public (string, int)[] MacroNamesAndLines { get; set; }
+
         public string IncludeFileName { get; set; }
 
         public bool IsWarning => Severity is AssemblyErrorSeverity.Warning;
 
         public bool IsFatal => Severity is AssemblyErrorSeverity.Fatal;
+
+        public bool IsMacroLine => MacroNamesAndLines is not null;
 
         public AssemblyErrorSeverity Severity { get; init; }
 
@@ -34,7 +38,42 @@
         {
             var lineNumbePrefix = LineNumber == null ? "" : $"In line {LineNumber}: ";
             var fileNamePrefix = IncludeFileName == null ? "" : $"[{IncludeFileName}] ";
-            return $"{fileNamePrefix}{lineNumbePrefix}{Message}";
+            var macroPrefix = IsMacroLine ? $"<{string.Join(" --> ",MacroNamesAndLines.Select(nl => $"{nl.Item1}:{nl.Item2}").ToArray())}> " : "";
+            return $"{fileNamePrefix}{macroPrefix}{lineNumbePrefix}{Message}";
+        }
+
+        public static bool operator ==(AssemblyError error1, AssemblyError error2)
+        {
+            if(error1 is null || error2 is null) {
+                return false;
+            }
+
+            return error1.Code == error2.Code &&
+                error1.LineNumber == error2.LineNumber &&
+                error1.IncludeFileName == error2.IncludeFileName &&
+                (error1.MacroNamesAndLines ?? Array.Empty<(string,int)>()).SequenceEqual(error2.MacroNamesAndLines ?? Array.Empty<(string, int)>());
+        }
+
+        public static bool operator !=(AssemblyError error1, AssemblyError error2)
+        {
+            return !(error1 == error2);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if(obj == null || GetType() != obj.GetType())
+                return false;
+
+            var error2 = (AssemblyError)obj;
+            return this == error2;
+        }
+
+        public override int GetHashCode()
+        {
+            return Code.GetHashCode() ^
+                LineNumber.GetHashCode() ^
+                IncludeFileName?.GetHashCode() ?? 0 ^
+                MacroNamesAndLines?.GetHashCode() ?? 0;
         }
     }
 }

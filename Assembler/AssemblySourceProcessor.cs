@@ -637,6 +637,7 @@ namespace Konamiman.Nestor80.Assembler
                         AssemblyErrorSeverity.Fatal => AssemblyErrorCode.UserFatal,
                         _ => throw new Exception($"Unexpected severity for user error in pass 2: {uel.Severity}")
                     };
+                    //TODO: Include macro name and line
                     AssemblyErrorGenerated(null, new AssemblyError(errorCode, uel.Message, state.CurrentLineNumber, state.CurrentIncludeFilename));
                 }
             }
