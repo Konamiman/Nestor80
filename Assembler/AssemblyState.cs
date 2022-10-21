@@ -14,6 +14,8 @@ namespace Konamiman.Nestor80.Assembler
             this.SourceStreamReader = new StreamReader(sourceStream, sourceStreamEncoding, true, 4096);
         }
 
+        public string CurrentSourceLineText {get;set;}
+
         private Encoding sourceStreamEncoding;
 
         private readonly List<AssemblyError> Errors = new();
@@ -74,6 +76,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             InPass2 = true;
             CurrentLineNumber = 1;
+            CurrentSourceLineText = null;
             CurrentPhasedLocationPointer = null;
             EndAddress = null;
             CurrentModule = null;
@@ -212,7 +215,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {   //TODO: Include macro name and line
-            var error = new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null, CurrentIncludeFilename);
+            var error = new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename);
             AddError(error);
             return error;
         }

@@ -1,4 +1,6 @@
-﻿namespace Konamiman.Nestor80.N80
+﻿using Konamiman.Nestor80.Assembler.Output;
+
+namespace Konamiman.Nestor80.N80
 {
     internal partial class Program
     {
@@ -151,9 +153,6 @@
                 Don't treat a line containing a list of comma-separated expressions as a DB line
                 (so e.g. 'FOO: db 1,2,3,4' will throw an error). This is the default behavior.
 
-            -no, --no-output
-                Process the input file but don't generate the output file.
-
             -nco, --no-color-output
                 Don't display assembly process messages and errors in color.
 
@@ -174,11 +173,17 @@
                 defined with "DEFS <size>" statements to not be initialized (the DEFS instruction
                 will be treated as equivalent to "ORG $+<size>"). This is the default behavior.
 
+            -no, --no-output
+                Process the input file but don't generate the output file.
+            
             -noap, --no-org-as-phase
                 Don't treat ORG statements as .PHASE statements (default).
 
             -nsb, --no-show-banner
                 Don't display the program title and copyright notice banner.
+
+            -nsie, --no-source-in-errors
+                Don't include the offending source code line in error messages (default).
 
             -nsw, --no-silence-warnings [<code>[,<code>[,...]]]
                 Remove the specified warning codes from the list of warnings to silence
@@ -191,7 +196,7 @@
             -nsap, --no-silence-assembly-print
                 Display messages generated during assembly via .PRINTX, .PRINT, .PRINT1
                 and .PRINT2 instructions (default).
-
+            
             -nsx, --no-string-escapes
                 Disallows escape sequences in the strings in source code.
                 See "--string-escapes" for the escaping format.
@@ -250,6 +255,10 @@
                 .STRENC instruction. In this case the special encoding name "default" (or "def")
                 can be used to go back to the default encoding that was specified with this argument
                 (or to ASCII if the argument was provided).
+
+            -sie, --source-in-errors
+                When displaying an error message include a copy of the complete source code line
+                that generated the error. Only the first {AssemblyError.MAX_STORED_SOURCE_TEXT_LENGTH} characters of the line will be shown.
 
             -sv, --status-verbosity <level>
                 Selects the verbosity of the status messages shown during the assembly process.

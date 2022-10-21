@@ -41,6 +41,7 @@ namespace Konamiman.Nestor80.N80
         static string outputFileExtension = null;
         static bool allowBareExpressions;
         static bool initDefs;
+        static bool sourceInErrorMessage;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -323,6 +324,7 @@ namespace Konamiman.Nestor80.N80
             info += $"Default CPU: {defaultCpu.ToUpper()}\r\n";
             info += $"Allow bare expressions: {YesOrNo(allowBareExpressions)}\r\n";
             info += $"Expand DEFS instructions: {YesOrNo(initDefs)}\r\n";
+            info += $"Show source in error messages: {YesOrNo(sourceInErrorMessage)}\r\n";
 
             if(mustChangeOutputFileExtension) {
                 var outputExtension =
@@ -371,6 +373,7 @@ namespace Konamiman.Nestor80.N80
             outputFileExtension = null;
             allowBareExpressions = false;
             initDefs = false;
+            sourceInErrorMessage = false;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -706,6 +709,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nids" or "--no-initialize-defs") {
                     initDefs = false;
                 }
+                else if(arg is "-sie" or "--source-in-errors") {
+                    sourceInErrorMessage = true;
+                }
+                else if(arg is "-nsie" or "--no-source-in-errors") {
+                    sourceInErrorMessage = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -842,7 +851,12 @@ namespace Konamiman.Nestor80.N80
             var lineNumber = error.LineNumber is null ? "" : $"in line {error.LineNumber}: ";
             var errorCode = verbosityLevel >= 2 ? $"({(int)error.Code}) " : "";
 
-            return $"\r\n{prefix}: {errorCode}{fileName}{macroInfo}{lineNumber}{error.Message}\r\n";
+            string lineText = null;
+            if(sourceInErrorMessage && !string.IsNullOrWhiteSpace(prefix)) {
+                lineText = $"{new string(' ', prefix.Length+2)}{error.SourceLineText}\r\n";
+            }
+
+            return $"\r\n{prefix}: {errorCode}{fileName}{macroInfo}{lineNumber}{error.Message}\r\n{lineText}";
         }
 
         private static void AssemblySourceProcessor_PrintMessage1(object? sender, string e)

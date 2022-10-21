@@ -222,6 +222,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     break;
                 }
+                state.CurrentSourceLineText = sourceLine;
                 if(sourceLine.Length > MAX_LINE_LENGTH) {
                     ThrowFatal(AssemblyErrorCode.SourceLineTooLong, $"Line is too long, maximum allowed line length is {MAX_LINE_LENGTH} characters");
                 }
@@ -527,6 +528,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             for(var lineIndex=0; lineIndex<processedLines.Length; lineIndex++) {
                 var originalLine = processedLines[lineIndex];
+                state.CurrentSourceLineText = originalLine.Line;
 
                 var maybeNewLine = ProcessLineForPass2(originalLine);
                 if(!ReferenceEquals(originalLine, maybeNewLine)) {
@@ -638,7 +640,7 @@ namespace Konamiman.Nestor80.Assembler
                         _ => throw new Exception($"Unexpected severity for user error in pass 2: {uel.Severity}")
                     };
                     //TODO: Include macro name and line
-                    AssemblyErrorGenerated(null, new AssemblyError(errorCode, uel.Message, state.CurrentLineNumber, state.CurrentIncludeFilename));
+                    AssemblyErrorGenerated(null, new AssemblyError(errorCode, uel.Message, state.CurrentLineNumber, state.CurrentSourceLineText, state.CurrentIncludeFilename));
                 }
             }
             else if(processedLine is ModuleStartLine msl && msl.Name is not null) {
@@ -953,7 +955,7 @@ namespace Konamiman.Nestor80.Assembler
 
         static void ThrowFatal(AssemblyErrorCode errorCode, string message)
         {
-            throw new FatalErrorException(new AssemblyError(errorCode, message, state.CurrentLineNumber, state.CurrentIncludeFilename));
+            throw new FatalErrorException(new AssemblyError(errorCode, message, state.CurrentLineNumber, state.CurrentSourceLineText, state.CurrentIncludeFilename));
         }
     }
 }

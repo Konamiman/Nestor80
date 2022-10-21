@@ -2,7 +2,9 @@
 {
     public class AssemblyError
     {
-        public AssemblyError(AssemblyErrorCode code, string message, int? lineNumber, string includeFileName = null, (string, int)[] macroNamesAndLines = null)
+        public const int MAX_STORED_SOURCE_TEXT_LENGTH = 80;
+
+        public AssemblyError(AssemblyErrorCode code, string message, int? lineNumber, string sourceLineText = null, string includeFileName = null, (string, int)[] macroNamesAndLines = null)
         {
             Code = code;
             Message = message;
@@ -14,9 +16,16 @@
                 < AssemblyErrorCode.FirstFatal => AssemblyErrorSeverity.Error,
                 _ => AssemblyErrorSeverity.Fatal
             };
+
+            if(sourceLineText is not null) {
+                sourceLineText = sourceLineText.Trim();
+                SourceLineText = sourceLineText.Length > MAX_STORED_SOURCE_TEXT_LENGTH ? sourceLineText[..(MAX_STORED_SOURCE_TEXT_LENGTH - 3)] + "..." : sourceLineText;
+            }
         }
 
         public int? LineNumber { get; init; } = null;
+
+        public string SourceLineText { get; init; } = null;
 
         public AssemblyErrorCode Code { get; init; }
 
