@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Output;
+using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
@@ -17,6 +18,12 @@ namespace Konamiman.Nestor80.Assembler
             if(!walker.AtEndOfLine) {
                 firstArgument = walker.ExtractExpression();
             }
+
+            return ProcessCpuInstructionOld(opcode, walker, firstArgument, secondArgument);
+        }
+
+        private static ProcessedSourceLine ProcessCpuInstructionOld(string opcode, SourceLineWalker walker, string firstArgument, string secondArgument)
+        { 
 
             var instructionsForOpcode = currentCpuInstructions[opcode];
 
