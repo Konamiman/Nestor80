@@ -15,6 +15,8 @@ namespace Konamiman.Nestor80.Assembler
         const int MAX_LINE_LENGTH = 1034;
         const int MAX_INCLUDE_NESTING = 34;
 
+        const RegexOptions RegxOp = RegexOptions.Compiled | RegexOptions.IgnoreCase;
+
         public const int MaxEffectiveExternalNameLength = 6;
 
         private static AssemblyState state;
@@ -47,11 +49,11 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Dictionary<CpuType, Dictionary<string, CpuInstruction[]>> cpuInstructions;
         private static Dictionary<string, CpuInstruction[]> currentCpuInstructions;
 
-        private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex ProgramNameRegex = new(@"^\('(?<name>[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*)'\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex LegacySubtitleRegex = new(@"^\('(?<name>[^']*)'\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex printStringExpressionRegex = new(@"(?<=\{)[^}]*(?=\})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegxOp);
+        private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegxOp);
+        private static readonly Regex ProgramNameRegex = new(@"^\('(?<name>[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*)'\)", RegxOp);
+        private static readonly Regex LegacySubtitleRegex = new(@"^\('(?<name>[^']*)'\)", RegxOp);
+        private static readonly Regex printStringExpressionRegex = new(@"(?<=\{)[^}]*(?=\})", RegxOp);
 
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant

@@ -6,23 +6,25 @@ using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
-    internal partial class Expression    {
+    internal partial class Expression {
         private Expression(IExpressionPart[] parts = null, string source = null)
         {
             this.Parts = parts ?? Array.Empty<IExpressionPart>();
             this.Source = source;
         }
 
+        const RegexOptions RegxOp = RegexOptions.Compiled | RegexOptions.IgnoreCase;
+
         private static readonly Dictionary<int, Regex> numberRegexes = new();
-        private static readonly Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex symbolRegex = new("(?<root>:?)(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegxOp);
+        private static readonly Regex symbolRegex = new("(?<root>:?)(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegxOp);
         private static readonly Dictionary<char, Regex> unescapedStringRegexes = new() {
-            {'\'', new Regex("(?<=')((?<quot>'')|[^'])*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
-            {'"',  new Regex("(?<=\")((?<quot>\"\")|[^\"])*(?=\")", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
+            {'\'', new Regex("(?<=')((?<quot>'')|[^'])*(?=')", RegxOp) },
+            {'"',  new Regex("(?<=\")((?<quot>\"\")|[^\"])*(?=\")", RegxOp) },
         };
         private static readonly Dictionary<char, Regex> escapedStringRegexes = new() {
-            {'\'', new Regex("(?<=')((?<quot>\\\\')|[^'])*(?=')", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
-            {'"',  new Regex("(?<=\")((?<quot>\\\\\")|[^\"])*(?=\")", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
+            {'\'', new Regex("(?<=')((?<quot>\\\\')|[^'])*(?=')", RegxOp) },
+            {'"',  new Regex("(?<=\")((?<quot>\\\\\")|[^\"])*(?=\")", RegxOp) },
         };
 
         private static Regex currentRadixRegex;
