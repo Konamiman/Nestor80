@@ -17,6 +17,37 @@ namespace Konamiman.Nestor80.Assembler
             string firstArgument = null, secondArgument = null;
             if(!walker.AtEndOfLine) {
                 firstArgument = walker.ExtractExpression();
+                if(!walker.AtEndOfLine) {
+                    secondArgument = walker.ExtractExpression();
+                }
+            }
+
+            // First let's see if it's an instruction with no variable arguments
+
+            string RemoveSpacesAroundParenthesis(string argument)
+            {
+                if(argument[0] is '(' && argument.Length > 1) {
+                    argument = $"({argument[1..].Trim()}";
+                }
+                if(argument[^1] is ')') {
+                    argument = $"{argument[^1..].Trim()})";
+                }
+                return argument;
+            }
+
+            string fixedInstructionKey;
+            if(firstArgument is null) {
+                fixedInstructionKey = opcode;
+            }
+            else if(secondArgument is null) {
+                fixedInstructionKey = $"{opcode} {RemoveSpacesAroundParenthesis(firstArgument)}";
+            }
+            else {
+                fixedInstructionKey = $"{opcode} {RemoveSpacesAroundParenthesis(firstArgument)},{RemoveSpacesAroundParenthesis(secondArgument)}";
+            }
+
+            if(FixedZ80Instructions.ContainsKey(fixedInstructionKey)) {
+                return new CpuInstructionLine() { OutputBytes = FixedZ80Instructions[fixedInstructionKey] };
             }
 
             return ProcessCpuInstructionOld(opcode, walker, firstArgument, secondArgument);

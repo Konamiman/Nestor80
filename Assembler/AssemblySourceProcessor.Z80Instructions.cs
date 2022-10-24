@@ -4,7 +4,7 @@ namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor
     {
-        static readonly Dictionary<string, byte[]> FixedZ80Instructions = new() {
+        static readonly Dictionary<string, byte[]> FixedZ80Instructions = new(StringComparer.OrdinalIgnoreCase) {
           { "ADC HL,BC", new byte[] { 0xed, 0x4a } },
           { "ADC HL,DE", new byte[] { 0xed, 0x5a } },
           { "ADC HL,HL", new byte[] { 0xed, 0x6a } },
