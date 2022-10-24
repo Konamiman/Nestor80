@@ -14,43 +14,130 @@ namespace Konamiman.Nestor80.Assembler
 
         private static ProcessedSourceLine ProcessCpuInstruction(string opcode, SourceLineWalker walker)
         {
+            string RemoveSpacesAroundParenthesis(string argument)
+            {
+                if(argument[0] is '(' && argument.Length > 1 && argument[^1] is ')') {
+                    argument = $"({argument[1..^1].Trim()})";
+                }
+                return argument;
+            }
+
             string firstArgument = null, secondArgument = null;
             if(!walker.AtEndOfLine) {
-                firstArgument = walker.ExtractExpression();
+                firstArgument = RemoveSpacesAroundParenthesis(walker.ExtractExpression());
                 if(!walker.AtEndOfLine) {
-                    secondArgument = walker.ExtractExpression();
+                    secondArgument = RemoveSpacesAroundParenthesis(walker.ExtractExpression());
                 }
             }
 
             // First let's see if it's an instruction with no variable arguments
-
-            string RemoveSpacesAroundParenthesis(string argument)
-            {
-                if(argument[0] is '(' && argument.Length > 1) {
-                    argument = $"({argument[1..].Trim()}";
-                }
-                if(argument[^1] is ')') {
-                    argument = $"{argument[^1..].Trim()})";
-                }
-                return argument;
-            }
 
             string fixedInstructionKey;
             if(firstArgument is null) {
                 fixedInstructionKey = opcode;
             }
             else if(secondArgument is null) {
-                fixedInstructionKey = $"{opcode} {RemoveSpacesAroundParenthesis(firstArgument)}";
+                fixedInstructionKey = $"{opcode} {firstArgument}";
             }
             else {
-                fixedInstructionKey = $"{opcode} {RemoveSpacesAroundParenthesis(firstArgument)},{RemoveSpacesAroundParenthesis(secondArgument)}";
+                fixedInstructionKey = $"{opcode} {firstArgument},{secondArgument}";
             }
 
             if(FixedZ80Instructions.ContainsKey(fixedInstructionKey)) {
                 return new CpuInstructionLine() { OutputBytes = FixedZ80Instructions[fixedInstructionKey] };
             }
 
+            // There's at least one variable argument.
+            // If there are two, one must be fixed, being the only exception "LD (IX+n),n".
+
+            var firstArgumentType = GetCpuInstructionArgumentPatternNew(firstArgument);
+            var secondArgumentType = GetCpuInstructionArgumentPatternNew(firstArgument);
+
+            string variableInstructionSearchKey = null;
+            string variableArgument;
+            var variableArgSearchType = CpuArgType.None;
+            var variableArgSearchPosition = CpuArgPos.None;
+
+            if(secondArgument is null) {
+                if(firstArgumentType is CpuArgType.Fixed) {
+                    throw new Exception($"{nameof(ProcessCpuInstruction)}: something went wrong: a fixed instruction argument was not processed as such.");
+                }
+
+                variableArgument = firstArgument;
+                variableArgSearchType = firstArgumentType;
+                variableArgSearchPosition = CpuArgPos.Single;
+                variableInstructionSearchKey = opcode;
+            }
+            else {
+                if(firstArgumentType is not CpuArgType.Fixed ^ secondArgumentType is not CpuArgType.Fixed) {
+                    if(firstArgumentType is CpuArgType.Fixed) {
+                        variableArgument = secondArgument;
+                        variableArgSearchType = secondArgumentType;
+                        variableArgSearchPosition = CpuArgPos.Second;
+                        variableInstructionSearchKey = $"{opcode} {firstArgument}";
+                    }
+                    else {
+                        variableArgument = firstArgument;
+                        variableArgSearchType = firstArgumentType;
+                        variableArgSearchPosition = CpuArgPos.First;
+                        variableInstructionSearchKey = $"{opcode} {secondArgument}";
+                    }
+                }
+            }
+
+            if(variableInstructionSearchKey is null) {
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                return new CpuInstructionLine() { IsInvalid = true };
+            }
+
+            List<(CpuArgType, CpuArgPos, byte[], int, int)> candidateInstructions = new();
+            int variableArgBytePosition;
+            int variableArgSize = 0;
+
+            for(int i=0; i< Z80InstructionsWithOneVariableArgument.Length; i++) {
+                var candidateInstructionInfo = Z80InstructionsWithOneVariableArgument[i];
+                if(candidateInstructionInfo.Item1 != variableInstructionSearchKey) {
+                    continue;
+                }
+
+                if(candidateInstructionInfo.Item3 != variableArgSearchPosition) {
+                    continue;
+                }
+
+                if(variableArgSearchType == candidateInstructionInfo.Item2) {
+                    candidateInstructions.Add((candidateInstructionInfo.Item2, candidateInstructionInfo.Item3, candidateInstructionInfo.Item4, candidateInstructionInfo.Item5, candidateInstructionInfo.Item6));
+                }
+            }
+
+            //WIP
+
             return ProcessCpuInstructionOld(opcode, walker, firstArgument, secondArgument);
+        }
+
+        private static CpuArgType GetCpuInstructionArgumentPatternNew(string argument)
+        {
+            if(argument is null)
+                return CpuArgType.None;
+
+            var match = memPointedByRegisterRegex.Match(argument);
+            if(match.Success) {
+                return CpuArgType.Fixed;
+            }
+            if(z80RegisterNames.Contains(argument, StringComparer.OrdinalIgnoreCase)) {
+                return CpuArgType.Fixed;
+            }
+            if(ixPlusArgumentRegex.IsMatch(argument)) {
+                return CpuArgType.IxPlusOffset;
+            }
+            if(iyPlusArgumentRegex.IsMatch(argument)) {
+                return CpuArgType.IyPlusOffset;
+            }
+
+            if(argument[0] == '(') {
+                return CpuArgType.NumberInParenthesis;
+            }
+
+            return CpuArgType.Number;
         }
 
         private static ProcessedSourceLine ProcessCpuInstructionOld(string opcode, SourceLineWalker walker, string firstArgument, string secondArgument)
