@@ -41,14 +41,13 @@ namespace Konamiman.Nestor80.Assembler
             Expression expression, 
             int location = 0,
             CpuInstructionArgumentType argumentType = CpuInstructionArgumentType.None,
-            string ixRegisterName = null,
             string ixRegisterSign = null)
         {
             if(!ExpressionsPendingEvaluation.ContainsKey(line)) {
                 ExpressionsPendingEvaluation[line] = new List<ExpressionPendingEvaluation>();
             }
 
-            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IxRegisterName = ixRegisterName, IxRegisterSign = ixRegisterSign } );
+            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IxRegisterSign = ixRegisterSign } );
         }
 
         public void UnregisterPendingExpressions(ProcessedSourceLine line)

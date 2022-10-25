@@ -742,7 +742,6 @@ namespace Konamiman.Nestor80.Assembler
                             line.OutputBytes, 
                             expressionValue, 
                             expressionPendingEvaluation.LocationInOutput,
-                            expressionPendingEvaluation.IxRegisterName,
                             expressionPendingEvaluation.IxRegisterSign);
 
                     }

@@ -8,12 +8,10 @@
 
         public bool IsByte => ArgumentType is not CpuInstructionArgumentType.Word;
 
-        public string IxRegisterName { get; set; }
-
         public string IxRegisterSign { get; set; }
 
         public CpuInstructionArgumentType ArgumentType { get; set; }
 
-        public override string ToString() => $"@{LocationInOutput}, {Expression}, {ArgumentType} {IxRegisterName}{IxRegisterSign}";
+        public override string ToString() => $"@{LocationInOutput}, {Expression}, {ArgumentType} {IxRegisterSign}";
     }
 }

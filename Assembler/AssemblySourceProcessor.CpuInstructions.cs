@@ -14,6 +14,11 @@ namespace Konamiman.Nestor80.Assembler
 
         private static readonly string[] z80InstructionsForRelativeJump = { "JR", "DJNZ" };
 
+        private static readonly Dictionary<CpuInstructionArgumentType, string> indexRegisterNames = new() {
+            { CpuInstructionArgumentType.IxyOffset, "IX" },
+            { CpuInstructionArgumentType.IyOffset, "IY" }
+        };
+
         private static ProcessedSourceLine ProcessCpuInstruction(string opcode, SourceLineWalker walker)
         {
             string RemoveSpacesAroundParenthesis(string argument)
@@ -124,7 +129,7 @@ namespace Konamiman.Nestor80.Assembler
                             CpuInstructionArgumentType.Byte or
                             CpuInstructionArgumentType.Word) ||
                     (variableArgSearchType is CpuParsedArgType.IxPlusOffset && instructionArgType is CpuInstructionArgumentType.IxyOffset) ||
-                    (variableArgSearchType is CpuParsedArgType.IxPlusOffset && instructionArgType is CpuInstructionArgumentType.IyOffset);
+                    (variableArgSearchType is CpuParsedArgType.IyPlusOffset && instructionArgType is CpuInstructionArgumentType.IyOffset);
 
                 if(isMatch) {
                     variableArgType = candidateInstructionInfo.Item2;
@@ -144,16 +149,15 @@ namespace Konamiman.Nestor80.Assembler
                 variableArgType = CpuInstructionArgumentType.OffsetFromCurrentLocation;
             }
 
-            string ixRegisterName = null;
             string ixRegisterSign = null;
+            string expressionText = variableArgument;
             if(variableArgType is CpuInstructionArgumentType.IxyOffset or CpuInstructionArgumentType.IyOffset) {
-                ixRegisterName = variableArgType is CpuInstructionArgumentType.IxyOffset ? "IX" : "IY";
-                var indexOfPlus = variableArgument.IndexOf('+');
-                var indexOfMinus = variableArgument.IndexOf('-');
-                ixRegisterSign = indexOfPlus is not -1 && (indexOfMinus is -1 || indexOfPlus < indexOfMinus) ? "+" : "-";
+                var match = indexPlusArgumentRegex.Match(variableArgument);
+                ixRegisterSign = match.Groups["sign"].Value;
+                expressionText = ixRegisterSign + match.Groups["expression"].Value;
             }
 
-            var variableArgumentExpression = GetExpressionForInstructionArgument(opcode, variableArgument);
+            var variableArgumentExpression = GetExpressionForInstructionArgument(opcode, expressionText);
             if(variableArgumentExpression is null) {
                 return new CpuInstructionLine() { IsInvalid = true };
             }
@@ -167,7 +171,6 @@ namespace Konamiman.Nestor80.Assembler
                     variableArgumentExpression,
                     location: variableArgBytePosition,
                     argumentType: variableArgType,
-                    ixRegisterName: ixRegisterName,
                     ixRegisterSign: ixRegisterSign
                 );
 
@@ -176,9 +179,10 @@ namespace Konamiman.Nestor80.Assembler
 
             if(variableArgumentValue.IsAbsolute) {
                 instructionBytes = instructionBytes.ToArray();
-                if(!ProcessArgumentForInstruction(variableArgType, instructionBytes, variableArgumentValue, variableArgBytePosition, ixRegisterName, ixRegisterSign)) {
+                if(!ProcessArgumentForInstruction(variableArgType, instructionBytes, variableArgumentValue, variableArgBytePosition, ixRegisterSign)) {
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
+                instructionLine.OutputBytes = instructionBytes;
             }
             else {
                 var relocatable = RelocatableFromAddress(variableArgumentValue, variableArgBytePosition, variableArgSize);
@@ -445,7 +449,7 @@ namespace Konamiman.Nestor80.Assembler
             byte[] bytes = matchingInstruction.Opcodes.ToArray();
 
 
-            if(!ProcessArgumentForInstruction(argumentType, bytes, firstArgumentValue, matchingInstruction.ValuePosition, ixRegName, indexOffsetSign)) { 
+            if(!ProcessArgumentForInstruction(argumentType, bytes, firstArgumentValue, matchingInstruction.ValuePosition, indexOffsetSign)) { 
                 return GenerateInstructionLine(null);
             }
             else if(argumentType is CpuInstructionArgumentType.OffsetFromCurrentLocation) {
@@ -535,7 +539,7 @@ namespace Konamiman.Nestor80.Assembler
             return true;
         }
 
-        private static bool ProcessArgumentForInstruction(CpuInstructionArgumentType argumentType, byte[] instructionBytes, Address value, int position, string ixRegName = null, string ixOffsetSign = null)
+        private static bool ProcessArgumentForInstruction(CpuInstructionArgumentType argumentType, byte[] instructionBytes, Address value, int position, string ixOffsetSign = null)
         {
             if(argumentType is CpuInstructionArgumentType.OffsetFromCurrentLocation) {
                 if(value.Type != state.CurrentLocationArea) {
@@ -563,22 +567,22 @@ namespace Konamiman.Nestor80.Assembler
                 return true;
             }
 
-            else if(argumentType is not CpuInstructionArgumentType.IxyOffset) {
+            else if(argumentType is not CpuInstructionArgumentType.IxyOffset or CpuInstructionArgumentType.IyOffset) {
                 throw new Exception($"{nameof(ProcessArgumentForInstruction)}: got unexpected argument type: {argumentType}");
             }
 
             if(!value.IsValidByte) {
-                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument: value out of range for {ixRegName} instruction");
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument: value out of range for {indexRegisterNames[argumentType]} instruction");
                 return false;
             }
             var byteValue = value.ValueAsByte;
 
             if(ixOffsetSign == "+" && byteValue > 127) {
-                AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {ixRegName}+{byteValue} will actually be interpreted as {ixRegName}-{256 - byteValue}");
+                AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {indexRegisterNames[argumentType]}+{byteValue} will actually be interpreted as {indexRegisterNames[argumentType]}-{256 - byteValue}");
             }
 
             if(ixOffsetSign == "-" && value.Value < (ushort)0xFF80) {
-                AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {ixRegName}-{(65536 - value.Value)} will actually be interpreted as {ixRegName}+{byteValue}");
+                AddError(AssemblyErrorCode.ConfusingOffset, $"Ofsset {indexRegisterNames[argumentType]}-{(65536 - value.Value)} will actually be interpreted as {indexRegisterNames[argumentType]}+{byteValue}");
             }
 
             if(value.IsAbsolute) {
@@ -721,7 +725,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(argumentType == CpuInstructionArgumentType.None) {
                     argumentType = instruction.ValueSize == 1 ? CpuInstructionArgumentType.Byte : CpuInstructionArgumentType.Word;
                 }
-                state.RegisterPendingExpression(line, pendingExpression1, instruction.ValuePosition, argumentType: argumentType, ixRegisterName: ixRegisterName, ixRegisterSign: ixRegisterSign);
+                state.RegisterPendingExpression(line, pendingExpression1, instruction.ValuePosition, argumentType: argumentType, ixRegisterSign: ixRegisterSign);
             }
             if(pendingExpression2 is not null) {
                 state.RegisterPendingExpression(line, pendingExpression2, instruction.SecondValuePosition.Value, 
