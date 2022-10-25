@@ -5,7 +5,10 @@
         None,
         Byte,
         Word,
+        ByteInParenthesis,
+        WordInParenthesis,
         OffsetFromCurrentLocation,
         IxyOffset,
+        IyOffset
     }
 }

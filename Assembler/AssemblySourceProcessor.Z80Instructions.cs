@@ -859,18 +859,23 @@ namespace Konamiman.Nestor80.Assembler
           { "XOR IYL", new byte[] { 0xfd, 0xad } },
         };
 
-        static readonly (string, CpuArgType, CpuArgPos, byte[], int, int)[] 
-            Z80InstructionsWithOneVariableArgument = new (string, CpuArgType, CpuArgPos, byte[], int, int)[] {
-            ( "ADC A", CpuArgType.IxPlusOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ),
-            ( "ADC A", CpuArgType.IyPlusOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ),
-            ( "ADC A", CpuArgType.Number, CpuArgPos.Second, new byte[] { 0xce, 0 }, 1, 1 ),
+        static readonly (string, CpuInstructionArgumentType, CpuArgPos, byte[], int, int)[] 
+            Z80InstructionsWithOneVariableArgument = new (string, CpuInstructionArgumentType, CpuArgPos, byte[], int, int)[] {
+            ( "ADC A", CpuInstructionArgumentType.IxyOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ),
+            ( "ADC A", CpuInstructionArgumentType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ),
+            ( "ADC A", CpuInstructionArgumentType.Byte, CpuArgPos.Second, new byte[] { 0xce, 0 }, 1, 1 ),
 
             //Aliases for "ADC A,..." with implicit A
-            ( "ADC", CpuArgType.IxPlusOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ),
-            ( "ADC", CpuArgType.IyPlusOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ),
-            ( "ADC", CpuArgType.Number, CpuArgPos.Single, new byte[] { 0xce, 0 }, 1, 1 ),
+            ( "ADC", CpuInstructionArgumentType.IxyOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ),
+            ( "ADC", CpuInstructionArgumentType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ),
+            ( "ADC", CpuInstructionArgumentType.Byte, CpuArgPos.Single, new byte[] { 0xce, 0 }, 1, 1 ),
 
-            ( "LD A", CpuArgType.NumberInParenthesis, CpuArgPos.First,  new byte[] { 0x32, 0, 0 }, 1, 2 ),
+            ( "LD A", CpuInstructionArgumentType.WordInParenthesis, CpuArgPos.Second,  new byte[] { 0x32, 0, 0 }, 1, 2 ),
+            ( "LD A", CpuInstructionArgumentType.Byte, CpuArgPos.Second, new byte[] { 0x3e, 0 }, 1, 1 ),
+
+            ( "LD HL",  CpuInstructionArgumentType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x22, 0, 0 }, 1, 2 ),
+
+            ( "DJNZ", CpuInstructionArgumentType.Byte, CpuArgPos.Single, new byte[] { 0x10, 0 }, 1, 1 ),
         };
 
         /* Instructions that need to be handled as special cases:

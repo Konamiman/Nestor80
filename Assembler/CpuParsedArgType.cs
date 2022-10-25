@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal enum CpuArgType
+    internal enum CpuParsedArgType
     {
         None,
         Fixed,
