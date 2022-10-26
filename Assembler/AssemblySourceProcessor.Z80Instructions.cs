@@ -870,7 +870,7 @@ namespace Konamiman.Nestor80.Assembler
             ( "ADC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x8e, 0 }, 2 ), // ADC (IY+n)
             ( "ADC", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xce, 0 }, 1 ), // ADC n
 
-            ( "LD A", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second,  new byte[] { 0x32, 0, 0 }, 1 ), // LD A,(nn)
+            ( "LD A", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second,  new byte[] { 0x3a, 0, 0 }, 1 ), // LD A,(nn)
             ( "LD A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x3e, 0 }, 1 ), // LD A,n
 
             ( "LD HL",  CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x22, 0, 0 }, 1 ), // LD (HL),nn
@@ -878,21 +878,21 @@ namespace Konamiman.Nestor80.Assembler
             ( "DJNZ", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0x10, 0 }, 1 ), // DJNZ n
         };
 
-        static readonly Dictionary<string, (string, byte[], ushort, CpuInstrArgType)[]>
+        static readonly Dictionary<string, (string, byte[], ushort)[]>
             Z80InstructionsWithSelectorValue = new(StringComparer.OrdinalIgnoreCase) {
-                { "IM", new (string, byte[], ushort, CpuInstrArgType)[] {
-                    ( null, new byte[] { 0xed, 0x46 }, 0, CpuInstrArgType.None ),
-                    ( null, new byte[] { 0xed, 0x56 }, 1, CpuInstrArgType.None ),
-                    ( null, new byte[] { 0xed, 0x5e }, 2, CpuInstrArgType.None ),
+                { "IM", new (string, byte[], ushort )[] {
+                    ( null, new byte[] { 0xed, 0x46 }, 0 ),
+                    ( null, new byte[] { 0xed, 0x56 }, 1 ),
+                    ( null, new byte[] { 0xed, 0x5e }, 2 ),
                     }
                 },
-                { "BIT", new (string, byte[], ushort, CpuInstrArgType)[] {
-                    (null, new byte[] { 0xdd, 0xcb, 0, 0x46 }, 0, CpuInstrArgType.IxOffset),
-                    (null, new byte[] { 0xdd, 0xcb, 0, 0x4e }, 1, CpuInstrArgType.IyOffset),
-                    ("A", new byte[] { 0xcb, 0x5f }, 3, CpuInstrArgType.None ),
-                    ("B", new byte[] { 0xcb, 0x58 }, 3, CpuInstrArgType.None ),
-                    ("A", new byte[] { 0xcb, 0x67 }, 4, CpuInstrArgType.None ),
-                    ("B", new byte[] { 0xcb, 0x60 }, 4, CpuInstrArgType.None ),
+                { "BIT", new (string, byte[], ushort)[] {
+                    ("x", new byte[] { 0xdd, 0xcb, 0, 0x46 }, 0 ),
+                    ("y", new byte[] { 0xfd, 0xcb, 0, 0x46 }, 0 ),
+                    ("A", new byte[] { 0xcb, 0x5f }, 3 ),
+                    ("B", new byte[] { 0xcb, 0x58 }, 3 ),
+                    ("A", new byte[] { 0xcb, 0x67 }, 4 ),
+                    ("B", new byte[] { 0xcb, 0x60 }, 4 ),
                     }
                 }
             };

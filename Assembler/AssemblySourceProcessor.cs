@@ -427,6 +427,7 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     opcode = symbol;
                     AddError(AssemblyErrorCode.UnknownInstruction, $"Unknown instruction: {opcode}");
+                    walker.DiscardRemaining();
                     processedLine = new UnknownInstructionLine() { Opcode = opcode, EffectiveLineLength = 0 };
                 }
             }
