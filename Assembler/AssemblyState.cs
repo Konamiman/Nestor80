@@ -349,11 +349,11 @@ namespace Konamiman.Nestor80.Assembler
 
         public int CurrentIncludesDeepLevel => includeStates.Count;
 
-        public Dictionary<ProcessedSourceLine, (CpuInstruction[], Expression)> InstructionsPendingSelection { get; set; } = new();
+        public Dictionary<ProcessedSourceLine, (InstructionPendingSelection[], Expression)> InstructionsPendingSelection { get; set; } = new();
 
-        public void RegisterInstructionsPendingSelection(ProcessedSourceLine line, CpuInstruction[] instructions, Expression selectorExpression)
+        public void RegisterInstructionsPendingSelection(ProcessedSourceLine line, InstructionPendingSelection[] choices, Expression selectorExpression)
         {
-            InstructionsPendingSelection.Add(line, (instructions, selectorExpression));
+            InstructionsPendingSelection.Add(line, (choices, selectorExpression));
         }
 
         public void UnregisterInstructionsPendingSelection(ProcessedSourceLine line)

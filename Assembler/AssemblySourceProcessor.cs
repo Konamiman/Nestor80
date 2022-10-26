@@ -663,7 +663,7 @@ namespace Konamiman.Nestor80.Assembler
             return processedLine;
         }
 
-        private static void ProcessInstructionsPendingSelection(ProcessedSourceLine processedLine, CpuInstruction[] instructions, Expression selector)
+        private static void ProcessInstructionsPendingSelection(ProcessedSourceLine processedLine, InstructionPendingSelection[] choices, Expression selector)
         {
             //state.UnregisterInstructionsPendingSelection(processedLine);
 
@@ -676,12 +676,12 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(selectorValue != null) {
-                var selectedInstruction = instructions.SingleOrDefault(i => i.FirstArgumentFixedValue == selectorValue.Value);
+                var selectedInstruction = choices.SingleOrDefault(c => c.SelectorValue == selectorValue.Value);
                 if(selectedInstruction is null) {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for instruction {processedLine.Opcode.ToUpper()}: expression yields an unsupported value");
                 }
                 else {
-                    ((IProducesOutput)processedLine).OutputBytes = selectedInstruction.Opcodes.ToArray();
+                    ((IProducesOutput)processedLine).OutputBytes = selectedInstruction.InstructionBytes;
                 }
             }
         }

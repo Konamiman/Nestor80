@@ -24,6 +24,11 @@ namespace Konamiman.Nestor80.Assembler
             { CpuParsedArgType.IyPlusOffset, new byte[] { 0xfd, 0x36, 0, 0 } }
         };
 
+        private static readonly Dictionary<CpuParsedArgType, CpuInstrArgType> instrArgTypeByParsedType = new() {
+            { CpuParsedArgType.IxPlusOffset, CpuInstrArgType.IxOffset },
+            { CpuParsedArgType.IyPlusOffset, CpuInstrArgType.IyOffset }
+        };
+
         private static ProcessedSourceLine ProcessCpuInstruction(string opcode, SourceLineWalker walker)
         {
             byte[] instructionBytes = null;
@@ -68,7 +73,7 @@ namespace Konamiman.Nestor80.Assembler
             var firstArgumentType = GetCpuInstructionArgumentPatternNew(firstArgument);
             var secondArgumentType = GetCpuInstructionArgumentPatternNew(secondArgument);
 
-            if(string.Equals("LD", opcode, StringComparison.OrdinalIgnoreCase) && 
+            if(string.Equals("LD", opcode, StringComparison.OrdinalIgnoreCase) &&
                 firstArgumentType is CpuParsedArgType.IxPlusOffset or CpuParsedArgType.IyPlusOffset &&
                 secondArgumentType is CpuParsedArgType.Number) {
 
@@ -109,6 +114,54 @@ namespace Konamiman.Nestor80.Assembler
                     location: 3,
                     argumentType: CpuInstrArgType.Byte
                 );
+
+                return instructionLine;
+            }
+
+            else if(Z80InstructionsWithSelectorValue.ContainsKey(opcode)) {
+                if(firstArgumentType is not CpuParsedArgType.Number and not CpuParsedArgType.NumberInParenthesis) {
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                    return new CpuInstructionLine() { IsInvalid = true };
+                }
+
+                (string, byte[], ushort, CpuInstrArgType)[] candidates = null;
+                if(secondArgumentType is CpuParsedArgType.None) {
+                    candidates = Z80InstructionsWithSelectorValue[opcode].Where(c => c.Item1 is null && c.Item4 is CpuInstrArgType.None).ToArray();
+                }
+                else if(secondArgumentType is CpuParsedArgType.Fixed) {
+                    candidates = Z80InstructionsWithSelectorValue[opcode].Where(c => string.Equals(c.Item1, secondArgument)).ToArray();
+                }
+                else if(secondArgumentType is CpuParsedArgType.IxPlusOffset or CpuParsedArgType.IxPlusOffset) {
+                    candidates = Z80InstructionsWithSelectorValue[opcode].Where(c => c.Item4 == instrArgTypeByParsedType[secondArgumentType]).ToArray();
+                }
+
+                if(candidates is null || candidates.Length == 0) {
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                    return new CpuInstructionLine() { IsInvalid = true };
+                }
+
+                var selectorExpression = GetExpressionForInstructionArgument(opcode, firstArgument);
+                var selectorExpressionValue = selectorExpression.EvaluateIfNoSymbols();
+                if(selectorExpressionValue is null) {
+                    instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, Cpu = currentCpu, OutputBytes = candidates[0].Item2 };
+                    state.RegisterInstructionsPendingSelection(instructionLine, candidates.Select(c => new InstructionPendingSelection() { InstructionBytes = c.Item2, SelectorValue = c.Item3 } ).ToArray(), selectorExpression);
+                    return instructionLine;
+                }
+
+                var chosenInstruction = candidates.FirstOrDefault(c => c.Item3 == selectorExpressionValue.Value);
+                if(chosenInstruction.Item2 is null) {
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                    return new CpuInstructionLine() { IsInvalid = true };
+                }
+
+                instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, Cpu = currentCpu, OutputBytes = chosenInstruction.Item2 };
+                if(chosenInstruction.Item4 is not CpuInstrArgType.None) {
+                    var secondArgumentExpression = GetExpressionForInstructionArgument(opcode, firstArgument);
+                    var secondArgumentExpressionValue = secondArgumentExpression.EvaluateIfNoSymbols();
+                    if(!AdjustInstructionLineForExpression(instructionLine, secondArgumentExpression, 2, instrArgTypeByParsedType[secondArgumentType], isNegativeIxy)) {
+                        return new CpuInstructionLine() { IsInvalid = true };
+                    };
+                }
 
                 return instructionLine;
             }
@@ -221,39 +274,45 @@ namespace Konamiman.Nestor80.Assembler
 
             instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, Cpu = currentCpu, OutputBytes = instructionBytes };
             
-            var variableArgumentValue = argumentExpression.EvaluateIfNoSymbols();
-            if(variableArgumentValue is null) {
-                state.RegisterPendingExpression(
-                    instructionLine,
-                    argumentExpression,
-                    location: variableArgBytePosition,
-                    argumentType: variableArgType,
-                    isNegativeIxy: isNegativeIxy
-                );
-
-                return instructionLine;
-            }
-
-            if(variableArgumentValue.IsAbsolute) {
-                instructionBytes = instructionBytes.ToArray();
-                if(!ProcessArgumentForInstruction(variableArgType, instructionBytes, variableArgumentValue, variableArgBytePosition, isNegativeIxy)) {
-                    return new CpuInstructionLine() { IsInvalid = true };
-                }
-                instructionLine.OutputBytes = instructionBytes;
-            }
-            else {
-                var relocatable = RelocatableFromAddress(
-                    variableArgumentValue, 
-                    variableArgBytePosition, 
-                    variableArgType is CpuInstrArgType.Word or CpuInstrArgType.WordInParenthesis ? 2 : 1);
-                instructionLine.RelocatableParts = new[] { relocatable };
-            }
-
-            return instructionLine;
+            var adjustOk = AdjustInstructionLineForExpression(instructionLine, argumentExpression, variableArgBytePosition, variableArgType, isNegativeIxy);
+            return adjustOk ? instructionLine : new CpuInstructionLine() { IsInvalid = true };
 
             //WIP
 
             return ProcessCpuInstructionOld(opcode, walker, firstArgument, secondArgument);
+        }
+
+        private static bool AdjustInstructionLineForExpression(CpuInstructionLine line, Expression argumentExpression, int argBytePosition, CpuInstrArgType argType, bool isNegativeIxy = false)
+        {
+            var variableArgumentValue = argumentExpression.EvaluateIfNoSymbols();
+            if(variableArgumentValue is null) {
+                state.RegisterPendingExpression(
+                    line,
+                    argumentExpression,
+                    location: argBytePosition,
+                    argumentType: argType,
+                    isNegativeIxy: isNegativeIxy
+                );
+
+                return true;
+            }
+
+            if(variableArgumentValue.IsAbsolute) {
+                var instructionBytes = line.OutputBytes.ToArray();
+                if(!ProcessArgumentForInstruction(argType, instructionBytes, variableArgumentValue, argBytePosition, isNegativeIxy)) {
+                    return false;
+                }
+                line.OutputBytes = instructionBytes;
+            }
+            else {
+                var relocatable = RelocatableFromAddress(
+                    variableArgumentValue,
+                    argBytePosition,
+                    argType is CpuInstrArgType.Word or CpuInstrArgType.WordInParenthesis ? 2 : 1);
+                line.RelocatableParts = new[] { relocatable };
+            }
+
+            return true;
         }
 
         private static CpuParsedArgType GetCpuInstructionArgumentPatternNew(string argument)
@@ -803,7 +862,7 @@ namespace Konamiman.Nestor80.Assembler
             line.NewLocationCounter = state.CurrentLocationPointer;
 
             if(candidateInstructions is not null) {
-                state.RegisterInstructionsPendingSelection(line, candidateInstructions, candidateSelector);
+                //state.RegisterInstructionsPendingSelection(line, candidateInstructions, candidateSelector);
             }
 
             return line;

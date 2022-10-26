@@ -878,6 +878,25 @@ namespace Konamiman.Nestor80.Assembler
             ( "DJNZ", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0x10, 0 }, 1 ), // DJNZ n
         };
 
+        static readonly Dictionary<string, (string, byte[], ushort, CpuInstrArgType)[]>
+            Z80InstructionsWithSelectorValue = new(StringComparer.OrdinalIgnoreCase) {
+                { "IM", new (string, byte[], ushort, CpuInstrArgType)[] {
+                    ( null, new byte[] { 0xed, 0x46 }, 0, CpuInstrArgType.None ),
+                    ( null, new byte[] { 0xed, 0x56 }, 1, CpuInstrArgType.None ),
+                    ( null, new byte[] { 0xed, 0x5e }, 2, CpuInstrArgType.None ),
+                    }
+                },
+                { "BIT", new (string, byte[], ushort, CpuInstrArgType)[] {
+                    (null, new byte[] { 0xdd, 0xcb, 0, 0x46 }, 0, CpuInstrArgType.IxOffset),
+                    (null, new byte[] { 0xdd, 0xcb, 0, 0x4e }, 1, CpuInstrArgType.IyOffset),
+                    ("A", new byte[] { 0xcb, 0x5f }, 3, CpuInstrArgType.None ),
+                    ("B", new byte[] { 0xcb, 0x58 }, 3, CpuInstrArgType.None ),
+                    ("A", new byte[] { 0xcb, 0x67 }, 4, CpuInstrArgType.None ),
+                    ("B", new byte[] { 0xcb, 0x60 }, 4, CpuInstrArgType.None ),
+                    }
+                }
+            };
+
         /* Instructions that need to be handled as special cases:
          * 
          * JR, DJNZ: Argument is an address, but generated opcode contains a 1 byte offset from current location pointer
@@ -887,6 +906,7 @@ namespace Konamiman.Nestor80.Assembler
          * IM n: n must be 0, 1 or 2
          */
         static readonly Dictionary<string, CpuInstruction[]> Z80Instructions = new(StringComparer.OrdinalIgnoreCase) {
+            { "IM", new CpuInstruction[0] },
             { "ADC", new CpuInstruction[] {
                 new CpuInstruction( "ADC", "A", "(IX+s)", new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ),
                 new CpuInstruction( "ADC", "A", "(IY+s)", new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ),
