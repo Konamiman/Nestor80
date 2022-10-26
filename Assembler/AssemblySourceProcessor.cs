@@ -736,13 +736,13 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else {
-                    if(expressionValue.IsAbsolute || expressionPendingEvaluation.ArgumentType == CpuInstructionArgumentType.OffsetFromCurrentLocation) {
+                    if(expressionValue.IsAbsolute || expressionPendingEvaluation.ArgumentType == CpuInstrArgType.OffsetFromCurrentLocation) {
                         ProcessArgumentForInstruction(
                             expressionPendingEvaluation.ArgumentType,
                             line.OutputBytes, 
                             expressionValue, 
                             expressionPendingEvaluation.LocationInOutput,
-                            expressionPendingEvaluation.IxRegisterSign);
+                            expressionPendingEvaluation.IsNegativeIxy);
 
                     }
                     else {
