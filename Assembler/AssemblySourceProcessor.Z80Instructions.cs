@@ -859,23 +859,23 @@ namespace Konamiman.Nestor80.Assembler
           { "XOR IYL", new byte[] { 0xfd, 0xad } },
         };
 
-        static readonly (string, CpuInstrArgType, CpuArgPos, byte[], int, int)[] 
-            Z80InstructionsWithOneVariableArgument = new (string, CpuInstrArgType, CpuArgPos, byte[], int, int)[] {
-            ( "ADC A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ), // ADC A,(IX+n)
-            ( "ADC A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ), // ADC A,(IY+n)
-            ( "ADC A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xce, 0 }, 1, 1 ), // ADC A,n
+        static readonly (string, CpuInstrArgType, CpuArgPos, byte[], int)[] 
+            Z80InstructionsWithOneVariableArgument = new (string, CpuInstrArgType, CpuArgPos, byte[], int)[] {
+            ( "ADC A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x8e, 0 }, 2 ), // ADC A,(IX+n)
+            ( "ADC A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x8e, 0 }, 2 ), // ADC A,(IY+n)
+            ( "ADC A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xce, 0 }, 1 ), // ADC A,n
 
             //Aliases for "ADC A,..." with implicit A
-            ( "ADC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ), // ADC (IX+n)
-            ( "ADC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ), // ADC (IY+n)
-            ( "ADC", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xce, 0 }, 1, 1 ), // ADC n
+            ( "ADC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x8e, 0 }, 2 ), // ADC (IX+n)
+            ( "ADC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x8e, 0 }, 2 ), // ADC (IY+n)
+            ( "ADC", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xce, 0 }, 1 ), // ADC n
 
-            ( "LD A", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second,  new byte[] { 0x32, 0, 0 }, 1, 2 ), // LD A,(nn)
-            ( "LD A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x3e, 0 }, 1, 1 ), // LD A,n
+            ( "LD A", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second,  new byte[] { 0x32, 0, 0 }, 1 ), // LD A,(nn)
+            ( "LD A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x3e, 0 }, 1 ), // LD A,n
 
-            ( "LD HL",  CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x22, 0, 0 }, 1, 2 ), // LD (HL),nn
+            ( "LD HL",  CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x22, 0, 0 }, 1 ), // LD (HL),nn
 
-            ( "DJNZ", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0x10, 0 }, 1, 1 ), // DJNZ n
+            ( "DJNZ", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0x10, 0 }, 1 ), // DJNZ n
         };
 
         /* Instructions that need to be handled as special cases:

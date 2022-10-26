@@ -30,7 +30,7 @@ namespace Konamiman.Nestor80.Assembler
             CpuInstructionLine instructionLine = null;
             bool isNegativeIxy = false;
 
-            string RemoveSpacesAroundParenthesis(string argument)
+            static string RemoveSpacesAroundParenthesis(string argument)
             {
                 if(argument[0] is '(' && argument.Length > 1 && argument[^1] is ')') {
                     argument = $"({argument[1..^1].Trim()})";
@@ -64,7 +64,6 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             // There's at least one variable argument.
-            // If there are two, one must be fixed, being the only exception "LD (IX+n),n".
 
             var firstArgumentType = GetCpuInstructionArgumentPatternNew(firstArgument);
             var secondArgumentType = GetCpuInstructionArgumentPatternNew(secondArgument);
@@ -84,13 +83,11 @@ namespace Konamiman.Nestor80.Assembler
 
                 var argument1Expression = GetExpressionForInstructionArgument(opcode, expression1Text);
                 if(argument1Expression is null) {
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
 
                 var argument2Expression = GetExpressionForInstructionArgument(opcode, secondArgument);
                 if(argument2Expression is null) {
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
 
@@ -120,6 +117,9 @@ namespace Konamiman.Nestor80.Assembler
             string variableArgument;
             var argSearchType = CpuParsedArgType.None;
             var argSearchPosition = CpuArgPos.None;
+
+            // Search the instruction based on the opcode and the type of the supplied arguments.
+            // If there are two arguments, one must be fixed (being the only exception "LD (IXY+n),n" which we'd have already handled).
 
             if(secondArgument is null) {
                 if(firstArgumentType is CpuParsedArgType.Fixed) {
@@ -157,8 +157,10 @@ namespace Konamiman.Nestor80.Assembler
                 return new CpuInstructionLine() { IsInvalid = true };
             }
 
+            // Now that we have identified the instruction, deal with the expression for the variable argument
+            // and generate either the full instruction or one needing expression evaluation in pass 2.
+
             int variableArgBytePosition = 0;
-            int variableArgSize = 0;
             var variableArgType = CpuInstrArgType.None;
 
             for(int i=0; i< Z80InstructionsWithOneVariableArgument.Length; i++) {
@@ -190,12 +192,11 @@ namespace Konamiman.Nestor80.Assembler
                     variableArgType = candidateInstructionInfo.Item2;
                     instructionBytes = candidateInstructionInfo.Item4;
                     variableArgBytePosition = candidateInstructionInfo.Item5;
-                    variableArgSize = candidateInstructionInfo.Item6;
                     break;
                 }
             }
 
-            if(variableArgSize is 0) {
+            if(variableArgType is CpuInstrArgType.None) {
                 AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
                 return new CpuInstructionLine() { IsInvalid = true };
             }
@@ -241,7 +242,10 @@ namespace Konamiman.Nestor80.Assembler
                 instructionLine.OutputBytes = instructionBytes;
             }
             else {
-                var relocatable = RelocatableFromAddress(variableArgumentValue, variableArgBytePosition, variableArgSize);
+                var relocatable = RelocatableFromAddress(
+                    variableArgumentValue, 
+                    variableArgBytePosition, 
+                    variableArgType is CpuInstrArgType.Word or CpuInstrArgType.WordInParenthesis ? 2 : 1);
                 instructionLine.RelocatableParts = new[] { relocatable };
             }
 
