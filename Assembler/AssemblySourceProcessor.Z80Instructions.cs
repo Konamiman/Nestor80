@@ -1,9 +1,17 @@
-using System.Text.RegularExpressions;
-
 namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor
     {
+        static readonly string[] Z80InstructionOpcodes = new[] {
+            "ADC","ADD","AND","BIT","CALL","CCF","CP","CPD","CPDR","CPI","CPIR","CPL",
+            "DAA","DEC","DI","DJNZ","EI","EX","EXX","HALT","IM","IN","INC","IND","INDR","INI","INIR",
+            "JP","JR","LD","LDD","LDDR","LDI","LDIR","NEG","NOP","OR","OTDR","OTIR","OUT","OUTD","OUTI",
+            "POP","PUSH","RES","RET","RETI","RETN","RL","RLA","RLC","RLCA","RLD","RR","RRA","RRC","RRCA","RRD","RST",
+            "SBC","SCF","SET","SLA","SRA","SRL","SUB","XOR","SLL"
+        };
+
+        static readonly string[] R800SpecificOpcodes = new[] { "MULUB", "MULUW" };
+
         static readonly Dictionary<string, byte[]> FixedZ80Instructions = new(StringComparer.OrdinalIgnoreCase) {
           { "ADC HL,BC", new byte[] { 0xed, 0x4a } },
           { "ADC HL,DE", new byte[] { 0xed, 0x5a } },
@@ -498,87 +506,6 @@ namespace Konamiman.Nestor80.Assembler
           { "PUSH IX", new byte[] { 0xdd, 0xe5 } },
           { "PUSH IY", new byte[] { 0xfd, 0xe5 } },
 
-          { "RES 0,(HL)", new byte[] { 0xcb, 0x86 } },
-          { "RES 0,(IX)", new byte[] { 0xdd, 0xcb, 0, 0x86 } },
-          { "RES 0,(IY)", new byte[] { 0xfd, 0xcb, 0, 0x86 } },
-          { "RES 0,A", new byte[] { 0xcb, 0x87 } },
-          { "RES 0,B", new byte[] { 0xcb, 0x80 } },
-          { "RES 0,C", new byte[] { 0xcb, 0x81 } },
-          { "RES 0,D", new byte[] { 0xcb, 0x82 } },
-          { "RES 0,E", new byte[] { 0xcb, 0x83 } },
-          { "RES 0,H", new byte[] { 0xcb, 0x84 } },
-          { "RES 0,L", new byte[] { 0xcb, 0x85 } },
-          { "RES 1,(HL)", new byte[] { 0xcb, 0x8e } },
-          { "RES 1,(IX)", new byte[] { 0xdd, 0xcb, 0, 0x8e } },
-          { "RES 1,(IY)", new byte[] { 0xfd, 0xcb, 0, 0x8e } },
-          { "RES 1,A", new byte[] { 0xcb, 0x8f } },
-          { "RES 1,B", new byte[] { 0xcb, 0x88 } },
-          { "RES 1,C", new byte[] { 0xcb, 0x89 } },
-          { "RES 1,D", new byte[] { 0xcb, 0x8a } },
-          { "RES 1,E", new byte[] { 0xcb, 0x8b } },
-          { "RES 1,H", new byte[] { 0xcb, 0x8c } },
-          { "RES 1,L", new byte[] { 0xcb, 0x8d } },
-          { "RES 2,(HL)", new byte[] { 0xcb, 0x96 } },
-          { "RES 2,(IX)", new byte[] { 0xdd, 0xcb, 0, 0x96 } },
-          { "RES 2,(IY)", new byte[] { 0xfd, 0xcb, 0, 0x96 } },
-          { "RES 2,A", new byte[] { 0xcb, 0x97 } },
-          { "RES 2,B", new byte[] { 0xcb, 0x90 } },
-          { "RES 2,C", new byte[] { 0xcb, 0x91 } },
-          { "RES 2,D", new byte[] { 0xcb, 0x92 } },
-          { "RES 2,E", new byte[] { 0xcb, 0x93 } },
-          { "RES 2,H", new byte[] { 0xcb, 0x94 } },
-          { "RES 2,L", new byte[] { 0xcb, 0x95 } },
-          { "RES 3,(HL)", new byte[] { 0xcb, 0x9e } },
-          { "RES 3,(IX)", new byte[] { 0xdd, 0xcb, 0, 0x9e } },
-          { "RES 3,(IY)", new byte[] { 0xfd, 0xcb, 0, 0x9e } },
-          { "RES 3,A", new byte[] { 0xcb, 0x9f } },
-          { "RES 3,B", new byte[] { 0xcb, 0x98 } },
-          { "RES 3,C", new byte[] { 0xcb, 0x99 } },
-          { "RES 3,D", new byte[] { 0xcb, 0x9a } },
-          { "RES 3,E", new byte[] { 0xcb, 0x9b } },
-          { "RES 3,H", new byte[] { 0xcb, 0x9c } },
-          { "RES 3,L", new byte[] { 0xcb, 0x9d } },
-          { "RES 4,(HL)", new byte[] { 0xcb, 0xa6 } },
-          { "RES 4,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xa6 } },
-          { "RES 4,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xa6 } },
-          { "RES 4,A", new byte[] { 0xcb, 0xa7 } },
-          { "RES 4,B", new byte[] { 0xcb, 0xa0 } },
-          { "RES 4,C", new byte[] { 0xcb, 0xa1 } },
-          { "RES 4,D", new byte[] { 0xcb, 0xa2 } },
-          { "RES 4,E", new byte[] { 0xcb, 0xa3 } },
-          { "RES 4,H", new byte[] { 0xcb, 0xa4 } },
-          { "RES 4,L", new byte[] { 0xcb, 0xa5 } },
-          { "RES 5,(HL)", new byte[] { 0xcb, 0xae } },
-          { "RES 5,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xae } },
-          { "RES 5,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xae } },
-          { "RES 5,A", new byte[] { 0xcb, 0xaf } },
-          { "RES 5,B", new byte[] { 0xcb, 0xa8 } },
-          { "RES 5,C", new byte[] { 0xcb, 0xa9 } },
-          { "RES 5,D", new byte[] { 0xcb, 0xaa } },
-          { "RES 5,E", new byte[] { 0xcb, 0xab } },
-          { "RES 5,H", new byte[] { 0xcb, 0xac } },
-          { "RES 5,L", new byte[] { 0xcb, 0xad } },
-          { "RES 6,(HL)", new byte[] { 0xcb, 0xb6 } },
-          { "RES 6,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xb6 } },
-          { "RES 6,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xb6 } },
-          { "RES 6,A", new byte[] { 0xcb, 0xb7 } },
-          { "RES 6,B", new byte[] { 0xcb, 0xb0 } },
-          { "RES 6,C", new byte[] { 0xcb, 0xb1 } },
-          { "RES 6,D", new byte[] { 0xcb, 0xb2 } },
-          { "RES 6,E", new byte[] { 0xcb, 0xb3 } },
-          { "RES 6,H", new byte[] { 0xcb, 0xb4 } },
-          { "RES 6,L", new byte[] { 0xcb, 0xb5 } },
-          { "RES 7,(HL)", new byte[] { 0xcb, 0xbe } },
-          { "RES 7,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xbe } },
-          { "RES 7,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xbe } },
-          { "RES 7,A", new byte[] { 0xcb, 0xbf } },
-          { "RES 7,B", new byte[] { 0xcb, 0xb8 } },
-          { "RES 7,C", new byte[] { 0xcb, 0xb9 } },
-          { "RES 7,D", new byte[] { 0xcb, 0xba } },
-          { "RES 7,E", new byte[] { 0xcb, 0xbb } },
-          { "RES 7,H", new byte[] { 0xcb, 0xbc } },
-          { "RES 7,L", new byte[] { 0xcb, 0xbd } },
-
           { "RET", new byte[] { 0xc9 } },
           { "RET C", new byte[] { 0xd8 } },
           { "RET M", new byte[] { 0xf8 } },
@@ -694,87 +621,6 @@ namespace Konamiman.Nestor80.Assembler
 
           { "SCF", new byte[] { 0x37 } },
 
-          { "SET 0,(HL)", new byte[] { 0xcb, 0xc6 } },
-          { "SET 0,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xc6 } },
-          { "SET 0,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xc6 } },
-          { "SET 0,A", new byte[] { 0xcb, 0xc7 } },
-          { "SET 0,B", new byte[] { 0xcb, 0xc0 } },
-          { "SET 0,C", new byte[] { 0xcb, 0xc1 } },
-          { "SET 0,D", new byte[] { 0xcb, 0xc2 } },
-          { "SET 0,E", new byte[] { 0xcb, 0xc3 } },
-          { "SET 0,H", new byte[] { 0xcb, 0xc4 } },
-          { "SET 0,L", new byte[] { 0xcb, 0xc5 } },
-          { "SET 1,(HL)", new byte[] { 0xcb, 0xce } },
-          { "SET 1,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xce } },
-          { "SET 1,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xce } },
-          { "SET 1,A", new byte[] { 0xcb, 0xcf } },
-          { "SET 1,B", new byte[] { 0xcb, 0xc8 } },
-          { "SET 1,C", new byte[] { 0xcb, 0xc9 } },
-          { "SET 1,D", new byte[] { 0xcb, 0xca } },
-          { "SET 1,E", new byte[] { 0xcb, 0xcb } },
-          { "SET 1,H", new byte[] { 0xcb, 0xcc } },
-          { "SET 1,L", new byte[] { 0xcb, 0xcd } },
-          { "SET 2,(HL)", new byte[] { 0xcb, 0xd6 } },
-          { "SET 2,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xd6 } },
-          { "SET 2,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xd6 } },
-          { "SET 2,A", new byte[] { 0xcb, 0xd7 } },
-          { "SET 2,B", new byte[] { 0xcb, 0xd0 } },
-          { "SET 2,C", new byte[] { 0xcb, 0xd1 } },
-          { "SET 2,D", new byte[] { 0xcb, 0xd2 } },
-          { "SET 2,E", new byte[] { 0xcb, 0xd3 } },
-          { "SET 2,H", new byte[] { 0xcb, 0xd4 } },
-          { "SET 2,L", new byte[] { 0xcb, 0xd5 } },
-          { "SET 3,(HL)", new byte[] { 0xcb, 0xde } },
-          { "SET 3,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xde } },
-          { "SET 3,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xde } },
-          { "SET 3,A", new byte[] { 0xcb, 0xdf } },
-          { "SET 3,B", new byte[] { 0xcb, 0xd8 } },
-          { "SET 3,C", new byte[] { 0xcb, 0xd9 } },
-          { "SET 3,D", new byte[] { 0xcb, 0xda } },
-          { "SET 3,E", new byte[] { 0xcb, 0xdb } },
-          { "SET 3,H", new byte[] { 0xcb, 0xdc } },
-          { "SET 3,L", new byte[] { 0xcb, 0xdd } },
-          { "SET 4,(HL)", new byte[] { 0xcb, 0xe6 } },
-          { "SET 4,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xe6 } },
-          { "SET 4,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xe6 } },
-          { "SET 4,A", new byte[] { 0xcb, 0xe7 } },
-          { "SET 4,B", new byte[] { 0xcb, 0xe0 } },
-          { "SET 4,C", new byte[] { 0xcb, 0xe1 } },
-          { "SET 4,D", new byte[] { 0xcb, 0xe2 } },
-          { "SET 4,E", new byte[] { 0xcb, 0xe3 } },
-          { "SET 4,H", new byte[] { 0xcb, 0xe4 } },
-          { "SET 4,L", new byte[] { 0xcb, 0xe5 } },
-          { "SET 5,(HL)", new byte[] { 0xcb, 0xee } },
-          { "SET 5,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xee } },
-          { "SET 5,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xee } },
-          { "SET 5,A", new byte[] { 0xcb, 0xef } },
-          { "SET 5,B", new byte[] { 0xcb, 0xe8 } },
-          { "SET 5,C", new byte[] { 0xcb, 0xe9 } },
-          { "SET 5,D", new byte[] { 0xcb, 0xea } },
-          { "SET 5,E", new byte[] { 0xcb, 0xeb } },
-          { "SET 5,H", new byte[] { 0xcb, 0xec } },
-          { "SET 5,L", new byte[] { 0xcb, 0xed } },
-          { "SET 6,(HL)", new byte[] { 0xcb, 0xf6 } },
-          { "SET 6,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xf6 } },
-          { "SET 6,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xf6 } },
-          { "SET 6,A", new byte[] { 0xcb, 0xf7 } },
-          { "SET 6,B", new byte[] { 0xcb, 0xf0 } },
-          { "SET 6,C", new byte[] { 0xcb, 0xf1 } },
-          { "SET 6,D", new byte[] { 0xcb, 0xf2 } },
-          { "SET 6,E", new byte[] { 0xcb, 0xf3 } },
-          { "SET 6,H", new byte[] { 0xcb, 0xf4 } },
-          { "SET 6,L", new byte[] { 0xcb, 0xf5 } },
-          { "SET 7,(HL)", new byte[] { 0xcb, 0xfe } },
-          { "SET 7,(IX)", new byte[] { 0xdd, 0xcb, 0, 0xfe } },
-          { "SET 7,(IY)", new byte[] { 0xfd, 0xcb, 0, 0xfe } },
-          { "SET 7,A", new byte[] { 0xcb, 0xff } },
-          { "SET 7,B", new byte[] { 0xcb, 0xf8 } },
-          { "SET 7,C", new byte[] { 0xcb, 0xf9 } },
-          { "SET 7,D", new byte[] { 0xcb, 0xfa } },
-          { "SET 7,E", new byte[] { 0xcb, 0xfb } },
-          { "SET 7,H", new byte[] { 0xcb, 0xfc } },
-          { "SET 7,L", new byte[] { 0xcb, 0xfd } },
-
           { "SLA (HL)", new byte[] { 0xcb, 0x26 } },
           { "SLA (IX)", new byte[] { 0xdd, 0xcb, 0, 0x26 } },
           { "SLA (IY)", new byte[] { 0xfd, 0xcb, 0, 0x26 } },
@@ -857,6 +703,18 @@ namespace Konamiman.Nestor80.Assembler
           { "XOR IXL", new byte[] { 0xdd, 0xad } },
           { "XOR IYH", new byte[] { 0xfd, 0xac } },
           { "XOR IYL", new byte[] { 0xfd, 0xad } },
+
+          { "MULUB A,A", new byte[] { 0xed, 0xf9 } },
+          { "MULUB A,B", new byte[] { 0xed, 0xc1 } },
+          { "MULUB A,C", new byte[] { 0xed, 0xc9 } },
+          { "MULUB A,D", new byte[] { 0xed, 0xd1 } },
+          { "MULUB A,E", new byte[] { 0xed, 0xd9 } },
+          { "MULUB A,H", new byte[] { 0xed, 0xe1 } },
+          { "MULUB A,L", new byte[] { 0xed, 0xe9 } },
+          { "MULUW HL,BC", new byte[] { 0xed, 0xc3 } },
+          { "MULUW HL,DE", new byte[] { 0xed, 0xd3 } },
+          { "MULUW HL,HL", new byte[] { 0xed, 0xe3 } },
+          { "MULUW HL,SP", new byte[] { 0xed, 0xf3 } },
         };
 
         static readonly (string, CpuInstrArgType, CpuArgPos, byte[], int)[] 
@@ -864,278 +722,482 @@ namespace Konamiman.Nestor80.Assembler
             ( "ADC A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x8e, 0 }, 2 ), // ADC A,(IX+n)
             ( "ADC A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x8e, 0 }, 2 ), // ADC A,(IY+n)
             ( "ADC A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xce, 0 }, 1 ), // ADC A,n
-
             //Aliases for "ADC A,..." with implicit A
             ( "ADC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x8e, 0 }, 2 ), // ADC (IX+n)
             ( "ADC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x8e, 0 }, 2 ), // ADC (IY+n)
             ( "ADC", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xce, 0 }, 1 ), // ADC n
 
-            ( "LD A", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second,  new byte[] { 0x3a, 0, 0 }, 1 ), // LD A,(nn)
-            ( "LD A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x3e, 0 }, 1 ), // LD A,n
+            ( "ADD A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x86, 0 }, 2 ), // ADD A,(ix+n)
+            ( "ADD A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x86, 0 }, 2 ), // ADD A,(iy+n)
+            ( "ADD A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xc6, 0 }, 1 ), // ADD a,n
+            //Aliases for "ADD A,..." with implicit A
+            ( "ADD", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x86, 0 }, 2 ), // ADD (IX+n)
+            ( "ADD", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x86, 0 }, 2 ), // ADD (IY+n)
+            ( "ADD", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xc6, 0 }, 1 ), // ADD n
 
-            ( "LD HL",  CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x22, 0, 0 }, 1 ), // LD (HL),nn
+            ( "AND", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xa6, 0 }, 2 ), // AND (IX+n)
+            ( "AND", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xa6, 0 }, 2 ), // AND (IY+n)
+            ( "AND", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xe6, 0 }, 1 ), // AND n
+
+            ( "CALL C",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xdc, 0, 0 }, 1 ), // CALL C,nn
+            ( "CALL M",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xfc, 0, 0 }, 1 ), // CALL M,nn
+            ( "CALL NC", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xd4, 0, 0 }, 1 ), // CALL NC,nn
+            ( "CALL",    CpuInstrArgType.Word, CpuArgPos.Single, new byte[] { 0xcd, 0, 0 }, 1 ), // CALL nn
+            ( "CALL NZ", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xc4, 0, 0 }, 1 ), // CALL NZ,nn
+            ( "CALL PE", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xec, 0, 0 }, 1 ), // CALL PE,nn
+            ( "CALL PO", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xe4, 0, 0 }, 1 ), // CALL PO,nn
+            ( "CALL P",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xF4, 0, 0 }, 1 ), // CALL P,nn
+            ( "CALL Z",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xcc, 0, 0 }, 1 ), // CALL Z,nn
+
+            ( "CP", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xbe, 0 }, 2 ), //CP (IX+n)
+            ( "CP", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xbe, 0 }, 2 ), //CP (IY+n)
+            ( "CP", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xfe, 0 }, 1 ), // CP n
+
+            ( "DEC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x35, 0 }, 2 ), // DEC (IX+n)
+            ( "DEC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x35, 0 }, 2 ), // DEC (IY+n)
 
             ( "DJNZ", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0x10, 0 }, 1 ), // DJNZ n
+
+            ( "IN A", CpuInstrArgType.ByteInParenthesis, CpuArgPos.Second, new byte[] { 0xdb, 0 }, 1 ), // IN A,(n)
+
+            ( "INC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x34, 0 }, 2 ), // INC (IX+n)
+            ( "INC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x34, 0 }, 2 ), // INC (IY+n)
+
+            ( "JP",    CpuInstrArgType.Word, CpuArgPos.Single, new byte[] { 0xc3, 0, 0 }, 1 ), // JP nn
+            ( "JP C",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xda, 0, 0 }, 1 ), // JP C,nn
+            ( "JP M",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xfa, 0, 0 }, 1 ), // JP M,nn
+            ( "JP NC", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xd2, 0, 0 }, 1 ), // JP NC,nn
+            ( "JP NZ", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xc2, 0, 0 }, 1 ), // JP NZ,nn
+            ( "JP P",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xf2, 0, 0 }, 1 ), // JP P,nn
+            ( "JP PE", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xea, 0, 0 }, 1 ), // JP PE,nn
+            ( "JP PO", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xe2, 0, 0 }, 1 ), // JP PO,nn
+            ( "JP Z",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xca, 0, 0 }, 1 ), // JP Z,nn
+
+            ( "JR",    CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0x18, 0 }, 1 ),
+            ( "JR C",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x38, 0 }, 1 ),
+            ( "JR NC", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x30, 0 }, 1 ),
+            ( "JR NZ", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x20, 0 }, 1 ),
+            ( "JR Z",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x28, 0 }, 1 ),
+
+            ( "LD A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x3e, 0 }, 1 ), // LD A,n
+            ( "LD B", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x06, 0 }, 1 ), // LD B,n
+            ( "LD C", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x0e, 0 }, 1 ), // LD B,n
+            ( "LD D", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x16, 0 }, 1 ), // LD D,n
+            ( "LD E", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x1e, 0 }, 1 ), // LD E,n
+            ( "LD H", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x26, 0 }, 1 ), // LD H,n
+            ( "LD L", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x2e, 0 }, 1 ), // LD L,n
+            ( "LD IXH", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xdd, 0x26, 0 }, 2 ), // LD IXH,n
+            ( "LD IXL", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xdd, 0x2e, 0 }, 2 ), // LD IXL,n
+            ( "LD IYH", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xfd, 0x26, 0 }, 2 ), // LD IYH,n
+            ( "LD IYL", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xfd, 0x2e, 0 }, 2 ), // LD IYL,n
+            ( "LD BC", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0x01, 0, 0 }, 1 ), // LD BC,nn
+            ( "LD DE", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0x11, 0, 0 }, 1 ), // LD DE,nn
+            ( "LD HL", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0x21, 0, 0 }, 1 ), // LD HL,nn
+            ( "LD IX", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xdd, 0x21, 0, 0 }, 2 ), // LD IX,nn
+            ( "LD IY", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xfd, 0x21, 0, 0 }, 2 ), // LD IY,nn
+            ( "LD SP", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0x31, 0, 0 }, 1 ), // LD SP,nn
+            ( "LD A",  CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0x3a, 0, 0 }, 1 ), // LD A,(nn)
+            ( "LD BC", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x4b, 0, 0 }, 2 ), // LD BC,(nn)
+            ( "LD DE", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x5b, 0, 0 }, 2 ), // LD DE,(nn)
+            ( "LD HL", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0x2a, 0, 0 }, 1 ), // LD HL,(nn)
+            ( "LD IX", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xdd, 0x2a, 0, 0 }, 2 ), // LD IX,(nn)
+            ( "LD IY", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xfd, 0x2a, 0, 0 }, 2 ), // LD IY,(nn)
+            ( "LD SP", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x7b, 0, 0 }, 2 ), // LD SP,(nn)
+            ( "LD A",  CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x32, 0, 0 }, 1 ), // LD (nn),A
+            ( "LD BC", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x43, 0, 0 }, 2 ), // LD (nn),BC
+            ( "LD DE", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x53, 0, 0 }, 2 ), // LD (nn),DE
+            ( "LD HL", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x22, 0, 0 }, 1 ), // LD (nn),HL
+            ( "LD IX", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xdd, 0x22, 0, 0 }, 2 ), // LD (nn),IX
+            ( "LD IY", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xfd, 0x22, 0, 0 }, 2 ), // LD (nn),IY
+            ( "LD SP", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x73, 0, 0 }, 2 ), // LD (nn),SP
+            ( "LD (HL)",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x36, 0 }, 1 ), // LD (HL),n
+            ( "LD (IX)",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xdd, 0x36, 0, 0 }, 3 ), // LD (IX),n
+            ( "LD (IY)",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xfd, 0x36, 0, 0 }, 3 ), // LD (IY),n
+            ( "LD A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x7e, 0 }, 2 ), // LD A,(IX+s)
+            ( "LD B", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x46, 0 }, 2 ), // LD B,(IX+s)
+            ( "LD C", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x4e, 0 }, 2 ), // LD C,(IX+s)
+            ( "LD D", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x56, 0 }, 2 ), // LD D,(IX+s)
+            ( "LD E", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x5e, 0 }, 2 ), // LD E,(IX+s)
+            ( "LD H", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x66, 0 }, 2 ), // LD H,(IX+s)
+            ( "LD L", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x6e, 0 }, 2 ), // LD L,(IX+s)
+            ( "LD A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x7e, 0 }, 2 ), // LD A,(IY+s)
+            ( "LD B", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x46, 0 }, 2 ), // LD B,(IY+s)
+            ( "LD C", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x4e, 0 }, 2 ), // LD C,(IY+s)
+            ( "LD D", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x56, 0 }, 2 ), // LD D,(IY+s)
+            ( "LD E", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x5e, 0 }, 2 ), // LD E,(IY+s)
+            ( "LD H", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x66, 0 }, 2 ), // LD H,(IY+s)
+            ( "LD L", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x6e, 0 }, 2 ), // LD L,(IY+s)
+            ( "LD A", CpuInstrArgType.IxOffset, CpuArgPos.First, new byte[] { 0xdd, 0x77, 0 }, 2 ), // LD (IX+s),A
+            ( "LD B", CpuInstrArgType.IxOffset, CpuArgPos.First, new byte[] { 0xdd, 0x70, 0 }, 2 ), // LD (IX+s),B
+            ( "LD C", CpuInstrArgType.IxOffset, CpuArgPos.First, new byte[] { 0xdd, 0x71, 0 }, 2 ), // LD (IX+s),C
+            ( "LD D", CpuInstrArgType.IxOffset, CpuArgPos.First, new byte[] { 0xdd, 0x72, 0 }, 2 ), // LD (IX+s),D
+            ( "LD E", CpuInstrArgType.IxOffset, CpuArgPos.First, new byte[] { 0xdd, 0x73, 0 }, 2 ), // LD (IX+s),E
+            ( "LD H", CpuInstrArgType.IxOffset, CpuArgPos.First, new byte[] { 0xdd, 0x74, 0 }, 2 ), // LD (IX+s),H
+            ( "LD L", CpuInstrArgType.IxOffset, CpuArgPos.First, new byte[] { 0xdd, 0x75, 0 }, 2 ), // LD (IX+s),L
+            ( "LD A", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x77, 0 }, 2 ), // LD (IY+s),A
+            ( "LD B", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x70, 0 }, 2 ), // LD (IY+s),B
+            ( "LD C", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x71, 0 }, 2 ), // LD (IY+s),C
+            ( "LD D", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x72, 0 }, 2 ), // LD (IY+s),D
+            ( "LD E", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x73, 0 }, 2 ), // LD (IY+s),E
+            ( "LD H", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x74, 0 }, 2 ), // LD (IY+s),H
+            ( "LD L", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x75, 0 }, 2 ), // LD (IY+s),L
+
+            ( "OR", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xb6, 0 }, 2 ), // OR (IX+n)
+            ( "OR", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xb6, 0 }, 2 ), // OR (IY+n)
+            ( "OR", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xf6, 0 }, 1 ), // OR n
+
+            ( "OUT A", CpuInstrArgType.ByteInParenthesis, CpuArgPos.First, new byte[] { 0xd3, 0 }, 1 ), // OUT (n),A
+
+            ( "RL", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xcb, 0, 0x16 }, 2 ), // RL (IX+n)
+            ( "RL", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xcb, 0, 0x16 }, 2 ), // RL (IY+n)
+
+            ( "RLC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xcb, 0, 0x06 }, 2 ), // RLC (IX+n)
+            ( "RLC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xcb, 0, 0x06 }, 2 ), // RLC (IY+n)
+
+            ( "RR", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xcb, 0, 0x1e }, 2 ), // RR (IX+n)
+            ( "RR", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xcb, 0, 0x1e }, 2 ), // RR (IY+n)
+
+            ( "RRC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xcb, 0, 0x0e }, 2 ), // RRC (IX+n)
+            ( "RRC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xcb, 0, 0x0e }, 2 ), // RRC (IY+n)
+
+            ( "SBC A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x9e, 0 }, 2 ), // SBC A,(IX+s)
+            ( "SBC A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x9e, 0 }, 2 ), // SBC A,(IY+s)
+            ( "SBC A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xde, 0 }, 1 ), // SBC A,n
+            //Aliases for "SBC A,..." with implicit A
+            ( "SBC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x9e, 0 }, 2 ), // SBC (IX+n)
+            ( "SBC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x9e, 0 }, 2 ), // SBC (IY+n)
+            ( "SBC", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xde, 0 }, 1 ), // SBC n
+
+            ( "SLA", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xcb, 0, 0x26 }, 2 ), // SLA (IX+n)
+            ( "SLA", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xcb, 0, 0x26 }, 2 ), // SLA (IY+n)
+
+            ( "SRA", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xcb, 0, 0x2e }, 2 ), // SRA (IX+n)
+            ( "SRA", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xcb, 0, 0x2e }, 2 ), // SRA (IY+n)
+
+            ( "SUB A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x96, 0 }, 2 ), // SUB A,(IX+s)
+            ( "SUB A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x96, 0 }, 2 ), // SUB A,(IY+s)
+            ( "SUB A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xd6, 0 }, 1 ), // SUB A,n
+            //Aliases for "SUB A,..." with implicit A
+            ( "SUB", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x96, 0 }, 2 ), // SUB (IX+n)
+            ( "SUB", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x96, 0 }, 2 ), // SUB (IY+n)
+            ( "SUB", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xd6, 0 }, 1 ), // SUB n
+
+            ( "XOR", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xae, 0 }, 2 ), // XOR (IX+n)
+            ( "XOR", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xae, 0 }, 2 ), // XOR (IY+n)
+            ( "XOR", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xee, 0 }, 1 ), // XOR n
         };
 
-        static readonly Dictionary<string, (string, byte[], ushort)[]>
-            Z80InstructionsWithSelectorValue = new(StringComparer.OrdinalIgnoreCase) {
-                { "IM", new (string, byte[], ushort )[] {
-                    ( null, new byte[] { 0xed, 0x46 }, 0 ),
-                    ( null, new byte[] { 0xed, 0x56 }, 1 ),
-                    ( null, new byte[] { 0xed, 0x5e }, 2 ),
-                    }
-                },
-                { "BIT", new (string, byte[], ushort)[] {
-                    ("x", new byte[] { 0xdd, 0xcb, 0, 0x46 }, 0 ),
-                    ("y", new byte[] { 0xfd, 0xcb, 0, 0x46 }, 0 ),
-                    ("A", new byte[] { 0xcb, 0x5f }, 3 ),
-                    ("B", new byte[] { 0xcb, 0x58 }, 3 ),
-                    ("A", new byte[] { 0xcb, 0x67 }, 4 ),
-                    ("B", new byte[] { 0xcb, 0x60 }, 4 ),
-                    }
-                }
-            };
-
-        /* Instructions that need to be handled as special cases:
-         * 
-         * JR, DJNZ: Argument is an address, but generated opcode contains a 1 byte offset from current location pointer
-         * LD (IX/Y+s),n: There's a second argument (placed at the last byte)
-         * BIT/SET/RES n,R: n must evaluate to a number between 0 and 7
-         * RST n: n must evaluate to one of 00h, 08h, 10h, 18h, 20h, 28h, 30h, 38h
-         * IM n: n must be 0, 1 or 2
-         */
-        static readonly Dictionary<string, CpuInstruction[]> Z80Instructions = new(StringComparer.OrdinalIgnoreCase) {
-            { "IM", new CpuInstruction[0] },
-            { "ADC", new CpuInstruction[] {
-                new CpuInstruction( "ADC", "A", "(IX+s)", new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ),
-                new CpuInstruction( "ADC", "A", "(IY+s)", new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ),
-                new CpuInstruction( "ADC", "A", "n", new byte[] { 0xce, 0 }, 1, 1 ),
-
-                //Aliases for "ADC A,..." with implicit A
-                new CpuInstruction( "ADC", "(IX+s)", null, new byte[] { 0xdd, 0x8e, 0 }, 2, 1 ),
-                new CpuInstruction( "ADC", "(IY+s)", null, new byte[] { 0xfd, 0x8e, 0 }, 2, 1 ),
-                new CpuInstruction( "ADC", "n", null, new byte[] { 0xce, 0 }, 1, 1 ) } },
-            { "ADD", new CpuInstruction[] {
-
-                new CpuInstruction( "ADD", "A", "(IX+s)", new byte[] { 0xdd, 0x86, 0 }, 2, 1 ),
-                new CpuInstruction( "ADD", "A", "(IY+s)", new byte[] { 0xfd, 0x86, 0 }, 2, 1 ),
-                new CpuInstruction( "ADD", "A", "n", new byte[] { 0xc6, 0 }, 1, 1 ),
-                new CpuInstruction( "ADD", "A", "IXH", new byte[] { 0xdd, 0x84 } ),
-                new CpuInstruction( "ADD", "A", "IXL", new byte[] { 0xdd, 0x85 }, isUndocumented: true ),
-                new CpuInstruction( "ADD", "A", "IYH", new byte[] { 0xfd, 0x84 }, isUndocumented: true ),
-                new CpuInstruction( "ADD", "A", "IYL", new byte[] { 0xfd, 0x85 }, isUndocumented: true ),
-
-                //Aliases for "ADD A,..." with implicit A
-                new CpuInstruction( "ADD", "(IX+s)", null, new byte[] { 0xdd, 0x86, 0 }, 2, 1 ),
-                new CpuInstruction( "ADD", "(IY+s)", null, new byte[] { 0xfd, 0x86, 0 }, 2, 1 ),
-                new CpuInstruction( "ADD", "n", null, new byte[] { 0xc6, 0 }, 1, 1 ) } },
-            { "AND", new CpuInstruction[] {
-                new CpuInstruction( "AND", "(IX+s)", null, new byte[] { 0xdd, 0xa6, 0 }, 2, 1 ),
-                new CpuInstruction( "AND", "(IY+s)", null, new byte[] { 0xfd, 0xa6, 0 }, 2, 1 ),
-                new CpuInstruction( "AND", "n", null, new byte[] { 0xe6, 0 }, 1, 1 ) } },
-            { "BIT", new CpuInstruction[] {
-                new CpuInstruction( "BIT", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x46 }, 2, 1 ) { FirstArgumentFixedValue = 0 },
-                new CpuInstruction( "BIT", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x46 }, 2, 1 ) { FirstArgumentFixedValue = 0 },
-                new CpuInstruction( "BIT", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x4e }, 2, 1 ) { FirstArgumentFixedValue = 1 },
-                new CpuInstruction( "BIT", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x4e }, 2, 1 ) { FirstArgumentFixedValue = 1 },
-                new CpuInstruction( "BIT", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x56 }, 2, 1 ) { FirstArgumentFixedValue = 2 },
-                new CpuInstruction( "BIT", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x56 }, 2, 1 ) { FirstArgumentFixedValue = 2 },
-                new CpuInstruction( "BIT", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x5e }, 2, 1 ) { FirstArgumentFixedValue = 3 },
-                new CpuInstruction( "BIT", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x5e }, 2, 1 ) { FirstArgumentFixedValue = 3 },
-                new CpuInstruction( "BIT", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x66 }, 2, 1 ) { FirstArgumentFixedValue = 4 },
-                new CpuInstruction( "BIT", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x66 }, 2, 1 ) { FirstArgumentFixedValue = 4 },
-                new CpuInstruction( "BIT", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x6e }, 2, 1 ) { FirstArgumentFixedValue = 5 },
-                new CpuInstruction( "BIT", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x6e }, 2, 1 ) { FirstArgumentFixedValue = 5 },
-                new CpuInstruction( "BIT", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x76 }, 2, 1 ) { FirstArgumentFixedValue = 6 },
-                new CpuInstruction( "BIT", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x76 }, 2, 1 ) { FirstArgumentFixedValue = 6 },
-                new CpuInstruction( "BIT", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x7e }, 2, 1 ) { FirstArgumentFixedValue = 7 },
-                new CpuInstruction( "BIT", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x7e }, 2, 1 ) { FirstArgumentFixedValue = 7 } } },
-            { "CALL", new CpuInstruction[] {
-                new CpuInstruction( "CALL", "C", "n", new byte[] { 0xdc, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "CALL", "M", "n", new byte[] { 0xfc, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "CALL", "NC", "n", new byte[] { 0xd4, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "CALL", "n", null, new byte[] { 0xcd, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "CALL", "NZ", "n", new byte[] { 0xc4, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "CALL", "PE", "n", new byte[] { 0xec, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "CALL", "PO", "n", new byte[] { 0xe4, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "CALL", "P", "n", new byte[] { 0xF4, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "CALL", "Z", "n", new byte[] { 0xcc, 0, 0 }, 1, 2 ) } },
-            { "CP", new CpuInstruction[] {
-                new CpuInstruction( "CP", "(IX+s)", null, new byte[] { 0xdd, 0xbe, 0 }, 2, 1 ),
-                new CpuInstruction( "CP", "(IY+s)", null, new byte[] { 0xfd, 0xbe, 0 }, 2, 1 ),
-                new CpuInstruction( "CP", "n", null, new byte[] { 0xfe, 0 }, 1, 1 ) } },
-            { "DEC", new CpuInstruction[] {
-                new CpuInstruction( "DEC", "(IX+s)", null, new byte[] { 0xdd, 0x35, 0 }, 2, 1 ),
-                new CpuInstruction( "DEC", "(IY+s)", null, new byte[] { 0xfd, 0x35, 0 }, 2, 1 ) } },
-            { "DJNZ", new CpuInstruction[] {
-                new CpuInstruction( "DJNZ", "d", null, new byte[] { 0x10, 0 }, 1, 1 ) } },
-            { "IN", new CpuInstruction[] {
-                new CpuInstruction( "IN", "A", "(n)", new byte[] { 0xdb, 0 }, 1, 1 ) } },
-            { "INC", new CpuInstruction[] {
-                new CpuInstruction( "INC", "(IX+s)", null, new byte[] { 0xdd, 0x34, 0 }, 2, 1 ),
-                new CpuInstruction( "INC", "(IY+s)", null, new byte[] { 0xfd, 0x34, 0 }, 2, 1 ) } },
-            { "JP", new CpuInstruction[] {
-                new CpuInstruction( "JP", "n", null, new byte[] { 0xc3, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "JP", "C", "n", new byte[] { 0xda, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "JP", "M", "n", new byte[] { 0xfa, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "JP", "NC", "n", new byte[] { 0xd2, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "JP", "NZ", "n", new byte[] { 0xc2, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "JP", "P", "n", new byte[] { 0xf2, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "JP", "PE", "n", new byte[] { 0xea, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "JP", "PO", "n", new byte[] { 0xe2, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "JP", "Z", "n", new byte[] { 0xca, 0, 0 }, 1, 2 ) } },
-            { "JR", new CpuInstruction[] {
-                new CpuInstruction( "JR", "d", null, new byte[] { 0x18, 0 }, 1, 1 ),
-                new CpuInstruction( "JR", "C", "d", new byte[] { 0x38, 0 }, 1, 1 ),
-                new CpuInstruction( "JR", "NC", "d", new byte[] { 0x30, 0 }, 1, 1 ),
-                new CpuInstruction( "JR", "NZ", "d", new byte[] { 0x20, 0 }, 1, 1 ),
-                new CpuInstruction( "JR", "Z", "d", new byte[] { 0x28, 0 }, 1, 1 ) } },
-            { "LD", new CpuInstruction[] {
-                new CpuInstruction( "LD", "(HL)", "n", new byte[] { 0x36, 0 }, 1, 1 ),
-                new CpuInstruction( "LD", "(IX+s)", "A", new byte[] { 0xdd, 0x77, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IX+s)", "B", new byte[] { 0xdd, 0x70, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IX+s)", "C", new byte[] { 0xdd, 0x71, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IX+s)", "D", new byte[] { 0xdd, 0x72, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IX+s)", "E", new byte[] { 0xdd, 0x73, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IX+s)", "H", new byte[] { 0xdd, 0x74, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IX+s)", "L", new byte[] { 0xdd, 0x75, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IX+s)", "n", new byte[] { 0xdd, 0x36, 0, 0 }, 2, 1 ) { SecondValuePosition = 3, SecondValueSize = 1 },
-                new CpuInstruction( "LD", "(IX)", "n", new byte[] { 0xdd, 0x36, 0, 0 }, 3, 1 ),
-                new CpuInstruction( "LD", "(IY+s)", "A", new byte[] { 0xfd, 0x77, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IY+s)", "B", new byte[] { 0xfd, 0x70, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IY+s)", "C", new byte[] { 0xfd, 0x71, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IY+s)", "D", new byte[] { 0xfd, 0x72, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IY+s)", "E", new byte[] { 0xfd, 0x73, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IY+s)", "H", new byte[] { 0xfd, 0x74, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IY+s)", "L", new byte[] { 0xfd, 0x75, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "(IY+s)", "n", new byte[] { 0xfd, 0x36, 0, 0 }, 2, 1 ) { SecondValuePosition = 3, SecondValueSize = 1 },
-                new CpuInstruction( "LD", "(IY)", "n", new byte[] { 0xfd, 0x36, 0, 0 }, 3, 1 ),
-                new CpuInstruction( "LD", "(n)", "A", new byte[] { 0x32, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "LD", "(n)", "BC", new byte[] { 0xed, 0x43, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "(n)", "DE", new byte[] { 0xed, 0x53, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "(n)", "HL", new byte[] { 0x22, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "LD", "(n)", "IX", new byte[] { 0xdd, 0x22, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "(n)", "IY", new byte[] { 0xfd, 0x22, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "(n)", "SP", new byte[] { 0xed, 0x73, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "A", "(IX+s)", new byte[] { 0xdd, 0x7e, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "A", "(IY+s)", new byte[] { 0xfd, 0x7e, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "A", "(n)", new byte[] { 0x3a, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "LD", "A", "n", new byte[] { 0x3e, 0 }, 1, 1 ),
-                new CpuInstruction( "LD", "B", "(IX+s)", new byte[] { 0xdd, 0x46, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "B", "(IY+s)", new byte[] { 0xfd, 0x46, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "B", "n", new byte[] { 0x06, 0 }, 1, 1 ),
-                new CpuInstruction( "LD", "BC", "(n)", new byte[] { 0xed, 0x4b, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "BC", "n", new byte[] { 0x01, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "LD", "C", "(IX+s)", new byte[] { 0xdd, 0x4e, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "C", "(IY+s)", new byte[] { 0xfd, 0x4e, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "C", "n", new byte[] { 0x0e, 0 }, 1, 1 ),
-                new CpuInstruction( "LD", "D", "(IX+s)", new byte[] { 0xdd, 0x56, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "D", "(IY+s)", new byte[] { 0xfd, 0x56, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "D", "n", new byte[] { 0x16, 0 }, 1, 1 ),
-                new CpuInstruction( "LD", "DE", "(n)", new byte[] { 0xed, 0x5b, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "DE", "n", new byte[] { 0x11, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "LD", "E", "(IX+s)", new byte[] { 0xdd, 0x5e, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "E", "(IY+s)", new byte[] { 0xfd, 0x5e, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "E", "n", new byte[] { 0x1e, 0 }, 1, 1 ),
-                new CpuInstruction( "LD", "H", "(IX+s)", new byte[] { 0xdd, 0x66, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "H", "(IY+s)", new byte[] { 0xfd, 0x66, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "H", "n", new byte[] { 0x26, 0 }, 1, 1 ),
-                new CpuInstruction( "LD", "HL", "(n)", new byte[] { 0x2a, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "LD", "HL", "n", new byte[] { 0x21, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "LD", "IX", "(n)", new byte[] { 0xdd, 0x2a, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "IX", "n", new byte[] { 0xdd, 0x21, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "IY", "(n)", new byte[] { 0xfd, 0x2a, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "IY", "n", new byte[] { 0xfd, 0x21, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "L", "(IX+s)", new byte[] { 0xdd, 0x6e, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "L", "(IY+s)", new byte[] { 0xfd, 0x6e, 0 }, 2, 1 ),
-                new CpuInstruction( "LD", "L", "n", new byte[] { 0x2e, 0 }, 1, 1 ),
-                new CpuInstruction( "LD", "SP", "(n)", new byte[] { 0xed, 0x7b, 0, 0 }, 2, 2 ),
-                new CpuInstruction( "LD", "SP", "n", new byte[] { 0x31, 0, 0 }, 1, 2 ),
-                new CpuInstruction( "LD", "IXH", "n", new byte[] { 0xdd, 0x26, 0 }, 2, 1, true ),
-                new CpuInstruction( "LD", "IXL", "n", new byte[] { 0xdd, 0x2e, 0 }, 2, 1, true ),
-                new CpuInstruction( "LD", "IYH", "n", new byte[] { 0xfd, 0x26, 0 }, 2, 1, true ),
-                new CpuInstruction( "LD", "IYL", "n", new byte[] { 0xfd, 0x2e, 0 }, 2, 1, true ) } },
-            { "OR", new CpuInstruction[] {
-                new CpuInstruction( "OR", "(IX+s)", null, new byte[] { 0xdd, 0xb6, 0 }, 2, 1 ),
-                new CpuInstruction( "OR", "(IY+s)", null, new byte[] { 0xfd, 0xb6, 0 }, 2, 1 ),
-                new CpuInstruction( "OR", "n", null, new byte[] { 0xf6, 0 }, 1, 1 ) } },
-            { "OUT", new CpuInstruction[] {
-                new CpuInstruction( "OUT", "(n)", "A", new byte[] { 0xd3, 0 }, 1, 1 ) } },
-            { "RES", new CpuInstruction[] {
-                new CpuInstruction( "RES", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x86 }, 2, 1 ) { FirstArgumentFixedValue = 0 },
-                new CpuInstruction( "RES", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x86 }, 2, 1 ) { FirstArgumentFixedValue = 0 },
-                new CpuInstruction( "RES", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x8e }, 2, 1 ) { FirstArgumentFixedValue = 1 },
-                new CpuInstruction( "RES", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x8e }, 2, 1 ) { FirstArgumentFixedValue = 1 },
-                new CpuInstruction( "RES", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x96 }, 2, 1 ) { FirstArgumentFixedValue = 2 },
-                new CpuInstruction( "RES", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x96 }, 2, 1 ) { FirstArgumentFixedValue = 2 },
-                new CpuInstruction( "RES", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0x9e }, 2, 1 ) { FirstArgumentFixedValue = 3 },
-                new CpuInstruction( "RES", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0x9e }, 2, 1 ) { FirstArgumentFixedValue = 3 },
-                new CpuInstruction( "RES", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xa6 }, 2, 1 ) { FirstArgumentFixedValue = 4 },
-                new CpuInstruction( "RES", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xa6 }, 2, 1 ) { FirstArgumentFixedValue = 4 },
-                new CpuInstruction( "RES", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xae }, 2, 1 ) { FirstArgumentFixedValue = 5 },
-                new CpuInstruction( "RES", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xae }, 2, 1 ) { FirstArgumentFixedValue = 5 },
-                new CpuInstruction( "RES", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xb6 }, 2, 1 ) { FirstArgumentFixedValue = 6 },
-                new CpuInstruction( "RES", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xb6 }, 2, 1 ) { FirstArgumentFixedValue = 6 },
-                new CpuInstruction( "RES", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xbe }, 2, 1 ) { FirstArgumentFixedValue = 7 },
-                new CpuInstruction( "RES", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xbe }, 2, 1 ) { FirstArgumentFixedValue = 7 } } },
-            { "RL", new CpuInstruction[] {
-                new CpuInstruction( "RL", "(IX+s)", null, new byte[] { 0xdd, 0xcb, 0, 0x16 }, 2, 1 ),
-                new CpuInstruction( "RL", "(IY+s)", null, new byte[] { 0xfd, 0xcb, 0, 0x16 }, 2, 1 ) } },
-            { "RLC", new CpuInstruction[] {
-                new CpuInstruction( "RLC", "(IX+s)", null, new byte[] { 0xdd, 0xcb, 0, 0x06 }, 2, 1 ),
-                new CpuInstruction( "RLC", "(IY+s)", null, new byte[] { 0xfd, 0xcb, 0, 0x06 }, 2, 1 ) } },
-            { "RR", new CpuInstruction[] {
-                new CpuInstruction( "RR", "(IX+s)", null, new byte[] { 0xdd, 0xcb, 0, 0x1e }, 2, 1 ),
-                new CpuInstruction( "RR", "(IY+s)", null, new byte[] { 0xfd, 0xcb, 0, 0x1e }, 2, 1 ) } },
-            { "RRC", new CpuInstruction[] {
-                new CpuInstruction( "RRC", "(IX+s)", null, new byte[] { 0xdd, 0xcb, 0, 0x0e }, 2, 1 ),
-                new CpuInstruction( "RRC", "(IY+s)", null, new byte[] { 0xfd, 0xcb, 0, 0x0e }, 2, 1 ) } },
-            { "SBC", new CpuInstruction[] {
-                new CpuInstruction( "SBC", "A", "(IX+s)", new byte[] { 0xdd, 0x9e, 0 }, 2, 1 ),
-                new CpuInstruction( "SBC", "A", "(IY+s)", new byte[] { 0xfd, 0x9e, 0 }, 2, 1 ),
-                new CpuInstruction( "SBC", "A", "n", new byte[] { 0xde, 0 }, 1, 1 ),
-
-                //Aliases for "SBC A,..." with implicit A
-                new CpuInstruction( "SBC", "(IX+s)", null, new byte[] { 0xdd, 0x9e, 0 }, 2, 1 ),
-                new CpuInstruction( "SBC", "(IY+s)", null, new byte[] { 0xfd, 0x9e, 0 }, 2, 1 ),
-                new CpuInstruction( "SBC", "n", null, new byte[] { 0xde, 0 }, 1, 1 ) } },
-            { "SET", new CpuInstruction[] {
-                new CpuInstruction( "SET", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xc6 }, 2, 1 ) { FirstArgumentFixedValue = 0 },
-                new CpuInstruction( "SET", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xc6 }, 2, 1 ) { FirstArgumentFixedValue = 0 },
-                new CpuInstruction( "SET", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xce }, 2, 1 ) { FirstArgumentFixedValue = 1 },
-                new CpuInstruction( "SET", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xce }, 2, 1 ) { FirstArgumentFixedValue = 1 },
-                new CpuInstruction( "SET", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xd6 }, 2, 1 ) { FirstArgumentFixedValue = 2 },
-                new CpuInstruction( "SET", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xd6 }, 2, 1 ) { FirstArgumentFixedValue = 2 },
-                new CpuInstruction( "SET", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xde }, 2, 1 ) { FirstArgumentFixedValue = 3 },
-                new CpuInstruction( "SET", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xde }, 2, 1 ) { FirstArgumentFixedValue = 3 },
-                new CpuInstruction( "SET", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xe6 }, 2, 1 ) { FirstArgumentFixedValue = 4 },
-                new CpuInstruction( "SET", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xe6 }, 2, 1 ) { FirstArgumentFixedValue = 4 },
-                new CpuInstruction( "SET", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xee }, 2, 1 ) { FirstArgumentFixedValue = 5 },
-                new CpuInstruction( "SET", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xee }, 2, 1 ) { FirstArgumentFixedValue = 5 },
-                new CpuInstruction( "SET", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xf6 }, 2, 1 ) { FirstArgumentFixedValue = 6 },
-                new CpuInstruction( "SET", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xf6 }, 2, 1 ) { FirstArgumentFixedValue = 6 },
-                new CpuInstruction( "SET", "f", "(IX+s)", new byte[] { 0xdd, 0xcb, 0, 0xfe }, 2, 1 ) { FirstArgumentFixedValue = 7 },
-                new CpuInstruction( "SET", "f", "(IY+s)", new byte[] { 0xfd, 0xcb, 0, 0xfe }, 2, 1 ) { FirstArgumentFixedValue = 7 } } },
-            { "SLA", new CpuInstruction[] {
-                new CpuInstruction( "SLA", "(IX+s)", null, new byte[] { 0xdd, 0xcb, 0, 0x26 }, 2, 1 ),
-                new CpuInstruction( "SLA", "(IY+s)", null, new byte[] { 0xfd, 0xcb, 0, 0x26 }, 2, 1 ) } },
-            { "SRA", new CpuInstruction[] {
-                new CpuInstruction( "SRA", "(IX+s)", null, new byte[] { 0xdd, 0xcb, 0, 0x2e }, 2, 1 ),
-                new CpuInstruction( "SRA", "(IY+s)", null, new byte[] { 0xfd, 0xcb, 0, 0x2e }, 2, 1 ) } },
-            { "SUB", new CpuInstruction[] {
-                new CpuInstruction( "SUB", "A", "(IX+s)", new byte[] { 0xdd, 0x96, 0 }, 2, 1 ),
-                new CpuInstruction( "SUB", "A", "(IY+s)", new byte[] { 0xfd, 0x96, 0 }, 2, 1 ),
-                new CpuInstruction( "SUB", "A", "n", new byte[] { 0xd6, 0 }, 1, 1 ),
-
-                //Aliases for "SUB A,..." with implicit A
-                new CpuInstruction( "SUB", "(IX+s)", null, new byte[] { 0xdd, 0x96, 0 }, 2, 1 ),
-                new CpuInstruction( "SUB", "(IY+s)", null, new byte[] { 0xfd, 0x96, 0 }, 2, 1 ),
-                new CpuInstruction( "SUB", "n", null, new byte[] { 0xd6, 0 }, 1, 1 ) } },
-            { "XOR", new CpuInstruction[] {
-                new CpuInstruction( "XOR", "(IX+s)", null, new byte[] { 0xdd, 0xae, 0 }, 2, 1 ),
-                new CpuInstruction( "XOR", "(IY+s)", null, new byte[] { 0xfd, 0xae, 0 }, 2, 1 ),
-                new CpuInstruction( "XOR", "n", null, new byte[] { 0xee, 0 }, 1, 1 ) } }
-        };           
+        static readonly Dictionary<string, (string, byte[], ushort)[]> Z80InstructionsWithSelectorValue = 
+            new(StringComparer.OrdinalIgnoreCase) {
+            { "BIT", new (string, byte[], ushort)[] {
+                ( "(HL)", new byte[] { 0xcb, 0x46 }, 0 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x46 }, 0 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x46 }, 0 ),
+                ( "A", new byte[] { 0xcb, 0x47 }, 0 ),
+                ( "B", new byte[] { 0xcb, 0x40 }, 0 ),
+                ( "C", new byte[] { 0xcb, 0x41 }, 0 ),
+                ( "D", new byte[] { 0xcb, 0x42 }, 0 ),
+                ( "E", new byte[] { 0xcb, 0x43 }, 0 ),
+                ( "H", new byte[] { 0xcb, 0x44 }, 0 ),
+                ( "L", new byte[] { 0xcb, 0x45 }, 0 ),
+                ( "(HL)", new byte[] { 0xcb, 0x4e }, 1 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x4e }, 1 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x4e }, 1 ),
+                ( "A", new byte[] { 0xcb, 0x4f }, 1 ),
+                ( "B", new byte[] { 0xcb, 0x48 }, 1 ),
+                ( "C", new byte[] { 0xcb, 0x49 }, 1 ),
+                ( "D", new byte[] { 0xcb, 0x4a }, 1 ),
+                ( "E", new byte[] { 0xcb, 0x4b }, 1 ),
+                ( "H", new byte[] { 0xcb, 0x4c }, 1 ),
+                ( "L", new byte[] { 0xcb, 0x4d }, 1 ),
+                ( "(HL)", new byte[] { 0xcb, 0x56 }, 2 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x56 }, 2 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x56 }, 2 ),
+                ( "A", new byte[] { 0xcb, 0x57 }, 2 ),
+                ( "B", new byte[] { 0xcb, 0x50 }, 2 ),
+                ( "C", new byte[] { 0xcb, 0x51 }, 2 ),
+                ( "D", new byte[] { 0xcb, 0x52 }, 2 ),
+                ( "E", new byte[] { 0xcb, 0x53 }, 2 ),
+                ( "H", new byte[] { 0xcb, 0x54 }, 2 ),
+                ( "L", new byte[] { 0xcb, 0x55 }, 2 ),
+                ( "(HL)", new byte[] { 0xcb, 0x5e }, 3 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x5e }, 3 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x5e }, 3 ),
+                ( "A", new byte[] { 0xcb, 0x5f }, 3 ),
+                ( "B", new byte[] { 0xcb, 0x58 }, 3 ),
+                ( "C", new byte[] { 0xcb, 0x59 }, 3 ),
+                ( "D", new byte[] { 0xcb, 0x5a }, 3 ),
+                ( "E", new byte[] { 0xcb, 0x5b }, 3 ),
+                ( "H", new byte[] { 0xcb, 0x5c }, 3 ),
+                ( "L", new byte[] { 0xcb, 0x5d }, 3 ),
+                ( "(HL)", new byte[] { 0xcb, 0x66 }, 4 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x66 }, 4 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x66 }, 4 ),
+                ( "A", new byte[] { 0xcb, 0x67 }, 4 ),
+                ( "B", new byte[] { 0xcb, 0x60 }, 4 ),
+                ( "C", new byte[] { 0xcb, 0x61 }, 4 ),
+                ( "D", new byte[] { 0xcb, 0x62 }, 4 ),
+                ( "E", new byte[] { 0xcb, 0x63 }, 4 ),
+                ( "H", new byte[] { 0xcb, 0x64 }, 4 ),
+                ( "L", new byte[] { 0xcb, 0x65 }, 4 ),
+                ( "(HL)", new byte[] { 0xcb, 0x6e }, 5 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x6e }, 5 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x6e }, 5 ),
+                ( "A", new byte[] { 0xcb, 0x6f }, 5 ),
+                ( "B", new byte[] { 0xcb, 0x68 }, 5 ),
+                ( "C", new byte[] { 0xcb, 0x69 }, 5 ),
+                ( "D", new byte[] { 0xcb, 0x6a }, 5 ),
+                ( "E", new byte[] { 0xcb, 0x6b }, 5 ),
+                ( "H", new byte[] { 0xcb, 0x6c }, 5 ),
+                ( "L", new byte[] { 0xcb, 0x6d }, 5 ),
+                ( "(HL)", new byte[] { 0xcb, 0x76 }, 6 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x76 }, 6 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x76 }, 6 ),
+                ( "A", new byte[] { 0xcb, 0x77 }, 6 ),
+                ( "B", new byte[] { 0xcb, 0x70 }, 6 ),
+                ( "C", new byte[] { 0xcb, 0x71 }, 6 ),
+                ( "D", new byte[] { 0xcb, 0x72 }, 6 ),
+                ( "E", new byte[] { 0xcb, 0x73 }, 6 ),
+                ( "H", new byte[] { 0xcb, 0x74 }, 6 ),
+                ( "L", new byte[] { 0xcb, 0x75 }, 6 ),
+                ( "(HL)", new byte[] { 0xcb, 0x7e }, 7 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x7e }, 7 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x7e }, 7 ),
+                ( "A", new byte[] { 0xcb, 0x7f }, 7 ),
+                ( "B", new byte[] { 0xcb, 0x78 }, 7 ),
+                ( "C", new byte[] { 0xcb, 0x79 }, 7 ),
+                ( "D", new byte[] { 0xcb, 0x7a }, 7 ),
+                ( "E", new byte[] { 0xcb, 0x7b }, 7 ),
+                ( "H", new byte[] { 0xcb, 0x7c }, 7 ),
+                ( "L", new byte[] { 0xcb, 0x7d }, 7 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x46 }, 0 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x46 }, 0 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x4e }, 1 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x4e }, 1 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x56 }, 2 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x56 }, 2 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x5e }, 3 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x5e }, 3 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x66 }, 4 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x66 }, 4 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x6e }, 5 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x6e }, 5 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x76 }, 6 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x76 }, 6 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x7e }, 7 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x7e }, 7 ) }
+            },
+            { "SET", new (string, byte[], ushort)[] {
+                ( "(HL)", new byte[] { 0xcb, 0xc6 }, 0 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xc6 }, 0 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xc6 }, 0 ),
+                ( "A", new byte[] { 0xcb, 0xc7 }, 0 ),
+                ( "B", new byte[] { 0xcb, 0xc0 }, 0 ),
+                ( "C", new byte[] { 0xcb, 0xc1 }, 0 ),
+                ( "D", new byte[] { 0xcb, 0xc2 }, 0 ),
+                ( "E", new byte[] { 0xcb, 0xc3 }, 0 ),
+                ( "H", new byte[] { 0xcb, 0xc4 }, 0 ),
+                ( "L", new byte[] { 0xcb, 0xc5 }, 0 ),
+                ( "(HL)", new byte[] { 0xcb, 0xce }, 1 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xce }, 1 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xce }, 1 ),
+                ( "A", new byte[] { 0xcb, 0xcf }, 1 ),
+                ( "B", new byte[] { 0xcb, 0xc8 }, 1 ),
+                ( "C", new byte[] { 0xcb, 0xc9 }, 1 ),
+                ( "D", new byte[] { 0xcb, 0xca }, 1 ),
+                ( "E", new byte[] { 0xcb, 0xcb }, 1 ),
+                ( "H", new byte[] { 0xcb, 0xcc }, 1 ),
+                ( "L", new byte[] { 0xcb, 0xcd }, 1 ),
+                ( "(HL)", new byte[] { 0xcb, 0xd6 }, 2 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xd6 }, 2 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xd6 }, 2 ),
+                ( "A", new byte[] { 0xcb, 0xd7 }, 2 ),
+                ( "B", new byte[] { 0xcb, 0xd0 }, 2 ),
+                ( "C", new byte[] { 0xcb, 0xd1 }, 2 ),
+                ( "D", new byte[] { 0xcb, 0xd2 }, 2 ),
+                ( "E", new byte[] { 0xcb, 0xd3 }, 2 ),
+                ( "H", new byte[] { 0xcb, 0xd4 }, 2 ),
+                ( "L", new byte[] { 0xcb, 0xd5 }, 2 ),
+                ( "(HL)", new byte[] { 0xcb, 0xde }, 3 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xde }, 3 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xde }, 3 ),
+                ( "A", new byte[] { 0xcb, 0xdf }, 3 ),
+                ( "B", new byte[] { 0xcb, 0xd8 }, 3 ),
+                ( "C", new byte[] { 0xcb, 0xd9 }, 3 ),
+                ( "D", new byte[] { 0xcb, 0xda }, 3 ),
+                ( "E", new byte[] { 0xcb, 0xdb }, 3 ),
+                ( "H", new byte[] { 0xcb, 0xdc }, 3 ),
+                ( "L", new byte[] { 0xcb, 0xdd }, 3 ),
+                ( "(HL)", new byte[] { 0xcb, 0xe6 }, 4 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xe6 }, 4 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xe6 }, 4 ),
+                ( "A", new byte[] { 0xcb, 0xe7 }, 4 ),
+                ( "B", new byte[] { 0xcb, 0xe0 }, 4 ),
+                ( "C", new byte[] { 0xcb, 0xe1 }, 4 ),
+                ( "D", new byte[] { 0xcb, 0xe2 }, 4 ),
+                ( "E", new byte[] { 0xcb, 0xe3 }, 4 ),
+                ( "H", new byte[] { 0xcb, 0xe4 }, 4 ),
+                ( "L", new byte[] { 0xcb, 0xe5 }, 4 ),
+                ( "(HL)", new byte[] { 0xcb, 0xee }, 5 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xee }, 5 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xee }, 5 ),
+                ( "A", new byte[] { 0xcb, 0xef }, 5 ),
+                ( "B", new byte[] { 0xcb, 0xe8 }, 5 ),
+                ( "C", new byte[] { 0xcb, 0xe9 }, 5 ),
+                ( "D", new byte[] { 0xcb, 0xea }, 5 ),
+                ( "E", new byte[] { 0xcb, 0xeb }, 5 ),
+                ( "H", new byte[] { 0xcb, 0xec }, 5 ),
+                ( "L", new byte[] { 0xcb, 0xed }, 5 ),
+                ( "(HL)", new byte[] { 0xcb, 0xf6 }, 6 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xf6 }, 6 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xf6 }, 6 ),
+                ( "A", new byte[] { 0xcb, 0xf7 }, 6 ),
+                ( "B", new byte[] { 0xcb, 0xf0 }, 6 ),
+                ( "C", new byte[] { 0xcb, 0xf1 }, 6 ),
+                ( "D", new byte[] { 0xcb, 0xf2 }, 6 ),
+                ( "E", new byte[] { 0xcb, 0xf3 }, 6 ),
+                ( "H", new byte[] { 0xcb, 0xf4 }, 6 ),
+                ( "L", new byte[] { 0xcb, 0xf5 }, 6 ),
+                ( "(HL)", new byte[] { 0xcb, 0xfe }, 7 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xfe }, 7 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xfe }, 7 ),
+                ( "A", new byte[] { 0xcb, 0xff }, 7 ),
+                ( "B", new byte[] { 0xcb, 0xf8 }, 7 ),
+                ( "C", new byte[] { 0xcb, 0xf9 }, 7 ),
+                ( "D", new byte[] { 0xcb, 0xfa }, 7 ),
+                ( "E", new byte[] { 0xcb, 0xfb }, 7 ),
+                ( "H", new byte[] { 0xcb, 0xfc }, 7 ),
+                ( "L", new byte[] { 0xcb, 0xfd }, 7 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xc6 }, 0 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xc6 }, 0 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xce }, 1 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xce }, 1 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xd6 }, 2 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xd6 }, 2 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xde }, 3 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xde }, 3 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xe6 }, 4 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xe6 }, 4 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xee }, 5 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xee }, 5 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xf6 }, 6 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xf6 }, 6 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xfe }, 7 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xfe }, 7 ) }
+            },
+            { "RES", new (string, byte[], ushort )[] {
+                ( "(HL)", new byte[] { 0xcb, 0x86 }, 0 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x86 }, 0 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x86 }, 0 ),
+                ( "A", new byte[] { 0xcb, 0x87 }, 0 ),
+                ( "B", new byte[] { 0xcb, 0x80 }, 0 ),
+                ( "C", new byte[] { 0xcb, 0x81 }, 0 ),
+                ( "D", new byte[] { 0xcb, 0x82 }, 0 ),
+                ( "E", new byte[] { 0xcb, 0x83 }, 0 ),
+                ( "H", new byte[] { 0xcb, 0x84 }, 0 ),
+                ( "L", new byte[] { 0xcb, 0x85 }, 0 ),
+                ( "(HL)", new byte[] { 0xcb, 0x8e }, 1 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x8e }, 1 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x8e }, 1 ),
+                ( "A", new byte[] { 0xcb, 0x8f }, 1 ),
+                ( "B", new byte[] { 0xcb, 0x88 }, 1 ),
+                ( "C", new byte[] { 0xcb, 0x89 }, 1 ),
+                ( "D", new byte[] { 0xcb, 0x8a }, 1 ),
+                ( "E", new byte[] { 0xcb, 0x8b }, 1 ),
+                ( "H", new byte[] { 0xcb, 0x8c }, 1 ),
+                ( "L", new byte[] { 0xcb, 0x8d }, 1 ),
+                ( "(HL)", new byte[] { 0xcb, 0x96 }, 2 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x96 }, 2 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x96 }, 2 ),
+                ( "A", new byte[] { 0xcb, 0x97 }, 2 ),
+                ( "B", new byte[] { 0xcb, 0x90 }, 2 ),
+                ( "C", new byte[] { 0xcb, 0x91 }, 2 ),
+                ( "D", new byte[] { 0xcb, 0x92 }, 2 ),
+                ( "E", new byte[] { 0xcb, 0x93 }, 2 ),
+                ( "H", new byte[] { 0xcb, 0x94 }, 2 ),
+                ( "L", new byte[] { 0xcb, 0x95 }, 2 ),
+                ( "(HL)", new byte[] { 0xcb, 0x9e }, 3 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0x9e }, 3 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0x9e }, 3 ),
+                ( "A", new byte[] { 0xcb, 0x9f }, 3 ),
+                ( "B", new byte[] { 0xcb, 0x98 }, 3 ),
+                ( "C", new byte[] { 0xcb, 0x99 }, 3 ),
+                ( "D", new byte[] { 0xcb, 0x9a }, 3 ),
+                ( "E", new byte[] { 0xcb, 0x9b }, 3 ),
+                ( "H", new byte[] { 0xcb, 0x9c }, 3 ),
+                ( "L", new byte[] { 0xcb, 0x9d }, 3 ),
+                ( "(HL)", new byte[] { 0xcb, 0xa6 }, 4 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xa6 }, 4 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xa6 }, 4 ),
+                ( "A", new byte[] { 0xcb, 0xa7 }, 4 ),
+                ( "B", new byte[] { 0xcb, 0xa0 }, 4 ),
+                ( "C", new byte[] { 0xcb, 0xa1 }, 4 ),
+                ( "D", new byte[] { 0xcb, 0xa2 }, 4 ),
+                ( "E", new byte[] { 0xcb, 0xa3 }, 4 ),
+                ( "H", new byte[] { 0xcb, 0xa4 }, 4 ),
+                ( "L", new byte[] { 0xcb, 0xa5 }, 4 ),
+                ( "(HL)", new byte[] { 0xcb, 0xae }, 5 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xae }, 5 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xae }, 5 ),
+                ( "A", new byte[] { 0xcb, 0xaf }, 5 ),
+                ( "B", new byte[] { 0xcb, 0xa8 }, 5 ),
+                ( "C", new byte[] { 0xcb, 0xa9 }, 5 ),
+                ( "D", new byte[] { 0xcb, 0xaa }, 5 ),
+                ( "E", new byte[] { 0xcb, 0xab }, 5 ),
+                ( "H", new byte[] { 0xcb, 0xac }, 5 ),
+                ( "L", new byte[] { 0xcb, 0xad }, 5 ),
+                ( "(HL)", new byte[] { 0xcb, 0xb6 }, 6 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xb6 }, 6 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xb6 }, 6 ),
+                ( "A", new byte[] { 0xcb, 0xb7 }, 6 ),
+                ( "B", new byte[] { 0xcb, 0xb0 }, 6 ),
+                ( "C", new byte[] { 0xcb, 0xb1 }, 6 ),
+                ( "D", new byte[] { 0xcb, 0xb2 }, 6 ),
+                ( "E", new byte[] { 0xcb, 0xb3 }, 6 ),
+                ( "H", new byte[] { 0xcb, 0xb4 }, 6 ),
+                ( "L", new byte[] { 0xcb, 0xb5 }, 6 ),
+                ( "(HL)", new byte[] { 0xcb, 0xbe }, 7 ),
+                ( "(IX)", new byte[] { 0xdd, 0xcb, 0, 0xbe }, 7 ),
+                ( "(IY)", new byte[] { 0xfd, 0xcb, 0, 0xbe }, 7 ),
+                ( "A", new byte[] { 0xcb, 0xbf }, 7 ),
+                ( "B", new byte[] { 0xcb, 0xb8 }, 7 ),
+                ( "C", new byte[] { 0xcb, 0xb9 }, 7 ),
+                ( "D", new byte[] { 0xcb, 0xba }, 7 ),
+                ( "E", new byte[] { 0xcb, 0xbb }, 7 ),
+                ( "H", new byte[] { 0xcb, 0xbc }, 7 ),
+                ( "L", new byte[] { 0xcb, 0xbd }, 7 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x86 }, 0 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x86 }, 0 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x8e }, 1 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x8e }, 1 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x96 }, 2 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x96 }, 2 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0x9e }, 3 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0x9e }, 3 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xa6 }, 4 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xa6 }, 4 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xae }, 5 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xae }, 5 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xb6 }, 6 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xb6 }, 6 ),
+                ( "x", new byte[] { 0xdd, 0xcb, 0, 0xbe }, 7 ),
+                ( "y", new byte[] { 0xfd, 0xcb, 0, 0xbe }, 7 ) }
+            },
+            { "IM", new (string, byte[], ushort )[] {
+                ( null, new byte[] { 0xed, 0x46 }, 0 ),
+                ( null, new byte[] { 0xed, 0x56 }, 1 ),
+                ( null, new byte[] { 0xed, 0x5e }, 2 ) }
+            },
+            { "RST", new (string, byte[], ushort)[] {
+                (null, new byte[] { 0xc7 }, 0 ),
+                (null, new byte[] { 0xcf }, 0x08 ),
+                (null, new byte[] { 0xd7 }, 0x10 ),
+                (null, new byte[] { 0xdf }, 0x18 ),
+                (null, new byte[] { 0xe7 }, 0x20 ),
+                (null, new byte[] { 0xef }, 0x28 ),
+                (null, new byte[] { 0xf7 }, 0x30 ),
+                (null, new byte[] { 0xff }, 0x38 ) }
+            }
+        };
     }
 }

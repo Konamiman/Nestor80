@@ -582,7 +582,6 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessChangeCpuToZ80Line(string opcode, SourceLineWalker walker)
         {
             currentCpu = CpuType.Z80;
-            currentCpuInstructions = cpuInstructions[CpuType.Z80];
             return new ChangeCpuLine() { Cpu = CpuType.Z80 };
         }
 
@@ -613,7 +612,6 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             currentCpu = cpuType;
-            currentCpuInstructions = cpuInstructions[cpuType];
 
             return cpuType;
         }

@@ -46,8 +46,6 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly string[] instructionsNeedingPass2Reevaluation;
 
         private static CpuType currentCpu;
-        private static readonly Dictionary<CpuType, Dictionary<string, CpuInstruction[]>> cpuInstructions;
-        private static Dictionary<string, CpuInstruction[]> currentCpuInstructions;
 
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegxOp);
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegxOp);
@@ -76,15 +74,6 @@ namespace Konamiman.Nestor80.Assembler
         static AssemblySourceProcessor()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-
-            cpuInstructions = new() {
-                [CpuType.Z80] = Z80Instructions,
-                [CpuType.R800] = Z80Instructions.ToDictionary(x => x.Key, x=>x.Value, StringComparer.OrdinalIgnoreCase)
-            };
-            foreach(var entry in R800Instructions) {
-                cpuInstructions[CpuType.R800].Add(entry.Key, entry.Value);
-            }
-
             instructionsNeedingPass2Reevaluation = conditionalInstructions.Concat(new[] { ".PHASE", ".DEPHASE" }).ToArray();
         }
 
@@ -401,7 +390,8 @@ namespace Konamiman.Nestor80.Assembler
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
                 }
-                else if(currentCpuInstructions.ContainsKey(symbol)) {
+                else if(Z80InstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) &&
+                    (currentCpu is CpuType.R800 || !R800SpecificOpcodes.Contains(opcode, StringComparer.OrdinalIgnoreCase))) {
                     opcode = symbol;
                     processedLine = ProcessCpuInstruction(opcode, walker);
                 }
