@@ -132,6 +132,14 @@
                 linePointer++;
             }
 
+            if(sourceLine[linePointer] is 'A' or 'a' && linePointer <= lineLength - 3 && sourceLine[linePointer+1] is 'F' or 'f' && sourceLine[linePointer+2] is '\'') {
+                // Ugly hack to recognize AF' as a symbol and not as AF followed by a string start
+                var result = sourceLine.Substring(linePointer, 3);
+                linePointer += 3;
+                SkipBlanks();
+                return result;
+            }
+
             var originalPointer = linePointer;
             while(
                 (insideString && !PhysicalEndOfLineReached) ||

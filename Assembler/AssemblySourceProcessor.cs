@@ -390,8 +390,8 @@ namespace Konamiman.Nestor80.Assembler
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
                 }
-                else if(Z80InstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) &&
-                    (currentCpu is CpuType.R800 || !R800SpecificOpcodes.Contains(opcode, StringComparer.OrdinalIgnoreCase))) {
+                else if(Z80InstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) ||
+                    (currentCpu is CpuType.R800 && R800SpecificOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase))) {
                     opcode = symbol;
                     processedLine = ProcessCpuInstruction(opcode, walker);
                 }

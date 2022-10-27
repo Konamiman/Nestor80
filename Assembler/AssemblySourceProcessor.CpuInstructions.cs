@@ -48,6 +48,9 @@ namespace Konamiman.Nestor80.Assembler
                 firstArgument = RemoveSpacesAroundParenthesis(walker.ExtractExpression());
                 if(!walker.AtEndOfLine) {
                     secondArgument = RemoveSpacesAroundParenthesis(walker.ExtractExpression());
+                    if(secondArgument.Equals("AF'", StringComparison.OrdinalIgnoreCase)) {
+                        secondArgument = "AF";
+                    }
                 }
             }
 

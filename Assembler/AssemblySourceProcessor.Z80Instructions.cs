@@ -688,6 +688,9 @@ namespace Konamiman.Nestor80.Assembler
           { "SUB IXL", new byte[] { 0xdd, 0x95 } },
           { "SUB IYH", new byte[] { 0xfd, 0x94 } },
           { "SUB IYL", new byte[] { 0xfd, 0x95 } },
+          { "SUB (HL)", new byte[] { 0x96 } },
+          { "SUB (IX)", new byte[] { 0xdd, 0x96, 0 } },
+          { "SUB (IY)", new byte[] { 0xfd, 0x96, 0 } },
 
           { "XOR (HL)", new byte[] { 0xae } },
           { "XOR (IX)", new byte[] { 0xdd, 0xae, 0 } },
@@ -778,7 +781,24 @@ namespace Konamiman.Nestor80.Assembler
             ( "JR NC", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x30, 0 }, 1 ),
             ( "JR NZ", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x20, 0 }, 1 ),
             ( "JR Z",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x28, 0 }, 1 ),
-
+            
+            // Important: instructions that accept a variable argument in parenthesis
+            // must come before the equivalent instructions without parenthesis,
+            // e.g. "LD A,(nn)" before "LD A,n"
+            ( "LD A",  CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0x3a, 0, 0 }, 1 ), // LD A,(nn)
+            ( "LD BC", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x4b, 0, 0 }, 2 ), // LD BC,(nn)
+            ( "LD DE", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x5b, 0, 0 }, 2 ), // LD DE,(nn)
+            ( "LD HL", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0x2a, 0, 0 }, 1 ), // LD HL,(nn)
+            ( "LD IX", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xdd, 0x2a, 0, 0 }, 2 ), // LD IX,(nn)
+            ( "LD IY", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xfd, 0x2a, 0, 0 }, 2 ), // LD IY,(nn)
+            ( "LD SP", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x7b, 0, 0 }, 2 ), // LD SP,(nn)
+            ( "LD A",  CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x32, 0, 0 }, 1 ), // LD (nn),A
+            ( "LD BC", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x43, 0, 0 }, 2 ), // LD (nn),BC
+            ( "LD DE", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x53, 0, 0 }, 2 ), // LD (nn),DE
+            ( "LD HL", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x22, 0, 0 }, 1 ), // LD (nn),HL
+            ( "LD IX", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xdd, 0x22, 0, 0 }, 2 ), // LD (nn),IX
+            ( "LD IY", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xfd, 0x22, 0, 0 }, 2 ), // LD (nn),IY
+            ( "LD SP", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x73, 0, 0 }, 2 ), // LD (nn),SP
             ( "LD A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x3e, 0 }, 1 ), // LD A,n
             ( "LD B", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x06, 0 }, 1 ), // LD B,n
             ( "LD C", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x0e, 0 }, 1 ), // LD B,n
@@ -796,20 +816,6 @@ namespace Konamiman.Nestor80.Assembler
             ( "LD IX", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xdd, 0x21, 0, 0 }, 2 ), // LD IX,nn
             ( "LD IY", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xfd, 0x21, 0, 0 }, 2 ), // LD IY,nn
             ( "LD SP", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0x31, 0, 0 }, 1 ), // LD SP,nn
-            ( "LD A",  CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0x3a, 0, 0 }, 1 ), // LD A,(nn)
-            ( "LD BC", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x4b, 0, 0 }, 2 ), // LD BC,(nn)
-            ( "LD DE", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x5b, 0, 0 }, 2 ), // LD DE,(nn)
-            ( "LD HL", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0x2a, 0, 0 }, 1 ), // LD HL,(nn)
-            ( "LD IX", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xdd, 0x2a, 0, 0 }, 2 ), // LD IX,(nn)
-            ( "LD IY", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xfd, 0x2a, 0, 0 }, 2 ), // LD IY,(nn)
-            ( "LD SP", CpuInstrArgType.WordInParenthesis, CpuArgPos.Second, new byte[] { 0xed, 0x7b, 0, 0 }, 2 ), // LD SP,(nn)
-            ( "LD A",  CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x32, 0, 0 }, 1 ), // LD (nn),A
-            ( "LD BC", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x43, 0, 0 }, 2 ), // LD (nn),BC
-            ( "LD DE", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x53, 0, 0 }, 2 ), // LD (nn),DE
-            ( "LD HL", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0x22, 0, 0 }, 1 ), // LD (nn),HL
-            ( "LD IX", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xdd, 0x22, 0, 0 }, 2 ), // LD (nn),IX
-            ( "LD IY", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xfd, 0x22, 0, 0 }, 2 ), // LD (nn),IY
-            ( "LD SP", CpuInstrArgType.WordInParenthesis, CpuArgPos.First, new byte[] { 0xed, 0x73, 0, 0 }, 2 ), // LD (nn),SP
             ( "LD (HL)",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x36, 0 }, 1 ), // LD (HL),n
             ( "LD (IX)",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xdd, 0x36, 0, 0 }, 3 ), // LD (IX),n
             ( "LD (IY)",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xfd, 0x36, 0, 0 }, 3 ), // LD (IY),n

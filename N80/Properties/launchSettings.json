@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "instr.asm",
+      "commandLineArgs": "allinstr.asm -cpu  r800",
       "environmentVariables": {
         "N80_ARGS": "-nsb"
       }
