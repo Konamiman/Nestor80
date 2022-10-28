@@ -826,7 +826,7 @@ namespace Konamiman.Nestor80.Assembler
         /// and that if the second argument is (IX+n) or (IY+n) then its byte position in the output is 2.
         /// 
         /// Items in the tuples are:
-        /// - 1: Fixed argument, null if none, "x" for (IX+n), "y" for (IY+n).
+        /// - 1: Second argument, null if none, "x" for (IX+n), "y" for (IY+n).
         /// - 2: Output bytes of the instruction.
         /// - 3: Value of the first argument that selects this variant of the instruction.
         /// </summary>

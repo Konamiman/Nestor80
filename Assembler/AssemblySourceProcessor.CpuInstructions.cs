@@ -165,7 +165,7 @@ namespace Konamiman.Nestor80.Assembler
                         return new CpuInstructionLine() { IsInvalid = true };
                     }
                 }
-                instructionLine.OutputBytes = chosenInstruction.Item2;
+                instructionLine.OutputBytes = chosenInstruction.Item2.ToArray();
                 
                 if(chosenInstruction.Item1 is "x" or "y") {
                     (var secondArgumentExpressionText, isNegativeIxy) = GetExpressionAndSignFromIndexArgument(secondArgument);
@@ -260,7 +260,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(isMatch) {
                     variableArgType = candidateInstructionInfo.Item2;
-                    instructionBytes = candidateInstructionInfo.Item4;
+                    instructionBytes = candidateInstructionInfo.Item4.ToArray();
                     variableArgBytePosition = candidateInstructionInfo.Item5;
                     break;
                 }

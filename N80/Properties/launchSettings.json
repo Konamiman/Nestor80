@@ -2,7 +2,7 @@
   "profiles": {
     "N80": {
       "commandName": "Project",
-      "commandLineArgs": "big2.asm",
+      "commandLineArgs": " C:\\code\\fun\\RookieDrive\\msx\\rookiefdd.asm -bt abs -sad -oap",
       "environmentVariables": {
         "N80_ARGS": "-nsb"
       }
