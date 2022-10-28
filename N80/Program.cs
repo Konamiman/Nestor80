@@ -53,6 +53,7 @@ namespace Konamiman.Nestor80.N80
         static bool inPass2 = false;
         static string[] envArgs = null;
         static string[] commandLineArgs;
+        static string currentFileDirectory;
 
         static int Main(string[] args)
         {
@@ -292,13 +293,13 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(includeDirectories.Count > 0) {
-                info += "\r\nDirectories for INCLUDE:\r\n";
+                info += "\r\nExtra directories for INCLUDE:\r\n";
                 foreach(var id in includeDirectories) {
                     info += "  " + id + "\r\n";
                 }
             }
             else {
-                info += "\r\nNo directories for INCLUDE\r\n";
+                info += "\r\nNo extra directories for INCLUDE\r\n";
             }
 
             if(symbolDefinitions.Count > 0) {
@@ -358,7 +359,6 @@ namespace Konamiman.Nestor80.N80
             colorPrint = true;
             showBanner = true;
             includeDirectories.Clear();
-            includeDirectories.Add(inputFileDirectory);
             orgAsPhase = false;
             symbolDefinitions.Clear();
             maxErrors = DEFAULT_MAX_ERRORS;
@@ -374,6 +374,7 @@ namespace Konamiman.Nestor80.N80
             allowBareExpressions = false;
             initDefs = false;
             sourceInErrorMessage = false;
+            currentFileDirectory = inputFileDirectory;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -762,6 +763,7 @@ namespace Konamiman.Nestor80.N80
             AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated1;
             AssemblySourceProcessor.BuildTypeAutomaticallySelected += AssemblySourceProcessor_BuildTypeAutomaticallySelected1;
             AssemblySourceProcessor.Pass2Started += AssemblySourceProcessor_Pass2Started;
+            AssemblySourceProcessor.IncludedFileFinished += AssemblySourceProcessor_IncludedFileFinished;
 
             if(!silenceAssemblyPrints) {
                 AssemblySourceProcessor.PrintMessage += AssemblySourceProcessor_PrintMessage1;
@@ -830,6 +832,11 @@ namespace Konamiman.Nestor80.N80
             outputStream.Close();
 
             return ERR_SUCCESS;
+        }
+
+        private static void AssemblySourceProcessor_IncludedFileFinished(object? sender, EventArgs e)
+        {
+            currentFileDirectory = PreviousCurrentFileDirectories.Pop();
         }
 
         private static void AssemblySourceProcessor_Pass2Started(object? sender, EventArgs e)
@@ -987,15 +994,32 @@ namespace Konamiman.Nestor80.N80
             }
         }
 
+        static readonly Stack<string> PreviousCurrentFileDirectories = new();
+
         private static Stream GetStreamForInclude(string includeFilePath)
         {
-            foreach(var directory in includeDirectories) {
-                var filePath = Path.Combine(directory, includeFilePath);
-                if(!File.Exists(filePath)) {
-                    return null;
-                }
-
+            static Stream Process(string filePath)
+            {
+                PreviousCurrentFileDirectories.Push(currentFileDirectory);
+                currentFileDirectory = Path.GetDirectoryName(filePath);
                 return File.OpenRead(filePath);
+            }
+
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), includeFilePath);
+            if(File.Exists(filePath)) {
+                return Process(filePath);
+            }
+
+            filePath = Path.Combine(currentFileDirectory, includeFilePath);
+            if(File.Exists(filePath)) {
+                return Process(filePath);
+            }
+
+            foreach(var directory in includeDirectories) {
+                filePath = Path.Combine(directory, includeFilePath);
+                if(File.Exists(filePath)) {
+                    return Process(filePath);
+                }
             }
 
             return null;

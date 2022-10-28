@@ -67,6 +67,7 @@ namespace Konamiman.Nestor80.Assembler
         public static event EventHandler<string> PrintMessage;
         public static event EventHandler<(string, int, BuildType)> BuildTypeAutomaticallySelected;
         public static event EventHandler Pass2Started;
+        public static event EventHandler IncludedFileFinished;
 
         private AssemblySourceProcessor()
         {
@@ -210,6 +211,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(sourceLine == null) {
                     if(state.InsideIncludedFile) {
                         state.PopIncludeState();
+                        if(IncludedFileFinished is not null) IncludedFileFinished(null, EventArgs.Empty);
                         continue;
                     }
                     break;
@@ -222,10 +224,7 @@ namespace Konamiman.Nestor80.Assembler
                 var processedLine = ProcessSourceLine(sourceLine);
                 state.ProcessedLines.Add(processedLine);
 
-                if(processedLine is IncludeLine il) {
-                    if(includeStream is null) {
-                        throw new Exception($"That's unexpected: got an INCLUDE line, but {nameof(includeStream)} is null");
-                    }
+                if(processedLine is IncludeLine il && includeStream is not null) {
                     state.PushIncludeState(includeStream, il);
                 }
                 else if(processedLine is PrintLine pl) {

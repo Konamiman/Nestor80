@@ -94,10 +94,8 @@ namespace Konamiman.Nestor80.N80
                 The --org-as-phase argument will also set the build type to absolute.
 
             -cid, --clear-include-directories
-                Clear the list of the directories where relative INCLUDEd files
-                will be searched for. If this argument isn't followed by any
-                instance of --include-directory, any INCLUDE instruction
-                referencing a relative file will fail.
+                Clear the list of the extra directories where relative INCLUDEd files
+                will be searched for.
 
             -co, --color-output
                 Display assembly process messages and errors in color (default).
@@ -112,6 +110,7 @@ namespace Konamiman.Nestor80.N80
             
             -ds, --define-symbols <symbol>[=<value>][,<symbol>[=<value>][,...]]
                 Predefine symbols for the assembled program.
+                Values can be decimal numbers, or hexadecimal numbers with a 'h' suffix.
                 The default value if no <value> is provided is FFFFh. 
                 The symbols will be created as if they had been defined with DEFL,
                 therefore they can be redefined in the source code using the same instruction.
@@ -120,7 +119,8 @@ namespace Konamiman.Nestor80.N80
 
             -id, --include-directory <directory path>
                 By default relative paths referenced in INCLUDE instructions will be
-                considered to be relative to the input file. This argument allows to
+                considered to be relative to the current directory or to the directory
+                of the file currently being processed. This argument allows to
                 specify an extra directory where INCLUDEd files will be searched for;
                 use the argument multiple times to add more than one directory.
                 Directories are scanned in the order they are declared.
@@ -132,8 +132,8 @@ namespace Konamiman.Nestor80.N80
                 the directory of the source file.
 
                 If <directory path> is just '$' then it's the directory of the source file
-                (already included by default, but you may need to re-add it if you have
-                removed it with --clear-include-directories).
+                (in case you want to use that directory even from inside INCLUDE files
+                that are in a different directory).
 
             -ids, --initialize-defs
                 This argument has effect only when the build type is relocatable. It will cause areas
