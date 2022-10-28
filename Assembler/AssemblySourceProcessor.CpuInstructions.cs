@@ -1,5 +1,4 @@
 ﻿using Konamiman.Nestor80.Assembler.Output;
-using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
@@ -122,6 +121,11 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             else if(Z80InstructionsWithSelectorValue.ContainsKey(opcode)) {
+                // Found an instruction whose first argument is one of a fixed set (IM, RST, BIT, SET, RES).
+                // These need special treatment because:
+                // 1. This special argument doesn't directly translate to a byte or word in the output bytes; and
+                // 2. This special argument could be unknown at pass 1 and thus we need to register the instruction as pending selection.
+
                 if(firstArgumentType is not CpuParsedArgType.Number and not CpuParsedArgType.NumberInParenthesis) {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
                     return new CpuInstructionLine() { IsInvalid = true };

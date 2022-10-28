@@ -2,6 +2,11 @@ namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor
     {
+        /**
+         * Note: Instructions having (IX) or (IY) as argument are declared separately from (IX+n) and (IY+n)
+         * to simplify processing, but of course they are equivalent to their (IX+0) and (IY+0) equivalents.
+         */
+
         static readonly string[] Z80InstructionOpcodes = new[] {
             "ADC","ADD","AND","BIT","CALL","CCF","CP","CPD","CPDR","CPI","CPIR","CPL",
             "DAA","DEC","DI","DJNZ","EI","EX","EXX","HALT","IM","IN","INC","IND","INDR","INI","INIR",
@@ -12,6 +17,9 @@ namespace Konamiman.Nestor80.Assembler
 
         static readonly string[] R800SpecificOpcodes = new[] { "MULUB", "MULUW" };
 
+        /// <summary>
+        /// Instructions that have no argument or that have one or two fixed (register or flag names) arguments.
+        /// </summary>
         static readonly Dictionary<string, byte[]> FixedZ80Instructions = new(StringComparer.OrdinalIgnoreCase) {
           { "ADC HL,BC", new byte[] { 0xed, 0x4a } },
           { "ADC HL,DE", new byte[] { 0xed, 0x5a } },
@@ -244,7 +252,6 @@ namespace Konamiman.Nestor80.Assembler
           { "EX (SP),HL", new byte[] { 0xe3 } },
           { "EX (SP),IX", new byte[] { 0xdd, 0xe3 } },
           { "EX (SP),IY", new byte[] { 0xfd, 0xe3 } },
-          { "EX AF,AF'", new byte[] { 0x08 } },
           { "EX AF,AF", new byte[] { 0x08 } },
           { "EX DE,HL", new byte[] { 0xeb } },
 
@@ -720,6 +727,15 @@ namespace Konamiman.Nestor80.Assembler
           { "MULUW HL,SP", new byte[] { 0xed, 0xf3 } },
         };
 
+        /// <summary>
+        /// Instructions that have one variable argument and maybe also one fixed argument.
+        /// 
+        /// Items in the tuples are:
+        /// - 1: Instruction, followed by the fixed argument if present.
+        /// - 2: Type of the variable argument.
+        /// - 3: Position of the variable argument in the instruction (single, first or second).
+        /// - 4: Byte position of the variable argument in the output.
+        /// </summary>
         static readonly (string, CpuInstrArgType, CpuArgPos, byte[], int)[] 
             Z80InstructionsWithOneVariableArgument = new (string, CpuInstrArgType, CpuArgPos, byte[], int)[] {
             ( "ADC A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x8e, 0 }, 2 ), // ADC A,(IX+n)
@@ -893,6 +909,17 @@ namespace Konamiman.Nestor80.Assembler
             ( "XOR", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xee, 0 }, 1 ), // XOR n
         };
 
+        /// <summary>
+        /// Instructions whose first argument is one of a fixed set.
+        /// 
+        /// It's assumed that if there's a second argument it's either fixed (register reference) or (IX+n) or (IY+n),
+        /// and that if the second argument is (IX+n) or (IY+n) then its byte position in the output is 2.
+        /// 
+        /// Items in the tuples are:
+        /// - 1: Fixed argument, null if none, "x" for (IX+n), "y" for (IY+n).
+        /// - 2: Output bytes of the instruction.
+        /// - 3: Value of the first argument that selects this variant of the instruction.
+        /// </summary>
         static readonly Dictionary<string, (string, byte[], ushort)[]> Z80InstructionsWithSelectorValue = 
             new(StringComparer.OrdinalIgnoreCase) {
             { "BIT", new (string, byte[], ushort)[] {
