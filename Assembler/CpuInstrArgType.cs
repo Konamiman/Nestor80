@@ -1,11 +1,14 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal enum CpuInstructionArgumentType
+    internal enum CpuInstrArgType
     {
         None,
         Byte,
         Word,
+        ByteInParenthesis,
+        WordInParenthesis,
         OffsetFromCurrentLocation,
-        IxyOffset,
+        IxOffset,
+        IyOffset
     }
 }

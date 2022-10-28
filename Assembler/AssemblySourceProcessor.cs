@@ -46,8 +46,6 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly string[] instructionsNeedingPass2Reevaluation;
 
         private static CpuType currentCpu;
-        private static readonly Dictionary<CpuType, Dictionary<string, CpuInstruction[]>> cpuInstructions;
-        private static Dictionary<string, CpuInstruction[]> currentCpuInstructions;
 
         private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegxOp);
         private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegxOp);
@@ -76,15 +74,6 @@ namespace Konamiman.Nestor80.Assembler
         static AssemblySourceProcessor()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-
-            cpuInstructions = new() {
-                [CpuType.Z80] = Z80Instructions,
-                [CpuType.R800] = Z80Instructions.ToDictionary(x => x.Key, x=>x.Value, StringComparer.OrdinalIgnoreCase)
-            };
-            foreach(var entry in R800Instructions) {
-                cpuInstructions[CpuType.R800].Add(entry.Key, entry.Value);
-            }
-
             instructionsNeedingPass2Reevaluation = conditionalInstructions.Concat(new[] { ".PHASE", ".DEPHASE" }).ToArray();
         }
 
@@ -401,7 +390,8 @@ namespace Konamiman.Nestor80.Assembler
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
                 }
-                else if(currentCpuInstructions.ContainsKey(symbol)) {
+                else if(Z80InstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) ||
+                    (currentCpu is CpuType.R800 && R800SpecificOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase))) {
                     opcode = symbol;
                     processedLine = ProcessCpuInstruction(opcode, walker);
                 }
@@ -427,6 +417,7 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     opcode = symbol;
                     AddError(AssemblyErrorCode.UnknownInstruction, $"Unknown instruction: {opcode}");
+                    walker.DiscardRemaining();
                     processedLine = new UnknownInstructionLine() { Opcode = opcode, EffectiveLineLength = 0 };
                 }
             }
@@ -663,7 +654,7 @@ namespace Konamiman.Nestor80.Assembler
             return processedLine;
         }
 
-        private static void ProcessInstructionsPendingSelection(ProcessedSourceLine processedLine, CpuInstruction[] instructions, Expression selector)
+        private static void ProcessInstructionsPendingSelection(ProcessedSourceLine processedLine, InstructionPendingSelection[] choices, Expression selector)
         {
             //state.UnregisterInstructionsPendingSelection(processedLine);
 
@@ -676,12 +667,12 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(selectorValue != null) {
-                var selectedInstruction = instructions.SingleOrDefault(i => i.FirstArgumentFixedValue == selectorValue.Value);
+                var selectedInstruction = choices.SingleOrDefault(c => c.SelectorValue == selectorValue.Value);
                 if(selectedInstruction is null) {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for instruction {processedLine.Opcode.ToUpper()}: expression yields an unsupported value");
                 }
                 else {
-                    ((IProducesOutput)processedLine).OutputBytes = selectedInstruction.Opcodes.ToArray();
+                    ((IProducesOutput)processedLine).OutputBytes = selectedInstruction.InstructionBytes;
                 }
             }
         }
@@ -736,14 +727,13 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else {
-                    if(expressionValue.IsAbsolute || expressionPendingEvaluation.ArgumentType == CpuInstructionArgumentType.OffsetFromCurrentLocation) {
+                    if(expressionValue.IsAbsolute || expressionPendingEvaluation.ArgumentType == CpuInstrArgType.OffsetFromCurrentLocation) {
                         ProcessArgumentForInstruction(
                             expressionPendingEvaluation.ArgumentType,
                             line.OutputBytes, 
                             expressionValue, 
                             expressionPendingEvaluation.LocationInOutput,
-                            expressionPendingEvaluation.IxRegisterName,
-                            expressionPendingEvaluation.IxRegisterSign);
+                            expressionPendingEvaluation.IsNegativeIxy);
 
                     }
                     else {

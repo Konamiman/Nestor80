@@ -40,15 +40,14 @@ namespace Konamiman.Nestor80.Assembler
             ProcessedSourceLine line, 
             Expression expression, 
             int location = 0,
-            CpuInstructionArgumentType argumentType = CpuInstructionArgumentType.None,
-            string ixRegisterName = null,
-            string ixRegisterSign = null)
+            CpuInstrArgType argumentType = CpuInstrArgType.None,
+            bool isNegativeIxy = false)
         {
             if(!ExpressionsPendingEvaluation.ContainsKey(line)) {
                 ExpressionsPendingEvaluation[line] = new List<ExpressionPendingEvaluation>();
             }
 
-            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IxRegisterName = ixRegisterName, IxRegisterSign = ixRegisterSign } );
+            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IsNegativeIxy = isNegativeIxy } );
         }
 
         public void UnregisterPendingExpressions(ProcessedSourceLine line)
@@ -350,11 +349,11 @@ namespace Konamiman.Nestor80.Assembler
 
         public int CurrentIncludesDeepLevel => includeStates.Count;
 
-        public Dictionary<ProcessedSourceLine, (CpuInstruction[], Expression)> InstructionsPendingSelection { get; set; } = new();
+        public Dictionary<ProcessedSourceLine, (InstructionPendingSelection[], Expression)> InstructionsPendingSelection { get; set; } = new();
 
-        public void RegisterInstructionsPendingSelection(ProcessedSourceLine line, CpuInstruction[] instructions, Expression selectorExpression)
+        public void RegisterInstructionsPendingSelection(ProcessedSourceLine line, InstructionPendingSelection[] choices, Expression selectorExpression)
         {
-            InstructionsPendingSelection.Add(line, (instructions, selectorExpression));
+            InstructionsPendingSelection.Add(line, (choices, selectorExpression));
         }
 
         public void UnregisterInstructionsPendingSelection(ProcessedSourceLine line)

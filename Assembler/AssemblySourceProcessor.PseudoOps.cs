@@ -139,7 +139,7 @@ namespace Konamiman.Nestor80.Assembler
                     var value = expression.EvaluateIfNoSymbols();
                     if(value is null) {
                         AddZero();
-                        state.RegisterPendingExpression(line, expression, index, argumentType: isByte ? CpuInstructionArgumentType.Byte : CpuInstructionArgumentType.Word);
+                        state.RegisterPendingExpression(line, expression, index, argumentType: isByte ? CpuInstrArgType.Byte : CpuInstrArgType.Word);
                         if(!isByte) index++;
                     }
                     else if(isByte && !value.IsValidByte) {
@@ -199,7 +199,7 @@ namespace Konamiman.Nestor80.Assembler
                         valueExpression.ValidateAndPostifixize();
                         var valueAddress = valueExpression.EvaluateIfNoSymbols();
                         if(valueAddress is null) {
-                            state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstructionArgumentType.Byte);
+                            state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Byte);
                         }
                         else if(!valueAddress.IsValidByte) {
                             throw new InvalidExpressionException("the value argument must evaluate to a valid byte");
@@ -307,7 +307,7 @@ namespace Konamiman.Nestor80.Assembler
                 var value = valueExpression.EvaluateIfNoSymbols();
                 if(value is null) {
                     var line = new ChangeOriginLine();
-                    state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstructionArgumentType.Word);
+                    state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Word);
                     return line;
                 }
                 else {
@@ -582,7 +582,6 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessChangeCpuToZ80Line(string opcode, SourceLineWalker walker)
         {
             currentCpu = CpuType.Z80;
-            currentCpuInstructions = cpuInstructions[CpuType.Z80];
             return new ChangeCpuLine() { Cpu = CpuType.Z80 };
         }
 
@@ -613,7 +612,6 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             currentCpu = cpuType;
-            currentCpuInstructions = cpuInstructions[cpuType];
 
             return cpuType;
         }

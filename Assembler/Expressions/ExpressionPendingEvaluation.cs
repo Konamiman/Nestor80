@@ -6,14 +6,12 @@
 
         public int LocationInOutput { get; set; }
 
-        public bool IsByte => ArgumentType is not CpuInstructionArgumentType.Word;
+        public bool IsByte => ArgumentType is not CpuInstrArgType.Word;
 
-        public string IxRegisterName { get; set; }
+        public bool IsNegativeIxy { get; set; }
 
-        public string IxRegisterSign { get; set; }
+        public CpuInstrArgType ArgumentType { get; set; }
 
-        public CpuInstructionArgumentType ArgumentType { get; set; }
-
-        public override string ToString() => $"@{LocationInOutput}, {Expression}, {ArgumentType} {IxRegisterName}{IxRegisterSign}";
+        public override string ToString() => $"@{LocationInOutput}, {Expression}, {ArgumentType} {(IsNegativeIxy ? "-" : "+")}";
     }
 }
