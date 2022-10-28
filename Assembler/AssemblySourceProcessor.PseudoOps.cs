@@ -85,7 +85,9 @@ namespace Konamiman.Nestor80.Assembler
             { "ENDMOD", ProcessEndModuleLine },
             { "ROOT", ProcessRootLine },
             { "IFABS", ProcessIfAbsLine },
-            { "IFREL", ProcessIfRelLine }
+            { "IFREL", ProcessIfRelLine },
+            { "IFCPU", ProcessIfCpuLine },
+            { "IFNCPU", ProcessIfNotCpuLine },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1117,6 +1119,38 @@ namespace Konamiman.Nestor80.Assembler
             static bool? evaluator()
             {
                 return buildType == BuildType.Relocatable;
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfCpuLine(string opcode, SourceLineWalker walker)
+        {
+            bool? evaluator()
+            {
+                var text = walker.ExtractSymbol();
+                if(text is null) {
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a CPU name as argument");
+                    return null;
+                }
+
+                return string.Equals(currentCpu.ToString(), text, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return ProcessIfLine(opcode, evaluator);
+        }
+
+        static ProcessedSourceLine ProcessIfNotCpuLine(string opcode, SourceLineWalker walker)
+        {
+            bool? evaluator()
+            {
+                var text = walker.ExtractSymbol();
+                if(text is null) {
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a CPU name as argument");
+                    return null;
+                }
+
+                return !string.Equals(currentCpu.ToString(), text, StringComparison.OrdinalIgnoreCase);
             }
 
             return ProcessIfLine(opcode, evaluator);

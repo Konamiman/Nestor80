@@ -40,7 +40,8 @@ namespace Konamiman.Nestor80.Assembler
             "IF", "IFT", "IFE", "IFF",
             "IFDEF", "IFNDEF", "IF1", "IF2",
             "IFB", "IFNB", "IFIDN", "IFDIF",
-            "IFABS", "IFREL", "ELSE", "ENDIF"
+            "IFABS", "IFREL", "ELSE", "ENDIF",
+            "IFCPU", "IFNCPU"
         };
 
         private static readonly string[] instructionsNeedingPass2Reevaluation;
