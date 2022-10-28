@@ -146,22 +146,23 @@ namespace Konamiman.Nestor80.Assembler
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
 
+                (string, byte[], int) chosenInstruction;
                 var selectorExpression = GetExpressionForInstructionArgument(opcode, firstArgument);
                 var selectorExpressionValue = selectorExpression.EvaluateIfNoSymbols();
+                instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument };
                 if(selectorExpressionValue is null) {
-                    instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, OutputBytes = candidates[0].Item2 };
-                    state.RegisterInstructionsPendingSelection(instructionLine, candidates.Select(c => new InstructionPendingSelection() { InstructionBytes = c.Item2, SelectorValue = c.Item3 } ).ToArray(), selectorExpression);
-                    CompleteInstructionLine(instructionLine);
-                    return instructionLine;
+                    chosenInstruction = candidates[0];
+                    state.RegisterInstructionsPendingSelection(instructionLine, candidates.Select(c => new InstructionPendingSelection() { InstructionBytes = c.Item2, SelectorValue = c.Item3 }).ToArray(), selectorExpression);
                 }
-
-                var chosenInstruction = candidates.FirstOrDefault(c => c.Item3 == selectorExpressionValue.Value);
-                if(chosenInstruction.Item2 is null) {
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
-                    return new CpuInstructionLine() { IsInvalid = true };
+                else {
+                    chosenInstruction = candidates.FirstOrDefault(c => c.Item3 == selectorExpressionValue.Value);
+                    if(chosenInstruction.Item2 is null) {
+                        AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                        return new CpuInstructionLine() { IsInvalid = true };
+                    }
                 }
-
-                instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, OutputBytes = chosenInstruction.Item2 };
+                instructionLine.OutputBytes = chosenInstruction.Item2;
+                
                 if(chosenInstruction.Item1 is "x" or "y") {
                     (var secondArgumentExpressionText, isNegativeIxy) = GetExpressionAndSignFromIndexArgument(secondArgument);
                     var secondArgumentExpression = GetExpressionForInstructionArgument(opcode, secondArgumentExpressionText);
@@ -294,6 +295,7 @@ namespace Konamiman.Nestor80.Assembler
             line.Cpu = currentCpu;
             line.NewLocationArea = state.CurrentLocationArea;
             line.NewLocationCounter = state.CurrentLocationPointer;
+            line.RelocatableParts ??= Array.Empty<RelocatableOutputPart>();
         }
 
         private static (string, bool) GetExpressionAndSignFromIndexArgument(string argument)
