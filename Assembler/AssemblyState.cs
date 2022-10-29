@@ -402,5 +402,33 @@ namespace Konamiman.Nestor80.Assembler
         {
             return CurrentModule is null || currentRootSymbols.Contains(symbol) ? symbol : $"{CurrentModule}.{symbol}";
         }
+
+        public void RegisterNamedMacroDefinitionStart(NamedMacroDefinitionLine definitionLine)
+        {
+            //WIP
+        }
+
+        public void RegisterMacroExpansionStart(MacroExpansionLine expansionLine)
+        {
+            //WIP
+        }
+
+        public void RegisterMacroDefinitionLine(string sourceLine)
+        {
+            //WIP
+        }
+
+        public void RegisterMacroEnd()
+        {
+            //WIP
+        }
+
+        public string GetNextMacroExpansionLine()
+        {
+            //WIP
+            return null;
+        }
+
+        public MacroMode CurrentMacroMode => MacroMode.None; //WIP
     }
 }
