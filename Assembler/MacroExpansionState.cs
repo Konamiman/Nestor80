@@ -1,40 +1,23 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
-    internal class MacroExpansionState
+    internal abstract class MacroExpansionState
     {
-        public static MacroExpansionState ForNamedMacro(string[] templateLines, string[] parameters, int sourceLineNumber)
+        public MacroExpansionState(string[] templateLines, int sourceLineNumber)
         {
-            return new MacroExpansionState() {
-                MacroType = MacroType.Named,
-                TemplateLines = templateLines,
-                Parameters = parameters,
-                SourceLineNumber = sourceLineNumber,
-                ProcessedCount = 0,
-                RemainingCount = templateLines.Length
-            };
+            TemplateLines = templateLines;
+            StartLineNumber = sourceLineNumber;
         }
-        //WIP
 
         public MacroType MacroType { get; init; }
 
-        public int SourceLineNumber { get; init; }
+        public int StartLineNumber { get; init; }
 
         public string[] TemplateLines { get; init; }
 
-        public string[] Parameters { get; init; }
+        public int RelativeLineNumber { get; protected set; }
 
-        public int ProcessedCount { get; private set; }
+        public abstract bool HasMore { get; }
 
-        public int RemainingCount { get; private set; }
-
-        public void GoNext()
-        {
-            ProcessedCount++;
-            RemainingCount--;
-        }
-
-        public bool HasMore => RemainingCount > 0;
-
-        public string CurrentParam => RemainingCount == 0 ? null : Parameters[ProcessedCount];
+        public abstract string GetNextSourceLine();
     }
 }
