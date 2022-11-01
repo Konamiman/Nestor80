@@ -403,32 +403,92 @@ namespace Konamiman.Nestor80.Assembler
             return CurrentModule is null || currentRootSymbols.Contains(symbol) ? symbol : $"{CurrentModule}.{symbol}";
         }
 
-        public void RegisterNamedMacroDefinitionStart(NamedMacroDefinitionLine definitionLine)
+        private MacroExpansionState currentMacroExpansionState = null;
+
+        private Stack<MacroExpansionState> previousExpansionStates = new();
+
+        public void RegisterNamedMacroDefinitionStart(NamedMacroDefinitionLine definitionLine, ProcessedSourceLine processedLine)
         {
-            //WIP
+            if(MacroDefinitionState.DefiningMacro) {
+                throw new InvalidOperationException($"{nameof(RegisterNamedMacroDefinitionStart)} is not supposed to be called while already in macro definition mode");
+            }
+
+            MacroDefinitionState.StartDefinition(MacroType.Named, processedLine);
         }
 
         public void RegisterMacroExpansionStart(MacroExpansionLine expansionLine)
         {
-            //WIP
+            MacroExpansionState expansionState;
+            if(expansionLine.MacroType is MacroType.ReptWithCount) {
+                expansionState = new ReptWithCountExpansionState(MacroDefinitionState.GetLines(), expansionLine.RepetitionsCount, CurrentLineNumber);
+            }
+            else {
+                expansionState = new ReptWithParamsExpansionState(MacroDefinitionState.GetLines(), expansionLine.Parameters, CurrentLineNumber);
+            }
+
+            if(currentMacroExpansionState is not null) {
+                previousExpansionStates.Push(currentMacroExpansionState);
+            }
+
+            currentMacroExpansionState = expansionState;
         }
 
         public void RegisterMacroDefinitionLine(string sourceLine)
         {
-            //WIP
+            MacroDefinitionState.AddLine(sourceLine);
         }
 
         public void RegisterMacroEnd()
         {
-            //WIP
+            if(CurrentMacroMode is MacroMode.Definition) {
+                if(MacroDefinitionState.Depth > 1) {
+                    MacroDefinitionState.DecreaseDepth();
+                }
+                else if(MacroDefinitionState.ProcessedLine is NamedMacroDefinitionLine nmdl) {
+                    nmdl.LineTemplates = MacroDefinitionState.GetLines();
+                    MacroDefinitionState.EndDefinition();
+                }
+                else {
+                    var macroExpansionLine = (MacroExpansionLine)MacroDefinitionState.ProcessedLine;
+                    RegisterMacroExpansionStart(macroExpansionLine);
+                }
+            }
+            else if(CurrentMacroMode is MacroMode.Expansion) {
+                if(previousExpansionStates.Count == 0) {
+                    currentMacroExpansionState = null;
+                }
+                else {
+                    currentMacroExpansionState = previousExpansionStates.Pop();
+                }
+            }
+            else {
+                AddError(AssemblyErrorCode.EndMacroOutOfScope, $"ENDM found outside of a macro definition or macro expansion");
+            }
         }
 
         public string GetNextMacroExpansionLine()
         {
-            //WIP
-            return null;
+            if(currentMacroExpansionState is null) {
+                return null;
+            }
+
+            var line = currentMacroExpansionState.GetNextSourceLine();
+
+            if(!currentMacroExpansionState.HasMore) {
+                if(previousExpansionStates.Count == 0) {
+                    currentMacroExpansionState = null;
+                }
+                else {
+                    currentMacroExpansionState = previousExpansionStates.Pop();
+                }
+            }
+
+            return line;
         }
 
-        public MacroMode CurrentMacroMode => MacroMode.None; //WIP
+        public MacroMode CurrentMacroMode =>
+            MacroDefinitionState.DefiningMacro ? MacroMode.Definition :
+            currentMacroExpansionState is not null ? MacroMode.Expansion :
+            MacroMode.None;
     }
 }

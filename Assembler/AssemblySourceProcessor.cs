@@ -44,6 +44,10 @@ namespace Konamiman.Nestor80.Assembler
             "IFCPU", "IFNCPU"
         };
 
+        private static readonly string[] macroDefinitionOrExpansionInstructions = new[] {
+            "MACRO", "REPT", "IRP", "IRPC"
+        };
+
         private static readonly string[] instructionsNeedingPass2Reevaluation;
 
         private static CpuType currentCpu;
@@ -207,21 +211,32 @@ namespace Konamiman.Nestor80.Assembler
         private static void DoPass1()
         {
             while(!state.EndReached) {
-                var sourceLine = state.SourceStreamReader.ReadLine();
-                if(sourceLine == null) {
-                    if(state.InsideIncludedFile) {
-                        state.PopIncludeState();
-                        if(IncludedFileFinished is not null) IncludedFileFinished(null, EventArgs.Empty);
-                        continue;
+                var sourceLine = state.GetNextMacroExpansionLine();
+                if(sourceLine is null) {
+                    sourceLine = state.SourceStreamReader.ReadLine();
+                    if(sourceLine == null) {
+                        if(state.InsideIncludedFile) {
+                            state.PopIncludeState();
+                            if(IncludedFileFinished is not null) IncludedFileFinished(null, EventArgs.Empty);
+                            continue;
+                        }
+                        break;
                     }
-                    break;
                 }
                 state.CurrentSourceLineText = sourceLine;
                 if(sourceLine.Length > MAX_LINE_LENGTH) {
                     ThrowFatal(AssemblyErrorCode.SourceLineTooLong, $"Line is too long, maximum allowed line length is {MAX_LINE_LENGTH} characters");
                 }
 
-                var processedLine = ProcessSourceLine(sourceLine);
+                ProcessedSourceLine processedLine;
+                if(state.CurrentMacroMode is MacroMode.Definition) {
+                    processedLine = new MacroDefinitionBodyLine() { Line = sourceLine };
+                    state.RegisterMacroDefinitionLine(sourceLine);
+                }
+                else {
+                    processedLine = ProcessSourceLine(sourceLine);
+                }
+
                 state.ProcessedLines.Add(processedLine);
 
                 if(processedLine is IncludeLine il && includeStream is not null) {

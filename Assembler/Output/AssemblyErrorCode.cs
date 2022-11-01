@@ -42,6 +42,7 @@
         SameEffectivePublic,
         UnknownInstruction,
         EndModuleOutOfScope,
+        EndMacroOutOfScope,
         UserError,
         LasetError = UserError,
 
