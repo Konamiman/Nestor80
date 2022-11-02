@@ -1,6 +1,7 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Output
 {
-    internal class MacroDefinitionBodyLine : ProcessedSourceLine
+    public class MacroDefinitionBodyLine : ProcessedSourceLine
     {
+        public override string ToString() => $"MacroBody: {Line}";
     }
 }

@@ -228,16 +228,8 @@ namespace Konamiman.Nestor80.Assembler
                     ThrowFatal(AssemblyErrorCode.SourceLineTooLong, $"Line is too long, maximum allowed line length is {MAX_LINE_LENGTH} characters");
                 }
 
-                ProcessedSourceLine processedLine;
-                if(state.CurrentMacroMode is MacroMode.Definition) {
-                    processedLine = new MacroDefinitionBodyLine() { Line = sourceLine };
-                    state.RegisterMacroDefinitionLine(sourceLine);
-                }
-                else {
-                    processedLine = ProcessSourceLine(sourceLine);
-                }
-
-                state.ProcessedLines.Add(processedLine);
+                var processedLine = ProcessSourceLine(sourceLine);
+                state.RegisterProcessedLine(processedLine);
 
                 if(processedLine is IncludeLine il && includeStream is not null) {
                     state.PushIncludeState(includeStream, il);
@@ -252,6 +244,7 @@ namespace Konamiman.Nestor80.Assembler
             //In case END is found inside an included file
             while(state.InsideIncludedFile) {
                 state.PopIncludeState();
+                if(IncludedFileFinished is not null) IncludedFileFinished(null, EventArgs.Empty);
             }
 
             AssemblyEndWarnings();
@@ -400,7 +393,21 @@ namespace Konamiman.Nestor80.Assembler
                     ProcessLabelDefinition(label);
                 }
 
-                if(PseudoOpProcessors.ContainsKey(symbol)) {
+                if(state.CurrentMacroMode is MacroMode.Definition) {
+                    opcode = symbol;
+                    var inMacroDefinitionMode = true;
+                    if(string.Equals(symbol, "ENDM", StringComparison.InvariantCultureIgnoreCase)) {
+                        processedLine = ProcessEndmLine(symbol, walker);
+                        inMacroDefinitionMode = state.CurrentMacroMode is MacroMode.Definition;
+                    }
+
+                    if(inMacroDefinitionMode) {
+                        state.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol));
+                        walker.DiscardRemaining();
+                        processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length };
+                    }
+                }
+                else if(PseudoOpProcessors.ContainsKey(symbol)) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
@@ -636,6 +643,10 @@ namespace Konamiman.Nestor80.Assembler
                 ProcessLinesForPass2(il.Lines);
                 state.PopIncludeState();
             }
+            else if(processedLine is LinesContainerLine lc) {
+                //TODO: Line numbers?
+                ProcessLinesForPass2(lc.Lines);
+            }
             else if(processedLine is PrintLine pl) {
                 TriggerPrintEvent(pl);
             }
@@ -767,7 +778,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void UnregisterPendingExpressions(ProcessedSourceLine line)
         {
-            if(line is IncludeLine il) {
+            if(line is LinesContainerLine il) {
                 foreach(var subline in il.Lines) {
                     UnregisterPendingExpressions(subline);
                 }

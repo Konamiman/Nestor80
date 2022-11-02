@@ -88,6 +88,8 @@ namespace Konamiman.Nestor80.Assembler
             { "IFREL", ProcessIfRelLine },
             { "IFCPU", ProcessIfCpuLine },
             { "IFNCPU", ProcessIfNotCpuLine },
+            { "REPT", ProcessReptLine },
+            { "ENDM", ProcessEndmLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1355,5 +1357,39 @@ namespace Konamiman.Nestor80.Assembler
             return new RootLine() { RootSymbols = symbols.ToArray() };
         }
 
+        static ProcessedSourceLine ProcessReptLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a repetitions count as argument");
+                return new MacroExpansionLine();
+            }
+
+            Address repetitionsCount;
+            try {
+                var repetitionsExpressionString = walker.ExtractExpression();
+                var repetitionsExpression = Expression.Parse(repetitionsExpressionString);
+                repetitionsExpression.ValidateAndPostifixize();
+                repetitionsCount = repetitionsExpression.Evaluate();
+            }
+            catch(InvalidExpressionException ex) {
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                return new MacroExpansionLine();
+            }
+
+            if(!repetitionsCount.IsAbsolute) {
+                AddError(AssemblyErrorCode.InvalidExpression, $"{opcode.ToUpper()}: the repetitions count can't be a relocatable value");
+                return new MacroExpansionLine();
+            }
+
+            var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithCount, RepetitionsCount = repetitionsCount.Value };
+            state.RegisterMacroExpansionStart(line);
+            return line;
+        }
+
+        static ProcessedSourceLine ProcessEndmLine(string opcode, SourceLineWalker walker)
+        {
+            state.RegisterMacroEnd();
+            return new EndMacroLine();
+        }
     }
 }

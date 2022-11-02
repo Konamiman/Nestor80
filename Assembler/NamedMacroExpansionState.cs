@@ -1,9 +1,11 @@
-﻿namespace Konamiman.Nestor80.Assembler
+﻿using Konamiman.Nestor80.Assembler.Output;
+
+namespace Konamiman.Nestor80.Assembler
 {
     internal class NamedMacroExpansionState : MacroExpansionState
     {
-        public NamedMacroExpansionState(string[] templateLines, int argumentsCount, string[] parameters, int sourceLineNumber)
-            :base(templateLines, sourceLineNumber)
+        public NamedMacroExpansionState(LinesContainerLine expansionProcessedLine, string[] templateLines, int argumentsCount, string[] parameters, int sourceLineNumber)
+            :base(expansionProcessedLine, templateLines, sourceLineNumber)
         {
             MacroType = MacroType.Named;
             RelativeLineNumber = -1;

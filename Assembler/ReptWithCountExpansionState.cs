@@ -1,9 +1,11 @@
-﻿namespace Konamiman.Nestor80.Assembler
+﻿using Konamiman.Nestor80.Assembler.Output;
+
+namespace Konamiman.Nestor80.Assembler
 {
     internal class ReptWithCountExpansionState : MacroExpansionState
     {
-        public ReptWithCountExpansionState(string[] lines, int count, int sourceLineNumber)
-            : base(lines, sourceLineNumber)
+        public ReptWithCountExpansionState(LinesContainerLine expansionProcessedLine, string[] lines, int count, int sourceLineNumber)
+            : base(expansionProcessedLine, lines, sourceLineNumber)
         {
             MacroType = MacroType.ReptWithCount;
             currentLineIndex = 0;

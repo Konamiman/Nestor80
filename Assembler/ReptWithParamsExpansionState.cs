@@ -1,11 +1,13 @@
-﻿namespace Konamiman.Nestor80.Assembler
+﻿using Konamiman.Nestor80.Assembler.Output;
+
+namespace Konamiman.Nestor80.Assembler
 {
     internal class ReptWithParamsExpansionState : MacroExpansionState
     {
         private static readonly string[] singleNullArray = new string[] { null };
 
-        public ReptWithParamsExpansionState(string[] templateLines, string[] parameters, int sourceLineNumber)
-            : base(templateLines, sourceLineNumber)
+        public ReptWithParamsExpansionState(LinesContainerLine expansionProcessedLine, string[] templateLines, string[] parameters, int sourceLineNumber)
+            : base(expansionProcessedLine, templateLines, sourceLineNumber)
         {
             MacroType = MacroType.ReptWithArgs;
             RelativeLineNumber = -1;
