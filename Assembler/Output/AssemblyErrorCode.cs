@@ -43,6 +43,7 @@
         UnknownInstruction,
         EndModuleOutOfScope,
         EndMacroOutOfScope,
+        UnterminatedMacro,
         UserError,
         LasetError = UserError,
 

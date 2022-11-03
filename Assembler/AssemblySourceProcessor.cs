@@ -241,6 +241,10 @@ namespace Konamiman.Nestor80.Assembler
                 state.IncreaseLineNumber();
             }
 
+            if(state.CurrentMacroMode is not MacroMode.None) {
+                AddError(AssemblyErrorCode.UnterminatedMacro, "Unterminated macro");
+            }
+
             //In case END is found inside an included file
             while(state.InsideIncludedFile) {
                 state.PopIncludeState();
@@ -285,16 +289,29 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(string.IsNullOrWhiteSpace(line)) {
-                processedLine =
-                    formFeedCharsCount == 0 ?
-                    blankLineWithoutLabel :
-                    new BlankLine() { FormFeedsCount = formFeedCharsCount.Value };
+                if(state.CurrentMacroMode is MacroMode.Definition) {
+                    state.RegisterMacroDefinitionLine(line, false);
+                    processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
+                }
+                else {
+                    processedLine =
+                        formFeedCharsCount == 0 ?
+                        blankLineWithoutLabel :
+                        new BlankLine() { FormFeedsCount = formFeedCharsCount.Value };
+                }
                 return processedLine;
             }
 
             walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
-                processedLine = new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength, FormFeedsCount = formFeedCharsCount.Value };
+                if(state.CurrentMacroMode is MacroMode.Definition) {
+                    state.RegisterMacroDefinitionLine(line, false);
+                    walker.DiscardRemaining();
+                    processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
+                }
+                else {
+                    processedLine = new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength, FormFeedsCount = formFeedCharsCount.Value };
+                }
                 return processedLine;
             }
 
@@ -402,7 +419,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     if(inMacroDefinitionMode) {
-                        state.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol));
+                        state.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase));
                         walker.DiscardRemaining();
                         processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length };
                     }

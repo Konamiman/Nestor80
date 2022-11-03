@@ -498,15 +498,22 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(!currentMacroExpansionState.HasMore) {
-                currentMacroExpansionState.ExpansionProcessedLine.Lines = currentMacroExpansionState.ProcessedLines.ToArray();
+                var initialEndmLine = currentMacroExpansionState.ProcessedLines[0];
+                string line;
+
+                currentMacroExpansionState.ExpansionProcessedLine.Lines = currentMacroExpansionState.ProcessedLines.Skip(1).ToArray();
                 if(previousExpansionStates.Count == 0) {
                     currentMacroExpansionState = null;
-                    return null;
+                    RegisterProcessedLine(initialEndmLine);
+                    line = null;
                 }
                 else {
                     currentMacroExpansionState = previousExpansionStates.Pop();
-                    return GetNextMacroExpansionLine();
+                    RegisterProcessedLine(initialEndmLine);
+                    line = GetNextMacroExpansionLine();
                 }
+
+                return line;
             }
 
             return currentMacroExpansionState.GetNextSourceLine();
@@ -514,10 +521,10 @@ namespace Konamiman.Nestor80.Assembler
 
         internal void RegisterProcessedLine(ProcessedSourceLine processedLine)
         {
-            if(CurrentMacroMode is MacroMode.Expansion) {
+            if(currentMacroExpansionState is not null) {
                 currentMacroExpansionState.ProcessedLines.Add(processedLine);
             }
-            else {
+            else { 
                 ProcessedLines.Add(processedLine);
             }
         }
