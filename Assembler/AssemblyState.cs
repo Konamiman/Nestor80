@@ -210,13 +210,20 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        public void IncreaseLineNumber() => CurrentLineNumber++;
+        public void IncreaseLineNumber()
+        {
+            if(CurrentMacroMode is MacroMode.None ||
+                (CurrentMacroMode is MacroMode.Definition && currentMacroExpansionState is null)) {
+                CurrentLineNumber++;
+            }
+        }
 
         public void AddError(AssemblyError error) => Errors.Add(error);
 
         public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {   //TODO: Include macro name and line
-            var error = new AssemblyError(code, message, withLineNumber ? CurrentLineNumber : null, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename);
+            var ln = currentMacroExpansionState is null ? CurrentLineNumber : currentMacroExpansionState.ActualLineNumber;
+            var error = new AssemblyError(code, message, withLineNumber ? ln : null, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename);
             AddError(error);
             return error;
         }
@@ -415,7 +422,7 @@ namespace Konamiman.Nestor80.Assembler
                 throw new InvalidOperationException($"{nameof(RegisterNamedMacroDefinitionStart)} is not supposed to be called while already in macro definition mode");
             }
 
-            MacroDefinitionState.StartDefinition(MacroType.Named, processedLine);
+            MacroDefinitionState.StartDefinition(MacroType.Named, processedLine, CurrentLineNumber);
         }
 
         public void RegisterMacroExpansionStart(MacroExpansionLine expansionLine)
@@ -436,7 +443,8 @@ namespace Konamiman.Nestor80.Assembler
                 throw new InvalidOperationException($"{nameof(RegisterMacroExpansionStart)} is not supposed to be called while already in macro definition mode");
             }
             else {
-                MacroDefinitionState.StartDefinition(expansionLine.MacroType, expansionLine);
+                var ln = CurrentMacroMode is MacroMode.Expansion ? currentMacroExpansionState.ActualLineNumber : CurrentLineNumber;
+                MacroDefinitionState.StartDefinition(expansionLine.MacroType, expansionLine, ln + 1);
             }
         }
 
@@ -461,14 +469,18 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     var macroExpansionLine = (MacroExpansionLine)MacroDefinitionState.ProcessedLine;
                     MacroExpansionState expansionState;
+                    var ln = MacroDefinitionState.StartLineNumber;
                     if(macroExpansionLine.MacroType is MacroType.ReptWithCount) {
-                        expansionState = new ReptWithCountExpansionState(macroExpansionLine, MacroDefinitionState.GetLines(), macroExpansionLine.RepetitionsCount, CurrentLineNumber);
+                        expansionState = new ReptWithCountExpansionState(macroExpansionLine, MacroDefinitionState.GetLines(), macroExpansionLine.RepetitionsCount, ln);
                     }
                     else {
-                        expansionState = new ReptWithParamsExpansionState(macroExpansionLine, MacroDefinitionState.GetLines(), macroExpansionLine.Parameters, CurrentLineNumber);
+                        expansionState = new ReptWithParamsExpansionState(macroExpansionLine, MacroDefinitionState.GetLines(), macroExpansionLine.Parameters, ln);
                     }
 
-                    if(currentMacroExpansionState is not null) {
+                    if(currentMacroExpansionState is null) {
+                        CurrentLineNumber++;
+                    }
+                    else {
                         previousExpansionStates.Push(currentMacroExpansionState);
                     }
 
@@ -497,35 +509,43 @@ namespace Konamiman.Nestor80.Assembler
                 return null;
             }
 
-            if(!currentMacroExpansionState.HasMore) {
-                var initialEndmLine = currentMacroExpansionState.ProcessedLines[0];
-                string line;
+            string line;
 
-                currentMacroExpansionState.ExpansionProcessedLine.Lines = currentMacroExpansionState.ProcessedLines.Skip(1).ToArray();
+            if(!currentMacroExpansionState.HasMore) {
+                currentMacroExpansionState.ExpansionProcessedLine.Lines = currentMacroExpansionState.ProcessedLines.ToArray();
                 if(previousExpansionStates.Count == 0) {
                     currentMacroExpansionState = null;
-                    RegisterProcessedLine(initialEndmLine);
                     line = null;
                 }
                 else {
                     currentMacroExpansionState = previousExpansionStates.Pop();
-                    RegisterProcessedLine(initialEndmLine);
                     line = GetNextMacroExpansionLine();
                 }
 
                 return line;
             }
 
-            return currentMacroExpansionState.GetNextSourceLine();
+            line = currentMacroExpansionState.GetNextSourceLine();
+            return line;
         }
 
         internal void RegisterProcessedLine(ProcessedSourceLine processedLine)
         {
-            if(currentMacroExpansionState is not null) {
-                currentMacroExpansionState.ProcessedLines.Add(processedLine);
+            if(processedLine is EndMacroLine) {
+                if(previousExpansionStates.Count > 0) {
+                    previousExpansionStates.Peek().ProcessedLines.Add(processedLine);
+                }
+                else {
+                    ProcessedLines.Add(processedLine);
+                }
             }
-            else { 
-                ProcessedLines.Add(processedLine);
+            else {
+                if(currentMacroExpansionState is not null) {
+                    currentMacroExpansionState.ProcessedLines.Add(processedLine);
+                }
+                else {
+                    ProcessedLines.Add(processedLine);
+                }
             }
         }
 

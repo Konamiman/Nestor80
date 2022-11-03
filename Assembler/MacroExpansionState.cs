@@ -21,6 +21,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public int RelativeLineNumber { get; protected set; }
 
+        public int ActualLineNumber => StartLineNumber + RelativeLineNumber;
+
         public List<ProcessedSourceLine> ProcessedLines { get; } = new();
 
         public abstract bool HasMore { get; }

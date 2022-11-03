@@ -4,10 +4,11 @@ namespace Konamiman.Nestor80.Assembler
 {
     internal static class MacroDefinitionState
     {
-        public static void StartDefinition(MacroType macroType, ProcessedSourceLine processedLine)
+        public static void StartDefinition(MacroType macroType, ProcessedSourceLine processedLine, int startLineNumber)
         {
             MacroType = macroType;
             ProcessedLine = processedLine;
+            StartLineNumber = startLineNumber;
             lines.Clear();
             Depth = 1;
         }
@@ -20,6 +21,8 @@ namespace Konamiman.Nestor80.Assembler
         public static MacroType MacroType { get; private set; }
 
         public static ProcessedSourceLine ProcessedLine { get; private set; }
+
+        public static int StartLineNumber { get; private set; }
 
         public static bool DefiningMacro => MacroType is not MacroType.None;
 
