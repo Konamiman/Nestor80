@@ -6,6 +6,8 @@
 
         public string Name { get; set; }
 
+        public string Placeholder { get; set; }
+
         public int RepetitionsCount { get; set; }
 
         public string[] Parameters { get; set; }

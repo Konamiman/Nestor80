@@ -474,7 +474,17 @@ namespace Konamiman.Nestor80.Assembler
                         expansionState = new ReptWithCountExpansionState(macroExpansionLine, MacroDefinitionState.GetLines(), macroExpansionLine.RepetitionsCount, ln);
                     }
                     else {
-                        expansionState = new ReptWithParamsExpansionState(macroExpansionLine, MacroDefinitionState.GetLines(), macroExpansionLine.Parameters, ln);
+
+                        //TODO: Proper template lines processing
+                        var lines = MacroDefinitionState.GetLines();
+                        var processedLines = new List<string>();
+                        foreach(var line in lines) {
+                            int i = 0;
+                            var newLine = line.Replace(macroExpansionLine.Placeholder, $"{{{i}}}");
+                            processedLines.Add(newLine);
+                        }
+
+                        expansionState = new ReptWithParamsExpansionState(macroExpansionLine, processedLines.ToArray(), macroExpansionLine.Parameters, ln);
                     }
 
                     if(currentMacroExpansionState is null) {

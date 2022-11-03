@@ -186,6 +186,13 @@
                 return null;
             }
 
+            if(PointingToComma()) {
+                linePointer++;
+                if(AtEndOfLine) {
+                    return null;
+                }
+            }
+
             var currentChar = sourceLine[linePointer];
             if(currentChar != '<') {
                 return null;

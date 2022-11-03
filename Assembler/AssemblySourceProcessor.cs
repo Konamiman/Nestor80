@@ -474,7 +474,6 @@ namespace Konamiman.Nestor80.Assembler
             processedLine.Label = label;
             processedLine.FormFeedsCount = formFeedCharsCount.Value;
 
-
             if(buildType == BuildType.Automatic) {
                 //Build type is also automatically selected when a constant/label
                 //is defined/referenced as public or external

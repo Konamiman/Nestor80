@@ -89,7 +89,8 @@ namespace Konamiman.Nestor80.Assembler
             { "IFCPU", ProcessIfCpuLine },
             { "IFNCPU", ProcessIfNotCpuLine },
             { "REPT", ProcessReptLine },
-            { "ENDM", ProcessEndmLine }
+            { "ENDM", ProcessEndmLine },
+            { "IRP", ProcessIrpLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -280,7 +281,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(state.IsCurrentlyPhased) {
-                state.AddError(AssemblyErrorCode.InvalidInPhased, "Changing the location area is not allowed inside a .PHASE block");
+                AddError(AssemblyErrorCode.InvalidInPhased, "Changing the location area is not allowed inside a .PHASE block");
                 return new ChangeAreaLine();
             }
 
@@ -295,7 +296,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessOrgLine(string opcode, SourceLineWalker walker)
         {
             if(state.IsCurrentlyPhased) {
-                state.AddError(AssemblyErrorCode.InvalidInPhased, "Changing the location pointer is not allowed inside a .PHASE block");
+                AddError(AssemblyErrorCode.InvalidInPhased, "Changing the location pointer is not allowed inside a .PHASE block");
                 return new ChangeOriginLine();
             }
 
@@ -1360,7 +1361,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessReptLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a repetitions count as argument");
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a repetitions count as argument");
                 return new MacroExpansionLine();
             }
 
@@ -1381,7 +1382,7 @@ namespace Konamiman.Nestor80.Assembler
                 return new MacroExpansionLine();
             }
 
-            var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithCount, RepetitionsCount = repetitionsCount.Value };
+            var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithCount, Name = opcode.ToUpper(), RepetitionsCount = repetitionsCount.Value };
             state.RegisterMacroExpansionStart(line);
             return line;
         }
@@ -1390,6 +1391,39 @@ namespace Konamiman.Nestor80.Assembler
         {
             state.RegisterMacroEnd();
             return new EndMacroLine();
+        }
+
+        static ProcessedSourceLine ProcessIrpLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a list of parameters enclosed in < >");
+                return new MacroExpansionLine();
+            }
+
+            var placeholder = walker.ExtractExpression();
+            if(!labelRegex.IsMatch(placeholder)) {
+                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid placeholder argument for {opcode.ToUpper()}");
+                walker.DiscardRemaining();
+                return new MacroExpansionLine();
+            }
+
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a list of parameters enclosed in < >");
+                return new MacroExpansionLine();
+            }
+
+            //TODO: Proper parameter extraction
+            var args = walker.ExtractAngleBracketed();
+            if(args is null) {
+                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid parameters argument for {opcode.ToUpper()}, it must be a list of parameters enclosed in < >");
+                walker.DiscardRemaining();
+                return new MacroExpansionLine();
+            }
+
+            var argsList = args.Split(',');
+            var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
+            state.RegisterMacroExpansionStart(line);
+            return line;
         }
     }
 }

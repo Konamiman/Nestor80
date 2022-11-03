@@ -97,17 +97,17 @@ namespace Konamiman.Nestor80.Assembler
 
         private static ProcessedSourceLine[] FlatLinesList(ProcessedSourceLine[] lines)
         {
-            if(!lines.Any(l => l is IncludeLine)) {
+            if(!lines.Any(l => l is LinesContainerLine)) {
                 return lines;
             }
 
             var result = new List<ProcessedSourceLine>();
 
             foreach(var line in lines) {
-                if(line is IncludeLine il) {
+                if(line is LinesContainerLine lcl) {
                     result.Add(line);
-                    result.AddRange(FlatLinesList(il.Lines));
-                    result.Add(new IncludeLine());
+                    result.AddRange(FlatLinesList(lcl.Lines));
+                    result.Add(new ContainedLinesEnd());
                 }
                 else {
                     result.Add(line);
