@@ -90,7 +90,8 @@ namespace Konamiman.Nestor80.Assembler
             { "IFNCPU", ProcessIfNotCpuLine },
             { "REPT", ProcessReptLine },
             { "ENDM", ProcessEndmLine },
-            { "IRP", ProcessIrpLine }
+            { "IRP", ProcessIrpLine },
+            { "IRPC", ProcessIrpcLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1421,6 +1422,39 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var argsList = args.Split(',');
+            var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
+            state.RegisterMacroExpansionStart(line);
+            return line;
+        }
+
+        static ProcessedSourceLine ProcessIrpcLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a string of parameter characters");
+                return new MacroExpansionLine();
+            }
+
+            var placeholder = walker.ExtractExpression();
+            if(!labelRegex.IsMatch(placeholder)) {
+                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid placeholder argument for {opcode.ToUpper()}");
+                walker.DiscardRemaining();
+                return new MacroExpansionLine();
+            }
+
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a string of parameter characters");
+                return new MacroExpansionLine();
+            }
+
+            //TODO: Proper parameter extraction
+            var args = walker.ExtractAngleBracketedOrSymbol();
+            if(args is null) {
+                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid parameters argument for {opcode.ToUpper()}, it must be a string of parameter characters");
+                walker.DiscardRemaining();
+                return new MacroExpansionLine();
+            }
+
+            var argsList = args.ToCharArray().Select(ch => ch.ToString()).ToArray();
             var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
             state.RegisterMacroExpansionStart(line);
             return line;

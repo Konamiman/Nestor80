@@ -180,6 +180,23 @@
             return expression;
         }
 
+        public string ExtractAngleBracketedOrSymbol()
+        {
+            if(AtEndOfLine) {
+                return null;
+            }
+
+            if(PointingToComma()) {
+                linePointer++;
+                SkipBlanks();
+                if(AtEndOfLine) {
+                    return null;
+                }
+            }
+
+            return sourceLine[linePointer] == '<' ? ExtractAngleBracketed() : ExtractSymbol();
+        }
+
         public string ExtractAngleBracketed()
         {
             if(AtEndOfLine) {
@@ -188,6 +205,7 @@
 
             if(PointingToComma()) {
                 linePointer++;
+                SkipBlanks();
                 if(AtEndOfLine) {
                     return null;
                 }
