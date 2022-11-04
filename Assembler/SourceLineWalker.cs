@@ -326,6 +326,8 @@
 
         private bool PointingToComma() => !AtEndOfLine && sourceLine[linePointer] == ',';
 
+        private bool PointingToLessThan() => !AtEndOfLine && sourceLine[linePointer] == '<';
+
         public override string ToString() => "Walking: " + sourceLine;
     }
 }

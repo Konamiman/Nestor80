@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
+using System.Reflection.Emit;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -1456,6 +1457,46 @@ namespace Konamiman.Nestor80.Assembler
 
             var argsList = args.ToCharArray().Select(ch => ch.ToString()).ToArray();
             var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
+            state.RegisterMacroExpansionStart(line);
+            return line;
+        }
+
+        static ProcessedSourceLine ProcessNamedMacroDefinitionLine(string name, SourceLineWalker walker)
+        {
+            if(state.NamedMacroExists(name)) {
+                AddError(AssemblyErrorCode.DuplicatedMacro, $"A macro named {name.ToUpper()} already exists");
+                return new NamedMacroDefinitionLine();
+            }
+
+            var args = new List<string>();
+            while(!walker.AtEndOfLine) {
+                var arg = walker.ExtractExpression();
+                if(!labelRegex.IsMatch(arg)) {
+                    AddError(AssemblyErrorCode.InvalidArgument, $"'{arg}' is not a valid macro argument");
+                    return new NamedMacroDefinitionLine();
+                }
+                args.Add(arg);
+            }
+
+            var line = new NamedMacroDefinitionLine() { Name = name, Arguments = args.ToArray() };
+            state.RegisterNamedMacroDefinitionStart(line);
+            return line;
+        }
+
+        static ProcessedSourceLine ProcessNamedMacroExpansion(string opcode, string macroName, SourceLineWalker walker)
+        {
+            var args = new List<string>();
+            while(!walker.AtEndOfLine) {
+                //TODO: Proper parameter extraction (without angle brackets: single, but !, counts)
+                var arg = walker.ExtractExpression();
+                if(!labelRegex.IsMatch(arg)) {
+                    AddError(AssemblyErrorCode.InvalidArgument, $"'{arg}' is not a valid macro argument");
+                    return new NamedMacroDefinitionLine();
+                }
+                args.Add(arg);
+            }
+
+            var line = new MacroExpansionLine() { MacroType = MacroType.Named, Name = macroName, Parameters = args.ToArray() };
             state.RegisterMacroExpansionStart(line);
             return line;
         }

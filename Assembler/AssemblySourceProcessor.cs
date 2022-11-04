@@ -374,12 +374,20 @@ namespace Konamiman.Nestor80.Assembler
                     processedLine = ProcessConstantDefinition(opcode: opcode, name: label.TrimEnd(':'), walker: walker);
                     label = null;
                 }
+                else if(label is not null && symbol.Equals("MACRO", StringComparison.OrdinalIgnoreCase)) {
+                    opcode = symbol;
+                    processedLine = ProcessNamedMacroDefinitionLine(name: label.TrimEnd(':'), walker: walker);
+                }
                 else if(label is null) {
                     walker.BackupPointer();
                     var symbol2 = walker.ExtractSymbol();
                     if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
                         opcode = symbol2;
                         processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
+                    }
+                    else if(symbol2.Equals("MACRO", StringComparison.OrdinalIgnoreCase)) {
+                        opcode = symbol;
+                        processedLine = ProcessNamedMacroDefinitionLine(name: symbol, walker: walker);
                     }
                     else {
                         walker.RestorePointer();
@@ -452,6 +460,10 @@ namespace Konamiman.Nestor80.Assembler
                 else if(state.Configuration.AllowBareExpressions) {
                     opcode = "RAW DB";
                     processedLine = ProcessDefbLine(opcode, new SourceLineWalker(symbol + " " + walker.GetRemainingRaw()));
+                }
+                else if(state.NamedMacroExists(symbol)) {
+                    opcode = "MACROEX";
+                    processedLine = ProcessNamedMacroExpansion(opcode, symbol, walker);
                 }
                 else {
                     opcode = symbol;

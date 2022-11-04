@@ -7,5 +7,7 @@
         public string[] Arguments { get; set; }
 
         public string[] LineTemplates { get; set; }
+
+        public override string ToString() => $"MACRO {Name} {string.Join(',', Arguments)}";
     }
 }

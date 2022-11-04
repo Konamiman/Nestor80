@@ -44,6 +44,7 @@
         EndModuleOutOfScope,
         EndMacroOutOfScope,
         UnterminatedMacro,
+        DuplicatedMacro,
         UserError,
         LasetError = UserError,
 

@@ -222,7 +222,9 @@ namespace Konamiman.Nestor80.Assembler
 
         public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {   //TODO: Include macro name and line
-            var ln = currentMacroExpansionState is null ? CurrentLineNumber : currentMacroExpansionState.ActualLineNumber;
+            var ln = currentMacroExpansionState is null ||
+                currentMacroExpansionState.MacroType is MacroType.Named ||
+                previousExpansionStates.Any(s => s.MacroType is MacroType.Named) ? CurrentLineNumber : currentMacroExpansionState.ActualLineNumber;
             var error = new AssemblyError(code, message, withLineNumber ? ln : null, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename);
             AddError(error);
             return error;
@@ -416,19 +418,22 @@ namespace Konamiman.Nestor80.Assembler
 
         private Stack<MacroExpansionState> previousExpansionStates = new();
 
-        public void RegisterNamedMacroDefinitionStart(NamedMacroDefinitionLine definitionLine, NamedMacroDefinitionLine processedLine)
+        public bool NamedMacroExists(string name) => NamedMacros.ContainsKey(name);
+
+        public void RegisterNamedMacroDefinitionStart(NamedMacroDefinitionLine processedLine)
         {
             if(MacroDefinitionState.DefiningMacro) {
                 throw new InvalidOperationException($"{nameof(RegisterNamedMacroDefinitionStart)} is not supposed to be called while already in macro definition mode");
             }
 
+            NamedMacros[processedLine.Name] = processedLine;
             MacroDefinitionState.StartDefinition(MacroType.Named, processedLine, CurrentLineNumber);
         }
 
         public void RegisterMacroExpansionStart(MacroExpansionLine expansionLine)
         {
             if(expansionLine.MacroType is MacroType.Named) {
-                if(NamedMacros.ContainsKey(expansionLine.Name)) {
+                if(!NamedMacros.ContainsKey(expansionLine.Name)) {
                     throw new InvalidOperationException($"{nameof(RegisterMacroExpansionStart)}: unknown named macro '{expansionLine.Name}'");
                 }
 
@@ -437,7 +442,10 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 var macroDefinition = NamedMacros[expansionLine.Name];
-                currentMacroExpansionState = new NamedMacroExpansionState(expansionLine, macroDefinition.LineTemplates, macroDefinition.Arguments.Length, expansionLine.Parameters, CurrentLineNumber);
+                var ln = currentMacroExpansionState is null ||
+                    currentMacroExpansionState.MacroType is MacroType.Named ||
+                    previousExpansionStates.Any(s => s.MacroType is MacroType.Named) ? CurrentLineNumber : currentMacroExpansionState.ActualLineNumber;
+                currentMacroExpansionState = new NamedMacroExpansionState(expansionLine, macroDefinition.LineTemplates, macroDefinition.Arguments.Length, expansionLine.Parameters, ln);
             }
             else if(MacroDefinitionState.DefiningMacro) {
                 throw new InvalidOperationException($"{nameof(RegisterMacroExpansionStart)} is not supposed to be called while already in macro definition mode");
@@ -463,7 +471,20 @@ namespace Konamiman.Nestor80.Assembler
                     MacroDefinitionState.DecreaseDepth();
                 }
                 else if(MacroDefinitionState.ProcessedLine is NamedMacroDefinitionLine nmdl) {
-                    nmdl.LineTemplates = MacroDefinitionState.GetLines();
+                    //TODO: Proper template lines processing
+                    var lines = MacroDefinitionState.GetLines();
+                    var processedLines = new List<string>();
+                    foreach(var line in lines) {
+                        int i = 0;
+                        var newLine = line;
+                        foreach(var arg in nmdl.Arguments) {
+                            newLine = newLine.Replace(arg, $"{{{i}}}");
+                            i++;
+                        }
+                        processedLines.Add(newLine);
+                    }
+
+                    nmdl.LineTemplates = processedLines.ToArray();
                     MacroDefinitionState.EndDefinition();
                 }
                 else {
@@ -522,6 +543,10 @@ namespace Konamiman.Nestor80.Assembler
             string line;
 
             if(!currentMacroExpansionState.HasMore) {
+                if(currentMacroExpansionState.MacroType is MacroType.Named) {
+                    CurrentLineNumber++;
+                }
+
                 currentMacroExpansionState.ExpansionProcessedLine.Lines = currentMacroExpansionState.ProcessedLines.ToArray();
                 if(previousExpansionStates.Count == 0) {
                     currentMacroExpansionState = null;
@@ -541,7 +566,7 @@ namespace Konamiman.Nestor80.Assembler
 
         internal void RegisterProcessedLine(ProcessedSourceLine processedLine)
         {
-            if(processedLine is EndMacroLine) {
+            if(processedLine is EndMacroLine || (processedLine is MacroExpansionLine mel && mel.MacroType is MacroType.Named)) {
                 if(previousExpansionStates.Count > 0) {
                     previousExpansionStates.Peek().ProcessedLines.Add(processedLine);
                 }
