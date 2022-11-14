@@ -45,6 +45,7 @@
         EndMacroOutOfScope,
         UnterminatedMacro,
         DuplicatedMacro,
+        NestedMacro,
         UserError,
         LasetError = UserError,
 

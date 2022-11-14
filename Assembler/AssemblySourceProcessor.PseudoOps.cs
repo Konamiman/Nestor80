@@ -1391,7 +1391,10 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessEndmLine(string opcode, SourceLineWalker walker)
         {
-            state.RegisterMacroEnd();
+            var success = state.RegisterMacroEnd();
+            if(!success) {
+                AddError(AssemblyErrorCode.EndMacroOutOfScope, $"ENDM found outside of a macro definition or macro expansion");
+            }
             return new EndMacroLine();
         }
 
@@ -1465,6 +1468,16 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(state.NamedMacroExists(name)) {
                 AddError(AssemblyErrorCode.DuplicatedMacro, $"A macro named {name.ToUpper()} already exists");
+                return new NamedMacroDefinitionLine();
+            }
+
+            if(MacroDefinitionState.DefiningNamedMacro) {
+                AddError(AssemblyErrorCode.NestedMacro, $"Nested named macro definitions are not allowed");
+                return new NamedMacroDefinitionLine();
+            }
+
+            if(MacroDefinitionState.DefiningMacro) {
+                AddError(AssemblyErrorCode.NestedMacro, $"Named macro definitions inside REPT macros are not allowed");
                 return new NamedMacroDefinitionLine();
             }
 

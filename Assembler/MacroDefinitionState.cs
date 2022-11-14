@@ -26,6 +26,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public static bool DefiningMacro => MacroType is not MacroType.None;
 
+        public static bool DefiningNamedMacro => MacroType is MacroType.Named;
+
         public static readonly List<string> lines = new();
 
         public static void AddLine(string line) => lines.Add(line);

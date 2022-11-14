@@ -222,12 +222,29 @@ namespace Konamiman.Nestor80.Assembler
 
         public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {   //TODO: Include macro name and line
-            var ln = currentMacroExpansionState is null ||
-                currentMacroExpansionState.MacroType is MacroType.Named ||
-                previousExpansionStates.Any(s => s.MacroType is MacroType.Named) ? CurrentLineNumber : currentMacroExpansionState.ActualLineNumber;
-            var error = new AssemblyError(code, message, withLineNumber ? ln : null, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename);
+            int? ln = withLineNumber ? GetLineNumberForError() : null;
+            var error = new AssemblyError(code, message, ln, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename);
             AddError(error);
             return error;
+        }
+
+        private int GetLineNumberForError()
+        {
+            foreach(var state in previousExpansionStates) {
+                if(state.MacroType is MacroType.Named) {
+                    return state.StartLineNumber;
+                }
+            }
+
+            if(currentMacroExpansionState?.MacroType == MacroType.Named) {
+                return currentMacroExpansionState.StartLineNumber;
+            }
+            
+            if(currentMacroExpansionState is not null) {
+                return currentMacroExpansionState.ActualLineNumber;
+            }
+
+            return CurrentLineNumber;
         }
 
         public AssemblyError[] GetErrors() => Errors.ToArray();
@@ -422,7 +439,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public void RegisterNamedMacroDefinitionStart(NamedMacroDefinitionLine processedLine)
         {
-            if(MacroDefinitionState.DefiningMacro) {
+            if(MacroDefinitionState.DefiningNamedMacro) {
                 throw new InvalidOperationException($"{nameof(RegisterNamedMacroDefinitionStart)} is not supposed to be called while already in macro definition mode");
             }
 
@@ -464,7 +481,7 @@ namespace Konamiman.Nestor80.Assembler
             MacroDefinitionState.AddLine(sourceLine);
         }
 
-        public void RegisterMacroEnd()
+        public bool RegisterMacroEnd()
         {
             if(CurrentMacroMode is MacroMode.Definition) {
                 if(MacroDefinitionState.Depth > 1) {
@@ -509,7 +526,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     if(currentMacroExpansionState is null) {
-                        CurrentLineNumber++;
+                        IncreaseLineNumber(); //CurrentLineNumber++;
                     }
                     else {
                         previousExpansionStates.Push(currentMacroExpansionState);
@@ -530,8 +547,10 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             else {
-                AddError(AssemblyErrorCode.EndMacroOutOfScope, $"ENDM found outside of a macro definition or macro expansion");
+                return false;
             }
+
+            return true;
         }
 
         public string GetNextMacroExpansionLine()
@@ -543,7 +562,8 @@ namespace Konamiman.Nestor80.Assembler
             string line;
 
             if(!currentMacroExpansionState.HasMore) {
-                if(currentMacroExpansionState.MacroType is MacroType.Named) {
+                //If we just finished expanding a named macro but NOT from inside a REPT
+                if(currentMacroExpansionState.MacroType is MacroType.Named && previousExpansionStates.Count == 0) {
                     CurrentLineNumber++;
                 }
 
