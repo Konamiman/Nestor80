@@ -514,6 +514,10 @@ namespace Konamiman.Nestor80.Assembler
                 Pass2Started(null, EventArgs.Empty);
             }
 
+            DoPass1();
+            return state.ProcessedLines.ToArray();
+            //This can't possibly work...
+
             var lines = state.ProcessedLines.ToArray();
             ProcessLinesForPass2(lines);
 
@@ -930,7 +934,12 @@ namespace Konamiman.Nestor80.Assembler
             }
             else if(symbol.HasKnownValue) {
                 if(symbol.Value != state.GetCurrentLocation()) {
-                    AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
+                    if(state.InPass1) {
+                        AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
+                    }
+                    else {
+                        AddError(AssemblyErrorCode.DifferentPassValues, $"Label {labelValue} has different values in pass 1 ({symbol.Value:X4}h) and in pass 2 ({state.GetCurrentLocation().Value:X4}h)");
+                    }
                 }
             }
             else {

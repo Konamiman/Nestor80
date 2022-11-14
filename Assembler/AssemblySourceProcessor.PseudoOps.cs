@@ -135,7 +135,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 try {
-                    var expression = Expression.Parse(expressionText, forDefb: isByte);
+                    var expression = state.GetExpressionFor(expressionText, forDefb: isByte);
                     expression.ValidateAndPostifixize();
 
                     if(expression.IsRawBytesOutput) {
@@ -192,7 +192,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else try {
                     var lengthExpressionText = walker.ExtractExpression();
-                    var lengthExpression = Expression.Parse(lengthExpressionText);
+                    var lengthExpression = state.GetExpressionFor(lengthExpressionText);
                     lengthExpression.ValidateAndPostifixize();
                     var lengthAddress = lengthExpression.Evaluate();
                     if(!lengthAddress.IsAbsolute) {
@@ -202,7 +202,7 @@ namespace Konamiman.Nestor80.Assembler
 
                     if(!walker.AtEndOfLine) {
                         var valueExpressionText = walker.ExtractExpression();
-                        var valueExpression = Expression.Parse(valueExpressionText);
+                        var valueExpression = state.GetExpressionFor(valueExpressionText);
                         valueExpression.ValidateAndPostifixize();
                         var valueAddress = valueExpression.EvaluateIfNoSymbols();
                         if(valueAddress is null) {
@@ -239,7 +239,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else try {
                     var expressionText = walker.ExtractExpression();
-                    var expression = Expression.Parse(expressionText, forDefb: true);
+                    var expression = state.GetExpressionFor(expressionText, forDefb: true);
 
                     if(expression.IsRawBytesOutput) {
                         var bytes = (RawBytesOutput)expression.Parts[0];
@@ -309,7 +309,7 @@ namespace Konamiman.Nestor80.Assembler
 
             try {
                 var valueExpressionString = walker.ExtractExpression();
-                var valueExpression = Expression.Parse(valueExpressionString);
+                var valueExpression = state.GetExpressionFor(valueExpressionString);
                 valueExpression.ValidateAndPostifixize();
                 var value = valueExpression.EvaluateIfNoSymbols();
                 if(value is null) {
@@ -421,7 +421,7 @@ namespace Konamiman.Nestor80.Assembler
 
             try {
                 var endAddressText = walker.ExtractExpression();
-                var endAddressExpression = Expression.Parse(endAddressText);
+                var endAddressExpression = state.GetExpressionFor(endAddressText);
                 endAddressExpression.ValidateAndPostifixize();
 
                 //Note that we are ending source code parsing here,
@@ -466,7 +466,7 @@ namespace Konamiman.Nestor80.Assembler
             try {
                 if(expression is null) {
                     var valueExpressionString = walker.ExtractExpression();
-                    var valueExpression = Expression.Parse(valueExpressionString);
+                    var valueExpression = state.GetExpressionFor(valueExpressionString);
                     valueExpression.ValidateAndPostifixize();
                     value = valueExpression.TryEvaluate();
                     if(value is null) {
@@ -561,7 +561,7 @@ namespace Konamiman.Nestor80.Assembler
             try {
                 Expression.DefaultRadix = 10;
                 var valueExpressionString = walker.ExtractExpression();
-                var valueExpression = Expression.Parse(valueExpressionString);
+                var valueExpression = state.GetExpressionFor(valueExpressionString);
                 valueExpression.ValidateAndPostifixize();
                 var value = valueExpression.Evaluate();
                 if(!value.IsAbsolute || value.Value < 2 || value.Value > 16) {
@@ -712,7 +712,7 @@ namespace Konamiman.Nestor80.Assembler
                     return new ChangeListingPageLine() { IsMainPageChange = true };
                 }
 
-                var pageSizeExpression = Expression.Parse(pageSizeText);
+                var pageSizeExpression = state.GetExpressionFor(pageSizeText);
                 pageSizeExpression.ValidateAndPostifixize();
                 var pageSize = pageSizeExpression.Evaluate();
                 if(!pageSize.IsAbsolute) {
@@ -763,7 +763,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else try {
                     var expressionText = walker.ExtractExpression();
-                    var expression = Expression.Parse(expressionText, forDefb: true);
+                    var expression = state.GetExpressionFor(expressionText, forDefb: true);
 
                     if(expression.IsRawBytesOutput) {
                         var bytes = (RawBytesOutput)expression.Parts[0];
@@ -883,7 +883,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 try {
-                    var expression = Expression.Parse(expressionText);
+                    var expression = state.GetExpressionFor(expressionText);
                     expression.ValidateAndPostifixize();
                     expressionValue = expression.Evaluate();
                 }
@@ -968,7 +968,7 @@ namespace Konamiman.Nestor80.Assembler
                 var expressionText = walker.ExtractExpression();
                 Address expressionValue;
                 try {
-                    var expression = Expression.Parse(expressionText);
+                    var expression = state.GetExpressionFor(expressionText);
                     expression.ValidateAndPostifixize();
                     expressionValue = expression.Evaluate();
                 }
@@ -1261,7 +1261,7 @@ namespace Konamiman.Nestor80.Assembler
             else {
                 try {
                     var phaseAddressText = walker.ExtractExpression();
-                    var phaseAddressExpression = Expression.Parse(phaseAddressText);
+                    var phaseAddressExpression = state.GetExpressionFor(phaseAddressText);
                     phaseAddressExpression.ValidateAndPostifixize();
                     phaseAddress = phaseAddressExpression.Evaluate();
                 }
@@ -1370,7 +1370,7 @@ namespace Konamiman.Nestor80.Assembler
             Address repetitionsCount;
             try {
                 var repetitionsExpressionString = walker.ExtractExpression();
-                var repetitionsExpression = Expression.Parse(repetitionsExpressionString);
+                var repetitionsExpression = state.GetExpressionFor(repetitionsExpressionString);
                 repetitionsExpression.ValidateAndPostifixize();
                 repetitionsCount = repetitionsExpression.Evaluate();
             }

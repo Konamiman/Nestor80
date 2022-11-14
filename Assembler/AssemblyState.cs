@@ -87,6 +87,10 @@ namespace Konamiman.Nestor80.Assembler
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
             LocationPointersByArea[AddressType.ASEG] = 0;
+
+            var allSourceText = string.Join("\n", MainSourceLines);
+            var allSourceBytes = sourceStreamEncoding.GetBytes(allSourceText);
+            SourceStreamReader = new StreamReader(new MemoryStream(allSourceBytes), sourceStreamEncoding, true, 4096);
         }
 
         private readonly Dictionary<AddressType, ushort> LocationPointersByArea = new() {
@@ -586,9 +590,12 @@ namespace Konamiman.Nestor80.Assembler
 
         internal void RegisterProcessedLine(ProcessedSourceLine processedLine)
         {
+            bool isMacroExpansion = false;
+
             if(processedLine is EndMacroLine || (processedLine is MacroExpansionLine mel && mel.MacroType is MacroType.Named)) {
                 if(previousExpansionStates.Count > 0) {
                     previousExpansionStates.Peek().ProcessedLines.Add(processedLine);
+                    isMacroExpansion = true;
                 }
                 else {
                     ProcessedLines.Add(processedLine);
@@ -597,10 +604,22 @@ namespace Konamiman.Nestor80.Assembler
             else {
                 if(currentMacroExpansionState is not null) {
                     currentMacroExpansionState.ProcessedLines.Add(processedLine);
+                    isMacroExpansion = true;
                 }
                 else {
                     ProcessedLines.Add(processedLine);
                 }
+            }
+
+            if(isMacroExpansion) {
+                return;
+            }
+
+            if(InPass2) {
+                ProcessedLines.Add(processedLine);
+            }
+            else if(!InsideIncludedFile) {
+                MainSourceLines.Add(processedLine.Line);
             }
         }
 
@@ -608,5 +627,20 @@ namespace Konamiman.Nestor80.Assembler
             MacroDefinitionState.DefiningMacro ? MacroMode.Definition :
             currentMacroExpansionState is not null ? MacroMode.Expansion :
             MacroMode.None;
+
+        private readonly Dictionary<(string, bool), Expression> expressionsBySource = new();
+
+        public readonly List<string> MainSourceLines = new();
+
+        public Expression GetExpressionFor(string sourceLine, bool forDefb = false)
+        {
+            if(expressionsBySource.ContainsKey((sourceLine, forDefb))) {
+                return expressionsBySource[(sourceLine, forDefb)];
+            }
+
+            var expression = Expression.Parse(sourceLine, forDefb);
+            expressionsBySource.Add((sourceLine, forDefb), expression);
+            return expression;
+        }
     }
 }

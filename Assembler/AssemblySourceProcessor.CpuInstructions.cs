@@ -173,7 +173,8 @@ namespace Konamiman.Nestor80.Assembler
                     if(secondArgumentExpression is null) {
                         return new CpuInstructionLine() { IsInvalid = true };
                     }
-                    var secondArgumentExpressionValue = secondArgumentExpression.EvaluateIfNoSymbols();
+                    //???
+                    //var secondArgumentExpressionValue = secondArgumentExpression.EvaluateIfNoSymbols();
                     if(!AdjustInstructionLineForExpression(instructionLine, secondArgumentExpression, 2, instrArgTypeByParsedType[secondArgumentType], isNegativeIxy)) {
                         return new CpuInstructionLine() { IsInvalid = true };
                     };
@@ -426,7 +427,7 @@ namespace Konamiman.Nestor80.Assembler
         private static Expression GetExpressionForInstructionArgument(string opcode, string argument)
         {
             try {
-                var expression = Expression.Parse(argument);
+                var expression = state.GetExpressionFor(argument);
                 expression.ValidateAndPostifixize();
                 return expression;
             }
