@@ -290,7 +290,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(string.IsNullOrWhiteSpace(line)) {
                 if(state.CurrentMacroMode is MacroMode.Definition) {
-                    state.RegisterMacroDefinitionLine(line, false);
+                    AssemblyState.RegisterMacroDefinitionLine(line, false);
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
                 }
                 else {
@@ -305,7 +305,7 @@ namespace Konamiman.Nestor80.Assembler
             walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
                 if(state.CurrentMacroMode is MacroMode.Definition) {
-                    state.RegisterMacroDefinitionLine(line, false);
+                    AssemblyState.RegisterMacroDefinitionLine(line, false);
                     walker.DiscardRemaining();
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
                 }
@@ -427,7 +427,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     if(inMacroDefinitionMode) {
-                        state.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase));
+                        AssemblyState.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase));
                         walker.DiscardRemaining();
                         processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length };
                     }

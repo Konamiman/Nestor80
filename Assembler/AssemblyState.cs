@@ -18,7 +18,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public string CurrentSourceLineText {get;set;}
 
-        private Encoding sourceStreamEncoding;
+        private readonly Encoding sourceStreamEncoding;
 
         private readonly List<AssemblyError> Errors = new();
 
@@ -234,9 +234,9 @@ namespace Konamiman.Nestor80.Assembler
         public void AddError(AssemblyError error) => Errors.Add(error);
 
         public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
-        {   //TODO: Include macro name and line
+        {
             int? ln = withLineNumber ? GetLineNumberForError() : null;
-            var error = new AssemblyError(code, message, ln, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename);
+            var error = new AssemblyError(code, message, ln, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename, GetMacroNamesAndLinesForError());
             AddError(error);
             return error;
         }
@@ -258,6 +258,22 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return CurrentLineNumber;
+        }
+
+        private readonly List<(string, int)> macroNamesAndLinesForError = new();
+
+        private (string, int)[] GetMacroNamesAndLinesForError()
+        {
+            var allStates = previousExpansionStates.Concat(new[] {currentMacroExpansionState }).ToArray();
+
+            //TODO: Fix: the number returned isn't accurate for errors thrown inside REPTs inside named macros.
+            foreach(var state in allStates) {
+                if(state is NamedMacroExpansionState nmes) {
+                    return new (string, int)[] { (nmes.MacroName.ToUpper(), nmes.RelativeLineNumber+1) };
+                }
+            }
+
+            return null;
         }
 
         public AssemblyError[] GetErrors() => Errors.ToArray();
@@ -475,7 +491,7 @@ namespace Konamiman.Nestor80.Assembler
                 var ln = currentMacroExpansionState is null ||
                     currentMacroExpansionState.MacroType is MacroType.Named ||
                     previousExpansionStates.Any(s => s.MacroType is MacroType.Named) ? CurrentLineNumber : currentMacroExpansionState.ActualLineNumber;
-                currentMacroExpansionState = new NamedMacroExpansionState(expansionLine, macroDefinition.LineTemplates, macroDefinition.Arguments.Length, expansionLine.Parameters, ln);
+                currentMacroExpansionState = new NamedMacroExpansionState(expansionLine.Name, expansionLine, macroDefinition.LineTemplates, macroDefinition.Arguments.Length, expansionLine.Parameters, ln);
             }
             else if(MacroDefinitionState.DefiningMacro) {
                 throw new InvalidOperationException($"{nameof(RegisterMacroExpansionStart)} is not supposed to be called while already in macro definition mode");
@@ -486,7 +502,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        public void RegisterMacroDefinitionLine(string sourceLine, bool isMacroDefinitionOrExpansionInstruction)
+        public static void RegisterMacroDefinitionLine(string sourceLine, bool isMacroDefinitionOrExpansionInstruction)
         {
             if(isMacroDefinitionOrExpansionInstruction) {
                 MacroDefinitionState.IncreaseDepth();

@@ -4,7 +4,7 @@ namespace Konamiman.Nestor80.Assembler
 {
     internal class NamedMacroExpansionState : MacroExpansionState
     {
-        public NamedMacroExpansionState(LinesContainerLine expansionProcessedLine, string[] templateLines, int argumentsCount, string[] parameters, int sourceLineNumber)
+        public NamedMacroExpansionState(string macroName, LinesContainerLine expansionProcessedLine, string[] templateLines, int argumentsCount, string[] parameters, int sourceLineNumber)
             :base(expansionProcessedLine, templateLines, sourceLineNumber)
         {
             MacroType = MacroType.Named;
@@ -14,6 +14,7 @@ namespace Konamiman.Nestor80.Assembler
                 parameters = parameters.Concat(Enumerable.Repeat<string>(null, argumentsCount - parameters.Length)).ToArray();
             }
 
+            this.MacroName = macroName;
             this.parameters = parameters;
             remainingLinesCount = templateLines.Length;
         }
@@ -23,6 +24,8 @@ namespace Konamiman.Nestor80.Assembler
         private int remainingLinesCount;
 
         public override bool HasMore => remainingLinesCount > 0;
+
+        public string MacroName { get; }
 
         public override string GetNextSourceLine()
         {
