@@ -152,7 +152,15 @@ namespace Konamiman.Nestor80.Assembler
 
                 (string, byte[], int) chosenInstruction;
                 var selectorExpression = GetExpressionForInstructionArgument(opcode, firstArgument);
-                var selectorExpressionValue = selectorExpression.EvaluateIfNoSymbols();
+                Address selectorExpressionValue;
+                try {
+                    selectorExpressionValue = EvaluateIfNoSymbolsOrPass2(selectorExpression);
+                }
+                catch(InvalidExpressionException ex) {
+                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {opcode.ToUpper()}: {ex.Message}");
+                    walker.DiscardRemaining();
+                    return new CpuInstructionLine() { IsInvalid = true };
+                }
                 instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument };
                 if(selectorExpressionValue is null) {
                     chosenInstruction = candidates[0];
@@ -287,7 +295,7 @@ namespace Konamiman.Nestor80.Assembler
                 return new CpuInstructionLine() { IsInvalid = true };
             }
 
-            instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, Cpu = currentCpu, OutputBytes = instructionBytes };
+            instructionLine = new CpuInstructionLine() { Opcode = opcode, FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, Cpu = currentCpu, OutputBytes = instructionBytes };
             
             var adjustOk = AdjustInstructionLineForExpression(instructionLine, argumentExpression, variableArgBytePosition, variableArgType, isNegativeIxy);
             CompleteInstructionLine(instructionLine);
@@ -313,7 +321,15 @@ namespace Konamiman.Nestor80.Assembler
 
         private static bool AdjustInstructionLineForExpression(CpuInstructionLine line, Expression argumentExpression, int argBytePosition, CpuInstrArgType argType, bool isNegativeIxy = false)
         {
-            var variableArgumentValue = argumentExpression.EvaluateIfNoSymbols();
+            Address variableArgumentValue;
+            try {
+                variableArgumentValue = EvaluateIfNoSymbolsOrPass2(argumentExpression);
+            }
+            catch(InvalidExpressionException ex) {
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {line.Opcode.ToUpper()}: {ex.Message}");
+                return false;
+            }
+
             if(variableArgumentValue is null) {
                 state.RegisterPendingExpression(
                     line,
@@ -428,7 +444,6 @@ namespace Konamiman.Nestor80.Assembler
         {
             try {
                 var expression = state.GetExpressionFor(argument);
-                expression.ValidateAndPostifixize();
                 return expression;
             }
             catch(InvalidExpressionException ex) {

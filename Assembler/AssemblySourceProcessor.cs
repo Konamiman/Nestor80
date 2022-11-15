@@ -898,13 +898,6 @@ namespace Konamiman.Nestor80.Assembler
             var isPublic = label.EndsWith("::");
             var labelValue = isPublic ? label.TrimEnd(':') : state.Modularize(label.TrimEnd(':'));
 
-            if(state.InPass2) {
-                if(isPublic) {
-                    state.GetSymbol(labelValue).IsPublic = true;
-                }
-                return;
-            }
-
             if(labelValue == "$") {
                 AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");
             }
@@ -941,6 +934,9 @@ namespace Konamiman.Nestor80.Assembler
                         AddError(AssemblyErrorCode.DifferentPassValues, $"Label {labelValue} has different values in pass 1 ({symbol.Value:X4}h) and in pass 2 ({state.GetCurrentLocation().Value:X4}h)");
                     }
                 }
+
+                //Needed in case symbol is declared public only in pass 2
+                symbol.IsPublic = isPublic;
             }
             else {
                 //Either PUBLIC declaration preceded label in code,
@@ -1012,5 +1008,8 @@ namespace Konamiman.Nestor80.Assembler
         {
             throw new FatalErrorException(new AssemblyError(errorCode, message, state.CurrentLineNumber, state.CurrentSourceLineText, state.CurrentIncludeFilename));
         }
+
+        static Address EvaluateIfNoSymbolsOrPass2(Expression expression) =>
+            state.InPass2 ? expression.Evaluate() : expression.EvaluateIfNoSymbols();
     }
 }

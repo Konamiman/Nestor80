@@ -597,17 +597,11 @@ namespace Konamiman.Nestor80.Assembler
                     previousExpansionStates.Peek().ProcessedLines.Add(processedLine);
                     isMacroExpansion = true;
                 }
-                else {
-                    ProcessedLines.Add(processedLine);
-                }
             }
             else {
                 if(currentMacroExpansionState is not null) {
                     currentMacroExpansionState.ProcessedLines.Add(processedLine);
                     isMacroExpansion = true;
-                }
-                else {
-                    ProcessedLines.Add(processedLine);
                 }
             }
 
@@ -639,6 +633,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var expression = Expression.Parse(sourceLine, forDefb);
+            expression.ValidateAndPostifixize();
             expressionsBySource.Add((sourceLine, forDefb), expression);
             return expression;
         }

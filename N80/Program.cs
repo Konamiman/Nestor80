@@ -276,7 +276,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             var info = "";
-            if(envArgs is not null) {
+            if(envArgs?.Length > 0) {
                 info += $"Args from N80_ARGS: {string.Join(' ', envArgs)}\r\n";
             }
 
