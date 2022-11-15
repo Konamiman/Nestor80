@@ -1466,17 +1466,25 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessNamedMacroDefinitionLine(string name, SourceLineWalker walker)
         {
             if(state.NamedMacroExists(name)) {
-                AddError(AssemblyErrorCode.DuplicatedMacro, $"A macro named {name.ToUpper()} already exists");
-                return new NamedMacroDefinitionLine();
+                if(state.InPass1) {
+                    AddError(AssemblyErrorCode.DuplicatedMacro, $"A macro named {name.ToUpper()} already exists");
+                    walker.DiscardRemaining();
+                    return new NamedMacroDefinitionLine();
+                }
+                else {
+                    state.RemoveNamedMacroDefinition(name);
+                }
             }
 
             if(MacroDefinitionState.DefiningNamedMacro) {
                 AddError(AssemblyErrorCode.NestedMacro, $"Nested named macro definitions are not allowed");
+                walker.DiscardRemaining();
                 return new NamedMacroDefinitionLine();
             }
 
             if(MacroDefinitionState.DefiningMacro) {
                 AddError(AssemblyErrorCode.NestedMacro, $"Named macro definitions inside REPT macros are not allowed");
+                walker.DiscardRemaining();
                 return new NamedMacroDefinitionLine();
             }
 

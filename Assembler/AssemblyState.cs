@@ -637,5 +637,10 @@ namespace Konamiman.Nestor80.Assembler
             expressionsBySource.Add((sourceLine, forDefb), expression);
             return expression;
         }
+
+        internal void RemoveNamedMacroDefinition(string name)
+        {
+            NamedMacros.Remove(name);
+        }
     }
 }
