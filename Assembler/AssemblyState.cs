@@ -1,6 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
-using System.ComponentModel.DataAnnotations;
 using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
@@ -12,7 +11,10 @@ namespace Konamiman.Nestor80.Assembler
             this.Configuration = configuration;
             this.sourceStreamEncoding = sourceStreamEncoding;
             this.SourceStreamReader = new StreamReader(sourceStream, sourceStreamEncoding, true, 4096);
+            streamCanSeek = SourceStreamReader.BaseStream.CanSeek;
         }
+
+        private readonly bool streamCanSeek;
 
         public string CurrentSourceLineText {get;set;}
 
@@ -82,15 +84,22 @@ namespace Konamiman.Nestor80.Assembler
             EndAddress = null;
             CurrentModule = null;
             currentRootSymbols = null;
+            CurrentConditionalBlockType = ConditionalBlockType.None;
             modules.Clear();
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
             LocationPointersByArea[AddressType.ASEG] = 0;
 
-            var allSourceText = string.Join("\n", MainSourceLines);
-            var allSourceBytes = sourceStreamEncoding.GetBytes(allSourceText);
-            SourceStreamReader = new StreamReader(new MemoryStream(allSourceBytes), sourceStreamEncoding, true, 4096);
+            if(streamCanSeek) {
+                SourceStreamReader.BaseStream.Seek(0, SeekOrigin.Begin);
+                SourceStreamReader.DiscardBufferedData();
+            }
+            else {
+                var allSourceText = string.Join("\n", MainSourceLines);
+                var allSourceBytes = sourceStreamEncoding.GetBytes(allSourceText);
+                SourceStreamReader = new StreamReader(new MemoryStream(allSourceBytes), sourceStreamEncoding, true, 4096);
+            }
         }
 
         private readonly Dictionary<AddressType, ushort> LocationPointersByArea = new() {
@@ -612,7 +621,7 @@ namespace Konamiman.Nestor80.Assembler
             if(InPass2) {
                 ProcessedLines.Add(processedLine);
             }
-            else if(!InsideIncludedFile) {
+            else if(!streamCanSeek && !InsideIncludedFile) {
                 MainSourceLines.Add(processedLine.Line);
             }
         }
