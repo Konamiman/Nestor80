@@ -124,7 +124,8 @@ namespace Konamiman.Nestor80.Assembler
                 // Found an instruction whose first argument is one of a fixed set (IM, RST, BIT, SET, RES).
                 // These need special treatment because:
                 // 1. This special argument doesn't directly translate to a byte or word in the output bytes; and
-                // 2. This special argument could be unknown at pass 1 and thus we need to register the instruction as pending selection.
+                // 2. This special argument could be unknown at pass 1 and thus we need to select a dummy instruction
+                //    (for the location counter to update properly) and defer the selection of the real instruction to pass 2.
 
                 if(firstArgumentType is not CpuParsedArgType.Number and not CpuParsedArgType.NumberInParenthesis) {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
@@ -163,8 +164,13 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument };
                 if(selectorExpressionValue is null) {
-                    chosenInstruction = candidates[0];
-                    state.RegisterInstructionsPendingSelection(instructionLine, candidates.Select(c => new InstructionPendingSelection() { InstructionBytes = c.Item2, SelectorValue = c.Item3 }).ToArray(), selectorExpression);
+                    if(state.InPass1) {
+                        chosenInstruction = candidates[0];
+                    }
+                    else {
+                        AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                        return new CpuInstructionLine() { IsInvalid = true };
+                    }
                 }
                 else {
                     chosenInstruction = candidates.FirstOrDefault(c => c.Item3 == selectorExpressionValue.Value);
@@ -181,8 +187,6 @@ namespace Konamiman.Nestor80.Assembler
                     if(secondArgumentExpression is null) {
                         return new CpuInstructionLine() { IsInvalid = true };
                     }
-                    //???
-                    //var secondArgumentExpressionValue = secondArgumentExpression.EvaluateIfNoSymbols();
                     if(!AdjustInstructionLineForExpression(instructionLine, secondArgumentExpression, 2, instrArgTypeByParsedType[secondArgumentType], isNegativeIxy)) {
                         return new CpuInstructionLine() { IsInvalid = true };
                     };

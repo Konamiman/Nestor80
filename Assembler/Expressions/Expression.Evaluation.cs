@@ -242,7 +242,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(externalSymbolFound) {
-                throw new ExpressionReferencesExternalsException();
+                return null;
             }
 
             var result = stack.Pop();

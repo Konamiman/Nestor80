@@ -47,18 +47,15 @@ namespace Konamiman.Nestor80.Assembler
             CpuInstrArgType argumentType = CpuInstrArgType.None,
             bool isNegativeIxy = false)
         {
+            if(InPass1) {
+                return;
+            }
+
             if(!ExpressionsPendingEvaluation.ContainsKey(line)) {
                 ExpressionsPendingEvaluation[line] = new List<ExpressionPendingEvaluation>();
             }
 
             ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IsNegativeIxy = isNegativeIxy } );
-        }
-
-        public void UnregisterPendingExpressions(ProcessedSourceLine line)
-        {
-            if(ExpressionsPendingEvaluation.ContainsKey(line)) {
-                ExpressionsPendingEvaluation.Remove(line);
-            }
         }
 
         public Dictionary<ProcessedSourceLine, List<ExpressionPendingEvaluation>> ExpressionsPendingEvaluation { get; } = new();
@@ -75,7 +72,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool EndReached => EndAddress is not null;
 
-        public void SwitchToPass2()
+        public void SwitchToPass2(BuildType buildType)
         {
             InPass2 = true;
             CurrentLineNumber = 1;
@@ -86,6 +83,9 @@ namespace Konamiman.Nestor80.Assembler
             currentRootSymbols = null;
             CurrentConditionalBlockType = ConditionalBlockType.None;
             modules.Clear();
+
+            SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
+            SwitchToLocation(0);
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
@@ -260,8 +260,6 @@ namespace Konamiman.Nestor80.Assembler
             return CurrentLineNumber;
         }
 
-        private readonly List<(string, int)> macroNamesAndLinesForError = new();
-
         private (string, int)[] GetMacroNamesAndLinesForError()
         {
             var allStates = previousExpansionStates.Concat(new[] {currentMacroExpansionState }).ToArray();
@@ -282,11 +280,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public SymbolInfo[] GetSymbols() => Symbols.Values.ToArray();
 
-        public SymbolInfo[] GetSymbolsOfUnknownType() => Symbols.Values.Where(s => !s.IsOfKnownType || (!s.IsExternal && !s.HasKnownValue)).ToArray();
-
         public bool HasSymbol(string symbol) => Symbols.ContainsKey(symbol);
-
-        public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].HasKnownValue;
 
         public bool SymbolIsOfKnownType(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].IsOfKnownType;
 
@@ -406,21 +400,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public int CurrentIncludesDeepLevel => includeStates.Count;
 
-        public Dictionary<ProcessedSourceLine, (InstructionPendingSelection[], Expression)> InstructionsPendingSelection { get; set; } = new();
-
-        public void RegisterInstructionsPendingSelection(ProcessedSourceLine line, InstructionPendingSelection[] choices, Expression selectorExpression)
-        {
-            InstructionsPendingSelection.Add(line, (choices, selectorExpression));
-        }
-
-        public void UnregisterInstructionsPendingSelection(ProcessedSourceLine line)
-        {
-            if(InstructionsPendingSelection.ContainsKey(line)) {
-                InstructionsPendingSelection.Remove(line);
-            }
-        }
-
-        private Stack<(string, HashSet<string>)> modules = new();
+        private readonly Stack<(string, HashSet<string>)> modules = new();
 
         public string CurrentModule { get; private set; } = null;
 
