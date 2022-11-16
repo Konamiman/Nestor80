@@ -129,6 +129,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(firstArgumentType is not CpuParsedArgType.Number and not CpuParsedArgType.NumberInParenthesis) {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                    walker.DiscardRemaining();
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
 
@@ -148,6 +149,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(candidates is null || candidates.Length == 0) {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                    walker.DiscardRemaining();
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
 
@@ -169,6 +171,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else {
                         AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                        walker.DiscardRemaining();
                         return new CpuInstructionLine() { IsInvalid = true };
                     }
                 }
@@ -176,6 +179,7 @@ namespace Konamiman.Nestor80.Assembler
                     chosenInstruction = candidates.FirstOrDefault(c => c.Item3 == selectorExpressionValue.Value);
                     if(chosenInstruction.Item2 is null) {
                         AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                        walker.DiscardRemaining();
                         return new CpuInstructionLine() { IsInvalid = true };
                     }
                 }
@@ -231,12 +235,14 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                    walker.DiscardRemaining();
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
             }
 
             if(instructionSearchKey is null) {
                 AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                walker.DiscardRemaining();
                 return new CpuInstructionLine() { IsInvalid = true };
             }
 
@@ -281,6 +287,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(variableArgType is CpuInstrArgType.None) {
                 AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
+                walker.DiscardRemaining();
                 return new CpuInstructionLine() { IsInvalid = true };
             }
 
@@ -303,6 +310,7 @@ namespace Konamiman.Nestor80.Assembler
             
             var adjustOk = AdjustInstructionLineForExpression(instructionLine, argumentExpression, variableArgBytePosition, variableArgType, isNegativeIxy);
             CompleteInstructionLine(instructionLine);
+            if(!adjustOk) walker.DiscardRemaining();
             return adjustOk ? instructionLine : new CpuInstructionLine() { IsInvalid = true };
         }
 

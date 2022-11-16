@@ -1040,6 +1040,7 @@ namespace Konamiman.Nestor80.Assembler
                 var text = walker.ExtractAngleBracketed();
                 if(text is null) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
@@ -1056,6 +1057,7 @@ namespace Konamiman.Nestor80.Assembler
                 var text = walker.ExtractAngleBracketed();
                 if(text is null) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
@@ -1077,6 +1079,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(text1 is null || text2 is null) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
@@ -1098,6 +1101,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(text1 is null || text2 is null) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
