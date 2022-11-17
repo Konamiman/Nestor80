@@ -47,18 +47,17 @@ namespace Konamiman.Nestor80.Assembler
             CpuInstrArgType argumentType = CpuInstrArgType.None,
             bool isNegativeIxy = false)
         {
-            if(InPass1) {
-                return;
+            if(InPass2) {
+                ExpressionsPendingEvaluation.Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IsNegativeIxy = isNegativeIxy } );
             }
-
-            if(!ExpressionsPendingEvaluation.ContainsKey(line)) {
-                ExpressionsPendingEvaluation[line] = new List<ExpressionPendingEvaluation>();
-            }
-
-            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IsNegativeIxy = isNegativeIxy } );
         }
 
-        public Dictionary<ProcessedSourceLine, List<ExpressionPendingEvaluation>> ExpressionsPendingEvaluation { get; } = new();
+        public void ClearExpressionsPeindingEvaluation()
+        {
+            ExpressionsPendingEvaluation.Clear();
+        }
+
+        public List<ExpressionPendingEvaluation> ExpressionsPendingEvaluation { get; } = new();
 
         public Address EndAddress { get; private set; }
 

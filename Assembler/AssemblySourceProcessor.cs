@@ -228,8 +228,9 @@ namespace Konamiman.Nestor80.Assembler
 
                 var processedLine = ProcessSourceLine(sourceLine);
 
-                if(state.InPass2 && state.ExpressionsPendingEvaluation.ContainsKey(processedLine)) {
-                    ProcessExpressionPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation[processedLine].ToArray());
+                if(state.InPass2 && state.ExpressionsPendingEvaluation.Any()) {
+                    ProcessExpressionsPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation);
+                    state.ClearExpressionsPeindingEvaluation();
                 }
 
                 state.RegisterProcessedLine(processedLine);
@@ -534,7 +535,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static void ProcessExpressionPendingEvaluation(ProcessedSourceLine processedLine, ExpressionPendingEvaluation[] expressionsPendingEvaluation)
+        private static void ProcessExpressionsPendingEvaluation(ProcessedSourceLine processedLine, List<ExpressionPendingEvaluation> expressionsPendingEvaluation)
         {
             if(processedLine is ConstantDefinitionLine cdl) {
                 foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
