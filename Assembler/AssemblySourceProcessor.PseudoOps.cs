@@ -135,15 +135,14 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 try {
-                    var expression = Expression.Parse(expressionText, forDefb: isByte);
-                    expression.ValidateAndPostifixize();
+                    var expression = state.GetExpressionFor(expressionText, forDefb: isByte);
 
                     if(expression.IsRawBytesOutput) {
                         outputBytes.AddRange((RawBytesOutput)expression.Parts[0]);
                         continue;
                     }
 
-                    var value = expression.EvaluateIfNoSymbols();
+                    var value = EvaluateIfNoSymbolsOrPass2(expression);
                     if(value is null) {
                         AddZero();
                         state.RegisterPendingExpression(line, expression, index, argumentType: isByte ? CpuInstrArgType.Byte : CpuInstrArgType.Word);
@@ -192,8 +191,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else try {
                     var lengthExpressionText = walker.ExtractExpression();
-                    var lengthExpression = Expression.Parse(lengthExpressionText);
-                    lengthExpression.ValidateAndPostifixize();
+                    var lengthExpression = state.GetExpressionFor(lengthExpressionText);
                     var lengthAddress = lengthExpression.Evaluate();
                     if(!lengthAddress.IsAbsolute) {
                         throw new InvalidExpressionException("the length argument must evaluate to an absolute value");
@@ -202,9 +200,8 @@ namespace Konamiman.Nestor80.Assembler
 
                     if(!walker.AtEndOfLine) {
                         var valueExpressionText = walker.ExtractExpression();
-                        var valueExpression = Expression.Parse(valueExpressionText);
-                        valueExpression.ValidateAndPostifixize();
-                        var valueAddress = valueExpression.EvaluateIfNoSymbols();
+                        var valueExpression = state.GetExpressionFor(valueExpressionText);
+                        var valueAddress = EvaluateIfNoSymbolsOrPass2(valueExpression);
                         if(valueAddress is null) {
                             state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Byte);
                         }
@@ -218,6 +215,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 catch(InvalidExpressionException ex) {
                     AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    walker.DiscardRemaining();
                 }
 
             state.IncreaseLocationPointer(length);
@@ -239,7 +237,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else try {
                     var expressionText = walker.ExtractExpression();
-                    var expression = Expression.Parse(expressionText, forDefb: true);
+                    var expression = state.GetExpressionFor(expressionText, forDefb: true);
 
                     if(expression.IsRawBytesOutput) {
                         var bytes = (RawBytesOutput)expression.Parts[0];
@@ -256,6 +254,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 catch(InvalidExpressionException ex) {
                     AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
+                    walker.DiscardRemaining();
                 }
 
             if(outputBytes is not null) {
@@ -309,9 +308,8 @@ namespace Konamiman.Nestor80.Assembler
 
             try {
                 var valueExpressionString = walker.ExtractExpression();
-                var valueExpression = Expression.Parse(valueExpressionString);
-                valueExpression.ValidateAndPostifixize();
-                var value = valueExpression.EvaluateIfNoSymbols();
+                var valueExpression = state.GetExpressionFor(valueExpressionString);
+                var value = EvaluateIfNoSymbolsOrPass2(valueExpression);
                 if(value is null) {
                     var line = new ChangeOriginLine();
                     state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Word);
@@ -324,6 +322,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             catch(InvalidExpressionException ex) {
                 AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                walker.DiscardRemaining();
                 return new ChangeOriginLine();
             }
         }
@@ -421,8 +420,7 @@ namespace Konamiman.Nestor80.Assembler
 
             try {
                 var endAddressText = walker.ExtractExpression();
-                var endAddressExpression = Expression.Parse(endAddressText);
-                endAddressExpression.ValidateAndPostifixize();
+                var endAddressExpression = state.GetExpressionFor(endAddressText);
 
                 //Note that we are ending source code parsing here,
                 //therefore, the end address expression must be evaluable at this point!
@@ -433,6 +431,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             catch(InvalidExpressionException ex) {
                 AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                walker.DiscardRemaining();
                 state.End(Address.AbsoluteZero);
                 return new AssemblyEndLine();
             }
@@ -466,9 +465,8 @@ namespace Konamiman.Nestor80.Assembler
             try {
                 if(expression is null) {
                     var valueExpressionString = walker.ExtractExpression();
-                    var valueExpression = Expression.Parse(valueExpressionString);
-                    valueExpression.ValidateAndPostifixize();
-                    value = valueExpression.TryEvaluate();
+                    var valueExpression = state.GetExpressionFor(valueExpressionString);
+                    value = state.InPass1 ? valueExpression.TryEvaluate() : valueExpression.Evaluate();
                     if(value is null) {
                         state.RegisterPendingExpression(line, valueExpression);
                         return line;
@@ -480,6 +478,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             catch(InvalidExpressionException ex) {
                 AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                walker.DiscardRemaining();
                 return line;
             }
 
@@ -561,8 +560,7 @@ namespace Konamiman.Nestor80.Assembler
             try {
                 Expression.DefaultRadix = 10;
                 var valueExpressionString = walker.ExtractExpression();
-                var valueExpression = Expression.Parse(valueExpressionString);
-                valueExpression.ValidateAndPostifixize();
+                var valueExpression = state.GetExpressionFor(valueExpressionString);
                 var value = valueExpression.Evaluate();
                 if(!value.IsAbsolute || value.Value < 2 || value.Value > 16) {
                     Expression.DefaultRadix = backupRadix;
@@ -576,6 +574,7 @@ namespace Konamiman.Nestor80.Assembler
             catch(InvalidExpressionException ex) {
                 Expression.DefaultRadix = backupRadix;
                 AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                walker.DiscardRemaining();
                 return new ChangeRadixLine();
             }
         }
@@ -712,8 +711,7 @@ namespace Konamiman.Nestor80.Assembler
                     return new ChangeListingPageLine() { IsMainPageChange = true };
                 }
 
-                var pageSizeExpression = Expression.Parse(pageSizeText);
-                pageSizeExpression.ValidateAndPostifixize();
+                var pageSizeExpression = state.GetExpressionFor(pageSizeText);
                 var pageSize = pageSizeExpression.Evaluate();
                 if(!pageSize.IsAbsolute) {
                     AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the page size must be an absolute value");
@@ -725,6 +723,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             catch(InvalidExpressionException ex) {
                 AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                walker.DiscardRemaining();
                 return new ChangeListingPageLine();
             }
         }
@@ -763,7 +762,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else try {
                     var expressionText = walker.ExtractExpression();
-                    var expression = Expression.Parse(expressionText, forDefb: true);
+                    var expression = state.GetExpressionFor(expressionText, forDefb: true);
 
                     if(expression.IsRawBytesOutput) {
                         var bytes = (RawBytesOutput)expression.Parts[0];
@@ -883,8 +882,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 try {
-                    var expression = Expression.Parse(expressionText);
-                    expression.ValidateAndPostifixize();
+                    var expression = state.GetExpressionFor(expressionText);
                     expressionValue = expression.Evaluate();
                 }
                 catch(InvalidExpressionException ex) {
@@ -968,12 +966,12 @@ namespace Konamiman.Nestor80.Assembler
                 var expressionText = walker.ExtractExpression();
                 Address expressionValue;
                 try {
-                    var expression = Expression.Parse(expressionText);
-                    expression.ValidateAndPostifixize();
+                    var expression = state.GetExpressionFor(expressionText);
                     expressionValue = expression.Evaluate();
                 }
                 catch(InvalidExpressionException ex) {
                     AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
@@ -1042,6 +1040,7 @@ namespace Konamiman.Nestor80.Assembler
                 var text = walker.ExtractAngleBracketed();
                 if(text is null) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
@@ -1058,6 +1057,7 @@ namespace Konamiman.Nestor80.Assembler
                 var text = walker.ExtractAngleBracketed();
                 if(text is null) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an argument enclosed in < and >");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
@@ -1079,6 +1079,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(text1 is null || text2 is null) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
@@ -1100,6 +1101,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(text1 is null || text2 is null) {
                     AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments, each enclosed in < and >");
+                    walker.DiscardRemaining();
                     return null;
                 }
 
@@ -1261,12 +1263,12 @@ namespace Konamiman.Nestor80.Assembler
             else {
                 try {
                     var phaseAddressText = walker.ExtractExpression();
-                    var phaseAddressExpression = Expression.Parse(phaseAddressText);
-                    phaseAddressExpression.ValidateAndPostifixize();
+                    var phaseAddressExpression = state.GetExpressionFor(phaseAddressText);
                     phaseAddress = phaseAddressExpression.Evaluate();
                 }
                 catch(InvalidExpressionException ex) {
                     AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    walker.DiscardRemaining();
                     return new PhaseLine();
                 }
             }
@@ -1370,17 +1372,18 @@ namespace Konamiman.Nestor80.Assembler
             Address repetitionsCount;
             try {
                 var repetitionsExpressionString = walker.ExtractExpression();
-                var repetitionsExpression = Expression.Parse(repetitionsExpressionString);
-                repetitionsExpression.ValidateAndPostifixize();
+                var repetitionsExpression = state.GetExpressionFor(repetitionsExpressionString);
                 repetitionsCount = repetitionsExpression.Evaluate();
             }
             catch(InvalidExpressionException ex) {
                 AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                walker.DiscardRemaining();
                 return new MacroExpansionLine();
             }
 
             if(!repetitionsCount.IsAbsolute) {
                 AddError(AssemblyErrorCode.InvalidExpression, $"{opcode.ToUpper()}: the repetitions count can't be a relocatable value");
+                walker.DiscardRemaining();
                 return new MacroExpansionLine();
             }
 
@@ -1467,17 +1470,25 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessNamedMacroDefinitionLine(string name, SourceLineWalker walker)
         {
             if(state.NamedMacroExists(name)) {
-                AddError(AssemblyErrorCode.DuplicatedMacro, $"A macro named {name.ToUpper()} already exists");
-                return new NamedMacroDefinitionLine();
+                if(state.InPass1) {
+                    AddError(AssemblyErrorCode.DuplicatedMacro, $"A macro named {name.ToUpper()} already exists");
+                    walker.DiscardRemaining();
+                    return new NamedMacroDefinitionLine();
+                }
+                else {
+                    state.RemoveNamedMacroDefinition(name);
+                }
             }
 
             if(MacroDefinitionState.DefiningNamedMacro) {
                 AddError(AssemblyErrorCode.NestedMacro, $"Nested named macro definitions are not allowed");
+                walker.DiscardRemaining();
                 return new NamedMacroDefinitionLine();
             }
 
             if(MacroDefinitionState.DefiningMacro) {
                 AddError(AssemblyErrorCode.NestedMacro, $"Named macro definitions inside REPT macros are not allowed");
+                walker.DiscardRemaining();
                 return new NamedMacroDefinitionLine();
             }
 

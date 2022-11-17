@@ -1,6 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
-using System.ComponentModel.DataAnnotations;
 using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
@@ -12,11 +11,14 @@ namespace Konamiman.Nestor80.Assembler
             this.Configuration = configuration;
             this.sourceStreamEncoding = sourceStreamEncoding;
             this.SourceStreamReader = new StreamReader(sourceStream, sourceStreamEncoding, true, 4096);
+            streamCanSeek = SourceStreamReader.BaseStream.CanSeek;
         }
+
+        private readonly bool streamCanSeek;
 
         public string CurrentSourceLineText {get;set;}
 
-        private Encoding sourceStreamEncoding;
+        private readonly Encoding sourceStreamEncoding;
 
         private readonly List<AssemblyError> Errors = new();
 
@@ -45,21 +47,17 @@ namespace Konamiman.Nestor80.Assembler
             CpuInstrArgType argumentType = CpuInstrArgType.None,
             bool isNegativeIxy = false)
         {
-            if(!ExpressionsPendingEvaluation.ContainsKey(line)) {
-                ExpressionsPendingEvaluation[line] = new List<ExpressionPendingEvaluation>();
+            if(InPass2) {
+                ExpressionsPendingEvaluation.Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IsNegativeIxy = isNegativeIxy } );
             }
-
-            ExpressionsPendingEvaluation[line].Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IsNegativeIxy = isNegativeIxy } );
         }
 
-        public void UnregisterPendingExpressions(ProcessedSourceLine line)
+        public void ClearExpressionsPeindingEvaluation()
         {
-            if(ExpressionsPendingEvaluation.ContainsKey(line)) {
-                ExpressionsPendingEvaluation.Remove(line);
-            }
+            ExpressionsPendingEvaluation.Clear();
         }
 
-        public Dictionary<ProcessedSourceLine, List<ExpressionPendingEvaluation>> ExpressionsPendingEvaluation { get; } = new();
+        public List<ExpressionPendingEvaluation> ExpressionsPendingEvaluation { get; } = new();
 
         public Address EndAddress { get; private set; }
 
@@ -73,7 +71,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool EndReached => EndAddress is not null;
 
-        public void SwitchToPass2()
+        public void SwitchToPass2(BuildType buildType)
         {
             InPass2 = true;
             CurrentLineNumber = 1;
@@ -82,11 +80,25 @@ namespace Konamiman.Nestor80.Assembler
             EndAddress = null;
             CurrentModule = null;
             currentRootSymbols = null;
+            CurrentConditionalBlockType = ConditionalBlockType.None;
             modules.Clear();
+
+            SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
+            SwitchToLocation(0);
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
             LocationPointersByArea[AddressType.ASEG] = 0;
+
+            if(streamCanSeek) {
+                SourceStreamReader.BaseStream.Seek(0, SeekOrigin.Begin);
+                SourceStreamReader.DiscardBufferedData();
+            }
+            else {
+                var allSourceText = string.Join("\n", MainSourceLines);
+                var allSourceBytes = sourceStreamEncoding.GetBytes(allSourceText);
+                SourceStreamReader = new StreamReader(new MemoryStream(allSourceBytes), sourceStreamEncoding, true, 4096);
+            }
         }
 
         private readonly Dictionary<AddressType, ushort> LocationPointersByArea = new() {
@@ -221,9 +233,9 @@ namespace Konamiman.Nestor80.Assembler
         public void AddError(AssemblyError error) => Errors.Add(error);
 
         public AssemblyError AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
-        {   //TODO: Include macro name and line
+        {
             int? ln = withLineNumber ? GetLineNumberForError() : null;
-            var error = new AssemblyError(code, message, ln, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename);
+            var error = new AssemblyError(code, message, ln, withLineNumber ? CurrentSourceLineText : null,  CurrentIncludeFilename, GetMacroNamesAndLinesForError());
             AddError(error);
             return error;
         }
@@ -247,17 +259,27 @@ namespace Konamiman.Nestor80.Assembler
             return CurrentLineNumber;
         }
 
+        private (string, int)[] GetMacroNamesAndLinesForError()
+        {
+            var allStates = previousExpansionStates.Concat(new[] {currentMacroExpansionState }).ToArray();
+
+            //TODO: Fix: the number returned isn't accurate for errors thrown inside REPTs inside named macros.
+            foreach(var state in allStates) {
+                if(state is NamedMacroExpansionState nmes) {
+                    return new (string, int)[] { (nmes.MacroName.ToUpper(), nmes.RelativeLineNumber+1) };
+                }
+            }
+
+            return null;
+        }
+
         public AssemblyError[] GetErrors() => Errors.ToArray();
 
         private readonly Dictionary<string, SymbolInfo> Symbols = new(StringComparer.InvariantCultureIgnoreCase);
 
         public SymbolInfo[] GetSymbols() => Symbols.Values.ToArray();
 
-        public SymbolInfo[] GetSymbolsOfUnknownType() => Symbols.Values.Where(s => !s.IsOfKnownType || (!s.IsExternal && !s.HasKnownValue)).ToArray();
-
         public bool HasSymbol(string symbol) => Symbols.ContainsKey(symbol);
-
-        public bool SymbolIsKnown(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].HasKnownValue;
 
         public bool SymbolIsOfKnownType(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].IsOfKnownType;
 
@@ -377,21 +399,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public int CurrentIncludesDeepLevel => includeStates.Count;
 
-        public Dictionary<ProcessedSourceLine, (InstructionPendingSelection[], Expression)> InstructionsPendingSelection { get; set; } = new();
-
-        public void RegisterInstructionsPendingSelection(ProcessedSourceLine line, InstructionPendingSelection[] choices, Expression selectorExpression)
-        {
-            InstructionsPendingSelection.Add(line, (choices, selectorExpression));
-        }
-
-        public void UnregisterInstructionsPendingSelection(ProcessedSourceLine line)
-        {
-            if(InstructionsPendingSelection.ContainsKey(line)) {
-                InstructionsPendingSelection.Remove(line);
-            }
-        }
-
-        private Stack<(string, HashSet<string>)> modules = new();
+        private readonly Stack<(string, HashSet<string>)> modules = new();
 
         public string CurrentModule { get; private set; } = null;
 
@@ -462,7 +470,7 @@ namespace Konamiman.Nestor80.Assembler
                 var ln = currentMacroExpansionState is null ||
                     currentMacroExpansionState.MacroType is MacroType.Named ||
                     previousExpansionStates.Any(s => s.MacroType is MacroType.Named) ? CurrentLineNumber : currentMacroExpansionState.ActualLineNumber;
-                currentMacroExpansionState = new NamedMacroExpansionState(expansionLine, macroDefinition.LineTemplates, macroDefinition.Arguments.Length, expansionLine.Parameters, ln);
+                currentMacroExpansionState = new NamedMacroExpansionState(expansionLine.Name, expansionLine, macroDefinition.LineTemplates, macroDefinition.Arguments.Length, expansionLine.Parameters, ln);
             }
             else if(MacroDefinitionState.DefiningMacro) {
                 throw new InvalidOperationException($"{nameof(RegisterMacroExpansionStart)} is not supposed to be called while already in macro definition mode");
@@ -473,7 +481,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        public void RegisterMacroDefinitionLine(string sourceLine, bool isMacroDefinitionOrExpansionInstruction)
+        public static void RegisterMacroDefinitionLine(string sourceLine, bool isMacroDefinitionOrExpansionInstruction)
         {
             if(isMacroDefinitionOrExpansionInstruction) {
                 MacroDefinitionState.IncreaseDepth();
@@ -586,21 +594,30 @@ namespace Konamiman.Nestor80.Assembler
 
         internal void RegisterProcessedLine(ProcessedSourceLine processedLine)
         {
+            bool isMacroExpansion = false;
+
             if(processedLine is EndMacroLine || (processedLine is MacroExpansionLine mel && mel.MacroType is MacroType.Named)) {
                 if(previousExpansionStates.Count > 0) {
                     previousExpansionStates.Peek().ProcessedLines.Add(processedLine);
-                }
-                else {
-                    ProcessedLines.Add(processedLine);
+                    isMacroExpansion = true;
                 }
             }
             else {
                 if(currentMacroExpansionState is not null) {
                     currentMacroExpansionState.ProcessedLines.Add(processedLine);
+                    isMacroExpansion = true;
                 }
-                else {
-                    ProcessedLines.Add(processedLine);
-                }
+            }
+
+            if(isMacroExpansion) {
+                return;
+            }
+
+            if(InPass2) {
+                ProcessedLines.Add(processedLine);
+            }
+            else if(!streamCanSeek && !InsideIncludedFile) {
+                MainSourceLines.Add(processedLine.Line);
             }
         }
 
@@ -608,5 +625,26 @@ namespace Konamiman.Nestor80.Assembler
             MacroDefinitionState.DefiningMacro ? MacroMode.Definition :
             currentMacroExpansionState is not null ? MacroMode.Expansion :
             MacroMode.None;
+
+        private readonly Dictionary<(string, bool), Expression> expressionsBySource = new();
+
+        public readonly List<string> MainSourceLines = new();
+
+        public Expression GetExpressionFor(string sourceLine, bool forDefb = false)
+        {
+            if(expressionsBySource.ContainsKey((sourceLine, forDefb))) {
+                return expressionsBySource[(sourceLine, forDefb)];
+            }
+
+            var expression = Expression.Parse(sourceLine, forDefb);
+            expression.ValidateAndPostifixize();
+            expressionsBySource.Add((sourceLine, forDefb), expression);
+            return expression;
+        }
+
+        internal void RemoveNamedMacroDefinition(string name)
+        {
+            NamedMacros.Remove(name);
+        }
     }
 }

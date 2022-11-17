@@ -65,6 +65,9 @@ namespace Konamiman.Nestor80.N80
                 using bare expressions is otherwise not recommended because it masks
                 mistyped instructions as "symbol not found" errors.
 
+                Note that you need this argument too if you want to use named macros
+                before they are defined.
+
             -af, --arguments-file <file path>
                 Read additional arguments from the specified file. The arguments are
                 processed immediately. Recursivity is not supported (additional

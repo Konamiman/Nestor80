@@ -96,8 +96,6 @@ namespace Konamiman.Nestor80.Assembler
 
         public static AssemblyResult Assemble(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
         {
-            ProcessedSourceLine[] processedLines = null;
-
             try {
                 includeStream = null;
                 state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
@@ -118,12 +116,15 @@ namespace Konamiman.Nestor80.Assembler
                 Expression.GetSymbol = GetSymbolForExpression;
                 Expression.AllowEscapesInStrings = configuration.AllowEscapesInStrings;
 
-                DoPass1();
+                DoPass();
                 if(!state.HasErrors) {
-                    state.SwitchToPass2();
-                    state.SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
-                    state.SwitchToLocation(0);
-                    processedLines = DoPass2();
+                    state.SwitchToPass2(buildType);
+                    
+                    if(Pass2Started is not null) {
+                        Pass2Started(null, EventArgs.Empty);
+                    }
+
+                    DoPass();
                 }
             }
             catch(FatalErrorException ex) {
@@ -139,9 +140,6 @@ namespace Konamiman.Nestor80.Assembler
                 );
                 
                 throw;
-            }
-            finally {
-                processedLines ??= state.ProcessedLines.ToArray();
             }
 
             state.WrapUp();
@@ -179,7 +177,7 @@ namespace Konamiman.Nestor80.Assembler
                 ProgramAreaSize = programSize,
                 DataAreaSize = state.GetAreaSize(AddressType.DSEG),
                 CommonAreaSizes = new(), //TODO: Handle commons
-                ProcessedLines = processedLines,
+                ProcessedLines = state.ProcessedLines.ToArray(),
                 Symbols = symbols,
                 Errors = state.GetErrors(),
                 EndAddressArea = state.EndAddress is null ? AddressType.ASEG : state.EndAddress.Type,
@@ -208,7 +206,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static void DoPass1()
+        private static void DoPass()
         {
             while(!state.EndReached) {
                 var sourceLine = state.GetNextMacroExpansionLine();
@@ -229,6 +227,12 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 var processedLine = ProcessSourceLine(sourceLine);
+
+                if(state.InPass2 && state.ExpressionsPendingEvaluation.Any()) {
+                    ProcessExpressionsPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation);
+                    state.ClearExpressionsPeindingEvaluation();
+                }
+
                 state.RegisterProcessedLine(processedLine);
 
                 if(processedLine is IncludeLine il && includeStream is not null) {
@@ -290,7 +294,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(string.IsNullOrWhiteSpace(line)) {
                 if(state.CurrentMacroMode is MacroMode.Definition) {
-                    state.RegisterMacroDefinitionLine(line, false);
+                    AssemblyState.RegisterMacroDefinitionLine(line, false);
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
                 }
                 else {
@@ -305,7 +309,7 @@ namespace Konamiman.Nestor80.Assembler
             walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
                 if(state.CurrentMacroMode is MacroMode.Definition) {
-                    state.RegisterMacroDefinitionLine(line, false);
+                    AssemblyState.RegisterMacroDefinitionLine(line, false);
                     walker.DiscardRemaining();
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
                 }
@@ -427,7 +431,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     if(inMacroDefinitionMode) {
-                        state.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase));
+                        AssemblyState.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase));
                         walker.DiscardRemaining();
                         processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length };
                     }
@@ -508,42 +512,6 @@ namespace Konamiman.Nestor80.Assembler
             return processedLine;
         }
 
-        private static ProcessedSourceLine[] DoPass2()
-        {
-            if(Pass2Started is not null) {
-                Pass2Started(null, EventArgs.Empty);
-            }
-
-            var lines = state.ProcessedLines.ToArray();
-            ProcessLinesForPass2(lines);
-
-            var unknownSymbols = state.GetSymbolsOfUnknownType();
-            foreach(var symbol in unknownSymbols) {
-                AddError(AssemblyErrorCode.UnknownSymbol, $"Unknown symbol: {symbol.Name}", withLineNumber: false);
-            }
-
-            var allSymbols = state.GetSymbols().Where(s => s.IsOfKnownType);
-            var externalSymbols = allSymbols.Where(s => s.IsExternal).ToArray();
-            var externalsByEffectiveName = externalSymbols.GroupBy(s => s.EffectiveName);
-            var conflictingExternals = externalsByEffectiveName.Where(s => s.Count() > 1);
-            foreach(var ce in conflictingExternals) {
-                var names = string.Join(", ", ce.Select(s => s.Name));
-                AddError(AssemblyErrorCode.SameEffectiveExternal, $"The following external labels are too long and are all equivalent to {ce.Key}: {names}", withLineNumber: false);
-            }
-
-            var publicSymbols = allSymbols.Where(s => s.IsPublic).ToArray();
-            var publicsByEffectiveName = publicSymbols.GroupBy(s => s.EffectiveName);
-            var conflictingPublics = publicsByEffectiveName.Where(s => s.Count() > 1);
-            foreach(var cp in conflictingPublics) {
-                var names = string.Join(", ", cp.Select(s => s.Name));
-                AddError(AssemblyErrorCode.SameEffectiveExternal, $"The following public labels are too long and have conflicting names (all equivalent to {cp.Key}): {names}", withLineNumber: false);
-            }
-
-            AssemblyEndWarnings();
-
-            return lines;
-        }
-
         private static void AssemblyEndWarnings()
         {
             if(state.InConditionalBlock) {
@@ -567,171 +535,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static void ProcessLinesForPass2(ProcessedSourceLine[] processedLines)
-        {
-            for(var lineIndex=0; lineIndex<processedLines.Length; lineIndex++) {
-                var originalLine = processedLines[lineIndex];
-                state.CurrentSourceLineText = originalLine.Line;
-
-                var maybeNewLine = ProcessLineForPass2(originalLine);
-                if(!ReferenceEquals(originalLine, maybeNewLine)) {
-                    processedLines[lineIndex] = maybeNewLine;
-                }
-
-                state.IncreaseLineNumber();
-                if(maybeNewLine is AssemblyEndLine ael) {
-                    state.End(Address.Absolute(ael.EndAddress));
-                    break;
-                }
-            }
-        }
-
-        private static ProcessedSourceLine ProcessLineForPass2(ProcessedSourceLine processedLine)
-        {
-            if(conditionalInstructions.Contains(processedLine.Opcode, StringComparer.OrdinalIgnoreCase)) {
-                UnregisterPendingExpressions(processedLine);
-                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
-            }
-            else if(processedLine is ConstantDefinitionLine cdl && cdl.IsRedefinible) {
-                processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
-            }
-
-            if(state.InConditionalBlock) {
-                if(state.InFalseConditional && processedLine is not SkippedLine) {
-                    UnregisterPendingExpressions(processedLine);
-                    processedLine = new SkippedLine() { Line = processedLine.Line, EffectiveLineLength = 0, FormFeedsCount = processedLine.FormFeedsCount };
-                }
-                else if(!state.InFalseConditional && processedLine is SkippedLine) {
-                    UnregisterPendingExpressions(processedLine);
-                    processedLine = ProcessSourceLine(processedLine.Line, processedLine.FormFeedsCount);
-                    if(processedLine is IncludeLine) {
-                        //Incompatibility with Macro80:
-                        //we don't allow pass 2-only INCLUDEs to simplify processing.
-                        ThrowFatal(AssemblyErrorCode.IncludeInPass2Only, "INCLUDE statements that are processed only in pass 2 aren't allowed");
-                    }
-                }
-            }
-
-            if(processedLine.Label is not null) {
-                var currentLocation = state.GetCurrentLocation();
-                var labelSymbol = state.GetSymbol(processedLine.LabelIsPublic ? processedLine.EffectiveLabel : state.Modularize(processedLine.EffectiveLabel));
-                if(labelSymbol is null) {
-                    throw new Exception($"Unexpected: label {processedLine.Label} in instruction is not registered during pass 2");
-                }
-                if(!labelSymbol.IsLabel) {
-                    throw new Exception($"Unexpected: label {processedLine.Label} in instruction is of type {labelSymbol.Type} (not label) during pass 2");
-                }
-
-                if(labelSymbol.Value != currentLocation) {
-                    AddError(AssemblyErrorCode.DifferentPassValues, $"Label {labelSymbol.Name} has different values in pass 1 ({labelSymbol.Value:X4}h) and in pass 2 ({currentLocation:X4}h)");
-                }
-            }
-
-            if(state.InstructionsPendingSelection.ContainsKey(processedLine)) {
-                var (instructions, selector) = state.InstructionsPendingSelection[processedLine];
-                ProcessInstructionsPendingSelection(processedLine, instructions, selector);
-            }
-
-            if(state.ExpressionsPendingEvaluation.ContainsKey(processedLine)) {
-                ProcessExpressionPendingEvaluation(processedLine, state.ExpressionsPendingEvaluation[processedLine].ToArray());
-            }
-
-            if(processedLine is IProducesOutput ipo) {
-                state.IncreaseLocationPointer(ipo.OutputBytes.Length);
-            }
-            else if(processedLine is DefineSpaceLine dsl) {
-                state.IncreaseLocationPointer(dsl.Size);
-            }
-            else if(processedLine is PhaseLine phl) {
-                if(state.IsCurrentlyPhased) {
-                    AddError(AssemblyErrorCode.InvalidNestedPhase, $"Nested {processedLine.Opcode.ToUpper()} instructions are not allowed");
-                }
-                else {
-                    state.EnterPhase(phl.NewLocationCounter);
-                }
-            }
-            else if(processedLine is DephaseLine) {
-                if(state.IsCurrentlyPhased) {
-                    state.ExitPhase();
-                }
-                else {
-                    AddError(AssemblyErrorCode.DephaseWithoutPhase, $"{processedLine.Opcode} found without a corresponding .PHASE");
-                }
-            }
-            else if(processedLine is ChangeOriginLine col) {
-                state.SwitchToLocation(col.NewLocationCounter);
-            }
-            else if(processedLine is IChangesLocationCounter clc) {
-                state.SwitchToArea(clc.NewLocationArea);
-                state.SwitchToLocation(clc.NewLocationCounter);
-            }
-            else if(processedLine is IncludeLine il) {
-                state.PushIncludeState(null, il);
-                state.IncreaseLineNumber();
-                ProcessLinesForPass2(il.Lines);
-                state.PopIncludeState();
-            }
-            else if(processedLine is LinesContainerLine lc) {
-                //TODO: Line numbers?
-                ProcessLinesForPass2(lc.Lines);
-            }
-            else if(processedLine is PrintLine pl) {
-                TriggerPrintEvent(pl);
-            }
-            else if(processedLine is UserErrorLine uel) {
-                if(AssemblyErrorGenerated is not null) {
-                    var errorCode = uel.Severity switch {
-                        AssemblyErrorSeverity.Warning => AssemblyErrorCode.UserWarning,
-                        AssemblyErrorSeverity.Error => AssemblyErrorCode.UserError,
-                        AssemblyErrorSeverity.Fatal => AssemblyErrorCode.UserFatal,
-                        _ => throw new Exception($"Unexpected severity for user error in pass 2: {uel.Severity}")
-                    };
-                    //TODO: Include macro name and line
-                    AssemblyErrorGenerated(null, new AssemblyError(errorCode, uel.Message, state.CurrentLineNumber, state.CurrentSourceLineText, state.CurrentIncludeFilename));
-                }
-            }
-            else if(processedLine is ModuleStartLine msl && msl.Name is not null) {
-                state.EnterModule(msl.Name);
-            }
-            else if(processedLine is ModuleEndLine) {
-                if(state.CurrentModule is null) {
-                    AddError(AssemblyErrorCode.EndModuleOutOfScope, $"ENDMOD found while not in a module");
-                }
-                else {
-                    state.ExitModule();
-                }
-            }
-            else if(processedLine is RootLine rl && state.CurrentModule is not null) {
-                state.RegisterRootSymbols(rl.RootSymbols);
-            }
-
-            return processedLine;
-        }
-
-        private static void ProcessInstructionsPendingSelection(ProcessedSourceLine processedLine, InstructionPendingSelection[] choices, Expression selector)
-        {
-            //state.UnregisterInstructionsPendingSelection(processedLine);
-
-            Address selectorValue = null;
-            try {
-                selectorValue = selector.Evaluate();
-            }
-            catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: {ex.Message}");
-            }
-
-            if(selectorValue != null) {
-                var selectedInstruction = choices.SingleOrDefault(c => c.SelectorValue == selectorValue.Value);
-                if(selectedInstruction is null) {
-                    AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for instruction {processedLine.Opcode.ToUpper()}: expression yields an unsupported value");
-                }
-                else {
-                    ((IProducesOutput)processedLine).OutputBytes = selectedInstruction.InstructionBytes;
-                }
-            }
-        }
-
-        private static void ProcessExpressionPendingEvaluation(ProcessedSourceLine processedLine, ExpressionPendingEvaluation[] expressionsPendingEvaluation)
+        private static void ProcessExpressionsPendingEvaluation(ProcessedSourceLine processedLine, List<ExpressionPendingEvaluation> expressionsPendingEvaluation)
         {
             if(processedLine is ConstantDefinitionLine cdl) {
                 foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
@@ -802,19 +606,6 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             line.RelocatableParts = relocatables.ToArray();
-        }
-
-        private static void UnregisterPendingExpressions(ProcessedSourceLine line)
-        {
-            if(line is LinesContainerLine il) {
-                foreach(var subline in il.Lines) {
-                    UnregisterPendingExpressions(subline);
-                }
-            }
-            else {
-                state.UnregisterPendingExpressions(line);
-                state.UnregisterInstructionsPendingSelection(line);
-            }
         }
 
         private static LinkItemsGroup GetLinkItemsGroupFromExpression(ProcessedSourceLine processedLine, ExpressionPendingEvaluation expressionPendingEvaluation)
@@ -894,13 +685,6 @@ namespace Konamiman.Nestor80.Assembler
             var isPublic = label.EndsWith("::");
             var labelValue = isPublic ? label.TrimEnd(':') : state.Modularize(label.TrimEnd(':'));
 
-            if(state.InPass2) {
-                if(isPublic) {
-                    state.GetSymbol(labelValue).IsPublic = true;
-                }
-                return;
-            }
-
             if(labelValue == "$") {
                 AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");
             }
@@ -930,8 +714,16 @@ namespace Konamiman.Nestor80.Assembler
             }
             else if(symbol.HasKnownValue) {
                 if(symbol.Value != state.GetCurrentLocation()) {
-                    AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
+                    if(state.InPass1) {
+                        AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
+                    }
+                    else {
+                        AddError(AssemblyErrorCode.DifferentPassValues, $"Label {labelValue} has different values in pass 1 ({symbol.Value:X4}h) and in pass 2 ({state.GetCurrentLocation().Value:X4}h)");
+                    }
                 }
+
+                //Needed in case symbol is declared public only in pass 2
+                symbol.IsPublic = isPublic;
             }
             else {
                 //Either PUBLIC declaration preceded label in code,
@@ -1003,5 +795,8 @@ namespace Konamiman.Nestor80.Assembler
         {
             throw new FatalErrorException(new AssemblyError(errorCode, message, state.CurrentLineNumber, state.CurrentSourceLineText, state.CurrentIncludeFilename));
         }
+
+        static Address EvaluateIfNoSymbolsOrPass2(Expression expression) =>
+            state.InPass2 ? expression.Evaluate() : expression.EvaluateIfNoSymbols();
     }
 }
