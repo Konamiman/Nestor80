@@ -39,12 +39,27 @@ namespace Konamiman.Nestor80.Assembler
             currentLineIndex++;
             remainingLinesCount--;
             if(remainingLinesCount == 0) {
-                currentLineIndex = 0;
-                remainingLinesCount = TemplateLines.Length;
-                remainingParametersCount--;
-                currentParameterIndex++;
+                StartOver();
             }
             return line;
+        }
+
+        private void StartOver()
+        {
+            currentLineIndex = 0;
+            remainingLinesCount = TemplateLines.Length;
+            remainingParametersCount--;
+            currentParameterIndex++;
+        }
+
+        public override void Exit(bool forceEnd)
+        {
+            if(forceEnd) {
+                remainingParametersCount = 0;
+            }
+            else {
+                StartOver();
+            }
         }
     }
 }

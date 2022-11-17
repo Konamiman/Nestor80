@@ -38,5 +38,10 @@ namespace Konamiman.Nestor80.Assembler
             remainingLinesCount--;
             return line;
         }
+
+        public override void Exit(bool forceEnd)
+        {
+            remainingLinesCount = 0;
+        }
     }
 }

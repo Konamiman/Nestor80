@@ -642,9 +642,18 @@ namespace Konamiman.Nestor80.Assembler
             return expression;
         }
 
-        internal void RemoveNamedMacroDefinition(string name)
+        public void RemoveNamedMacroDefinition(string name)
         {
             NamedMacros.Remove(name);
+        }
+
+        public void ExitMacro(bool forceEnd)
+        {
+            if(currentMacroExpansionState is null) {
+                throw new InvalidOperationException($"{nameof(ExitMacro)} invoked while not in macro expansion mode");
+            }
+
+            currentMacroExpansionState.Exit(forceEnd);
         }
     }
 }

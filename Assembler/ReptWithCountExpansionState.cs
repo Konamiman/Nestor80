@@ -31,11 +31,26 @@ namespace Konamiman.Nestor80.Assembler
             currentLineIndex++;
             remainingLinesCount--;
             if(remainingLinesCount == 0) {
-                currentLineIndex = 0;
-                remainingLinesCount = TemplateLines.Length;
-                remainingRepetitionsCount--;
+                StartOver();
             }
             return line;
+        }
+
+        private void StartOver()
+        {
+            currentLineIndex = 0;
+            remainingLinesCount = TemplateLines.Length;
+            remainingRepetitionsCount--;
+        }
+
+        public override void Exit(bool forceEnd)
+        {
+            if(forceEnd) {
+                remainingRepetitionsCount = 0;
+            }
+            else {
+                StartOver();
+            }
         }
     }
 }

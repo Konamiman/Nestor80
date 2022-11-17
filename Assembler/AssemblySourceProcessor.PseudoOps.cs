@@ -92,7 +92,9 @@ namespace Konamiman.Nestor80.Assembler
             { "REPT", ProcessReptLine },
             { "ENDM", ProcessEndmLine },
             { "IRP", ProcessIrpLine },
-            { "IRPC", ProcessIrpcLine }
+            { "IRPC", ProcessIrpcLine },
+            { "EXITM", ProcessExitmLine },
+            { "CONTM", ProcessContmLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1523,6 +1525,30 @@ namespace Konamiman.Nestor80.Assembler
             var line = new MacroExpansionLine() { MacroType = MacroType.Named, Name = macroName, Parameters = args.ToArray() };
             state.RegisterMacroExpansionStart(line);
             return line;
+        }
+
+        static ProcessedSourceLine ProcessExitmLine(string opcode, SourceLineWalker walker)
+        {
+            if(state.CurrentMacroMode != MacroMode.Expansion) {
+                AddError(AssemblyErrorCode.ExitmOutOfScope, $"{opcode.ToUpper()} outside of any macro definition");
+            }
+            else {
+                state.ExitMacro(true);
+            }
+
+            return new ExitMacroLine();
+        }
+
+        static ProcessedSourceLine ProcessContmLine(string opcode, SourceLineWalker walker)
+        {
+            if(state.CurrentMacroMode != MacroMode.Expansion) {
+                AddError(AssemblyErrorCode.ExitmOutOfScope, $"{opcode.ToUpper()} outside of any macro definition");
+            }
+            else {
+                state.ExitMacro(false);
+            }
+
+            return new ContinueMacroLine();
         }
     }
 }

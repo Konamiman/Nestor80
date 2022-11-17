@@ -28,5 +28,7 @@ namespace Konamiman.Nestor80.Assembler
         public abstract bool HasMore { get; }
 
         public abstract string GetNextSourceLine();
+
+        public abstract void Exit(bool forceEnd);
     }
 }

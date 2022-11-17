@@ -18,7 +18,7 @@
                 return $"{base.ToString()} {RepetitionsCount}";
             }
             else {
-                return $"{base.ToString()} {string.Join(',', Parameters ?? Array.Empty<string>())}";
+                return $"{(MacroType is MacroType.Named ? $"MACRO EXP {Name}" : base.ToString())} {string.Join(',', Parameters ?? Array.Empty<string>())}";
             }
         }
 
