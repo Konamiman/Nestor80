@@ -1,4 +1,6 @@
-﻿namespace Konamiman.Nestor80.Assembler
+﻿using System.Runtime.CompilerServices;
+
+namespace Konamiman.Nestor80.Assembler
 {
     internal class SourceLineWalker
     {
@@ -132,7 +134,7 @@
                 linePointer++;
             }
 
-            if(sourceLine[linePointer] is 'A' or 'a' && linePointer <= lineLength - 3 && sourceLine[linePointer+1] is 'F' or 'f' && sourceLine[linePointer+2] is '\'') {
+            if(!AtEndOfLine && sourceLine[linePointer] is 'A' or 'a' && linePointer <= lineLength - 3 && sourceLine[linePointer+1] is 'F' or 'f' && sourceLine[linePointer+2] is '\'') {
                 // Ugly hack to recognize AF' as a symbol and not as AF followed by a string start
                 var result = sourceLine.Substring(linePointer, 3);
                 linePointer += 3;
@@ -318,6 +320,111 @@
             linePointer++;
             SkipBlanks();
             return line;
+        }
+
+        public (string[],int) ExtractArgsListForIrp()
+        {
+            SkipBlanks();
+            if(AtEndOfLine || !PointingToLessThan()) return (null,0);
+
+            var delimiterNestingLevel = 1;
+            var extractingExpression = false;
+            var nextCharIsLiteral = false;
+            var skippingBlanksAfterArg = false;
+            var blankSkipped = false;
+            var args = new List<string>();
+            var chars = new List<char>();
+            char theChar = ' ';
+
+            linePointer++;
+            while(!PhysicalEndOfLineReached && delimiterNestingLevel > 0) {
+                theChar = sourceLine[linePointer];
+                linePointer++;
+
+                if(skippingBlanksAfterArg) {
+                    if(theChar is '>' && delimiterNestingLevel == 1) {
+                        break;
+                    }
+                    else if(theChar is ' ') {
+                        blankSkipped = true;
+                        continue;
+                    }
+                    else if(theChar is ',') {
+                        skippingBlanksAfterArg = false;
+                        blankSkipped = false;
+                        continue;
+                    }
+                    else {
+                        if(blankSkipped) {
+                            args.Add("");
+                        }
+                        skippingBlanksAfterArg = false;
+                        blankSkipped = false;
+                    }
+                }
+
+                if(nextCharIsLiteral) {
+                    chars.Add(theChar);
+                    nextCharIsLiteral = false;
+                    continue;
+                }
+
+                if(theChar is '>') {
+                    delimiterNestingLevel--;
+                    if(delimiterNestingLevel == 0) {
+                        var arg = new string(chars.ToArray()).Trim();
+                        args.Add(arg);
+                        chars.Clear();
+                        break;
+                    }
+                    else if(delimiterNestingLevel == 1) {
+                        var arg = new string(chars.ToArray()).Trim();
+                        args.Add(arg);
+                        chars.Clear();
+                        skippingBlanksAfterArg = true;
+                        continue;
+                    }
+                    chars.Add(theChar);
+                    continue;
+                }
+
+                if(theChar is '!') {
+                    nextCharIsLiteral = true;
+                    continue;
+                }
+
+                if(delimiterNestingLevel > 1) {
+                    chars.Add(theChar);
+                    continue;
+                }
+
+                if(theChar is ' ' && chars.Count == 0) {
+                    continue;
+                }
+
+                if(theChar is ',' or ' ') {
+                    var arg = new string(chars.ToArray()).Trim();
+                    args.Add(arg);
+                    chars.Clear();
+                    skippingBlanksAfterArg = theChar is ' ';
+                    continue;
+                }
+
+                chars.Add(theChar);
+            }
+
+            //TODO: error if nextCharIsLiteral
+
+            if(chars.Count > 0) {
+                var arg = new string(chars.ToArray()).Trim();
+                args.Add(arg);
+            }
+
+            if(skippingBlanksAfterArg ||(PhysicalEndOfLineReached && theChar is ',' or ' ')) {
+                args.Add("");
+            }
+
+            return (args.ToArray(), delimiterNestingLevel);
         }
 
         private bool PhysicalEndOfLineReached => linePointer >= lineLength;

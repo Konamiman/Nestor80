@@ -167,5 +167,47 @@ namespace Konamiman.Nestor80.AssemblerTests
             var sut = new SourceLineWalker(line);
             Assert.AreEqual(expectedString, sut.ExtractFileName());
         }
+
+        [Test]
+
+        [TestCase("", null)]
+        [TestCase("a", null)]
+
+        [TestCase("<>", new [] { "" })]
+        [TestCase("<   >", new [] { "" })]
+
+        [TestCase("<abc>", new[] { "abc" })]
+
+        [TestCase("<a,b>", new [] { "a", "b" })]
+        [TestCase("<a b>", new[] { "a", "b" })]
+        [TestCase("< a, b>", new[] { "a", "b" })]
+        [TestCase("<a ,b>", new[] { "a", "b" })]
+        [TestCase("< a , b>", new[] { "a", "b" })]
+
+        [TestCase("<a,,b>", new[] { "a", "", "b" })]
+        [TestCase("<a, ,b>", new[] { "a", "", "b" })]
+        [TestCase("< a , ,, , b>", new[] { "a", "", "", "", "b" })]
+        [TestCase("<,,>", new[] { "", "", "" })]
+        [TestCase("< , , >", new[] { "", "", "" })]
+        [TestCase("<a >", new[] { "a", "" })]
+        [TestCase("<a,>", new[] { "a", "" })]
+        [TestCase("<a, >", new[] { "a", "" })]
+        [TestCase("<a, ,>", new[] { "a", "", "" })]
+        [TestCase("<, a, ,>", new[] { "", "a", "", "" })]
+        [TestCase("< , a, ,>", new[] { "", "a", "", "" })]
+
+        [TestCase("<abc", new[] { "abc" })]
+        [TestCase("<abc ", new[] { "abc", "" })]
+        [TestCase("<a,", new[] { "a", "" })]
+        [TestCase("<a, ", new[] { "a", "" })]
+        [TestCase("<a, , ", new[] { "a", "", "" })]
+        [TestCase("<a,,", new[] { "a", "", "" })]
+        //[TestCase("< a, , !, ! , < a , !b > <b<c<d>>>, ef> > whatever", new[] {"a", "", ",", " ", " a , b ", "b<c<d>>", "ef" })]
+        public void ExtractArgsListForIrp(string line, string[] expectedArgsList)
+        {
+            var sut = new SourceLineWalker(line);
+            var (actual, _) = sut.ExtractArgsListForIrp();
+            CollectionAssert.AreEqual(expectedArgsList, actual);
+        }
     }
 }
