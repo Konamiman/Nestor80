@@ -353,28 +353,27 @@ namespace Konamiman.Nestor80.Assembler
                 theChar = sourceLine[linePointer];
                 linePointer++;
 
+                if(nextCharIsLiteral) {
+                    chars.Add(theChar);
+                    nextCharIsLiteral = false;
+                    continue;
+                }
+
                 if(spaceFoundAfterArg) {
-                    if(theChar is ' ') {
+                    spaceFoundAfterArg = false;
+                    if(theChar is ',') {
+                        args.Add("");
                         continue;
-                    }
-                    else if(theChar is ',') {
-                        spaceFoundAfterArg = false;
-                        continue;
-                    }
-                    else {
-                        spaceFoundAfterArg = false;
                     }
                 }
 
                 if(theChar is '>') {
-                    nextCharIsLiteral = false;
                     delimiterNestingLevel--;
                     if(delimiterNestingLevel == 0) {
                         RegisterArg();
                         break;
                     }
                     else if(delimiterNestingLevel == 1) {
-                        RegisterArg();
                         continue;
                     }
                     chars.Add(theChar);
@@ -390,12 +389,6 @@ namespace Konamiman.Nestor80.Assembler
                     continue;
                 }
 
-                if(nextCharIsLiteral) {
-                    chars.Add(theChar);
-                    nextCharIsLiteral = false;
-                    continue;
-                }
-
                 if(theChar is '!') {
                     nextCharIsLiteral = true;
                     continue;
@@ -406,8 +399,14 @@ namespace Konamiman.Nestor80.Assembler
                     continue;
                 }
 
-                if(theChar is ' ' && chars.Count == 0) {
-                    continue;
+                if(chars.Count == 0) {
+                    if(theChar is ' ') {
+                        continue;
+                    }
+                    else if(theChar is '%') {
+                        extractingExpression = true;
+                        continue;
+                    }
                 }
 
                 if(theChar is ',' or ' ') {
@@ -419,17 +418,6 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             //TODO: error if nextCharIsLiteral
-
-            /*
-            if(chars.Count > 0) {
-                var arg = new string(chars.ToArray()).Trim();
-                args.Add(arg);
-            }
-            */
-
-            /*if(spaceFoundAfterArg) {
-                args.Add("");
-            }*/
 
             return (args.ToArray(), delimiterNestingLevel);
         }

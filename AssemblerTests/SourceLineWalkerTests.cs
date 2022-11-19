@@ -181,18 +181,20 @@ namespace Konamiman.Nestor80.AssemblerTests
         //Single string
         [TestCase("<abc>", new[] { "abc" })]
 
-        //Comma and space as separator, extra ignored spaces
+        //Comma and space as separator,
+        //extra spaces at left are ignored
+        //but extra spaces at right generate empty arg
         [TestCase("<a,b>", new [] { "a", "b" })]
         [TestCase("<a b>", new[] { "a", "b" })]
         [TestCase("< a  b>", new[] { "a", "b" })]
         [TestCase("< a, b>", new[] { "a", "b" })]
-        [TestCase("<a ,b>", new[] { "a", "b" })]
-        [TestCase("< a , b>", new[] { "a", "b" })]
+        [TestCase("<a ,b>", new[] { "a", "", "b" })]
+        [TestCase("< a , b>", new[] { "a", "", "b" })]
 
         //Empty arguments at the beginning, end and middle of the list
         [TestCase("<a,,b>", new[] { "a", "", "b" })]
         [TestCase("<a, ,b>", new[] { "a", "", "b" })]
-        [TestCase("< a , ,, , b>", new[] { "a", "", "", "", "b" })]
+        [TestCase("< a , ,, , b>", new[] { "a", "", "", "", "", "b" })]
         [TestCase("<,,>", new[] { "", "", "" })]
         [TestCase("< , , >", new[] { "", "", "" })]
         [TestCase("<a >", new[] { "a", "" })]
@@ -216,9 +218,13 @@ namespace Konamiman.Nestor80.AssemblerTests
         //<> delimited sequences
         [TestCase("<a,<b< c,d >e> f>", new[] { "a", "b< c,d >e", "f" })]
         [TestCase("<a,<b>,c>", new[] { "a", "b", "c" })]
-        [TestCase("< a ,< b< !c,d !> e > f>", new[] { "a", " b< c,d > e ", "f" })]
+        [TestCase("< a ,< b< !c,d !> e > f>", new[] { "a", "", " b< c,d > e > f" })]
         [TestCase("<<a> ,b>", new[] { "a", "", "b" })]
-        //[TestCase("< a, , !, ! , < a , !b > <b<c<d>>>, ef> > whatever", new[] {"a", "", ",", " ", " a , b ", "b<c<d>>", "ef" })]
+        [TestCase("<<a><b>>", new[] { "ab" })]
+        [TestCase("<<a> <b>>", new[] { "a", "b" })]
+
+        //A bit of everything
+        [TestCase("< a, , !, ! , < a , !b > <b<c<d>>>, ef> > whatever", new[] {"a", "", ",", " ", " a , b ", "b<c<d>>", "ef" })]
         public void ExtractArgsListForIrp(string line, string[] expectedArgsList)
         {
             var sut = new SourceLineWalker(line);
