@@ -170,20 +170,26 @@ namespace Konamiman.Nestor80.AssemblerTests
 
         [Test]
 
+        //Invalid strings
         [TestCase("", null)]
         [TestCase("a", null)]
 
+        //Empty strings
         [TestCase("<>", new [] { "" })]
         [TestCase("<   >", new [] { "" })]
 
+        //Single string
         [TestCase("<abc>", new[] { "abc" })]
 
+        //Comma and space as separator, extra ignored spaces
         [TestCase("<a,b>", new [] { "a", "b" })]
         [TestCase("<a b>", new[] { "a", "b" })]
+        [TestCase("< a  b>", new[] { "a", "b" })]
         [TestCase("< a, b>", new[] { "a", "b" })]
         [TestCase("<a ,b>", new[] { "a", "b" })]
         [TestCase("< a , b>", new[] { "a", "b" })]
 
+        //Empty arguments at the beginning, end and middle of the list
         [TestCase("<a,,b>", new[] { "a", "", "b" })]
         [TestCase("<a, ,b>", new[] { "a", "", "b" })]
         [TestCase("< a , ,, , b>", new[] { "a", "", "", "", "b" })]
@@ -196,12 +202,22 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("<, a, ,>", new[] { "", "a", "", "" })]
         [TestCase("< , a, ,>", new[] { "", "a", "", "" })]
 
+        //Unterminated string
         [TestCase("<abc", new[] { "abc" })]
         [TestCase("<abc ", new[] { "abc", "" })]
         [TestCase("<a,", new[] { "a", "" })]
         [TestCase("<a, ", new[] { "a", "" })]
         [TestCase("<a, , ", new[] { "a", "", "" })]
         [TestCase("<a,,", new[] { "a", "", "" })]
+
+        //Char literals
+        [TestCase("<! ,!,,!!,!<,!>>", new[] { " ", ",", "!", "<", ">" })]
+
+        //<> delimited sequences
+        [TestCase("<a,<b< c,d >e> f>", new[] { "a", "b< c,d >e", "f" })]
+        [TestCase("<a,<b>,c>", new[] { "a", "b", "c" })]
+        [TestCase("< a ,< b< !c,d !> e > f>", new[] { "a", " b< c,d > e ", "f" })]
+        [TestCase("<<a> ,b>", new[] { "a", "", "b" })]
         //[TestCase("< a, , !, ! , < a , !b > <b<c<d>>>, ef> > whatever", new[] {"a", "", ",", " ", " a , b ", "b<c<d>>", "ef" })]
         public void ExtractArgsListForIrp(string line, string[] expectedArgsList)
         {

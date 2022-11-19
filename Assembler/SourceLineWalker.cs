@@ -325,66 +325,74 @@ namespace Konamiman.Nestor80.Assembler
         public (string[],int) ExtractArgsListForIrp()
         {
             SkipBlanks();
-            if(AtEndOfLine || !PointingToLessThan()) return (null,0);
+            if(PhysicalEndOfLineReached || !PointingToLessThan()) return (null,0);
 
             var delimiterNestingLevel = 1;
             var extractingExpression = false;
             var nextCharIsLiteral = false;
-            var skippingBlanksAfterArg = false;
-            var blankSkipped = false;
+            var spaceFoundAfterArg = false;
             var args = new List<string>();
             var chars = new List<char>();
             char theChar = ' ';
 
-            linePointer++;
-            while(!PhysicalEndOfLineReached && delimiterNestingLevel > 0) {
+            void RegisterArg()
+            {
+                var arg = new string(chars.ToArray());
+                args.Add(arg);
+                chars.Clear();
+                spaceFoundAfterArg = theChar is ' ';
+            }
+
+            linePointer++; //Skip opening '<'
+            while(true) {
+                if(PhysicalEndOfLineReached) {
+                    RegisterArg();
+                    break;
+                }
+
                 theChar = sourceLine[linePointer];
                 linePointer++;
 
-                if(skippingBlanksAfterArg) {
-                    if(theChar is '>' && delimiterNestingLevel == 1) {
-                        break;
-                    }
-                    else if(theChar is ' ') {
-                        blankSkipped = true;
+                if(spaceFoundAfterArg) {
+                    if(theChar is ' ') {
                         continue;
                     }
                     else if(theChar is ',') {
-                        skippingBlanksAfterArg = false;
-                        blankSkipped = false;
+                        spaceFoundAfterArg = false;
                         continue;
                     }
                     else {
-                        if(blankSkipped) {
-                            args.Add("");
-                        }
-                        skippingBlanksAfterArg = false;
-                        blankSkipped = false;
+                        spaceFoundAfterArg = false;
                     }
+                }
+
+                if(theChar is '>') {
+                    nextCharIsLiteral = false;
+                    delimiterNestingLevel--;
+                    if(delimiterNestingLevel == 0) {
+                        RegisterArg();
+                        break;
+                    }
+                    else if(delimiterNestingLevel == 1) {
+                        RegisterArg();
+                        continue;
+                    }
+                    chars.Add(theChar);
+                    continue;
+                }
+
+                if(theChar is '<') {
+                    nextCharIsLiteral = false;
+                    if(delimiterNestingLevel > 1) {
+                        chars.Add(theChar);
+                    }
+                    delimiterNestingLevel++;
+                    continue;
                 }
 
                 if(nextCharIsLiteral) {
                     chars.Add(theChar);
                     nextCharIsLiteral = false;
-                    continue;
-                }
-
-                if(theChar is '>') {
-                    delimiterNestingLevel--;
-                    if(delimiterNestingLevel == 0) {
-                        var arg = new string(chars.ToArray()).Trim();
-                        args.Add(arg);
-                        chars.Clear();
-                        break;
-                    }
-                    else if(delimiterNestingLevel == 1) {
-                        var arg = new string(chars.ToArray()).Trim();
-                        args.Add(arg);
-                        chars.Clear();
-                        skippingBlanksAfterArg = true;
-                        continue;
-                    }
-                    chars.Add(theChar);
                     continue;
                 }
 
@@ -403,10 +411,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(theChar is ',' or ' ') {
-                    var arg = new string(chars.ToArray()).Trim();
-                    args.Add(arg);
-                    chars.Clear();
-                    skippingBlanksAfterArg = theChar is ' ';
+                    RegisterArg();
                     continue;
                 }
 
@@ -415,14 +420,16 @@ namespace Konamiman.Nestor80.Assembler
 
             //TODO: error if nextCharIsLiteral
 
+            /*
             if(chars.Count > 0) {
                 var arg = new string(chars.ToArray()).Trim();
                 args.Add(arg);
             }
+            */
 
-            if(skippingBlanksAfterArg ||(PhysicalEndOfLineReached && theChar is ',' or ' ')) {
+            /*if(spaceFoundAfterArg) {
                 args.Add("");
-            }
+            }*/
 
             return (args.ToArray(), delimiterNestingLevel);
         }
