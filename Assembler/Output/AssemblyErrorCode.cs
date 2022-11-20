@@ -21,6 +21,7 @@
         UnterminatedModule,
         RootWithoutModule,
         TruncatedRequestFilename,
+        MissingDelimiterInMacroArgsList,
         UserWarning,
         LastWarning = UserWarning,
 

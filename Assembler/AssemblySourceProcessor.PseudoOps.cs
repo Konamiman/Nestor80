@@ -1417,20 +1417,47 @@ namespace Konamiman.Nestor80.Assembler
                 return new MacroExpansionLine();
             }
 
-            if(walker.AtEndOfLine) {
+            if(!walker.SkipComma()) {
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a list of parameters enclosed in < >");
                 return new MacroExpansionLine();
             }
 
-            //TODO: Proper parameter extraction
-            var args = walker.ExtractAngleBracketed();
-            if(args is null) {
+            var (argsList, missingDelimiterCounter) = walker.ExtractArgsListForIrp();
+            if(argsList is null) {
                 AddError(AssemblyErrorCode.InvalidArgument, $"Invalid parameters argument for {opcode.ToUpper()}, it must be a list of parameters enclosed in < >");
                 walker.DiscardRemaining();
                 return new MacroExpansionLine();
             }
+            if(missingDelimiterCounter == 1) {
+                AddError(AssemblyErrorCode.MissingDelimiterInMacroArgsList, $"Missing '>' delimiter at the end of parameters list for {opcode.ToUpper()}");
+            }
+            else if(missingDelimiterCounter > 1) {
+                AddError(AssemblyErrorCode.MissingDelimiterInMacroArgsList, $"Missing '>' delimiters ({missingDelimiterCounter} levels) at the end of parameters list for {opcode.ToUpper()}");
+            }
 
-            var argsList = args.Split(',');
+            for(int i=0; i<argsList.Length; i++) {
+                if(argsList[i][0] != '\u0001') {
+                    continue;
+                }
+
+                var arg = argsList[i][1..];
+
+                try {
+                    var argExpression = state.GetExpressionFor(arg);
+                    argExpression.ValidateAndPostifixize();
+                    var argValue = argExpression.Evaluate();
+                    if(!argValue.IsAbsolute) {
+                        AddError(AssemblyErrorCode.InvalidForRelocatable, $"Expressions used as parameters for {opcode.ToUpper()} must be absolute, '{arg}' evaluates to {argValue}");
+                        return new MacroExpansionLine();
+                    }
+                    argsList[i] = argValue.Value.ToString();
+                }
+                catch(InvalidExpressionException ex) {
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{arg}' for {opcode.ToUpper()}: {ex.Message}");
+                    return new MacroExpansionLine();
+                }
+            }
+
             var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
             state.RegisterMacroExpansionStart(line);
             return line;
