@@ -322,6 +322,7 @@ namespace Konamiman.Nestor80.Assembler
             return line;
         }
 
+        //TODO: handle tabs too
         public (string[],int) ExtractArgsListForIrp()
         {
             SkipBlanks();
@@ -434,6 +435,49 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 chars.Add(theChar);
+            }
+
+            SkipBlanks();
+            return (args.ToArray(), delimiterNestingLevel);
+        }
+
+        //TODO: handle tabs too
+        public (string[], int) ExtractArgsListForIrpc()
+        {
+            SkipBlanks();
+
+            char theChar;
+            var args = new List<string>();
+            var delimiterNestingLevel = PointingToLessThan() ? 1 : 0;
+
+            if(delimiterNestingLevel == 1) {
+                linePointer++;
+            }
+
+            while(true) {
+                if(PhysicalEndOfLineReached) {
+                    break;
+                }
+
+                theChar = sourceLine[linePointer];
+                linePointer++;
+
+                if(theChar == ' ' && delimiterNestingLevel == 0) {
+                    break;
+                }
+
+                if(theChar == '>' && delimiterNestingLevel > 0) {
+                    delimiterNestingLevel--;
+                    if(delimiterNestingLevel == 0) {
+                        break;
+                    }
+                }
+
+                if(theChar == '<' && delimiterNestingLevel > 0) {
+                    delimiterNestingLevel++;
+                }
+
+                args.Add(theChar.ToString());
             }
 
             return (args.ToArray(), delimiterNestingLevel);

@@ -261,5 +261,33 @@ namespace Konamiman.Nestor80.AssemblerTests
             var (_, counter) = sut.ExtractArgsListForIrp();
             Assert.AreEqual(expectedDelimiterCounter, counter);
         }
+
+        [TestCase("", new string[0])]
+        [TestCase("abc", new string[] { "a", "b", "c" })]
+        [TestCase("abc de", new string[] { "a", "b", "c" })]
+        [TestCase("<>", new string[0])]
+        [TestCase("< a b c >", new string[] { " ", "a", " ", "b", " ", "c", " " })]
+        [TestCase("<a<b>c>", new string[] { "a", "<", "b", ">", "c" })]
+        [TestCase("<a<b>c>>", new string[] { "a", "<", "b", ">", "c" })]
+        [TestCase("<a b  ", new string[] { "a", " ", "b", " ", " " })]
+        public void ExtractArgsListForIrpc(string line, string[] expectedArgsList)
+        {
+            var sut = new SourceLineWalker(line);
+            var (actual, _) = sut.ExtractArgsListForIrpc();
+            CollectionAssert.AreEqual(expectedArgsList, actual);
+        }
+
+        [TestCase("", 0)]
+        [TestCase("abc", 0)]
+        [TestCase("<abc", 1)]
+        [TestCase("<ab<c>", 1)]
+        [TestCase("<a<b<c>", 2)]
+        [TestCase("<a<b<c", 3)]
+        public void ExtractArgsListForIrpc_MissingClosingDelimitersCounter(string line, int expectedDelimiterCounter)
+        {
+            var sut = new SourceLineWalker(line);
+            var (_, counter) = sut.ExtractArgsListForIrpc();
+            Assert.AreEqual(expectedDelimiterCounter, counter);
+        }
     }
 }
