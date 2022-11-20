@@ -175,8 +175,8 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("a", null)]
 
         //Empty strings
-        [TestCase("<>", new [] { "" })]
-        [TestCase("<   >", new [] { "" })]
+        [TestCase("<>", new[] { "" })]
+        [TestCase("<   >", new[] { "" })]
 
         //Single string
         [TestCase("<abc>", new[] { "abc" })]
@@ -184,7 +184,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         //Comma and space as separator,
         //extra spaces at left are ignored
         //but extra spaces at right generate empty arg
-        [TestCase("<a,b>", new [] { "a", "b" })]
+        [TestCase("<a,b>", new[] { "a", "b" })]
         [TestCase("<a b>", new[] { "a", "b" })]
         [TestCase("< a  b>", new[] { "a", "b" })]
         [TestCase("< a, b>", new[] { "a", "b" })]
@@ -213,7 +213,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("<a,,", new[] { "a", "", "" })]
 
         //Char literals
-        [TestCase("<! ,!,,!!,!<,!>>", new[] { " ", ",", "!", "<", ">" })]
+        [TestCase("<! ,!,,!!,!<,!>,!%>", new[] { " ", ",", "!", "<", ">", "%" })]
 
         //<> delimited sequences
         [TestCase("<a,<b< c,d >e> f>", new[] { "a", "b< c,d >e", "f" })]
@@ -223,13 +223,43 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("<<a><b>>", new[] { "ab" })]
         [TestCase("<<a> <b>>", new[] { "a", "b" })]
 
+        //Expressions
+        [TestCase("<a,% 1 + 1 ,b>", new[] { "a", "UNICODE_ONE 1 + 1 ", "b" })]
+        [TestCase("<a,% 1 + 1>", new[] { "a", "UNICODE_ONE 1 + 1" })]
+        [TestCase("< % 1 + 1 ,>", new[] { "UNICODE_ONE 1 + 1 ", "" })]
+        [TestCase("< % 1 + 1 ", new[] { "UNICODE_ONE 1 + 1 " })]
+        [TestCase("<%>", new[] { "UNICODE_ONE" })]
+        [TestCase("<% >", new[] { "UNICODE_ONE " })]
+        [TestCase("<%", new[] { "UNICODE_ONE" })]
+        [TestCase("<% ", new[] { "UNICODE_ONE " })]
+
         //A bit of everything
-        [TestCase("< a, , !, ! , < a , !b > <b<c<d>>>, ef> > whatever", new[] {"a", "", ",", " ", " a , b ", "b<c<d>>", "ef" })]
+        [TestCase("< a, , !, ! , < a , !b > <b<c<d>>>, ef> > whatever", new[] { "a", "", ",", " ", " a , b ", "b<c<d>>", "ef" })]
         public void ExtractArgsListForIrp(string line, string[] expectedArgsList)
         {
+            //Workaround for a bug in NUnit
+            //(tests with arguments containing non-printable chars won't run)
+            expectedArgsList = expectedArgsList
+                .Select(x => x.Replace("UNICODE_ONE", "\u0001"))
+                .ToArray();
+
             var sut = new SourceLineWalker(line);
             var (actual, _) = sut.ExtractArgsListForIrp();
             CollectionAssert.AreEqual(expectedArgsList, actual);
+        }
+
+        [TestCase("<a>", 0)]
+        [TestCase("<a", 1)]
+        [TestCase("<a!>", 1)]
+        [TestCase("<a<b>", 1)]
+        [TestCase("<a<b<c>", 2)]
+        [TestCase("<a<b<c>>", 1)]
+        [TestCase("<a<b<c>>>", 0)]
+        public void ExtractArgsListForIrp_MissingClosingDelimitersCounter(string line, int expectedDelimiterCounter)
+        {
+            var sut = new SourceLineWalker(line);
+            var (_, counter) = sut.ExtractArgsListForIrp();
+            Assert.AreEqual(expectedDelimiterCounter, counter);
         }
     }
 }

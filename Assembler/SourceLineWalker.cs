@@ -337,6 +337,10 @@ namespace Konamiman.Nestor80.Assembler
 
             void RegisterArg()
             {
+                if(extractingExpression) {
+                    chars.Insert(0, '\u0001');
+                    extractingExpression = false;
+                }
                 var arg = new string(chars.ToArray());
                 args.Add(arg);
                 chars.Clear();
@@ -352,6 +356,21 @@ namespace Konamiman.Nestor80.Assembler
 
                 theChar = sourceLine[linePointer];
                 linePointer++;
+
+                if(extractingExpression) {
+                    if(theChar is ',') {
+                        RegisterArg();
+                        continue;
+                    } 
+                    else if(theChar is '>' && delimiterNestingLevel is 1) {
+                        RegisterArg();
+                        break;
+                    }
+                    else {
+                        chars.Add(theChar);
+                        continue;
+                    }
+                }
 
                 if(nextCharIsLiteral) {
                     chars.Add(theChar);
@@ -416,8 +435,6 @@ namespace Konamiman.Nestor80.Assembler
 
                 chars.Add(theChar);
             }
-
-            //TODO: error if nextCharIsLiteral
 
             return (args.ToArray(), delimiterNestingLevel);
         }
