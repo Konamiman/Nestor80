@@ -1403,10 +1403,17 @@ namespace Konamiman.Nestor80.Assembler
             return new EndMacroLine();
         }
 
-        static ProcessedSourceLine ProcessIrpLine(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessIrpLine(string opcode, SourceLineWalker walker) => ProcessIrpOrIrpcLine(opcode, walker, false);
+
+        static ProcessedSourceLine ProcessIrpcLine(string opcode, SourceLineWalker walker) => ProcessIrpOrIrpcLine(opcode, walker, true);
+
+        static ProcessedSourceLine ProcessIrpOrIrpcLine(string opcode, SourceLineWalker walker, bool isIrpc)
         {
             if(walker.AtEndOfLine) {
-                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a list of parameters enclosed in < >");
+                AddError(AssemblyErrorCode.MissingValue,
+                    isIrpc ?
+                    $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a string of parameter characters" :
+                    $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a list of parameters enclosed in < >");
                 return new MacroExpansionLine();
             }
 
@@ -1418,79 +1425,57 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(!walker.SkipComma()) {
-                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a list of parameters enclosed in < >");
+                AddError(AssemblyErrorCode.MissingValue,
+                    isIrpc ?
+                    $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a string of parameter characters" :
+                    $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a list of parameters enclosed in < >");
                 return new MacroExpansionLine();
             }
 
-            var (argsList, missingDelimiterCounter) = walker.ExtractArgsListForIrp();
+            var (argsList, missingDelimiterCounter) = isIrpc ? walker.ExtractArgsListForIrpc() : walker.ExtractArgsListForIrp();
             if(argsList is null) {
                 AddError(AssemblyErrorCode.InvalidArgument, $"Invalid parameters argument for {opcode.ToUpper()}, it must be a list of parameters enclosed in < >");
                 walker.DiscardRemaining();
                 return new MacroExpansionLine();
             }
             if(missingDelimiterCounter == 1) {
-                AddError(AssemblyErrorCode.MissingDelimiterInMacroArgsList, $"Missing '>' delimiter at the end of parameters list for {opcode.ToUpper()}");
+                AddError(AssemblyErrorCode.MissingDelimiterInMacroArgsList,
+                    isIrpc ?
+                    $"Missing '>' delimiter at the end of parameter characters for {opcode.ToUpper()}" :
+                    $"Missing '>' delimiter at the end of parameters list for {opcode.ToUpper()}");
             }
             else if(missingDelimiterCounter > 1) {
-                AddError(AssemblyErrorCode.MissingDelimiterInMacroArgsList, $"Missing '>' delimiters ({missingDelimiterCounter} levels) at the end of parameters list for {opcode.ToUpper()}");
+                AddError(AssemblyErrorCode.MissingDelimiterInMacroArgsList,
+                    isIrpc ?
+                    $"Missing '>' delimiters ({missingDelimiterCounter} levels) at the end of parameter characters for {opcode.ToUpper()}" :
+                    $"Missing '>' delimiters ({missingDelimiterCounter} levels) at the end of parameters list for {opcode.ToUpper()}");
             }
 
-            for(int i=0; i<argsList.Length; i++) {
-                if(argsList[i][0] != '\u0001') {
-                    continue;
-                }
+            if(!isIrpc) {
+                for(int i = 0; i < argsList.Length; i++) {
+                    if(argsList[i] == "" || argsList[i][0] != '\u0001') {
+                        continue;
+                    }
 
-                var arg = argsList[i][1..];
+                    var arg = argsList[i][1..];
 
-                try {
-                    var argExpression = state.GetExpressionFor(arg);
-                    argExpression.ValidateAndPostifixize();
-                    var argValue = argExpression.Evaluate();
-                    if(!argValue.IsAbsolute) {
-                        AddError(AssemblyErrorCode.InvalidForRelocatable, $"Expressions used as parameters for {opcode.ToUpper()} must be absolute, '{arg}' evaluates to {argValue}");
+                    try {
+                        var argExpression = state.GetExpressionFor(arg);
+                        argExpression.ValidateAndPostifixize();
+                        var argValue = argExpression.Evaluate();
+                        if(!argValue.IsAbsolute) {
+                            AddError(AssemblyErrorCode.InvalidForRelocatable, $"Expressions used as parameters for {opcode.ToUpper()} must be absolute, '{arg}' evaluates to {argValue}");
+                            return new MacroExpansionLine();
+                        }
+                        argsList[i] = argValue.Value.ToString();
+                    }
+                    catch(InvalidExpressionException ex) {
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{arg}' for {opcode.ToUpper()}: {ex.Message}");
                         return new MacroExpansionLine();
                     }
-                    argsList[i] = argValue.Value.ToString();
-                }
-                catch(InvalidExpressionException ex) {
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{arg}' for {opcode.ToUpper()}: {ex.Message}");
-                    return new MacroExpansionLine();
                 }
             }
 
-            var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
-            state.RegisterMacroExpansionStart(line);
-            return line;
-        }
-
-        static ProcessedSourceLine ProcessIrpcLine(string opcode, SourceLineWalker walker)
-        {
-            if(walker.AtEndOfLine) {
-                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a string of parameter characters");
-                return new MacroExpansionLine();
-            }
-
-            var placeholder = walker.ExtractExpression();
-            if(!labelRegex.IsMatch(placeholder)) {
-                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid placeholder argument for {opcode.ToUpper()}");
-                walker.DiscardRemaining();
-                return new MacroExpansionLine();
-            }
-
-            if(walker.AtEndOfLine) {
-                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a string of parameter characters");
-                return new MacroExpansionLine();
-            }
-
-            //TODO: Proper parameter extraction
-            var args = walker.ExtractAngleBracketedOrSymbol();
-            if(args is null) {
-                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid parameters argument for {opcode.ToUpper()}, it must be a string of parameter characters");
-                walker.DiscardRemaining();
-                return new MacroExpansionLine();
-            }
-
-            var argsList = args.ToCharArray().Select(ch => ch.ToString()).ToArray();
             var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
             state.RegisterMacroExpansionStart(line);
             return line;
