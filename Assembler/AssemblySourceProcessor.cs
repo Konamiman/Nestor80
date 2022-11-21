@@ -297,6 +297,9 @@ namespace Konamiman.Nestor80.Assembler
                     AssemblyState.RegisterMacroDefinitionLine(line, false);
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
                 }
+                else if(state.InFalseConditional) {
+                    processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount.Value };
+                }
                 else {
                     processedLine =
                         formFeedCharsCount == 0 ?
@@ -312,6 +315,9 @@ namespace Konamiman.Nestor80.Assembler
                     AssemblyState.RegisterMacroDefinitionLine(line, false);
                     walker.DiscardRemaining();
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
+                }
+                else if(state.InFalseConditional) {
+                    processedLine = new SkippedLine() { Line = line, EffectiveLineLength = 0, FormFeedsCount = formFeedCharsCount.Value };
                 }
                 else {
                     processedLine = new CommentLine() { Line = line, EffectiveLineLength = walker.EffectiveLength, FormFeedsCount = formFeedCharsCount.Value };
