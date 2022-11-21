@@ -6,17 +6,18 @@
         {
         }
 
-        public RawBytesOutput(byte[] bytes)
+        public RawBytesOutput(byte[] bytes, string originalString = null)
         {
             AddRange(bytes);
             Length = bytes.Length;
+            OriginalString = originalString;
         }
+
+        public string OriginalString { get; }
 
         public int Length { get; }
 
         public static RawBytesOutput FromBytes(params byte[] bytes) => new(bytes);
-
-        public static RawBytesOutput Empty => new(Array.Empty<byte>());
 
         public static ushort NumericValueFor(byte[] bytes) =>
             bytes.Length switch

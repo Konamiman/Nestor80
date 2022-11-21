@@ -94,7 +94,8 @@ namespace Konamiman.Nestor80.Assembler
             { "IRP", ProcessIrpLine },
             { "IRPC", ProcessIrpcLine },
             { "EXITM", ProcessExitmLine },
-            { "CONTM", ProcessContmLine }
+            { "CONTM", ProcessContmLine },
+            { "IRPS", ProcessIrpsLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1475,6 +1476,46 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
             }
+
+            var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
+            state.RegisterMacroExpansionStart(line);
+            return line;
+        }
+
+        static ProcessedSourceLine ProcessIrpsLine(string opcode, SourceLineWalker walker)
+        {
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a \" or ' delimited string");
+                return new MacroExpansionLine();
+            }
+
+            var placeholder = walker.ExtractExpression();
+            if(!labelRegex.IsMatch(placeholder)) {
+                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid placeholder argument for {opcode.ToUpper()}");
+                walker.DiscardRemaining();
+                return new MacroExpansionLine();
+            }
+
+            if(!walker.SkipComma()) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a \" or ' delimited string");
+                return new MacroExpansionLine();
+            }
+
+            var stringText = walker.ExtractExpression();
+            try {
+                var expression = state.GetExpressionFor(stringText, true);
+                if(!expression.IsRawBytesOutput) {
+                    AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires two arguments: parameter placeholder and a \" or ' delimited string");
+                    return new MacroExpansionLine();
+                }
+                stringText = ((RawBytesOutput)expression.Parts[0]).OriginalString;
+            }
+            catch(InvalidExpressionException ex) {
+                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{stringText}' for {opcode.ToUpper()}: {ex.Message}");
+                return new MacroExpansionLine();
+            }
+
+            var argsList = stringText.ToCharArray().Select(ch => ch.ToString()).ToArray();
 
             var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
             state.RegisterMacroExpansionStart(line);

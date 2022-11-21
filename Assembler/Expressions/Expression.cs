@@ -374,7 +374,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(extractingForDb) {
-                AddExpressionPart(new RawBytesOutput(stringBytes.Length > 0 ? stringBytes : Array.Empty<byte>()));
+                AddExpressionPart(new RawBytesOutput(stringBytes.Length > 0 ? stringBytes : Array.Empty<byte>(), theString));
             }
             else {
                 if(stringBytes.Length > 2) {
