@@ -322,7 +322,6 @@ namespace Konamiman.Nestor80.Assembler
             return line;
         }
 
-        //TODO: handle tabs too
         public (string[],int) ExtractArgsListForIrp()
         {
             SkipBlanks();
@@ -345,7 +344,7 @@ namespace Konamiman.Nestor80.Assembler
                 var arg = new string(chars.ToArray());
                 args.Add(arg);
                 chars.Clear();
-                spaceFoundAfterArg = theChar is ' ';
+                spaceFoundAfterArg = theChar is ' ' or '\t';
             }
 
             linePointer++; //Skip opening '<'
@@ -420,7 +419,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(chars.Count == 0) {
-                    if(theChar is ' ') {
+                    if(theChar is ' ' or '\t') {
                         continue;
                     }
                     else if(theChar is '%') {
@@ -429,7 +428,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
 
-                if(theChar is ',' or ' ') {
+                if(theChar is ',' or ' ' or '\t') {
                     RegisterArg();
                     continue;
                 }
@@ -441,7 +440,6 @@ namespace Konamiman.Nestor80.Assembler
             return (args.ToArray(), delimiterNestingLevel);
         }
 
-        //TODO: handle tabs too
         public (string[], int) ExtractArgsListForIrpc()
         {
             SkipBlanks();
@@ -462,7 +460,7 @@ namespace Konamiman.Nestor80.Assembler
                 theChar = sourceLine[linePointer];
                 linePointer++;
 
-                if(theChar == ' ' && delimiterNestingLevel == 0) {
+                if((theChar is ' ' or '\t') && delimiterNestingLevel == 0) {
                     break;
                 }
 

@@ -177,6 +177,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         //Empty strings
         [TestCase("<>", new[] { "" })]
         [TestCase("<   >", new[] { "" })]
+        [TestCase("<\t\t\t>", new[] { "" })]
 
         //Single string
         [TestCase("<abc>", new[] { "abc" })]
@@ -186,23 +187,35 @@ namespace Konamiman.Nestor80.AssemblerTests
         //but extra spaces at right generate empty arg
         [TestCase("<a,b>", new[] { "a", "b" })]
         [TestCase("<a b>", new[] { "a", "b" })]
+        [TestCase("<a\tb>", new[] { "a", "b" })]
         [TestCase("< a  b>", new[] { "a", "b" })]
+        [TestCase("<\ta\t\tb>", new[] { "a", "b" })]
         [TestCase("< a, b>", new[] { "a", "b" })]
+        [TestCase("<\ta,\tb>", new[] { "a", "b" })]
         [TestCase("<a ,b>", new[] { "a", "", "b" })]
+        [TestCase("<a\t,b>", new[] { "a", "", "b" })]
         [TestCase("< a , b>", new[] { "a", "", "b" })]
+        [TestCase("<\ta\t,\tb>", new[] { "a", "", "b" })]
 
         //Empty arguments at the beginning, end and middle of the list
         [TestCase("<a,,b>", new[] { "a", "", "b" })]
         [TestCase("<a, ,b>", new[] { "a", "", "b" })]
+        [TestCase("<a,\t,b>", new[] { "a", "", "b" })]
         [TestCase("< a , ,, , b>", new[] { "a", "", "", "", "", "b" })]
         [TestCase("<,,>", new[] { "", "", "" })]
         [TestCase("< , , >", new[] { "", "", "" })]
+        [TestCase("<\t,\t,\t>", new[] { "", "", "" })]
         [TestCase("<a >", new[] { "a", "" })]
+        [TestCase("<a\t>", new[] { "a", "" })]
         [TestCase("<a,>", new[] { "a", "" })]
         [TestCase("<a, >", new[] { "a", "" })]
+        //[TestCase("<a,\t>", new[] { "a", "" })]
         [TestCase("<a, ,>", new[] { "a", "", "" })]
+        [TestCase("<a,\t,>", new[] { "a", "", "" })]
         [TestCase("<, a, ,>", new[] { "", "a", "", "" })]
+        [TestCase("<,\ta,\t,>", new[] { "", "a", "", "" })]
         [TestCase("< , a, ,>", new[] { "", "a", "", "" })]
+        [TestCase("<\t,\ta,\t,>", new[] { "", "a", "", "" })]
 
         //Unterminated string
         [TestCase("<abc", new[] { "abc" })]
@@ -239,9 +252,11 @@ namespace Konamiman.Nestor80.AssemblerTests
         {
             //Workaround for a bug in NUnit
             //(tests with arguments containing non-printable chars won't run)
-            expectedArgsList = expectedArgsList
-                .Select(x => x.Replace("UNICODE_ONE", "\u0001"))
-                .ToArray();
+            if(expectedArgsList is not null) {
+                expectedArgsList = expectedArgsList
+                    .Select(x => x.Replace("UNICODE_ONE", "\u0001"))
+                    .ToArray();
+            }
 
             var sut = new SourceLineWalker(line);
             var (actual, _) = sut.ExtractArgsListForIrp();
@@ -265,6 +280,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("", new string[0])]
         [TestCase("abc", new string[] { "a", "b", "c" })]
         [TestCase("abc de", new string[] { "a", "b", "c" })]
+        [TestCase("abc\tde", new string[] { "a", "b", "c" })]
         [TestCase("<>", new string[0])]
         [TestCase("< a b c >", new string[] { " ", "a", " ", "b", " ", "c", " " })]
         [TestCase("<a<b>c>", new string[] { "a", "<", "b", ">", "c" })]
