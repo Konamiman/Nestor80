@@ -1,10 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
-using System.Diagnostics;
-using System.Reflection.Emit;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -1453,33 +1450,42 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(!isIrpc) {
-                for(int i = 0; i < argsList.Length; i++) {
-                    if(argsList[i] == "" || argsList[i][0] != '\u0001') {
-                        continue;
-                    }
-
-                    var arg = argsList[i][1..];
-
-                    try {
-                        var argExpression = state.GetExpressionFor(arg);
-                        argExpression.ValidateAndPostifixize();
-                        var argValue = argExpression.Evaluate();
-                        if(!argValue.IsAbsolute) {
-                            AddError(AssemblyErrorCode.InvalidForRelocatable, $"Expressions used as parameters for {opcode.ToUpper()} must be absolute, '{arg}' evaluates to {argValue}");
-                            return new MacroExpansionLine();
-                        }
-                        argsList[i] = argValue.Value.ToString();
-                    }
-                    catch(InvalidExpressionException ex) {
-                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{arg}' for {opcode.ToUpper()}: {ex.Message}");
-                        return new MacroExpansionLine();
-                    }
+                if(!EvaluateExpressionsInMacroExpansionParameters(opcode, argsList)) {
+                    return new MacroExpansionLine();
                 }
             }
 
             var line = new MacroExpansionLine() { MacroType = MacroType.ReptWithArgs, Placeholder = placeholder, Name = opcode.ToUpper(), Parameters = argsList };
             state.RegisterMacroExpansionStart(line);
             return line;
+        }
+
+        private static bool EvaluateExpressionsInMacroExpansionParameters(string opcode, string[] macroExpansionParameters)
+        {
+            for(int i = 0; i < macroExpansionParameters.Length; i++) {
+                if(macroExpansionParameters[i] == "" || macroExpansionParameters[i][0] != '\u0001') {
+                    continue;
+                }
+
+                var arg = macroExpansionParameters[i][1..];
+
+                try {
+                    var argExpression = state.GetExpressionFor(arg);
+                    argExpression.ValidateAndPostifixize();
+                    var argValue = argExpression.Evaluate();
+                    if(!argValue.IsAbsolute) {
+                        AddError(AssemblyErrorCode.InvalidForRelocatable, $"Expressions used as parameters for {opcode.ToUpper()} must be absolute, '{arg}' evaluates to {argValue}");
+                        return false;
+                    }
+                    macroExpansionParameters[i] = argValue.Value.ToString();
+                }
+                catch(InvalidExpressionException ex) {
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{arg}' for {opcode.ToUpper()}: {ex.Message}");
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         static ProcessedSourceLine ProcessIrpsLine(string opcode, SourceLineWalker walker)
@@ -1564,15 +1570,19 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessNamedMacroExpansion(string opcode, string macroName, SourceLineWalker walker)
         {
-            var args = new List<string>();
-            while(!walker.AtEndOfLine) {
-                //TODO: Proper parameter extraction (without angle brackets: single, but !, counts)
-                var arg = walker.ExtractExpression();
-                if(!labelRegex.IsMatch(arg)) {
-                    AddError(AssemblyErrorCode.InvalidArgument, $"'{arg}' is not a valid macro argument");
-                    return new NamedMacroDefinitionLine();
-                }
-                args.Add(arg);
+            var (args, missingDelimiterCounter) = walker.ExtractArgsListForIrp(false);
+            if(args is null) {
+                args = Array.Empty<string>();
+            }
+            else if(missingDelimiterCounter == 1) {
+                AddError(AssemblyErrorCode.MissingDelimiterInMacroArgsList, $"Missing '>' delimiter at the end of parameters list for {macroName.ToUpper()}");
+            }
+            else if(missingDelimiterCounter > 1) {
+                AddError(AssemblyErrorCode.MissingDelimiterInMacroArgsList, $"Missing '>' delimiters ({missingDelimiterCounter} levels) at the end of parameters list for {macroName.ToUpper()}");
+            }
+
+            if(!EvaluateExpressionsInMacroExpansionParameters("MACRO", args)) {
+                return new MacroExpansionLine();
             }
 
             var line = new MacroExpansionLine() { MacroType = MacroType.Named, Name = macroName, Parameters = args.ToArray() };

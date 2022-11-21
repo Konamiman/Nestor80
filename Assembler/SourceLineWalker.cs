@@ -6,8 +6,8 @@ namespace Konamiman.Nestor80.Assembler
     {
         const char COMMENT_START = ';';
 
-        string sourceLine;
-        int lineLength;
+        readonly string sourceLine;
+        readonly int lineLength;
         int linePointer;
         bool logicalEndOfLineReached;
         int linePointerBackup;
@@ -96,7 +96,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             SkipBlanks();
-            return sourceLine.Substring(originalPointer, linePointer - originalPointer).Trim();
+            return sourceLine[originalPointer..linePointer].Trim();
         }
 
         /// <summary>
@@ -176,7 +176,7 @@ namespace Konamiman.Nestor80.Assembler
                 linePointer++;
             }
 
-            var expression = sourceLine.Substring(originalPointer, linePointer - originalPointer).Trim();
+            var expression = sourceLine[originalPointer..linePointer].Trim();
 
             SkipBlanks();
             return expression;
@@ -301,7 +301,7 @@ namespace Konamiman.Nestor80.Assembler
 
             var originalPointer = ++linePointer;
             var previousWasQuote = false;
-            char currentChar = '\0';
+            char currentChar;
             while(!AtEndOfLine) {
                 currentChar = sourceLine[linePointer];
                 if(currentChar == '"') {
@@ -322,10 +322,10 @@ namespace Konamiman.Nestor80.Assembler
             return line;
         }
 
-        public (string[],int) ExtractArgsListForIrp()
+        public (string[],int) ExtractArgsListForIrp(bool requireDelimiter = true)
         {
             SkipBlanks();
-            if(PhysicalEndOfLineReached || !PointingToLessThan()) return (null,0);
+            if(PhysicalEndOfLineReached || (requireDelimiter && !PointingToLessThan())) return (null,0);
 
             var delimiterNestingLevel = 1;
             var extractingExpression = false;
@@ -347,7 +347,7 @@ namespace Konamiman.Nestor80.Assembler
                 spaceFoundAfterArg = theChar is ' ' or '\t';
             }
 
-            linePointer++; //Skip opening '<'
+            if(requireDelimiter) linePointer++; //Skip opening '<'
             while(true) {
                 if(PhysicalEndOfLineReached) {
                     RegisterArg();
@@ -437,7 +437,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             SkipBlanks();
-            return (args.ToArray(), delimiterNestingLevel);
+            return (args.ToArray(), delimiterNestingLevel - (requireDelimiter ? 0 : 1));
         }
 
         public (string[], int) ExtractArgsListForIrpc()
