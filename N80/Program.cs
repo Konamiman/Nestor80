@@ -54,6 +54,7 @@ namespace Konamiman.Nestor80.N80
         static string[] envArgs = null;
         static string[] commandLineArgs;
         static string currentFileDirectory;
+        static int printedWarningsCount = 0;
 
         static int Main(string[] args)
         {
@@ -784,7 +785,7 @@ namespace Konamiman.Nestor80.N80
             var result = AssemblySourceProcessor.Assemble(inputStream, inputFileEncoding, config);
             if(showAssemblyDuration) assemblyTimeMeasurer.Stop();
 
-            warnCount = result.Errors.Count(e => e.IsWarning);
+            warnCount = printedWarningsCount;
             errCount = result.Errors.Count(e => !e.IsWarning && !e.IsFatal);
             fatalCount = result.Errors.Count(e => e.IsFatal);
 
@@ -910,6 +911,8 @@ namespace Konamiman.Nestor80.N80
             else {
                 ErrorWriteLine(text);
             }
+
+            printedWarningsCount++;
         }
 
         private static void PrintError(AssemblyError error)
