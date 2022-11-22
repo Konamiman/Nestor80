@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -480,6 +481,113 @@ namespace Konamiman.Nestor80.Assembler
 
             return (args.ToArray(), delimiterNestingLevel);
         }
+
+        public static string ReplaceMacroLineArgWithPlaceholder(string line, string arg, int placeholderNumber)
+        {
+            var stringLimits = new List<(int, int)>();
+
+            var lineLength = line.Length;
+            var argLength = arg.Length;
+            var insideString = false;
+            int stringFirstIndex = -1;
+            char stringDelimiter = '\0';
+            var lastCharWasStringDelimiter = false;
+            var lastCharWasBackslash = false;
+            var commentStartIndex = lineLength;
+
+            for(int i=0; i<line.Length; i++) {
+                var currentChar = line[i];
+
+                if(!insideString) {
+                    if(currentChar == ';') {
+                        commentStartIndex = i;
+                        break;
+                    }
+                    if(currentChar == '"' || currentChar == '\'') {
+                        insideString = true;
+                        stringDelimiter = currentChar;
+                        stringFirstIndex = i + 1;
+                    }
+                }
+                else if(currentChar == '\\' && AllowEscapesInStrings && !lastCharWasBackslash) {
+                    lastCharWasBackslash = true;
+                }
+                else if(currentChar == stringDelimiter) {
+                    if(lastCharWasBackslash) {
+                        lastCharWasBackslash = false;
+                    }
+                    else if(!lastCharWasStringDelimiter) {
+                        if(i != stringFirstIndex) {
+                            stringLimits.Add((stringFirstIndex, i));
+                        }
+                        insideString = false;
+                        lastCharWasStringDelimiter = false;
+                    }
+                    else {
+                        lastCharWasStringDelimiter = true;
+                    }
+                }
+                else {
+                    lastCharWasStringDelimiter = false;
+                    lastCharWasBackslash = false;
+                }
+            }
+
+            var matches = new List<(int, int)>();
+            var foundIndex = 0;
+            while(foundIndex < commentStartIndex) {
+                foundIndex = line.IndexOf(arg, foundIndex, StringComparison.OrdinalIgnoreCase); 
+                if(foundIndex == -1) { 
+                    break; 
+                }
+
+                var matchIsInsideString = stringLimits.Any(l => foundIndex >= l.Item1 && foundIndex <= l.Item2);
+                int matchSize = argLength;
+                if(
+                    (foundIndex == 0 || line[foundIndex - 1] is '&' || (!matchIsInsideString && !Expression.IsValidSymbolChar(line[foundIndex - 1]))) &&
+                    (foundIndex == lineLength - matchSize || line[foundIndex + matchSize] is '&' || !Expression.IsValidSymbolChar(line[foundIndex + matchSize]))) {
+                   if(foundIndex != 0 && line[foundIndex - 1] is '&') {
+                        foundIndex--;
+                        matchSize++;
+                   }
+                   if(foundIndex < lineLength - matchSize && line[foundIndex + matchSize] is '&') {
+                        matchSize++;
+                   }
+                   matches.Add((foundIndex, matchSize));
+                }
+
+                foundIndex += matchSize;
+            }
+
+            if(matches.Count == 0) {
+                return line;
+            }
+
+            var sb = new StringBuilder();
+            if(matches[0].Item1 != 0) {
+                sb.Append(line.AsSpan(0, matches[0].Item1));
+            }
+            for(int i=0; i<=matches.Count-2; i++) {
+                var curMatch = matches[i];
+                var nextMatch = matches[i+1];
+                sb.Append($"{{{placeholderNumber}}}");
+                var middleTextAfterMatchStartIndex = curMatch.Item1 + curMatch.Item2;
+                var middleTextAfterMatchLength = nextMatch.Item1 - middleTextAfterMatchStartIndex;
+                if(middleTextAfterMatchLength > 0) {
+                    sb.Append(line.AsSpan(middleTextAfterMatchStartIndex, middleTextAfterMatchLength));
+                }
+            }
+
+            var lastMatch = matches[^1];
+            sb.Append($"{{{placeholderNumber}}}");
+            var middleTextAfterLastMatchStartIndex = lastMatch.Item1 + lastMatch.Item2;
+            if(middleTextAfterLastMatchStartIndex < line.Length) {
+                sb.Append(line.AsSpan(middleTextAfterLastMatchStartIndex));
+            }
+
+            return sb.ToString();
+        }
+
 
         private bool PhysicalEndOfLineReached => linePointer >= lineLength;
 

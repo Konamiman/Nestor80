@@ -328,7 +328,7 @@ namespace Konamiman.Nestor80.Assembler
                 ProcessOperator(OperatorsAsStrings[currentChar]);
         }
 
-        private static bool IsValidSymbolChar(char theChar)
+        public static bool IsValidSymbolChar(char theChar)
         {
             return char.IsLetter(theChar) || theChar is '?' or '_' or '@' or '.' or '$';
         }

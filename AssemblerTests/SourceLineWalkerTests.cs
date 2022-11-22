@@ -305,5 +305,24 @@ namespace Konamiman.Nestor80.AssemblerTests
             var (_, counter) = sut.ExtractArgsListForIrpc();
             Assert.AreEqual(expectedDelimiterCounter, counter);
         }
+
+        [Test]
+        [TestCase("", "foo", "")]
+        [TestCase("abcde", "foo", "abcde")]
+        [TestCase("foo", "foo", "{1}")]
+        [TestCase("a foo b", "foo", "a {1} b")]
+        [TestCase("a&foo: b", "foo", "a{1}: b")]
+        [TestCase("a&foo&b c", "foo", "a{1}b c")]
+        [TestCase("afoo", "foo", "afoo")]
+        [TestCase("fooa", "foo", "fooa")]
+        [TestCase("&foo&", "foo", "{1}")]
+        [TestCase("foo foo foo", "foo", "{1} {1} {1}")]
+        [TestCase("&foo&&foo&&foo&", "foo", "{1}{1}{1}")]
+        public void ReplaceMacroLineArgWithPlaceholder(string line, string arg, string expectedResult)
+        {
+            SourceLineWalker.AllowEscapesInStrings = true;
+            var actual = SourceLineWalker.ReplaceMacroLineArgWithPlaceholder(line, arg, 1);
+            Assert.AreEqual(expectedResult, actual);
+        }
     }
 }
