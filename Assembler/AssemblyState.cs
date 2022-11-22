@@ -266,7 +266,7 @@ namespace Konamiman.Nestor80.Assembler
             //TODO: Fix: the number returned isn't accurate for errors thrown inside REPTs inside named macros.
             foreach(var state in allStates) {
                 if(state is NamedMacroExpansionState nmes) {
-                    return new (string, int)[] { (nmes.MacroName.ToUpper(), nmes.RelativeLineNumber+1) };
+                    return nmes.RelativeLineNumber < 0 ? null : new (string, int)[] { (nmes.MacroName.ToUpper(), nmes.RelativeLineNumber+1) };
                 }
             }
 
