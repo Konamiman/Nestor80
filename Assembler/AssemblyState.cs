@@ -496,20 +496,9 @@ namespace Konamiman.Nestor80.Assembler
                     MacroDefinitionState.DecreaseDepth();
                 }
                 else if(MacroDefinitionState.ProcessedLine is NamedMacroDefinitionLine nmdl) {
-                    //TODO: Proper template lines processing
                     var lines = MacroDefinitionState.GetLines();
-                    var processedLines = new List<string>();
-                    foreach(var line in lines) {
-                        int i = 0;
-                        var newLine = line;
-                        foreach(var arg in nmdl.Arguments) {
-                            newLine = newLine.Replace(arg, $"{{{i}}}");
-                            i++;
-                        }
-                        processedLines.Add(newLine);
-                    }
-
-                    nmdl.LineTemplates = processedLines.ToArray();
+                    ReplaceMacroLineArgsWithPlaceholders(lines, nmdl.Arguments);
+                    nmdl.LineTemplates = lines;
                     MacroDefinitionState.EndDefinition();
                 }
                 else {
@@ -520,17 +509,9 @@ namespace Konamiman.Nestor80.Assembler
                         expansionState = new ReptWithCountExpansionState(macroExpansionLine, MacroDefinitionState.GetLines(), macroExpansionLine.RepetitionsCount, ln);
                     }
                     else {
-
-                        //TODO: Proper template lines processing
                         var lines = MacroDefinitionState.GetLines();
-                        var processedLines = new List<string>();
-                        foreach(var line in lines) {
-                            int i = 0;
-                            var newLine = line.Replace(macroExpansionLine.Placeholder, $"{{{i}}}");
-                            processedLines.Add(newLine);
-                        }
-
-                        expansionState = new ReptWithParamsExpansionState(macroExpansionLine, processedLines.ToArray(), macroExpansionLine.Parameters, ln);
+                        ReplaceMacroLineArgsWithPlaceholders(lines, new[] { macroExpansionLine.Placeholder });
+                        expansionState = new ReptWithParamsExpansionState(macroExpansionLine, lines, macroExpansionLine.Parameters, ln);
                     }
 
                     if(currentMacroExpansionState is null) {
@@ -559,6 +540,22 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return true;
+        }
+
+        private static void ReplaceMacroLineArgsWithPlaceholders(string[] macroLines, string[] args)
+        {
+            if(args.Length == 0 || macroLines.Length == 0) {
+                return;
+            }
+
+            for(int macroLineIndex = 0; macroLineIndex < macroLines.Length; macroLineIndex++) {
+                var macroLine = macroLines[macroLineIndex];
+                macroLine = macroLine.Replace("{", "{{").Replace("}", "}}");
+                for(int argIndex = 0; argIndex < args.Length; argIndex++) {
+                    macroLine = SourceLineWalker.ReplaceMacroLineArgWithPlaceholder(macroLine, args[argIndex], argIndex);
+                }
+                macroLines[macroLineIndex] = macroLine;
+            }
         }
 
         public string GetNextMacroExpansionLine()
