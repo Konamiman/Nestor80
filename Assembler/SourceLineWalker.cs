@@ -537,7 +537,7 @@ namespace Konamiman.Nestor80.Assembler
             var foundIndex = 0;
             while(foundIndex < commentStartIndex) {
                 foundIndex = line.IndexOf(arg, foundIndex, StringComparison.OrdinalIgnoreCase); 
-                if(foundIndex == -1) { 
+                if(foundIndex == -1 || foundIndex > commentStartIndex) { 
                     break; 
                 }
 
@@ -545,12 +545,12 @@ namespace Konamiman.Nestor80.Assembler
                 int matchSize = argLength;
                 if(
                     (foundIndex == 0 || line[foundIndex - 1] is '&' || (!matchIsInsideString && !Expression.IsValidSymbolChar(line[foundIndex - 1]))) &&
-                    (foundIndex == lineLength - matchSize || line[foundIndex + matchSize] is '&' || !Expression.IsValidSymbolChar(line[foundIndex + matchSize]))) {
+                    (foundIndex == commentStartIndex - matchSize || line[foundIndex + matchSize] is '&' || !Expression.IsValidSymbolChar(line[foundIndex + matchSize]))) {
                    if(foundIndex != 0 && line[foundIndex - 1] is '&') {
                         foundIndex--;
                         matchSize++;
                    }
-                   if(foundIndex < lineLength - matchSize && line[foundIndex + matchSize] is '&') {
+                   if(foundIndex < commentStartIndex - matchSize && line[foundIndex + matchSize] is '&') {
                         matchSize++;
                    }
                    matches.Add((foundIndex, matchSize));
