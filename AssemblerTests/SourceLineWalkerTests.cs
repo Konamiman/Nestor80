@@ -310,6 +310,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("", "foo", "")]
         [TestCase("abcde", "foo", "abcde")]
         [TestCase("foo", "foo", "{1}")]
+        [TestCase("FOO", "foo", "{1}")]
         [TestCase("a foo b", "foo", "a {1} b")]
         [TestCase("a&foo: b", "foo", "a{1}: b")]
         [TestCase("a&foo&b c", "foo", "a{1}b c")]
@@ -318,8 +319,12 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("&foo&", "foo", "{1}")]
         [TestCase("foo foo foo", "foo", "{1} {1} {1}")]
         [TestCase("&foo&&foo&&foo&", "foo", "{1}{1}{1}")]
+        [TestCase(";", "foo", ";")]
+        [TestCase(";foo", "foo", ";foo")]
         [TestCase("foo ;foo", "foo", "{1} ;foo")]
         [TestCase("foo foo ;foo foo", "foo", "{1} {1} ;foo foo")]
+        [TestCase("foo foo 'foo &foo &foo& \"tal\" \\' foo' foo", "foo", "{1} {1} 'foo {1} {1} \"tal\" \\' foo' {1}")]
+        [TestCase("foo foo \"foo &foo &foo& 'tal' \\\" foo\" foo", "foo", "{1} {1} \"foo {1} {1} 'tal' \\\" foo\" {1}")]
         public void ReplaceMacroLineArgWithPlaceholder(string line, string arg, string expectedResult)
         {
             SourceLineWalker.AllowEscapesInStrings = true;
