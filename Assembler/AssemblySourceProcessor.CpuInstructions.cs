@@ -164,7 +164,7 @@ namespace Konamiman.Nestor80.Assembler
                     walker.DiscardRemaining();
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
-                instructionLine = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument };
+                instructionLine = new CpuInstructionLine() { Opcode = opcode, FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument };
                 if(selectorExpressionValue is null) {
                     if(state.InPass1) {
                         chosenInstruction = candidates[0];
@@ -336,6 +336,9 @@ namespace Konamiman.Nestor80.Assembler
             Address variableArgumentValue;
             try {
                 variableArgumentValue = EvaluateIfNoSymbolsOrPass2(argumentExpression);
+            }
+            catch(ExpressionContainsExternalReferencesException) {
+                variableArgumentValue = null;
             }
             catch(InvalidExpressionException ex) {
                 AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument for {currentCpu} instruction {line.Opcode.ToUpper()}: {ex.Message}");

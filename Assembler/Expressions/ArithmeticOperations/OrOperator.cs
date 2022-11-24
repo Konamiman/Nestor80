@@ -14,7 +14,7 @@
             // Absolute OR <mode> = <mode>
 
             if(!value1.IsAbsolute && !value2.IsAbsolute) {
-                throw new InvalidExpressionException($"OR: At least one of the operands must be absolute (attempted {value1.Type} OR {value2.Type}");
+                throw new InvalidExpressionException($"OR: At least one of the operands must be absolute (attempted {value1.Type} OR {value2.Type})");
             }
 
             var type = value1.IsAbsolute ? value2.Type : value1.Type;

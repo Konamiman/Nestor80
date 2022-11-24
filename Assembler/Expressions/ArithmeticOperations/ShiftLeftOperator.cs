@@ -14,7 +14,7 @@
             // <mode> SHL Absolute = <mode>
 
             if(!value1.IsAbsolute || !value2.IsAbsolute) {
-                throw new InvalidExpressionException($"SHL: The second operand must be absolute (attempted {value1.Type} SHL {value2.Type}");
+                throw new InvalidExpressionException($"SHL: The second operand must be absolute (attempted {value1.Type} SHL {value2.Type})");
             }
 
             unchecked {

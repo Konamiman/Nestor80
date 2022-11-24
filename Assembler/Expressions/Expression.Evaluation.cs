@@ -224,6 +224,9 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     var address = ResolveAddressOrSymbol(item);
+                    if(externalSymbolFound) {
+                        throw new ExpressionContainsExternalReferencesException($"Symbol is external: {((SymbolReference)item).SymbolName}");
+                    }
                     if(address is null) {
                         if(throwOnUnknownSymbol) {
                             Throw($"Unknown symbol: {((SymbolReference)item).SymbolName}");

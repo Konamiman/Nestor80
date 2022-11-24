@@ -22,6 +22,7 @@
         RootWithoutModule,
         TruncatedRequestFilename,
         MissingDelimiterInMacroArgsList,
+        DuplicatedMacro,
         UserWarning,
         LastWarning = UserWarning,
 
@@ -45,7 +46,6 @@
         EndModuleOutOfScope,
         EndMacroOutOfScope,
         UnterminatedMacro,
-        DuplicatedMacro,
         NestedMacro,
         ExitmOutOfScope,
         UserError,

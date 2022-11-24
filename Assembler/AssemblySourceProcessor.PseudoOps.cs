@@ -1532,13 +1532,9 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(state.NamedMacroExists(name)) {
                 if(state.InPass1) {
-                    AddError(AssemblyErrorCode.DuplicatedMacro, $"A macro named {name.ToUpper()} already exists");
-                    walker.DiscardRemaining();
-                    return new NamedMacroDefinitionLine();
+                    AddError(AssemblyErrorCode.DuplicatedMacro, $"A macro named {name.ToUpper()} already exists, new definition will replace the old one");
                 }
-                else {
-                    state.RemoveNamedMacroDefinition(name);
-                }
+                state.RemoveNamedMacroDefinition(name);
             }
 
             if(MacroDefinitionState.DefiningNamedMacro) {

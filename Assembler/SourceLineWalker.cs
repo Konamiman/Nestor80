@@ -419,6 +419,14 @@ namespace Konamiman.Nestor80.Assembler
                     continue;
                 }
 
+                if(theChar is ';' && delimiterNestingLevel <= 1) {
+                    if(chars.Count > 0) {
+                        RegisterArg();
+                    }
+                    DiscardRemaining();
+                    break;
+                }
+
                 if(chars.Count == 0) {
                     if(theChar is ' ' or '\t') {
                         continue;

@@ -14,7 +14,7 @@
             // <mode> SHR Absolute = <mode>
 
             if(!value2.IsAbsolute) {
-                throw new InvalidExpressionException($"SHR: The second operand must be absolute (attempted {value1.Type} SHR {value2.Type}");
+                throw new InvalidExpressionException($"SHR: The second operand must be absolute (attempted {value1.Type} SHR {value2.Type})");
             }
 
             unchecked {

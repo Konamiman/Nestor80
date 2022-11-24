@@ -246,9 +246,15 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("<%", new[] { "UNICODE_ONE" })]
         [TestCase("<% ", new[] { "UNICODE_ONE " })]
 
+        //With comments
+        [TestCase("a,b ;c", new[] {"a", "b"}, false)]
+        [TestCase("a,b\t;c", new[] { "a", "b" }, false)]
+        [TestCase("a,b;c", new[] { "a", "b" }, false)]
+        [TestCase("<a,b ;c>", new[] { "a,b ;c" }, false)]
+
         //A bit of everything
         [TestCase("< a, , !, ! , < a , !b > <b<c<d>>>, ef> > whatever", new[] { "a", "", ",", " ", " a , b ", "b<c<d>>", "ef" })]
-        public void ExtractArgsListForIrp(string line, string[] expectedArgsList)
+        public void ExtractArgsListForIrp(string line, string[] expectedArgsList, bool requireDelimiter=true)
         {
             //Workaround for a bug in NUnit
             //(tests with arguments containing non-printable chars won't run)
@@ -259,7 +265,7 @@ namespace Konamiman.Nestor80.AssemblerTests
             }
 
             var sut = new SourceLineWalker(line);
-            var (actual, _) = sut.ExtractArgsListForIrp();
+            var (actual, _) = sut.ExtractArgsListForIrp(requireDelimiter);
             CollectionAssert.AreEqual(expectedArgsList, actual);
         }
 

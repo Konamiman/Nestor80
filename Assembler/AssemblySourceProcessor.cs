@@ -263,6 +263,8 @@ namespace Konamiman.Nestor80.Assembler
             ProcessedSourceLine processedLine = null;
             SourceLineWalker walker;
 
+            var definingMacro = state.CurrentMacroMode is MacroMode.Definition;
+
             if(formFeedCharsCount is null) {
                 formFeedCharsCount = line.Count(ch => ch == '\f');
                 if(formFeedCharsCount > 0) {
@@ -293,7 +295,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(string.IsNullOrWhiteSpace(line)) {
-                if(state.CurrentMacroMode is MacroMode.Definition) {
+                if(definingMacro) {
                     AssemblyState.RegisterMacroDefinitionLine(line, false);
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
                 }
@@ -311,7 +313,7 @@ namespace Konamiman.Nestor80.Assembler
 
             walker = new SourceLineWalker(line);
             if(walker.AtEndOfLine) {
-                if(state.CurrentMacroMode is MacroMode.Definition) {
+                if(definingMacro) {
                     AssemblyState.RegisterMacroDefinitionLine(line, false);
                     walker.DiscardRemaining();
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length, FormFeedsCount = formFeedCharsCount.Value };
@@ -329,6 +331,26 @@ namespace Konamiman.Nestor80.Assembler
             string opcode = null;
             var symbol = walker.ExtractSymbol();
 
+            if(definingMacro) {
+                opcode = symbol;
+                
+                var stillInMacroDefinitionMode = true;
+                if(string.Equals(symbol, "ENDM", StringComparison.InvariantCultureIgnoreCase)) {
+                    processedLine = ProcessEndmLine(symbol, walker);
+
+                    //We need to check if we are still in macro definition mode
+                    //because the ENDM could be part of a nested REPT inside a MACRO or another REPT;
+                    //and in that case the processed ENDM is just another regular macro definition line.
+                    stillInMacroDefinitionMode = state.CurrentMacroMode is MacroMode.Definition;
+                }
+
+                if(stillInMacroDefinitionMode) {
+                    AssemblyState.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase));
+                    walker.DiscardRemaining();
+                    processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length };
+                }
+            }
+
             //Label processing is tricky due to conditionals.
             //A label defined in a line that is inside a false conditional block isn't registered as a symbol,
             //and this includes the ELSE or ENDIF at the end of the block; but a label defined in
@@ -344,7 +366,7 @@ namespace Konamiman.Nestor80.Assembler
             //
             //That's why we don't register the label beforehand unless the line contains only the label.
 
-            if(symbol.EndsWith(':')) {
+            if(!definingMacro && symbol.EndsWith(':')) {
                 if(IsValidSymbolName(symbol)) {
                     label = symbol;
                 }
@@ -378,7 +400,7 @@ namespace Konamiman.Nestor80.Assembler
             //
             // TITLE EQU 1      ---> defines constant "TITLE" with value 1
             // FOO: TITLE EQU 1 ---> sets the program title as "EQU 1"
-            if(!state.InFalseConditional && !walker.AtEndOfLine) {
+            if(!definingMacro && !state.InFalseConditional && !walker.AtEndOfLine) {
                 if(label is not null && constantDefinitionOpcodesMinusSet.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
                     opcode = symbol;
                     processedLine = ProcessConstantDefinition(opcode: opcode, name: label.TrimEnd(':'), walker: walker);
@@ -428,21 +450,7 @@ namespace Konamiman.Nestor80.Assembler
                     ProcessLabelDefinition(label);
                 }
 
-                if(state.CurrentMacroMode is MacroMode.Definition) {
-                    opcode = symbol;
-                    var inMacroDefinitionMode = true;
-                    if(string.Equals(symbol, "ENDM", StringComparison.InvariantCultureIgnoreCase)) {
-                        processedLine = ProcessEndmLine(symbol, walker);
-                        inMacroDefinitionMode = state.CurrentMacroMode is MacroMode.Definition;
-                    }
-
-                    if(inMacroDefinitionMode) {
-                        AssemblyState.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase));
-                        walker.DiscardRemaining();
-                        processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length };
-                    }
-                }
-                else if(PseudoOpProcessors.ContainsKey(symbol)) {
+                if(PseudoOpProcessors.ContainsKey(symbol)) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);

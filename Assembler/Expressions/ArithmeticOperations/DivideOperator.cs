@@ -16,7 +16,7 @@
             // <mode> / Absolute = <mode>
 
             if(!value2.IsAbsolute) {
-                throw new InvalidExpressionException($"/: The second operand must be absolute (attempted {value1.Type} / {value2.Type}");
+                throw new InvalidExpressionException($"/: The second operand must be absolute (attempted {value1.Type} / {value2.Type})");
             }
 
             unchecked {

@@ -15,7 +15,7 @@ namespace Konamiman.Nestor80.Assembler.ArithmeticOperations
             // Absolute XOR <mode> = <mode>
 
             if(!value1.IsAbsolute && !value2.IsAbsolute) {
-                throw new InvalidExpressionException($"XOR: At least one of the operands must be absolute (attempted {value1.Type} XOR {value2.Type}");
+                throw new InvalidExpressionException($"XOR: At least one of the operands must be absolute (attempted {value1.Type} XOR {value2.Type})");
             }
 
             var type = value1.IsAbsolute ? value2.Type : value1.Type;
