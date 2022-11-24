@@ -374,35 +374,46 @@ namespace Konamiman.Nestor80.Assembler
                 return new PublicDeclarationLine();
             }
 
-            var symbolName = walker.ExtractSymbol();
-            if(!externalSymbolRegex.IsMatch(symbolName)) {
-                AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid public symbol name, it contains invalid characters");
-                return new ExternalDeclarationLine() { SymbolName = symbolName };
-            }
-
-            var existingSymbol = state.GetSymbol(symbolName);
-            var success = true;
-            if(existingSymbol is null) {
-                state.AddSymbol(symbolName, SymbolType.Unknown, isPublic: true);
-            }
-            else if(existingSymbol.IsExternal) {
-                AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined as an external symbol, can't be defined as public");
-                success = false;
-            }
-            else {
-                existingSymbol.IsPublic = true;
-            }
-
-            if(success) {
-                if(buildType == BuildType.Automatic) {
-                    SetBuildType(BuildType.Relocatable);
+            var symbolNames = new List<string>();
+            while(!walker.AtEndOfLine) {
+                var symbolName = walker.ExtractExpression();
+                if(string.IsNullOrWhiteSpace(symbolName)) {
+                    AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the symbol name can't be empty");
+                    continue;
                 }
-                else if(buildType == BuildType.Absolute) {
-                    AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Symbol {symbolName.ToUpper()} is declared as public, but that has no effect when the output type is absolute");
+                if(!externalSymbolRegex.IsMatch(symbolName)) {
+                    AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid public symbol name, it contains invalid characters");
+                    continue;
+                }
+
+                var existingSymbol = state.GetSymbol(symbolName);
+                if(existingSymbol is null) {
+                    state.AddSymbol(symbolName, SymbolType.Unknown, isPublic: true);
+                    symbolNames.Add(symbolName);
+                }
+                else if(existingSymbol.IsExternal) {
+                    AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined as an external symbol, can't be defined as public");
+                }
+                else {
+                    existingSymbol.IsPublic = true;
+                    symbolNames.Add(symbolName);
                 }
             }
 
-            return new PublicDeclarationLine() { SymbolName = symbolName };
+            if(buildType == BuildType.Automatic) {
+                SetBuildType(BuildType.Relocatable);
+            }
+            else if(buildType == BuildType.Absolute) {
+                if(symbolNames.Count == 1) {
+                    AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Symbol {symbolNames[0].ToUpper()} is declared as public, but that has no effect when the output type is absolute");
+                }
+                else {
+                    var symbolsUpper = symbolNames.Select(s => s.ToUpper());
+                    AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Symbols {string.Join(", ", symbolsUpper)} are declared as public, but that has no effect when the output type is absolute");
+                }
+            }
+
+            return new PublicDeclarationLine() { SymbolNames = symbolNames.ToArray() };
         }
 
         static ProcessedSourceLine ProcessEndLine(string opcode, SourceLineWalker walker)

@@ -14,6 +14,7 @@ namespace Konamiman.Nestor80.N80
             Usage: N80 <source file> [<output file>] [<arguments>]
                    N80 -v|--version
                    N80 -h|--help
+                   N80 --list-encodings
             """;
 
         static readonly string extendedHelpText = $"""

@@ -77,6 +77,21 @@ namespace Konamiman.Nestor80.N80
                 return ERR_SUCCESS;
             }
 
+            if(args[0] is "--list-encodings") {
+                Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+                var encodings = Encoding.GetEncodings().OrderBy(e => e.Name);
+                var longestNameLength = encodings.Max(e => e.Name.Length);
+                var formatString = $"{{0,-{longestNameLength}}} | {{1}}";
+                Console.WriteLine("Available encodings for strings:");
+                Console.WriteLine();
+                Console.WriteLine(string.Format(formatString, "Name", "Code page"));
+                Console.WriteLine(new string('-', longestNameLength + 12));
+                foreach(var encoding in encodings) {
+                    Console.WriteLine(string.Format(formatString, encoding.Name, encoding.CodePage));
+                }
+                return ERR_SUCCESS;
+            }
+
             if(args[0] is "-h" or "--help") {
                 WriteLine(bannerText);
                 WriteLine(simpleHelpText);
@@ -95,7 +110,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(inputFile is null) {
-                ErrorWriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version or --help");
+                ErrorWriteLine("Invalid arguments: the input file is mandatory unless the first argument is --version, --help or --list-encodings");
                 return ERR_BAD_ARGUMENTS;
             }
 
@@ -478,7 +493,7 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner" or "-nea" or "--no-env-args" or "-nfa" or "--no-file-args") {
                     //already handled
                 }
-                else if(arg is "-v" or "--version" or "-h" or "--help") {
+                else if(arg is "-v" or "--version" or "-h" or "--help" or "--list-encodings") {
                     return $"The {arg} argument must be the first one";
                 }
                 else if(arg is "-id" or "--include-directory") {

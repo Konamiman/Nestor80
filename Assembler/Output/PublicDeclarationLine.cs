@@ -2,6 +2,6 @@
 {
     internal class PublicDeclarationLine : ProcessedSourceLine
     {
-        public string SymbolName { get; set; }
+        public string[] SymbolNames { get; set; }
     }
 }

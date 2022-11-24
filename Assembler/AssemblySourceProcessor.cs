@@ -665,8 +665,9 @@ namespace Konamiman.Nestor80.Assembler
 
         private static SymbolInfo GetSymbolForExpression(string name, bool isExternal, bool isRoot)
         {
-            if(name == "$")
-                return new SymbolInfo() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
+            if(name == "$") {
+                return new SymbolInfo() { Name = "$", Value = Address.Absolute(state.CurrentLocationPointer) };
+            }
 
             if(!isRoot && !isExternal) {
                 name = state.Modularize(name);
