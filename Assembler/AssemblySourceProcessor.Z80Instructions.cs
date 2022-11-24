@@ -685,7 +685,7 @@ namespace Konamiman.Nestor80.Assembler
             ( "DEC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x35, 0 }, 2 ), // DEC (IX+n)
             ( "DEC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x35, 0 }, 2 ), // DEC (IY+n)
 
-            ( "DJNZ", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0x10, 0 }, 1 ), // DJNZ n
+            ( "DJNZ", CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Single, new byte[] { 0x10, 0 }, 1 ), // DJNZ n
 
             ( "IN A", CpuInstrArgType.ByteInParenthesis, CpuArgPos.Second, new byte[] { 0xdb, 0 }, 1 ), // IN A,(n)
 
@@ -702,11 +702,11 @@ namespace Konamiman.Nestor80.Assembler
             ( "JP PO", CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xe2, 0, 0 }, 1 ), // JP PO,nn
             ( "JP Z",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xca, 0, 0 }, 1 ), // JP Z,nn
 
-            ( "JR",    CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0x18, 0 }, 1 ),
-            ( "JR C",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x38, 0 }, 1 ),
-            ( "JR NC", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x30, 0 }, 1 ),
-            ( "JR NZ", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x20, 0 }, 1 ),
-            ( "JR Z",  CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0x28, 0 }, 1 ),
+            ( "JR",    CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Single, new byte[] { 0x18, 0 }, 1 ),
+            ( "JR C",  CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Second, new byte[] { 0x38, 0 }, 1 ),
+            ( "JR NC", CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Second, new byte[] { 0x30, 0 }, 1 ),
+            ( "JR NZ", CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Second, new byte[] { 0x20, 0 }, 1 ),
+            ( "JR Z",  CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Second, new byte[] { 0x28, 0 }, 1 ),
             
             // Important: instructions that accept a variable argument in parenthesis
             // must come before the equivalent instructions without parenthesis,

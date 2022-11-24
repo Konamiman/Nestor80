@@ -11,8 +11,6 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Regex memPointedByRegisterRegex = new(@"^\(\s*(?<reg>HL|DE|BC|IX|IY|SP|C)\s*\)$", RegxOp);
         private static readonly Regex registerRegex = new(@"^[A-Z]{1,3}$", RegxOp);
 
-        private static readonly string[] z80InstructionsForRelativeJump = { "JR", "DJNZ" };
-
         private static readonly Dictionary<CpuInstrArgType, string> indexRegisterNames = new() {
             { CpuInstrArgType.IxOffset, "IX" },
             { CpuInstrArgType.IyOffset, "IY" }
@@ -269,11 +267,13 @@ namespace Konamiman.Nestor80.Assembler
                             CpuInstrArgType.ByteInParenthesis or
                             CpuInstrArgType.WordInParenthesis or
                             CpuInstrArgType.Byte or
-                            CpuInstrArgType.Word) ||
+                            CpuInstrArgType.Word or
+                            CpuInstrArgType.OffsetFromCurrentLocation) ||
                     (argSearchType is CpuParsedArgType.Number &&
                         instructionArgType is
                             CpuInstrArgType.Byte or
-                            CpuInstrArgType.Word) ||
+                            CpuInstrArgType.Word or
+                            CpuInstrArgType.OffsetFromCurrentLocation) ||
                     (argSearchType is CpuParsedArgType.IxPlusOffset && instructionArgType is CpuInstrArgType.IxOffset) ||
                     (argSearchType is CpuParsedArgType.IyPlusOffset && instructionArgType is CpuInstrArgType.IyOffset);
 
@@ -289,10 +289,6 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid argument(s) for {currentCpu} instruction {opcode.ToUpper()}");
                 walker.DiscardRemaining();
                 return new CpuInstructionLine() { IsInvalid = true };
-            }
-
-            if(z80InstructionsForRelativeJump.Contains(opcode, StringComparer.OrdinalIgnoreCase)) {
-                variableArgType = CpuInstrArgType.OffsetFromCurrentLocation;
             }
 
             isNegativeIxy = false;
@@ -357,7 +353,7 @@ namespace Konamiman.Nestor80.Assembler
                 return true;
             }
 
-            if(variableArgumentValue.IsAbsolute) {
+            if(variableArgumentValue.IsAbsolute || argType is CpuInstrArgType.OffsetFromCurrentLocation) {
                 var instructionBytes = line.OutputBytes.ToArray();
                 if(!ProcessArgumentForInstruction(argType, instructionBytes, variableArgumentValue, argBytePosition, isNegativeIxy)) {
                     return false;

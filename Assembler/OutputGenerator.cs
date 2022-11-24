@@ -156,26 +156,27 @@ namespace Konamiman.Nestor80.Assembler
                 WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.CSEG, (ushort)assemblyResult.ProgramAreaSize);
             }
 
-            foreach(var line in assemblyResult.ProcessedLines) {
-                if(line is ChangeAreaLine cal) {
-                    WriteLinkItem(LinkItemType.SetLocationCounter, cal.NewLocationArea, cal.NewLocationCounter);
-                    currentLocationArea = cal.NewLocationArea;
-                }
-                else if(line is ChangeOriginLine col) {
-                    locationCounters[currentLocationArea] = col.NewLocationCounter;
-                    WriteLinkItem(LinkItemType.SetLocationCounter, currentLocationArea, col.NewLocationCounter);
-                }
-                else if(line is DefineSpaceLine dsl) {
+            var lines = FlatLinesList(assemblyResult.ProcessedLines);
+            foreach(var line in lines) {
+                if(line is DefineSpaceLine dsl) {
                     locationCounters[currentLocationArea] += dsl.Size;
                     if(dsl.Value.HasValue || initDefs) {
                         var byteToWrite = dsl.Value.GetValueOrDefault(0);
-                        for(int i=0; i<dsl.Size; i++) {
+                        for(int i = 0; i < dsl.Size; i++) {
                             WriteByte(byteToWrite);
                         }
                     }
                     else {
                         WriteLinkItem(LinkItemType.SetLocationCounter, currentLocationArea, locationCounters[currentLocationArea]);
                     }
+                }
+                else if(line is ChangeAreaLine cal) {
+                    WriteLinkItem(LinkItemType.SetLocationCounter, cal.NewLocationArea, cal.NewLocationCounter);
+                    currentLocationArea = cal.NewLocationArea;
+                }
+                else if(line is ChangeOriginLine col) {
+                    locationCounters[currentLocationArea] = col.NewLocationCounter;
+                    WriteLinkItem(LinkItemType.SetLocationCounter, currentLocationArea, col.NewLocationCounter);
                 }
                 else if(line is IProducesOutput ipo) {
                     if(ipo.RelocatableParts.Length == 0) {
@@ -237,7 +238,6 @@ namespace Konamiman.Nestor80.Assembler
                     locationCounters[currentLocationArea]++;
                     continue;
                 }
-
                 if(currentRelocatablePart is RelocatableAddress rad) {
                     if(rad.IsByte) {
                         WriteExtensionLinkItem(SpecialLinkItemType.Address, (byte)rad.Type, (byte)(rad.Value & 0xFF), (byte)((rad.Value >> 8) & 0xFF));
@@ -263,6 +263,7 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     for(int i=outputByteIndex; i<outputBytes.Length; i++) {
                         WriteByte(outputBytes[i]);
+                        locationCounters[currentLocationArea]++;
                     }
                     break;
                 }
@@ -409,10 +410,10 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(externalChains.ContainsKey(symbolName)) {
                 WriteAddress(externalChains[symbolName]);
-                externalChains[symbolName] = new Address(currentLocationArea, locationCounters[currentLocationArea]);
+                externalChains[symbolName] = new Address(currentLocationArea, (ushort)(locationCounters[currentLocationArea]));
             }
             else {
-                externalChains.Add(symbolName, new Address(currentLocationArea, locationCounters[currentLocationArea]));
+                externalChains.Add(symbolName, new Address(currentLocationArea, (ushort)(locationCounters[currentLocationArea])));
                 WriteByte(0);
                 WriteByte(0);
             }

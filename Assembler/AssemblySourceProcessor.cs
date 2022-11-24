@@ -736,8 +736,10 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
 
-                //Needed in case symbol is declared public only in pass 2
-                symbol.IsPublic = isPublic;
+                //Needed in case symbol is declared public with "::" only in pass 2
+                if(!symbol.IsPublic) {
+                    symbol.IsPublic = isPublic;
+                }
             }
             else {
                 //Either PUBLIC declaration preceded label in code,
