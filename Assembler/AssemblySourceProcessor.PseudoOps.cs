@@ -334,37 +334,49 @@ namespace Konamiman.Nestor80.Assembler
                 return new ExternalDeclarationLine();
             }
 
-            var symbolName = walker.ExtractSymbol();
-            if(!externalSymbolRegex.IsMatch(symbolName)) {
-                AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name, it contains invalid characters");
-                return new ExternalDeclarationLine() { SymbolName = symbolName };
-            }
-
-            var existingSymbol = state.GetSymbol(symbolName);
-            var success = true;
-            if(existingSymbol is null) {
-                state.AddSymbol(symbolName, type: SymbolType.External);
-            }
-            else if(existingSymbol.IsPublic || (existingSymbol.IsOfKnownType && !existingSymbol.IsExternal)) {
-                AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
-                success = false;
-            }
-            else {
-                //In case the symbol first appeared as part of an expression
-                //and was therefore of type "Unknown"
-                existingSymbol.Type = SymbolType.External;
-            }
-
-            if(success) {
-                if(buildType == BuildType.Automatic) {
-                    SetBuildType(BuildType.Relocatable);
+            var symbolNames = new List<string>();
+            while(!walker.AtEndOfLine) {
+                var symbolName = walker.ExtractExpression();
+                if(string.IsNullOrWhiteSpace(symbolName)) {
+                    AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the symbol name can't be empty");
+                    continue;
                 }
-                else if(buildType == BuildType.Absolute) {
-                    AddError(AssemblyErrorCode.InvalidForAbsoluteOutput, $"Symbol {symbolName.ToUpper()} is declared as external, but that's not allowed when the output type is absolute");
+                if(!externalSymbolRegex.IsMatch(symbolName)) {
+                    AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name, it contains invalid characters");
+                }
+
+                var existingSymbol = state.GetSymbol(symbolName);
+                if(existingSymbol is null) {
+                    state.AddSymbol(symbolName, type: SymbolType.External);
+                    symbolNames.Add(symbolName);
+                }
+                else if(existingSymbol.IsPublic || (existingSymbol.IsOfKnownType && !existingSymbol.IsExternal)) {
+                    AddError(AssemblyErrorCode.DuplicatedSymbol, $"{symbolName} is already defined, can't be declared as an external symbol");
+                }
+                else {
+                    //In case the symbol first appeared as part of an expression
+                    //and was therefore of type "Unknown"
+                    existingSymbol.Type = SymbolType.External;
+                    symbolNames.Add(symbolName);
                 }
             }
 
-            return new ExternalDeclarationLine() { SymbolName = symbolName };
+            symbolNames = symbolNames.DistinctBy(x => x, StringCaseInsensitiveComparer.Instance).ToList();
+
+            if(buildType == BuildType.Automatic) {
+                SetBuildType(BuildType.Relocatable);
+            }
+            else if(buildType == BuildType.Absolute) {
+                if(symbolNames.Count == 1) {
+                    AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Symbol {symbolNames[0].ToUpper()} is declared as external, but that has no effect when the output type is absolute");
+                }
+                else {
+                    var symbolsUpper = symbolNames.Select(s => s.ToUpper());
+                    AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Symbols {string.Join(", ", symbolsUpper)} are declared as external, but that has no effect when the output type is absolute");
+                }
+            }
+
+            return new ExternalDeclarationLine() { SymbolNames = symbolNames.ToArray() };
         }
 
         static ProcessedSourceLine ProcessPublicDeclarationLine(string opcode, SourceLineWalker walker)
@@ -399,6 +411,8 @@ namespace Konamiman.Nestor80.Assembler
                     symbolNames.Add(symbolName);
                 }
             }
+
+            symbolNames = symbolNames.DistinctBy(x => x, StringCaseInsensitiveComparer.Instance).ToList();
 
             if(buildType == BuildType.Automatic) {
                 SetBuildType(BuildType.Relocatable);
