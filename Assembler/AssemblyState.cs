@@ -117,24 +117,18 @@ namespace Konamiman.Nestor80.Assembler
         };
 
         private AddressType locationAreaBeforePhase;
-        private AddressType _CurrentLocationArea;
-        public AddressType CurrentLocationArea 
-        {
-            get => IsCurrentlyPhased ? AddressType.ASEG : _CurrentLocationArea;
-            private set
-            {
-                _CurrentLocationArea = value;
-            }
-        }
 
-        public void EnterPhase(ushort address)
+        public AddressType CurrentLocationArea { get; private set; }
+
+        public void EnterPhase(Address address)
         {
             if(IsCurrentlyPhased) {
                 throw new InvalidOperationException($"{nameof(EnterPhase)} isn't intended to be called while already in .PHASE mode");
             }
 
-            locationAreaBeforePhase = _CurrentLocationArea;
-            CurrentPhasedLocationPointer = address;
+            locationAreaBeforePhase = CurrentLocationArea;
+            CurrentLocationArea = address.Type;
+            CurrentPhasedLocationPointer = address.Value;
         }
 
         public void ExitPhase()
@@ -144,7 +138,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             CurrentPhasedLocationPointer = null;
-            _CurrentLocationArea = locationAreaBeforePhase;
+            CurrentLocationArea = locationAreaBeforePhase;
         }
 
         private ushort currentDephasedLocationPointer;

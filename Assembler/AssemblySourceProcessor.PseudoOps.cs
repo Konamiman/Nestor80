@@ -1299,14 +1299,8 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            if(!phaseAddress.IsAbsolute) {
-                AddError(AssemblyErrorCode.InvalidArgument, $"Invalid expression for {opcode.ToUpper()}: the value must be absolute");
-                walker.DiscardRemaining();
-                return new PhaseLine();
-            }
-
-            state.EnterPhase(phaseAddress.Value);
-            return new PhaseLine() { NewLocationArea = AddressType.ASEG, NewLocationCounter = state.CurrentLocationPointer };
+            state.EnterPhase(phaseAddress);
+            return new PhaseLine() { NewLocationArea = state.CurrentLocationArea, NewLocationCounter = state.CurrentLocationPointer };
         }
 
         static ProcessedSourceLine ProcessDephaseLine(string opcode, SourceLineWalker walker)
