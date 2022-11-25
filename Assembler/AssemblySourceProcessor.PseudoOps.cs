@@ -92,7 +92,8 @@ namespace Konamiman.Nestor80.Assembler
             { "IRPC", ProcessIrpcLine },
             { "EXITM", ProcessExitmLine },
             { "CONTM", ProcessContmLine },
-            { "IRPS", ProcessIrpsLine }
+            { "IRPS", ProcessIrpsLine },
+            { "LOCAL", ProcessLocalLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -345,7 +346,7 @@ namespace Konamiman.Nestor80.Assembler
                     AddError(AssemblyErrorCode.InvalidLabel, $"{symbolName} is not a valid external symbol name, it contains invalid characters");
                 }
 
-                var existingSymbol = state.GetSymbol(symbolName);
+                var existingSymbol = state.GetSymbol(ref symbolName);
                 if(existingSymbol is null) {
                     state.AddSymbol(symbolName, type: SymbolType.External);
                     symbolNames.Add(symbolName);
@@ -398,7 +399,7 @@ namespace Konamiman.Nestor80.Assembler
                     continue;
                 }
 
-                var existingSymbol = state.GetSymbol(symbolName);
+                var existingSymbol = state.GetSymbol(ref symbolName);
                 if(existingSymbol is null) {
                     state.AddSymbol(symbolName, SymbolType.Unknown, isPublic: true);
                     symbolNames.Add(symbolName);
@@ -510,7 +511,7 @@ namespace Konamiman.Nestor80.Assembler
             line.ValueArea = value.Type;
             line.Value = value.Value;
 
-            var symbol = state.GetSymbol(name);
+            var symbol = state.GetSymbol(ref name);
 
             if(symbol is null) {
                 if(z80RegisterNames.Contains(name, StringComparer.OrdinalIgnoreCase)) {
@@ -1373,9 +1374,8 @@ namespace Konamiman.Nestor80.Assembler
                 var symbol = walker.ExtractExpression();
                 if(!IsValidSymbolName(symbol)) {
                     AddError(AssemblyErrorCode.InvalidLabel, $"'{symbol}' is not a valid symbol name");
-                    return new RootLine();
                 }
-                if(symbol != "") {
+                else if(symbol != "") {
                     symbols.Add(symbol);
                 }
             }
@@ -1633,6 +1633,39 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return new ContinueMacroLine();
+        }
+
+        static ProcessedSourceLine ProcessLocalLine(string opcode, SourceLineWalker walker)
+        {
+            if(!state.ExpandingNamedMacro) {
+                AddError(AssemblyErrorCode.LocalOutOfMacro, $"{opcode.ToUpper()} can't be used outside of a named macro");
+                return new LocalLine();
+            }
+            else if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires one or more symbol names as argument");
+                return new RootLine();
+            }
+
+            var symbols = new List<string>();
+            while(!walker.AtEndOfLine) {
+                var symbol = walker.ExtractExpression();
+                if(!IsValidSymbolName(symbol)) {
+                    AddError(AssemblyErrorCode.InvalidLabel, $"'{symbol}' is not a valid symbol name");
+                }
+                else if(symbol != "") {
+                    symbols.Add(symbol);
+                }
+            }
+
+            var symbolsArray = symbols.Distinct(StringCaseInsensitiveComparer.Instance).ToArray();
+            var macroExpansionLine = (NamedMacroExpansionState)state.CurrentMacroExpansionState;
+            if(macroExpansionLine.LocalSymbols is not null) {
+                symbolsArray = symbolsArray.Concat(macroExpansionLine.LocalSymbols).Distinct(StringCaseInsensitiveComparer.Instance).ToArray();
+            }
+
+            macroExpansionLine.LocalSymbols = symbolsArray;
+
+            return new LocalLine() { SymbolNames = symbolsArray };
         }
     }
 }

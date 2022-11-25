@@ -19,6 +19,8 @@ namespace Konamiman.Nestor80.Assembler
             remainingLinesCount = templateLines.Length;
         }
 
+        public string[] LocalSymbols { get; set; }
+
         private readonly string[] parameters;
 
         private int remainingLinesCount;
@@ -26,6 +28,28 @@ namespace Konamiman.Nestor80.Assembler
         public override bool HasMore => remainingLinesCount > 0;
 
         public string MacroName { get; }
+
+        private Dictionary<string, string> processedLocalSymbols = new(StringCaseInsensitiveComparer.Instance);
+
+        public bool MaybeConvertLocalSymbolName(ref string symbolName, int newLocalSymbolNumber)
+        {
+            if(LocalSymbols is null) {
+                return false;
+            }
+
+            if(!LocalSymbols.Contains(symbolName, StringCaseInsensitiveComparer.Instance)) {
+                return false;
+            }
+
+            if(processedLocalSymbols.ContainsKey(symbolName)) {
+                symbolName = processedLocalSymbols[symbolName];
+                return false;
+            }
+
+            processedLocalSymbols[symbolName] = $"..{newLocalSymbolNumber:X4}";
+            symbolName = processedLocalSymbols[symbolName];
+            return true;
+        }
 
         public override string GetNextSourceLine()
         {

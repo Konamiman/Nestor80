@@ -198,7 +198,7 @@ namespace Konamiman.Nestor80.Assembler
                     //Since this runs before processing the source code,
                     //if the symbol exists it must have been added by this same method,
                     //thus it's a DEFL and can be safely redefined.
-                    state.GetSymbol(symbol).Value = Address.Absolute(value);
+                    state.GetSymbolWithoutLocalNameReplacement(symbol).Value = Address.Absolute(value);
                 }
                 else {
                     state.AddSymbol(symbol, SymbolType.Defl, Address.Absolute(value));
@@ -563,7 +563,7 @@ namespace Konamiman.Nestor80.Assembler
 
             foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
                 var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => new { s.SymbolName, IsRoot = s.IsRoot || s.IsExternal });
-                var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbol(s.IsRoot ? s.SymbolName : state.Modularize(s.SymbolName)));
+                var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbolWithoutLocalNameReplacement(s.IsRoot ? s.SymbolName : state.Modularize(s.SymbolName)));
                 var hasExternalsOutsideTypeOperator = false;
                 Address expressionValue = null;
 
@@ -631,7 +631,7 @@ namespace Konamiman.Nestor80.Assembler
                     items.Add(LinkItem.ForAddressReference(ad.Type, ad.Value));
                 }
                 else if(part is SymbolReference sr) {
-                    var symbol = state.GetSymbol(sr.SymbolName);
+                    var symbol = state.GetSymbolWithoutLocalNameReplacement(sr.SymbolName);
                     if(symbol is null) {
                         throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: {symbol} doesn't exist (this should have been catched earlier)");
                     }
@@ -666,17 +666,17 @@ namespace Konamiman.Nestor80.Assembler
         private static SymbolInfo GetSymbolForExpression(string name, bool isExternal, bool isRoot)
         {
             if(name == "$") {
-                return new SymbolInfo() { Name = "$", Value = Address.Absolute(state.CurrentLocationPointer) };
+                return new SymbolInfo() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
             }
 
             if(!isRoot && !isExternal) {
                 name = state.Modularize(name);
             }
 
-            var symbol = state.GetSymbol(name);
+            var symbol = state.GetSymbol(ref name);
             if(symbol is null) {
                 state.AddSymbol(name, isExternal ? SymbolType.External : SymbolType.Unknown);
-                symbol = state.GetSymbol(name);
+                symbol = state.GetSymbolWithoutLocalNameReplacement(name);
 
                 if(isExternal) {
                     if(buildType == BuildType.Automatic) {
@@ -704,7 +704,7 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");
             }
 
-            var symbol = state.GetSymbol(labelValue);
+            var symbol = state.GetSymbol(ref labelValue);
             if(symbol == null) {
                 if(isPublic && !externalSymbolRegex.IsMatch(labelValue)) {
                     AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
