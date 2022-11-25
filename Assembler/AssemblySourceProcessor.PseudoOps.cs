@@ -1496,7 +1496,7 @@ namespace Konamiman.Nestor80.Assembler
                         AddError(AssemblyErrorCode.InvalidForRelocatable, $"Expressions used as parameters for {opcode.ToUpper()} must be absolute, '{arg}' evaluates to {argValue}");
                         return false;
                     }
-                    macroExpansionParameters[i] = argValue.Value.ToString();
+                    macroExpansionParameters[i] = Expression.NumberToStringInCurrentRadix(argValue.Value);
                 }
                 catch(InvalidExpressionException ex) {
                     AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{arg}' for {opcode.ToUpper()}: {ex.Message}");

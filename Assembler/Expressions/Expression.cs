@@ -320,6 +320,35 @@ namespace Konamiman.Nestor80.Assembler
             return result;
         }
 
+        public static string NumberToStringInCurrentRadix(int number)
+        {
+            string result;
+            if(DefaultRadix is 2 or 8 or 10 or 16) {
+                result = Convert.ToString(number, DefaultRadix).ToUpper();
+            }
+            else {
+                int i = 16;
+                char[] buffer = new char[16];
+
+                if(number % DefaultRadix > 9) {
+                    buffer[--i] = '0';
+                }
+                do {
+                    buffer[--i] = hexChars[number % DefaultRadix];
+                    number /= DefaultRadix;
+                }
+                while(number > 0);
+
+                var resultLength = 16 - i;
+                char[] resultChars = new char[16 - i];
+                Array.Copy(buffer, i, resultChars, 0, resultLength);
+
+                result = new string(resultChars);
+            }
+
+            return result[0] > '9' ? "0" + result : result;
+        }
+
         private static void ProcessPlusOrMinus(char currentChar)
         {
             if(lastExtractedPart is null or ArithmeticOperator or OpeningParenthesis)
@@ -463,7 +492,9 @@ namespace Konamiman.Nestor80.Assembler
             { 'A', 10 }, { 'B', 11 }, { 'C', 12 }, { 'D', 13 }, { 'E', 14 }
         };
 
-   
+        private static readonly char[] hexChars = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+
+
         private static void AddExpressionPart(IExpressionPart part)
         {
             parts.Add(part);

@@ -31,7 +31,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private Dictionary<string, string> processedLocalSymbols = new(StringCaseInsensitiveComparer.Instance);
 
-        public bool MaybeConvertLocalSymbolName(ref string symbolName, int newLocalSymbolNumber)
+        public bool MaybeConvertLocalSymbolName(ref string symbolName, ref ushort newLocalSymbolNumber)
         {
             if(LocalSymbols is null) {
                 return false;
@@ -43,11 +43,12 @@ namespace Konamiman.Nestor80.Assembler
 
             if(processedLocalSymbols.ContainsKey(symbolName)) {
                 symbolName = processedLocalSymbols[symbolName];
-                return false;
+                return true;
             }
 
             processedLocalSymbols[symbolName] = $"..{newLocalSymbolNumber:X4}";
             symbolName = processedLocalSymbols[symbolName];
+            newLocalSymbolNumber++;
             return true;
         }
 

@@ -295,9 +295,16 @@ namespace Konamiman.Nestor80.Assembler
         public SymbolInfo GetSymbol(ref string name)
         {
             if(CurrentMacroExpansionState is NamedMacroExpansionState nmes) {
-                var replaced = nmes.MaybeConvertLocalSymbolName(ref name, nextLocalSymbolNumber);
-                if(replaced) {
-                    nextLocalSymbolNumber++;
+                var replaced = nmes.MaybeConvertLocalSymbolName(ref name, ref nextLocalSymbolNumber);
+                if(!replaced) {
+                    foreach(var state in previousExpansionStates) {
+                        if(state is NamedMacroExpansionState nmes2) {
+                            replaced = nmes2.MaybeConvertLocalSymbolName(ref name, ref nextLocalSymbolNumber);
+                            if(replaced) {
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
