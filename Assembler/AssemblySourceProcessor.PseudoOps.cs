@@ -135,8 +135,9 @@ namespace Konamiman.Nestor80.Assembler
                         continue;
                     }
                 }
+                Expression expression = null;
                 try {
-                    var expression = state.GetExpressionFor(expressionText, forDefb: isByte);
+                    expression = state.GetExpressionFor(expressionText, forDefb: isByte);
 
                     if(expression.IsRawBytesOutput) {
                         outputBytes.AddRange((RawBytesOutput)expression.Parts[0]);
@@ -164,6 +165,11 @@ namespace Konamiman.Nestor80.Assembler
                         AddZero();
                         relocatables.Add(new RelocatableAddress() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value });
                     }
+                }
+                catch(ExpressionContainsExternalReferencesException) {
+                    AddZero();
+                    state.RegisterPendingExpression(line, expression, index, argumentType: isByte ? CpuInstrArgType.Byte : CpuInstrArgType.Word);
+                    if(!isByte) index++;
                 }
                 catch(InvalidExpressionException ex) {
                     AddZero();

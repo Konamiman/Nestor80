@@ -29,6 +29,8 @@ namespace Konamiman.Nestor80.Assembler
         private static int errorsGenerated = 0;
         private static string programName = null;
 
+        private static int namedMacroInFalseConditionalNestingLevel = 0;
+
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
             "AF", "HL", "BC", "DE", "IX", "IY",
@@ -119,7 +121,8 @@ namespace Konamiman.Nestor80.Assembler
                 DoPass();
                 if(!state.HasErrors) {
                     state.SwitchToPass2(buildType);
-                    
+                    namedMacroInFalseConditionalNestingLevel = 0;
+
                     if(Pass2Started is not null) {
                         Pass2Started(null, EventArgs.Empty);
                     }
@@ -392,6 +395,37 @@ namespace Konamiman.Nestor80.Assembler
                 symbol = walker.ExtractSymbol();
             }
 
+            // Normally, when we are inside a false conditional we still need to process IF and ENDIF
+            // statements so as to properly keep the conditional block "state machine".
+            // However, if such statements are inside a macro definition these must be skipped. Example:
+            //
+            // if 0
+            // foo macro bar
+            // if something eq fizz&bar   --> This must NOT be processed! (and would yield an "invalid symbol fizz&bar" anyway)
+            // ;some code
+            // endif  --> This must NOT be processed!
+            // endm
+            // endif  --> This must be processed as the end of the "if 0"
+            //
+            // Although nested named macro definitions are not allowed we use a macro nesting level variable
+            // instead of a "inside named macro definition" boolean for robudstness/consistency.
+            if(state.InFalseConditional) {
+                if(symbol.Equals("ENDM", StringComparison.OrdinalIgnoreCase) && namedMacroInFalseConditionalNestingLevel > 0) {
+                    namedMacroInFalseConditionalNestingLevel--;
+                }
+                else if(label is not null && symbol.Equals("MACRO", StringComparison.OrdinalIgnoreCase)) {
+                    namedMacroInFalseConditionalNestingLevel++;
+                }
+                else if(label is null) {
+                    walker.BackupPointer();
+                    var symbol2 = walker.ExtractSymbol();
+                    if(symbol2 is not null && symbol2.Equals("MACRO", StringComparison.OrdinalIgnoreCase)) {
+                        namedMacroInFalseConditionalNestingLevel++;
+                    }
+                    walker.RestorePointer();
+                }
+            }
+
             // Constant definition check must go before any other opcode check,
             // since pseudo-ops and cpu instructions are valid constant names too
             // (but only if no label is defined in the line)
@@ -428,7 +462,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(state.InFalseConditional) {
-                if(conditionalInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
+                if(conditionalInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase) && namedMacroInFalseConditionalNestingLevel == 0) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
