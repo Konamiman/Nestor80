@@ -388,7 +388,12 @@ namespace Konamiman.Nestor80.Assembler
             var theString = match.Value;
             var matchLength = theString.Length;
             if(escapesAllowed) {
-                theString = Regex.Unescape(theString);
+                try {
+                    theString = Regex.Unescape(theString);
+                }
+                catch(Exception ex) {
+                    Throw($"Error when parsing string: {ex.Message}");
+                }
             }
             else if(match.Groups["quot"].Success) {
                 theString = theString.Replace(doubleDelimiters[delimiter], singleDelimiters[delimiter]);

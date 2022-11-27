@@ -47,7 +47,11 @@ namespace Konamiman.Nestor80.Assembler
         };
 
         private static readonly string[] macroDefinitionOrExpansionInstructions = new[] {
-            "MACRO", "REPT", "IRP", "IRPC"
+            "MACRO", "REPT", "IRP", "IRPC", "IRPS"
+        };
+
+        private static readonly string[] macroDefinitionOrExpansionInstructionsMinusNamed = new[] {
+            "REPT", "IRP", "IRPC", "IRPS"
         };
 
         private static readonly string[] instructionsNeedingPass2Reevaluation;
@@ -332,7 +336,7 @@ namespace Konamiman.Nestor80.Assembler
 
             string label = null;
             string opcode = null;
-            var symbol = walker.ExtractSymbol();
+            var symbol = walker.ExtractSymbol(colonIsDelimiter: true);
 
             if(definingMacro) {
                 opcode = symbol;
@@ -407,22 +411,33 @@ namespace Konamiman.Nestor80.Assembler
             // endm
             // endif  --> This must be processed as the end of the "if 0"
             //
-            // Although nested named macro definitions are not allowed we use a macro nesting level variable
-            // instead of a "inside named macro definition" boolean for robudstness/consistency.
+            // The logic is a bit convoluted because we need to take in account REPTs inside the named macro too
+            // (we keep a count of "rept inside named macro inside alse conditional nesting level").
+            // There are most likely even more complicated cases that aren't properly handled.
             if(state.InFalseConditional) {
-                if(symbol.Equals("ENDM", StringComparison.OrdinalIgnoreCase) && namedMacroInFalseConditionalNestingLevel > 0) {
-                    namedMacroInFalseConditionalNestingLevel--;
-                }
-                else if(label is not null && symbol.Equals("MACRO", StringComparison.OrdinalIgnoreCase)) {
-                    namedMacroInFalseConditionalNestingLevel++;
-                }
-                else if(label is null) {
-                    walker.BackupPointer();
-                    var symbol2 = walker.ExtractSymbol();
-                    if(symbol2 is not null && symbol2.Equals("MACRO", StringComparison.OrdinalIgnoreCase)) {
-                        namedMacroInFalseConditionalNestingLevel++;
+                if(symbol.Equals("ENDM", StringComparison.OrdinalIgnoreCase)) {
+                    if(state.IrpInsideNamedMacroInsideFalseConditionalNestingLevel > 0) {
+                        state.IrpInsideNamedMacroInsideFalseConditionalNestingLevel--;
                     }
+                    else {
+                        state.InsideNamedMacroInsideFalseConditional = false;
+                    }
+                }
+                else if(state.InsideNamedMacroInsideFalseConditional) {
+                    if(macroDefinitionOrExpansionInstructionsMinusNamed.Contains(symbol, StringCaseInsensitiveComparer.Instance)) {
+                        state.IrpInsideNamedMacroInsideFalseConditionalNestingLevel++;
+                    }
+                }
+                else if(symbol.Equals("MACRO", StringComparison.OrdinalIgnoreCase)) {
+                    state.InsideNamedMacroInsideFalseConditional = true;
+                }
+                else if(label is null && !walker.AtEndOfLine) {
+                    walker.BackupPointer();
+                    var instruction = walker.ExtractSymbol();
                     walker.RestorePointer();
+                    if(instruction.Equals("MACRO", StringComparison.OrdinalIgnoreCase)) {
+                        state.InsideNamedMacroInsideFalseConditional = true;
+                    }
                 }
             }
 
@@ -444,7 +459,7 @@ namespace Konamiman.Nestor80.Assembler
                     opcode = symbol;
                     processedLine = ProcessNamedMacroDefinitionLine(name: label.TrimEnd(':'), walker: walker);
                 }
-                else if(label is null) {
+                else if(label is null && !PseudoOpProcessors.ContainsKey(symbol)) {
                     walker.BackupPointer();
                     var symbol2 = walker.ExtractSymbol();
                     if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
@@ -462,7 +477,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(state.InFalseConditional) {
-                if(conditionalInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase) && namedMacroInFalseConditionalNestingLevel == 0) {
+                if(conditionalInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase) && !state.InsideNamedMacroInsideFalseConditional) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);

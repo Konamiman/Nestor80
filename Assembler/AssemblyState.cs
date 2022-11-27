@@ -38,6 +38,10 @@ namespace Konamiman.Nestor80.Assembler
 
         private ushort nextLocalSymbolNumber = 0;
 
+        public bool InsideNamedMacroInsideFalseConditional { get; set; } = false;
+
+        public int IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
+
         public List<ProcessedSourceLine> ProcessedLines { get; private set; } = new();
 
         public Dictionary<string, NamedMacroDefinitionLine> NamedMacros { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -84,6 +88,8 @@ namespace Konamiman.Nestor80.Assembler
             currentRootSymbols = null;
             CurrentConditionalBlockType = ConditionalBlockType.None;
             nextLocalSymbolNumber = 0;
+            InsideNamedMacroInsideFalseConditional = false;
+            IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
             modules.Clear();
 
             SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);

@@ -272,6 +272,8 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void WriteLinkItemsGroup(LinkItemsGroup group)
         {
+            //TODO: Optimize expressions like "0*256+FOO##", they should generate just "chain external FOO"
+
             if(!group.IsByte && group.LinkItems.Length == 1) {
                 var item = group.LinkItems[0];
                 if(!item.IsExternalReference) {

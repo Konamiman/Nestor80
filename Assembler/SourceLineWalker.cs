@@ -85,15 +85,25 @@ namespace Konamiman.Nestor80.Assembler
         /// </summary>
         /// <remarks>A symbol is defined as a sequence of characters that are not spaces or tabs.</remarks>
         /// <returns>The extracted symbol.</returns>
-        public string ExtractSymbol()
+        public string ExtractSymbol(bool colonIsDelimiter = false)
         {
             if(AtEndOfLine) {
                 return null;
             }
 
             var originalPointer = linePointer;
-            while(!AtEndOfLine && !PointingToSpace()) {
-                linePointer++;
+            if(colonIsDelimiter) {
+                while(!AtEndOfLine && !PointingToSpaceOrColon()) {
+                    linePointer++;
+                }
+                while(!AtEndOfLine && PointingToColon()) {
+                    linePointer++;
+                }
+            }
+            else {
+                while(!AtEndOfLine && !PointingToSpace()) {
+                    linePointer++;
+                }
             }
 
             SkipBlanks();
@@ -332,6 +342,10 @@ namespace Konamiman.Nestor80.Assembler
             var extractingExpression = false;
             var nextCharIsLiteral = false;
             var spaceFoundAfterArg = false;
+            char stringDelimiter = '\0';
+            bool insideString = false;
+            var lastCharWasStringDelimiter = false;
+            var lastCharWasBackslash = false;
             var args = new List<string>();
             var chars = new List<char>();
             char theChar = ' ';
@@ -357,6 +371,37 @@ namespace Konamiman.Nestor80.Assembler
 
                 theChar = sourceLine[linePointer];
                 linePointer++;
+
+                if(insideString) {
+                    if(theChar == '\\' && AllowEscapesInStrings && !lastCharWasBackslash) {
+                        lastCharWasBackslash = true;
+                    }
+                    else if(theChar == stringDelimiter) {
+                        if(lastCharWasBackslash) {
+                            lastCharWasBackslash = false;
+                        }
+                        else if(!lastCharWasStringDelimiter) {
+                            insideString = false;
+                            lastCharWasStringDelimiter = false;
+                        }
+                        else {
+                            lastCharWasStringDelimiter = true;
+                        }
+                    }
+                    else {
+                        lastCharWasStringDelimiter = false;
+                        lastCharWasBackslash = false;
+                    }
+
+                    chars.Add(theChar);
+                    continue;
+                }
+                else if(theChar == '"' || theChar == '\'') {
+                    insideString = true;
+                    stringDelimiter = theChar;
+                    chars.Add(theChar);
+                    continue;
+                }
 
                 if(extractingExpression) {
                     if(theChar is ',') {
@@ -387,7 +432,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
 
-                if(theChar is '>') {
+                if(theChar is '>' && !insideString) {
                     delimiterNestingLevel--;
                     if(delimiterNestingLevel == 0) {
                         RegisterArg();
@@ -400,7 +445,7 @@ namespace Konamiman.Nestor80.Assembler
                     continue;
                 }
 
-                if(theChar is '<') {
+                if(theChar is '<' && !insideString) {
                     nextCharIsLiteral = false;
                     if(delimiterNestingLevel > 1) {
                         chars.Add(theChar);
@@ -602,6 +647,10 @@ namespace Konamiman.Nestor80.Assembler
         private bool PointingToSpace() => !AtEndOfLine && (sourceLine[linePointer] == ' ' || sourceLine[linePointer] == '\t');
 
         private bool PointingToComma() => !AtEndOfLine && sourceLine[linePointer] == ',';
+
+        private bool PointingToColon() => !AtEndOfLine && sourceLine[linePointer] == ':';
+
+        private bool PointingToSpaceOrColon() => !AtEndOfLine && (sourceLine[linePointer] is ' ' or '\t' or ':');
 
         private bool PointingToLessThan() => !AtEndOfLine && sourceLine[linePointer] == '<';
 

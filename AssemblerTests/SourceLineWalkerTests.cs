@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
 using NUnit.Framework;
 
 namespace Konamiman.Nestor80.AssemblerTests
@@ -252,6 +253,9 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("a,b;c", new[] { "a", "b" }, false)]
         [TestCase("<a,b ;c>", new[] { "a,b ;c" }, false)]
 
+        //Strings
+        [TestCase("'a,b','c'',d',\"e,\"\"f\"", new[] { "'a,b'", "'c'',d'", "\"e,\"\"f\"" }, false)]
+
         //A bit of everything
         [TestCase("< a, , !, ! , < a , !b > <b<c<d>>>, ef> > whatever", new[] { "a", "", ",", " ", " a , b ", "b<c<d>>", "ef" })]
         public void ExtractArgsListForIrp(string line, string[] expectedArgsList, bool requireDelimiter=true)
@@ -266,6 +270,17 @@ namespace Konamiman.Nestor80.AssemblerTests
 
             var sut = new SourceLineWalker(line);
             var (actual, _) = sut.ExtractArgsListForIrp(requireDelimiter);
+            CollectionAssert.AreEqual(expectedArgsList, actual);
+        }
+
+        [Test]
+        [TestCase("'a,b','c\\',d',\"e,\"\\\"f\"", new[] { "'a,b'", "'c\\',d'", "\"e,\"\\\"f\"" })]
+
+        public void ExtractArgsListForIrp_EscapesInStrings(string line, string[] expectedArgsList)
+        {
+            SourceLineWalker.AllowEscapesInStrings = true;
+            var sut = new SourceLineWalker(line);
+            var (actual, _) = sut.ExtractArgsListForIrp(false);
             CollectionAssert.AreEqual(expectedArgsList, actual);
         }
 

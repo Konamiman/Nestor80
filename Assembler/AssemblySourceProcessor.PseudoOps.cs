@@ -140,7 +140,9 @@ namespace Konamiman.Nestor80.Assembler
                     expression = state.GetExpressionFor(expressionText, forDefb: isByte);
 
                     if(expression.IsRawBytesOutput) {
-                        outputBytes.AddRange((RawBytesOutput)expression.Parts[0]);
+                        var part = (RawBytesOutput)expression.Parts[0];
+                        index += part.Length-1;
+                        outputBytes.AddRange(part);
                         continue;
                     }
 
@@ -1197,7 +1199,11 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessIfLine(string opcode, Func<bool?> evaluator)
         {
-            var mustEvaluateTo = evaluator();
+            // From inside a false conditional we can't evaluate an expression that isn't intended
+            // to be evaluated at that point as it could lead to weird errors. Example:
+            // ifdef FOO
+            // if FOO eq 34 --> This would throw an error if FOO is not defined
+            var mustEvaluateTo = state.InFalseConditional ? false : evaluator();
             if(mustEvaluateTo is not null) {
                 state.PushAndSetConditionalBlock(mustEvaluateTo.Value ? ConditionalBlockType.TrueIf : ConditionalBlockType.FalseIf);
             }
