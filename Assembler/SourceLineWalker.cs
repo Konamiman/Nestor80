@@ -357,7 +357,7 @@ namespace Konamiman.Nestor80.Assembler
                     extractingExpression = false;
                 }
                 var arg = new string(chars.ToArray());
-                args.Add(arg);
+                args.Add(arg.Trim());
                 chars.Clear();
                 spaceFoundAfterArg = theChar is ' ' or '\t';
             }
@@ -404,7 +404,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(extractingExpression) {
-                    if(theChar is ',') {
+                    if(theChar is ',' or ';') {
                         RegisterArg();
                         continue;
                     } 
