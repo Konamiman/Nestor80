@@ -524,13 +524,13 @@ namespace Konamiman.Nestor80.Assembler
                     opcode = symbol[..6];
                     processedLine = ProcessLegacySetListingSubtitle(opcode, walker, symbol[6..] + (walker.AtEndOfLine ? "" : " " + walker.GetUntil(')')));
                 }
-                else if(state.Configuration.AllowBareExpressions) {
-                    opcode = "RAW DB";
-                    processedLine = ProcessDefbLine(opcode, new SourceLineWalker(symbol + " " + walker.GetRemainingRaw()));
-                }
                 else if(state.NamedMacroExists(symbol)) {
                     opcode = "MACROEX";
                     processedLine = ProcessNamedMacroExpansion(opcode, symbol, walker);
+                }
+                else if(state.Configuration.AllowBareExpressions) {
+                    opcode = "RAW DB";
+                    processedLine = ProcessDefbLine(opcode, new SourceLineWalker(symbol + " " + walker.GetRemainingRaw()));
                 }
                 else {
                     opcode = symbol;

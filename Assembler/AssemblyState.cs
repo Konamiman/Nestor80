@@ -101,7 +101,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(streamCanSeek) {
                 SourceStreamReader.BaseStream.Seek(0, SeekOrigin.Begin);
-                SourceStreamReader.DiscardBufferedData();
+                SourceStreamReader = new StreamReader(SourceStreamReader.BaseStream, sourceStreamEncoding, true, 4096);
             }
             else {
                 var allSourceText = string.Join("\n", MainSourceLines);
@@ -653,11 +653,18 @@ namespace Konamiman.Nestor80.Assembler
 
         public Expression GetExpressionFor(string sourceLine, bool forDefb = false)
         {
+            Expression expression;
+            if(sourceLine.Contains('$')) {
+                expression = Expression.Parse(sourceLine, forDefb);
+                expression.ValidateAndPostifixize();
+                return expression;
+            }
+
             if(expressionsBySource.ContainsKey((sourceLine, forDefb))) {
                 return expressionsBySource[(sourceLine, forDefb)];
             }
 
-            var expression = Expression.Parse(sourceLine, forDefb);
+            expression = Expression.Parse(sourceLine, forDefb);
             expression.ValidateAndPostifixize();
             expressionsBySource.Add((sourceLine, forDefb), expression);
             return expression;

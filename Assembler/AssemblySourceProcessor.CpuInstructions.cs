@@ -90,9 +90,21 @@ namespace Konamiman.Nestor80.Assembler
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
 
+                // Since the expression will be cached we need to register all the referenced symbols now,
+                // even if they are unknown so far, so that in pass 2 the processing of pending expressions
+                // will work (it would throw a null reference otherwise when attempting state.GetSymbol);
+                // GetSymbolForExpression will effectively register the symbol if it's still unknown.
+                foreach(var s in argument1Expression.ReferencedSymbols) {
+                    GetSymbolForExpression(s.SymbolName, s.IsExternal, s.IsRoot);
+                }
+
                 var argument2Expression = GetExpressionForInstructionArgument(opcode, secondArgument);
                 if(argument2Expression is null) {
                     return new CpuInstructionLine() { IsInvalid = true };
+                }
+
+                foreach(var s in argument2Expression.ReferencedSymbols) {
+                    GetSymbolForExpression(s.SymbolName, s.IsExternal, s.IsRoot);
                 }
 
                 instructionBytes = ldIxyByteInstructions[firstArgumentType].ToArray();

@@ -644,7 +644,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private bool PhysicalEndOfLineReached => linePointer >= lineLength;
 
-        private bool PointingToSpace() => !AtEndOfLine && (sourceLine[linePointer] == ' ' || sourceLine[linePointer] == '\t');
+        private bool PointingToSpace() => !AtEndOfLine && (sourceLine[linePointer] is ' ' or '\t');
 
         private bool PointingToComma() => !AtEndOfLine && sourceLine[linePointer] == ',';
 
