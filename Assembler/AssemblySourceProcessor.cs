@@ -736,6 +736,14 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
             }
+            else if(isExternal && !symbol.IsExternal) {
+                if(symbol.HasKnownValue) {
+                    AddError(AssemblyErrorCode.DuplicatedSymbol, $"{name.ToUpper()} is already defined, can't be declared as an external symbol");
+                }
+                else {
+                    symbol.Type = SymbolType.External;
+                }
+            }
 
             return symbol;
         }
