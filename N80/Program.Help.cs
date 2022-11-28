@@ -40,18 +40,18 @@ namespace Konamiman.Nestor80.N80
                 If the path starts with '$/' it will be considered relative to
                 the directory of the source file.
             
-                If the path is just '$' then the file will be geenerated in
+                If the path is just '$' then the file will be generated in
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
             Arguments can be specified as follows (and are combined in that order):
             
-            - A N80_ARGS environment variable (can be disabled with --no-env-args)
-            - A .N80 file in the same directory of the input file
+            - A N80_ARGS environment variable (can be disabled with --no-env-args).
+            - A .N80 file in the same directory of the input file.
               (can be disabled with --no-default-file-args); see --arguments-file
               for the file contents format.
-            - The command line
-            - Argument files (with --argument-file)
+            - The command line.
+            - Argument files (with --argument-file).
             
             If you need to include a space as part of an argument (e.g. a directory name) 
             in N80_ARGS or in an arguments file, escape it with a backslash (so "\ "
@@ -90,7 +90,7 @@ namespace Konamiman.Nestor80.N80
             -bt, --build-type abs|rel|auto
                 The type of output to build. Default is auto.
             
-                In auto mode the build type will be set as automatic if an ORG statement is found
+                In auto mode the build type will be set as absolute if an ORG statement is found
                 in the code before a CPU instruction, a label defined as public with "::", or any
                 of the following instructions: CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DS,
                 PUBLIC, EXTRN, .REQUEST; otherwise the build type will be set as relocatable.
@@ -146,6 +146,7 @@ namespace Konamiman.Nestor80.N80
 
             -ie, --input-encoding <encoding>
                 Text encoding of the source file, it can be an encoding name or a codepage number.
+                Run N80 with the --list-encodings argument to get a list of available encodings.
                 Default is UTF-8.
 
             -me, --max-errors <count>
@@ -195,7 +196,7 @@ namespace Konamiman.Nestor80.N80
                 clear the list (so display all warnings again).
 
             -nsad, --no-show-assembly-duration
-                Don't display the time that took the assembly process and the entire process.
+                Don't display the time took by the assembly process and the entire process.
 
             -nsap, --no-silence-assembly-print
                 Display messages generated during assembly via .PRINTX, .PRINT, .PRINT1
@@ -240,7 +241,7 @@ namespace Konamiman.Nestor80.N80
                 (in other words: ignore all the previous arguments except input and output files).
 
             -sad, --show-assembly-duration
-                Display the time that took the assembly process and the entire process
+                Display the time took by the assembly process and the entire process
                 (only on successful completion).
 
             -sap, --silence-assembly-print
@@ -253,6 +254,7 @@ namespace Konamiman.Nestor80.N80
             -se, --string-encoding
                 Default text encoding to be used to convert the strings found in the source code
                 to sequences of bytes, it can be an encoding name or a codepage number.
+                Run N80 with the --list-encodings argument to get a list of available encodings.
                 Default is ASCII.
 
                 This encoding can also be change directly in the source code by using the
