@@ -373,7 +373,7 @@ namespace Konamiman.Nestor80.Assembler
             //
             //That's why we don't register the label beforehand unless the line contains only the label.
 
-            if(!definingMacro && symbol.EndsWith(':')) {
+            if(!definingMacro && symbol.EndsWith(':') && !(state.Configuration.AllowBareExpressions && symbol[0] is '"' or '\'')) {
                 if(IsValidSymbolName(symbol)) {
                     label = symbol;
                 }
@@ -742,7 +742,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void ProcessLabelDefinition(string label)
         {
-            if(label is null) {
+            if(label is null || (state.Configuration.AllowBareExpressions && label[0] is '"' or '\'')) {
                 return;
             }
 
