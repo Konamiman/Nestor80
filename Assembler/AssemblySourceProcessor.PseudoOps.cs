@@ -166,6 +166,7 @@ namespace Konamiman.Nestor80.Assembler
                     else {
                         AddZero();
                         relocatables.Add(new RelocatableAddress() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value });
+                        if(!isByte) index++;
                     }
                 }
                 catch(ExpressionContainsExternalReferencesException) {
