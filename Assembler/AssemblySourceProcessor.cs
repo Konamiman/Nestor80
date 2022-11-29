@@ -162,6 +162,18 @@ namespace Konamiman.Nestor80.Assembler
                     CommonName = s.Value?.CommonBlockName
                 }).ToArray();
 
+            var duplicateExternals = symbols.Where(s => s.Type is SymbolType.External).GroupBy(s => s.EffectiveName).Where(s => s.Count() > 1).ToArray();
+            foreach(var dupe in duplicateExternals) {
+                var names = string.Join(", ", dupe.Select(s => s.Name).ToArray());
+                AddError(AssemblyErrorCode.SameEffectiveExternal, $"External symbols {names} actually refer to the same one: {dupe.First().EffectiveName}", withLineNumber: false);
+            }
+
+            var duplicatePublics = symbols.Where(s => s.IsPublic).GroupBy(s => s.EffectiveName).Where(s => s.Count() > 1).ToArray();
+            foreach(var dupe in duplicatePublics) {
+                var names = string.Join(", ", dupe.Select(s => s.Name).ToArray());
+                AddError(AssemblyErrorCode.SameEffectivePublic, $"Public symbols {names} actually refer to the same one: {dupe.First().EffectiveName}", withLineNumber: false);
+            }
+
             if(buildType == BuildType.Automatic)
                 buildType = BuildType.Absolute;
 

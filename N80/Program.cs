@@ -875,7 +875,7 @@ namespace Konamiman.Nestor80.N80
             var errorCode = verbosityLevel >= 2 ? $"({(int)error.Code}) " : "";
 
             string lineText = null;
-            if(sourceInErrorMessage && !string.IsNullOrWhiteSpace(prefix)) {
+            if(sourceInErrorMessage && !string.IsNullOrWhiteSpace(prefix) && !string.IsNullOrWhiteSpace(error.SourceLineText)) {
                 lineText = $"{new string(' ', prefix.Length+2)}{error.SourceLineText}\r\n";
             }
 
