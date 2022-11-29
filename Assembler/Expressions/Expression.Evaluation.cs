@@ -55,9 +55,9 @@ namespace Konamiman.Nestor80.Assembler
                     Throw($"{part} can only be preceded by another operator or by (");
                 }
             }
-            else if(part is UnaryOperator ) {
-                if(!(previous is null or OpeningParenthesis)) {
-                    Throw($"{part} can only be preceded by (");
+            else if(part is UnaryOperator) {
+                if(!(previous is null or OpeningParenthesis or ArithmeticOperator)) {
+                    Throw($"{part} can only be preceded by an operator or (");
                 }
             }
             else if(part is BinaryOperator) {
