@@ -367,7 +367,7 @@ namespace Konamiman.Nestor80.Assembler
 
             if(variableArgumentValue.IsAbsolute || argType is CpuInstrArgType.OffsetFromCurrentLocation) {
                 var instructionBytes = line.OutputBytes.ToArray();
-                if(!ProcessArgumentForInstruction(argType, instructionBytes, variableArgumentValue, argBytePosition, isNegativeIxy)) {
+                if(!ProcessArgumentForInstruction(line.Opcode, argType, instructionBytes, variableArgumentValue, argBytePosition, isNegativeIxy)) {
                     return false;
                 }
                 line.OutputBytes = instructionBytes;
@@ -410,7 +410,7 @@ namespace Konamiman.Nestor80.Assembler
             return CpuParsedArgType.Number;
         }
 
-        private static bool ProcessArgumentForInstruction(CpuInstrArgType argumentType, byte[] instructionBytes, Address value, int position, bool isNegativeIxy = false)
+        private static bool ProcessArgumentForInstruction(string opcode, CpuInstrArgType argumentType, byte[] instructionBytes, Address value, int position, bool isNegativeIxy = false)
         {
             if(argumentType is CpuInstrArgType.OffsetFromCurrentLocation) {
                 if(value.Type != state.CurrentLocationArea) {
@@ -428,6 +428,10 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(argumentType is CpuInstrArgType.Byte or CpuInstrArgType.ByteInParenthesis && value.IsAbsolute) {
+                if(!value.IsValidByte) {
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid argument for {opcode.ToUpper()}: {value.Value:X4}h is not a valid byte value");
+                    return false;
+                }
                 instructionBytes[position] = value.ValueAsByte;
                 return true;
             }

@@ -154,7 +154,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else if(isByte && !value.IsValidByte) {
                         AddZero();
-                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: value {value:X4}h can't be stored as a byte");
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {value:X4}h is not a valid byte value");
                     }
                     else if(value.IsAbsolute) {
                         outputBytes.Add(value.ValueAsByte);

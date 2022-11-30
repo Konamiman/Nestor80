@@ -662,6 +662,7 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     if(expressionValue.IsAbsolute || expressionPendingEvaluation.ArgumentType == CpuInstrArgType.OffsetFromCurrentLocation) {
                         ProcessArgumentForInstruction(
+                            processedLine.Opcode,
                             expressionPendingEvaluation.ArgumentType,
                             line.OutputBytes, 
                             expressionValue, 
