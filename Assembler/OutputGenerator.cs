@@ -272,7 +272,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void WriteLinkItemsGroup(LinkItemsGroup group)
         {
-            //TODO: Optimize expressions like "0*256+FOO##", they should generate just "chain external FOO"
+            MaybeConvertToExtPlusOffset(group);
 
             if(!group.IsByte && group.LinkItems.Length == 1) {
                 var item = group.LinkItems[0];
@@ -283,8 +283,6 @@ namespace Konamiman.Nestor80.Assembler
                 locationCounters[currentLocationArea] += 2;
                 return;
             }
-
-            MaybeConvertToExtPlusOffset(group);
 
             //EXT+n, EXT-n, n+EXT, with absolute n that store two bytes, generate "External + offset"
             if(!group.IsByte && group.LinkItems.Length == 3 &&
@@ -341,10 +339,17 @@ namespace Konamiman.Nestor80.Assembler
 
             var value = MaybeEvaluate(items);
             if(value is not null) {
-                group.LinkItems = new[] {
-                    LinkItem.ForExternalReference(items.Single(i => i.IsExternalReference).GetSymbolName()),
-                    LinkItem.ForAddressReference(AddressType.ASEG, value.Value),
-                    LinkItem.ForArithmeticOperator(ArithmeticOperatorCode.Plus)
+                if(value is 0) {
+                    group.LinkItems = new[] {
+                        LinkItem.ForExternalReference(items.Single(i => i.IsExternalReference).GetSymbolName())
+                    };
+                }
+                else {
+                    group.LinkItems = new[] {
+                        LinkItem.ForExternalReference(items.Single(i => i.IsExternalReference).GetSymbolName()),
+                        LinkItem.ForAddressReference(AddressType.ASEG, value.Value),
+                        LinkItem.ForArithmeticOperator(ArithmeticOperatorCode.Plus)
+                    };
                 };
             }
         }

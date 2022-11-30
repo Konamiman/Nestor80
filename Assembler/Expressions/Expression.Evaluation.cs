@@ -180,6 +180,7 @@ namespace Konamiman.Nestor80.Assembler
 
             Address operationResult;
 
+            var processedPartsCount = 0;
             foreach(var part in Parts) {
                 var item = part;
                 if(item is UnaryOperator uop) {
@@ -225,6 +226,11 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     var address = ResolveAddressOrSymbol(item);
                     if(externalSymbolFound) {
+                        if(processedPartsCount > 0) {
+                            //At least keep what we have calculated so far
+                            Parts = Parts.Skip(processedPartsCount - 1).ToArray();
+                            Parts[0] = stack.Pop();
+                        }
                         throw new ExpressionContainsExternalReferencesException($"Symbol is external: {((SymbolReference)item).SymbolName}");
                     }
                     if(address is null) {
@@ -238,6 +244,7 @@ namespace Konamiman.Nestor80.Assembler
 
                     stack.Push(address);
                 }
+                processedPartsCount++;
             }
 
             if(stack.Count != 1) {
