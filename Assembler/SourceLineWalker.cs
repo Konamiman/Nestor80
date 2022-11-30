@@ -357,7 +357,7 @@ namespace Konamiman.Nestor80.Assembler
                     extractingExpression = false;
                 }
                 var arg = new string(chars.ToArray());
-                args.Add(arg.Trim());
+                args.Add(arg);
                 chars.Clear();
                 spaceFoundAfterArg = theChar is ' ' or '\t';
             }
