@@ -29,7 +29,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public string MacroName { get; }
 
-        private Dictionary<string, string> processedLocalSymbols = new(StringCaseInsensitiveComparer.Instance);
+        private Dictionary<string, string> processedLocalSymbols = new(StringComparer.OrdinalIgnoreCase);
 
         public bool MaybeConvertLocalSymbolName(ref string symbolName, ref ushort newLocalSymbolNumber)
         {
@@ -37,7 +37,7 @@ namespace Konamiman.Nestor80.Assembler
                 return false;
             }
 
-            if(!LocalSymbols.Contains(symbolName, StringCaseInsensitiveComparer.Instance)) {
+            if(!LocalSymbols.Contains(symbolName, StringComparer.OrdinalIgnoreCase)) {
                 return false;
             }
 

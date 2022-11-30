@@ -436,7 +436,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else if(state.InsideNamedMacroInsideFalseConditional) {
-                    if(macroDefinitionOrExpansionInstructionsMinusNamed.Contains(symbol, StringCaseInsensitiveComparer.Instance)) {
+                    if(macroDefinitionOrExpansionInstructionsMinusNamed.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
                         state.IrpInsideNamedMacroInsideFalseConditionalNestingLevel++;
                     }
                 }

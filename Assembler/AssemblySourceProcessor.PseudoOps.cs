@@ -371,7 +371,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            symbolNames = symbolNames.DistinctBy(x => x, StringCaseInsensitiveComparer.Instance).ToList();
+            symbolNames = symbolNames.DistinctBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
 
             if(buildType == BuildType.Automatic) {
                 SetBuildType(BuildType.Relocatable);
@@ -422,7 +422,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            symbolNames = symbolNames.DistinctBy(x => x, StringCaseInsensitiveComparer.Instance).ToList();
+            symbolNames = symbolNames.DistinctBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
 
             if(buildType == BuildType.Automatic) {
                 SetBuildType(BuildType.Relocatable);
@@ -1664,10 +1664,10 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            var symbolsArray = symbols.Distinct(StringCaseInsensitiveComparer.Instance).ToArray();
+            var symbolsArray = symbols.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var macroExpansionLine = (NamedMacroExpansionState)state.CurrentMacroExpansionState;
             if(macroExpansionLine.LocalSymbols is not null) {
-                symbolsArray = symbolsArray.Concat(macroExpansionLine.LocalSymbols).Distinct(StringCaseInsensitiveComparer.Instance).ToArray();
+                symbolsArray = symbolsArray.Concat(macroExpansionLine.LocalSymbols).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             }
 
             macroExpansionLine.LocalSymbols = symbolsArray;
