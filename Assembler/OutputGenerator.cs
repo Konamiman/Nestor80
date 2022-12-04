@@ -130,6 +130,7 @@ namespace Konamiman.Nestor80.Assembler
             externalChains = new Dictionary<string, Address>(StringComparer.OrdinalIgnoreCase);
             referencedExternals = new List<string>();
             ushort endAddress = 0;
+            bool changedToAseg = false;
             currentLocationArea = AddressType.CSEG;
             locationCounters = new Dictionary<AddressType, ushort>() {
                 { AddressType.CSEG, 0 },
@@ -159,6 +160,11 @@ namespace Konamiman.Nestor80.Assembler
             var lines = FlatLinesList(assemblyResult.ProcessedLines);
             foreach(var line in lines) {
                 if(line is DefineSpaceLine dsl) {
+                    if(changedToAseg) {
+                        WriteLinkItem(LinkItemType.SetLocationCounter, AddressType.ASEG, locationCounters[AddressType.ASEG]);
+                        changedToAseg = false;
+                    }
+
                     locationCounters[currentLocationArea] += dsl.Size;
                     if(dsl.Value.HasValue || initDefs) {
                         var byteToWrite = dsl.Value.GetValueOrDefault(0);
@@ -171,14 +177,28 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else if(line is ChangeAreaLine cal) {
-                    WriteLinkItem(LinkItemType.SetLocationCounter, cal.NewLocationArea, cal.NewLocationCounter);
+                    //For compatibility with Macro80 (and apparently taken in account by Link80):
+                    //When ASEG is followed by ORG, generate only one "set location counter" item;
+                    //e.g. "ASEG - org 100h" generates just "set location to 100h" instead of
+                    //"set location to 0 - set location to 100h" as is the case of CSEG and DSEG.
+                    //Failure to do so can lead to Link80 failing with "Intersecting Data area"!
+                    changedToAseg = cal.NewLocationArea is AddressType.ASEG;
+                    if(!changedToAseg) {
+                        WriteLinkItem(LinkItemType.SetLocationCounter, cal.NewLocationArea, cal.NewLocationCounter);
+                    }
                     currentLocationArea = cal.NewLocationArea;
                 }
                 else if(line is ChangeOriginLine col) {
+                    changedToAseg = false;
                     locationCounters[currentLocationArea] = col.NewLocationCounter;
                     WriteLinkItem(LinkItemType.SetLocationCounter, currentLocationArea, col.NewLocationCounter);
                 }
                 else if(line is IProducesOutput ipo) {
+                    if(changedToAseg) {
+                        WriteLinkItem(LinkItemType.SetLocationCounter, AddressType.ASEG, locationCounters[AddressType.ASEG]);
+                        changedToAseg = false;
+                    }
+
                     if(ipo.RelocatableParts.Length == 0) {
                         WriteBytes(ipo.OutputBytes);
                         locationCounters[currentLocationArea] += (ushort)ipo.OutputBytes.Length;
