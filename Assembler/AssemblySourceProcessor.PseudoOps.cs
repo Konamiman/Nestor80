@@ -1499,7 +1499,7 @@ namespace Konamiman.Nestor80.Assembler
                     continue;
                 }
 
-                var arg = macroExpansionParameters[i][1..];
+                var arg = macroExpansionParameters[i][1..].Trim();
 
                 try {
                     var argExpression = state.GetExpressionFor(arg);
