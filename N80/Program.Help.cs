@@ -229,6 +229,20 @@ namespace Konamiman.Nestor80.N80
                 Output without this argument: 1,2,9,10,0,0,0,0,0,0,5,6,7,8
                 Output with this argument: 1,2,3,4,5,6,7,8,9,10
 
+            -ofc, --output-file-case upper|lower|orig
+                Whether the casing of the output file name will be converted to lower case,
+                converted to upper case, or kept as the input file name (this is the default).
+                This argument is used only when the name of the output file is chosen as 
+                the same name of the output file (because no output file path is specified,
+                or because the specified path is a directory).
+
+                The default .BIN or .REL extension added to the output file name is affected by
+                this argument, but an extension explicitly supplied with --output-file-extension
+                is not. Example:
+
+                N80 FILE.ASM --output-file-case lower --> generates file.bin or file.rel
+                N80 FILE.ASM --output-file-case lower --output-file-extension COM --> generates file.COM
+
             -ofe, --output-file-extension [.]<extension>
                 The extension for the generated output file. This value is used only when the
                 name of the output file is chosen as the same name of the output file

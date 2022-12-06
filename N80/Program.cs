@@ -15,6 +15,10 @@ namespace Konamiman.Nestor80.N80
         const int ERR_ASSEMBLY_ERROR = 4;
         const int ERR_ASSEMBLY_FATAL = 5;
 
+        const int OF_CASE_ORIGINAL = 0;
+        const int OF_CASE_LOWER = 1;
+        const int OF_CASE_UPPER = 2;
+
         const int DEFAULT_MAX_ERRORS = 34;
 
         static string inputFilePath = null;
@@ -23,7 +27,7 @@ namespace Konamiman.Nestor80.N80
         static string outputFilePath = null;
         static bool generateOutputFile = true;
         static Encoding inputFileEncoding;
-        static bool mustChangeOutputFileExtension;
+        static bool mustProcessOutputFileName;
         static bool colorPrint;
         static bool showBanner;
         static readonly List<string> includeDirectories = new();
@@ -38,10 +42,11 @@ namespace Konamiman.Nestor80.N80
         static BuildType buildType;
         static bool stringEscapes;
         static string defaultCpu;
-        static string outputFileExtension = null;
+        static string outputFileExtension;
         static bool allowBareExpressions;
         static bool initDefs;
         static bool sourceInErrorMessage;
+        static int outputFileCase;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -343,14 +348,27 @@ namespace Konamiman.Nestor80.N80
             info += $"Expand DEFS instructions: {YesOrNo(initDefs)}\r\n";
             info += $"Show source in error messages: {YesOrNo(sourceInErrorMessage)}\r\n";
 
-            if(mustChangeOutputFileExtension) {
+            if(mustProcessOutputFileName) {
                 var outputExtension =
                     outputFileExtension ?? buildType switch {
                         BuildType.Absolute => ".BIN",
                         BuildType.Relocatable => ".REL",
                         _ => ".BIN or .REL"
                     };
+
+                if(outputFileExtension is null && outputFileCase is OF_CASE_LOWER) {
+                    outputExtension = outputExtension.ToLower();
+                }
+
                 info += $"Output file extension: {outputExtension}\r\n";
+
+                var outputFileCaseString =
+                    outputFileCase switch {
+                        OF_CASE_LOWER => "lower",
+                        OF_CASE_UPPER => "UPPER",
+                        _ => "Original"
+                    };
+                info += $"Output file case: {outputFileCaseString}";
             }
 
             PrintProgress(info, 3);
@@ -371,7 +389,7 @@ namespace Konamiman.Nestor80.N80
         static void ResetConfig()
         {
             inputFileEncoding = Encoding.UTF8;
-            mustChangeOutputFileExtension = false;
+            mustProcessOutputFileName = false;
             colorPrint = true;
             showBanner = true;
             includeDirectories.Clear();
@@ -391,6 +409,7 @@ namespace Konamiman.Nestor80.N80
             initDefs = false;
             sourceInErrorMessage = false;
             currentFileDirectory = inputFileDirectory;
+            outputFileCase = OF_CASE_ORIGINAL;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -430,13 +449,13 @@ namespace Konamiman.Nestor80.N80
         {
             if(fileSpecification is null) {
                 outputFilePath = Path.Combine(Directory.GetCurrentDirectory(), inputFileName);
-                mustChangeOutputFileExtension = true;
+                mustProcessOutputFileName = true;
                 return null;
             }
 
             if(fileSpecification is "$") {
                 fileSpecification = Path.Combine(inputFileDirectory, inputFileName);
-                mustChangeOutputFileExtension = true;
+                mustProcessOutputFileName = true;
             }
             else if(fileSpecification.StartsWith("$/")) {
                 fileSpecification = Path.Combine(inputFileDirectory, fileSpecification[2..]);
@@ -446,7 +465,7 @@ namespace Konamiman.Nestor80.N80
 
             if(Directory.Exists(fileSpecification)) {
                 outputFilePath = Path.Combine(fileSpecification, inputFileName);
-                mustChangeOutputFileExtension = true;
+                mustProcessOutputFileName = true;
             }
             else if(Directory.Exists(Path.GetDirectoryName(fileSpecification))) {
                 outputFilePath = fileSpecification;
@@ -732,6 +751,24 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nsie" or "--no-source-in-errors") {
                     sourceInErrorMessage = false;
                 }
+                else if(arg is "-ofc" or "--output-file-case") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by the output file case type (lower, upper or orig)";
+                    }
+                    i++;
+                    var outputFileCaseString = args[i];
+
+                    outputFileCase = outputFileCaseString[0] switch {
+                        'l' or 'L' => OF_CASE_LOWER,
+                        'u' or 'U' => OF_CASE_UPPER,
+                        'o' or 'O' => OF_CASE_ORIGINAL,
+                        _ => -1
+                    };
+
+                    if(outputFileCase is -1) {
+                        return $"{arg}: the output file case type must be one of: lower, upper, orig";
+                    }
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -811,9 +848,25 @@ namespace Konamiman.Nestor80.N80
                 return ERR_ASSEMBLY_ERROR;
             }
 
-            if(mustChangeOutputFileExtension) {
-                outputFileExtension ??= result.BuildType is BuildType.Relocatable ? ".REL" : ".BIN";
-                outputFilePath = Path.ChangeExtension(outputFilePath, outputFileExtension);
+            if(mustProcessOutputFileName) {
+                var defaultExtension = result.BuildType is BuildType.Relocatable ? ".REL" : ".BIN";
+
+                if(outputFileCase is OF_CASE_ORIGINAL) {
+                    outputFilePath = Path.ChangeExtension(outputFilePath, outputFileExtension ?? defaultExtension);
+                } else { 
+                    if(outputFileExtension is null) {
+                        outputFilePath = Path.ChangeExtension(outputFilePath, defaultExtension);
+                    }
+
+                    var directoryName = Path.GetDirectoryName(outputFilePath);
+                    var fileName = Path.GetFileName(outputFilePath);
+                    fileName = outputFileCase is OF_CASE_LOWER ? fileName.ToLower() : fileName.ToUpper();
+                    outputFilePath = Path.Combine(directoryName ?? "", fileName);
+
+                    if(outputFileExtension is not null) {
+                        outputFilePath = Path.ChangeExtension(outputFilePath, outputFileExtension);
+                    }
+                }
             }
 
             Stream outputStream;
