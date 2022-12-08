@@ -448,7 +448,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(buildType == BuildType.Absolute) {
-                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, "The argument of the END statement is ignored when tthe output type is absolute");
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, "The argument of the END statement is ignored when the output type is absolute");
                 state.End(Address.AbsoluteZero);
                 return new AssemblyEndLine() { Line = walker.SourceLine, EffectiveLineLength = walker.DiscardRemaining() };
             }
