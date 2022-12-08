@@ -54,6 +54,10 @@ namespace Konamiman.Nestor80.Assembler
             "REPT", "IRP", "IRPC", "IRPS"
         };
 
+        private static readonly string[] instructionsThatAcceptFreeText = new[] {
+            "TITLE", "SUBTTL", ".COMMENT", ".PRINTX", ".PRINT", ".PRINT1", ".PRINT2"
+        };
+
         private static readonly string[] instructionsNeedingPass2Reevaluation;
 
         private static CpuType currentCpu;
@@ -471,7 +475,7 @@ namespace Konamiman.Nestor80.Assembler
                     opcode = symbol;
                     processedLine = ProcessNamedMacroDefinitionLine(name: label.TrimEnd(':'), walker: walker);
                 }
-                else if(label is null && !PseudoOpProcessors.ContainsKey(symbol)) {
+                else if(label is null && !instructionsThatAcceptFreeText.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
                     walker.BackupPointer();
                     var symbol2 = walker.ExtractSymbol();
                     if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
