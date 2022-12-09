@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Output
 {
-    internal class DelimitedCommandLine : ProcessedSourceLine
+    internal class DelimitedCommentLine : ProcessedSourceLine
     {
         public char? Delimiter { get; set; }
 

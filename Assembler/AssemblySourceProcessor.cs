@@ -300,15 +300,12 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(state.InsideMultiLineComment) {
-                if(string.IsNullOrWhiteSpace(line) || (walker = new SourceLineWalker(line)).AtEndOfLine) {
-                    processedLine = new DelimitedCommandLine();
-                }
-                else if(walker.ExtractSymbol().Contains(state.MultiLineCommandDelimiter.Value)) {
-                    processedLine = new DelimitedCommandLine() { IsLastLine = true, Delimiter = state.MultiLineCommandDelimiter };
+                if(line.Contains(state.MultiLineCommandDelimiter.Value)) {
+                    processedLine = new DelimitedCommentLine() { IsLastLine = true, Delimiter = state.MultiLineCommandDelimiter };
                     state.MultiLineCommandDelimiter = null;
                 }
                 else {
-                    processedLine = new DelimitedCommandLine();
+                    processedLine = new DelimitedCommentLine();
                 }
 
                 processedLine.Line = line;

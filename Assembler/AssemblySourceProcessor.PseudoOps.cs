@@ -478,12 +478,12 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(walker.AtEndOfLine) {
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one comment delimiter character");
-                return new DelimitedCommandLine() { Delimiter = '\0', IsLastLine = true };
+                return new DelimitedCommentLine() { Delimiter = '\0', IsLastLine = true };
             }
 
             var delimiter = walker.ExtractSymbol()[0];
             state.MultiLineCommandDelimiter = delimiter;
-            return new DelimitedCommandLine() { Delimiter = delimiter };
+            return new DelimitedCommentLine() { Delimiter = delimiter };
         }
 
         static ProcessedSourceLine ProcessConstantDefinition(string opcode, string name, SourceLineWalker walker = null, Expression expression = null)
