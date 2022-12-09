@@ -47,6 +47,7 @@ namespace Konamiman.Nestor80.N80
         static bool initDefs;
         static bool sourceInErrorMessage;
         static int outputFileCase;
+        static bool allowRelativeLabels;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -347,6 +348,7 @@ namespace Konamiman.Nestor80.N80
             info += $"Allow bare expressions: {YesOrNo(allowBareExpressions)}\r\n";
             info += $"Expand DEFS instructions: {YesOrNo(initDefs)}\r\n";
             info += $"Show source in error messages: {YesOrNo(sourceInErrorMessage)}\r\n";
+            info += $"Allow relative labels: {YesOrNo(allowRelativeLabels)}\r\n";
 
             if(mustProcessOutputFileName) {
                 var outputExtension =
@@ -410,6 +412,7 @@ namespace Konamiman.Nestor80.N80
             sourceInErrorMessage = false;
             currentFileDirectory = inputFileDirectory;
             outputFileCase = OF_CASE_ORIGINAL;
+            allowRelativeLabels = false;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -769,6 +772,12 @@ namespace Konamiman.Nestor80.N80
                         return $"{arg}: the output file case type must be one of: lower, upper, orig";
                     }
                 }
+                else if(arg is "-arl" or "--allow-relative-labels") {
+                    allowRelativeLabels = true;
+                }
+                else if(arg is "-narl" or "--no-allow-relative-labels") {
+                    allowRelativeLabels = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -830,7 +839,8 @@ namespace Konamiman.Nestor80.N80
                 PredefinedSymbols = symbolDefinitions.ToArray(),
                 MaxErrors = maxErrors,
                 CpuName = defaultCpu,
-                AllowBareExpressions = allowBareExpressions
+                AllowBareExpressions = allowBareExpressions,
+                AllowRelativeLabels = allowRelativeLabels
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();

@@ -21,5 +21,7 @@ namespace Konamiman.Nestor80.Assembler
         public int MaxErrors { get; init; } = 0;
 
         public bool AllowBareExpressions { get; init; } = false;
+
+        public bool AllowRelativeLabels { get; init; } = false;
     }
 }

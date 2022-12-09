@@ -87,6 +87,26 @@ namespace Konamiman.Nestor80.N80
                 This option can't be undone (there's not "--no-arguments-file" argument),
                 but if necessary you can use --reset-config to start over.
             
+            -arl, --allow-relative-labels
+                Enable support for relative labels.
+
+                When enabled, labels with a name starting with a dot are considered relative to
+                the last non-relative label defined, whose name takes as a prefix. Example:
+
+                FOO:
+                .loop:
+                ;do something
+                djnz .loop
+
+                The code that will actually be assembled when relative labels are enabled is:
+
+                FOO:
+                FOO.loop:
+                ;do something
+                djnz FOO.loop
+
+                Support for relative labels can also be enabled in code with the .RELAB instruction.
+
             -bt, --build-type abs|rel|auto
                 The type of output to build. Default is auto.
             
@@ -157,6 +177,12 @@ namespace Konamiman.Nestor80.N80
             -nabe, --no-allow-bare-expressions
                 Don't treat a line containing a list of comma-separated expressions as a DB line
                 (so e.g. 'FOO: db 1,2,3,4' will throw an error). This is the default behavior.
+
+            -narl, --no-allow-relative-labels
+                Disable support for relative labels (default). See --allow-relative-labels for an
+                explanation about relative labels.
+            
+                Support for relative labels can also be disabled in code with the .XRELAB instruction.
 
             -nco, --no-color-output
                 Don't display assembly process messages and errors in color.

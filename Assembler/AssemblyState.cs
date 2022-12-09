@@ -12,6 +12,7 @@ namespace Konamiman.Nestor80.Assembler
             this.sourceStreamEncoding = sourceStreamEncoding;
             this.SourceStreamReader = new StreamReader(sourceStream, sourceStreamEncoding, true, 4096);
             streamCanSeek = SourceStreamReader.BaseStream.CanSeek;
+            RelativeLabelsEnabled = configuration.AllowRelativeLabels;
         }
 
         private readonly bool streamCanSeek;
@@ -45,6 +46,8 @@ namespace Konamiman.Nestor80.Assembler
         public List<ProcessedSourceLine> ProcessedLines { get; private set; } = new();
 
         public Dictionary<string, NamedMacroDefinitionLine> NamedMacros { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public bool RelativeLabelsEnabled { get; set; }
 
         public void RegisterPendingExpression(
             ProcessedSourceLine line, 
@@ -90,6 +93,9 @@ namespace Konamiman.Nestor80.Assembler
             nextLocalSymbolNumber = 0;
             InsideNamedMacroInsideFalseConditional = false;
             IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
+            RelativeLabelsEnabled = Configuration.AllowRelativeLabels;
+            LastNonRelativeLabel= null;
+            CurrentRelativeLabels.Clear();
             modules.Clear();
 
             SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
@@ -286,8 +292,29 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool SymbolIsOfKnownType(string symbol) => Symbols.ContainsKey(symbol) && Symbols[symbol].IsOfKnownType;
 
-        public void AddSymbol(string name, SymbolType type, Address value = null, bool isPublic = false) =>
-            Symbols.Add(name, new SymbolInfo() { Name = name, Type = type, Value = value, IsPublic = isPublic });
+        public string LastNonRelativeLabel { get; private set; } = null;
+
+        public HashSet<string> CurrentRelativeLabels { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public void AddSymbol(string name, SymbolType type, Address value = null, bool isPublic = false)
+        {
+            bool isNonRelativeLabel = false;
+            if(type is SymbolType.Label && name[0] is not '.' && !CurrentRelativeLabels.Contains(name)) {
+                RegisterLastNonRelativeLabel(name);
+                isNonRelativeLabel = true;
+            }
+
+            Symbols.Add(name, new SymbolInfo() { Name = name, Type = type, Value = value, IsPublic = isPublic, IsNonRelativeLabel = isNonRelativeLabel });
+        }
+
+        public void RegisterLastNonRelativeLabel(string label)
+        {
+            LastNonRelativeLabel = label;
+            CurrentRelativeLabels.Clear();
+        }
+
+        public bool IsValidNonRelativeLabelName(string name) =>
+            RelativeLabelsEnabled && name[0] is not '.' && !CurrentRelativeLabels.Contains(name);
 
         public void WrapUp()
         {
@@ -458,7 +485,27 @@ namespace Konamiman.Nestor80.Assembler
 
         public string Modularize(string symbol)
         {
-            return CurrentModule is null || currentRootSymbols.Contains(symbol) ? symbol : $"{CurrentModule}.{symbol}";
+            var inModule = CurrentModule is not null;
+
+            if(inModule && currentRootSymbols.Contains(symbol)) {
+                return symbol;
+            }
+
+            var isDot = symbol[0] is '.';
+            var isRelativeLabel = false;
+            if(RelativeLabelsEnabled && isDot && LastNonRelativeLabel is not null) {
+                symbol = LastNonRelativeLabel + symbol;
+                isRelativeLabel = true;
+            }
+            else if(inModule) {
+                symbol = $"{CurrentModule}{(isDot ? "" : ".")}{symbol}";
+            }
+
+            if(isRelativeLabel) {
+                CurrentRelativeLabels.Add(symbol);
+            }
+
+            return symbol;
         }
 
         public MacroExpansionState CurrentMacroExpansionState { get; private set; } = null;

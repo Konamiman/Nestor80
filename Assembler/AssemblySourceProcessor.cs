@@ -779,6 +779,11 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var symbol = state.GetSymbol(ref labelValue);
+
+            if(symbol?.IsNonRelativeLabel == true) {
+                state.RegisterLastNonRelativeLabel(symbol.Name);
+            }
+
             if(symbol == null) {
                 if(isPublic && !externalSymbolRegex.IsMatch(labelValue)) {
                     AddError(AssemblyErrorCode.InvalidLabel, $"{labelValue} is not a valid public label name, it contains invalid characters");
@@ -824,6 +829,14 @@ namespace Konamiman.Nestor80.Assembler
                 //In case the label first appeared as part of an expression
                 //and thus was of type "Unknown"
                 symbol.Type = SymbolType.Label;
+
+                //In case the label first appeared as part of an expression
+                if(!symbol.IsNonRelativeLabel) {
+                    symbol.IsNonRelativeLabel = state.IsValidNonRelativeLabelName(symbol.Name);
+                    if(symbol.IsNonRelativeLabel) {
+                        state.RegisterLastNonRelativeLabel(symbol.Name);
+                    }
+                }
             };
         }
 

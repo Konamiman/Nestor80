@@ -93,7 +93,9 @@ namespace Konamiman.Nestor80.Assembler
             { "EXITM", ProcessExitmLine },
             { "CONTM", ProcessContmLine },
             { "IRPS", ProcessIrpsLine },
-            { "LOCAL", ProcessLocalLine }
+            { "LOCAL", ProcessLocalLine },
+            { ".RELAB", ProcessRelabLine },
+            { ".XRELAB", ProcessXRelabLine },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -1673,6 +1675,18 @@ namespace Konamiman.Nestor80.Assembler
             macroExpansionLine.LocalSymbols = symbolsArray;
 
             return new LocalLine() { SymbolNames = symbolsArray };
+        }
+
+        static ProcessedSourceLine ProcessRelabLine(string opcode, SourceLineWalker walker)
+        {
+            state.RelativeLabelsEnabled = true;
+            return new RelabLine() { Enable = true };
+        }
+
+        static ProcessedSourceLine ProcessXRelabLine(string opcode, SourceLineWalker walker)
+        {
+            state.RelativeLabelsEnabled = false;
+            return new RelabLine() { Enable = false };
         }
     }
 }

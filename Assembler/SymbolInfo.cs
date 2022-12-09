@@ -81,6 +81,8 @@
 
         public bool HasKnownValue => Value is not null;
 
+        public bool IsNonRelativeLabel { get; set; } = false;
+
         public override string ToString()
         {
             var value = HasKnownValue ? $" = {Value:X4}" : "";
