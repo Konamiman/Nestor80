@@ -698,11 +698,11 @@ namespace Konamiman.Nestor80.Assembler
 
         public readonly List<string> MainSourceLines = new();
 
-        public Expression GetExpressionFor(string sourceLine, bool forDefb = false)
+        public Expression GetExpressionFor(string sourceLine, bool forDefb = false, bool isByte=false)
         {
             Expression expression;
             if(sourceLine.Contains('$')) {
-                expression = Expression.Parse(sourceLine, forDefb);
+                expression = Expression.Parse(sourceLine, forDefb, isByte);
                 expression.ValidateAndPostifixize();
                 return expression;
             }
@@ -711,7 +711,7 @@ namespace Konamiman.Nestor80.Assembler
                 return expressionsBySource[(sourceLine, forDefb)];
             }
 
-            expression = Expression.Parse(sourceLine, forDefb);
+            expression = Expression.Parse(sourceLine, forDefb, isByte);
             expression.ValidateAndPostifixize();
             expressionsBySource.Add((sourceLine, forDefb), expression);
             return expression;

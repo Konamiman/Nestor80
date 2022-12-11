@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Output;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -34,12 +35,15 @@ namespace Konamiman.Nestor80.Assembler
         private static bool extractingForDb = false;
         private static readonly List<IExpressionPart> parts = new();
         private static IExpressionPart lastExtractedPart = null;
+        private bool isByte;
 
         private static bool AtEndOfString = false;
 
         private static readonly Dictionary<int, byte[]> ZeroCharBytesByEncoding = new();
 
         public static byte[] ZeroCharBytes { get; private set; }
+
+        public bool HasRelocatableToStoreAsByte { get; private set; }
 
         private static Encoding _OutputStringEncoding;
         public static Encoding OutputStringEncoding
@@ -145,10 +149,14 @@ namespace Konamiman.Nestor80.Assembler
         /// </remarks>
         /// <param name="expressionString">The expression string to parse</param>
         /// <param name="forDefb">Whether the expression is part of a DEFB statement</param>
+        /// <param name="isByte">True if the expression is intended to be evaluated as a byte.
+        /// This is used to determine if the expression can be evaluated or needs to be stored
+        /// as link items when it involves relocatable addresses.</param>
+        /// 
         /// <returns>An expression object</returns>
         /// <exception cref="ArgumentException">The supplied string is too short</exception>
         /// <exception cref="InvalidExpressionException">The supplied string doesn't represent a valid expression</exception>
-        public static Expression Parse(string expressionString, bool forDefb = false)
+        public static Expression Parse(string expressionString, bool forDefb = false, bool isByte = false)
         {
             if(OutputStringEncoding is null) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: { nameof(OutputStringEncoding)} is null");
@@ -175,7 +183,7 @@ namespace Konamiman.Nestor80.Assembler
             while(!AtEndOfString)
                 ExtractNextPart();
 
-            return new Expression(parts.ToArray(), expressionString);
+            return new Expression(parts.ToArray(), expressionString) { isByte = isByte };
         }
 
         private static void ExtractNextPart()
@@ -533,9 +541,9 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static void Throw(string message)
+        private static void Throw(string message, AssemblyErrorCode errorCode = AssemblyErrorCode.InvalidExpression)
         {
-            throw new InvalidExpressionException(message);
+            throw new InvalidExpressionException(message, errorCode);
         }
 
         private static Dictionary<string, ArithmeticOperator> operators = new ArithmeticOperator[] {

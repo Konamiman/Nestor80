@@ -85,7 +85,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 (var expression1Text, isNegativeIxy) = GetExpressionAndSignFromIndexArgument(firstArgument);
 
-                var argument1Expression = GetExpressionForInstructionArgument(opcode, expression1Text);
+                var argument1Expression = GetExpressionForInstructionArgument(opcode, expression1Text, true);
                 if(argument1Expression is null) {
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
@@ -98,7 +98,7 @@ namespace Konamiman.Nestor80.Assembler
                     GetSymbolForExpression(s.SymbolName, s.IsExternal, s.IsRoot);
                 }
 
-                var argument2Expression = GetExpressionForInstructionArgument(opcode, secondArgument);
+                var argument2Expression = GetExpressionForInstructionArgument(opcode, secondArgument, true);
                 if(argument2Expression is null) {
                     return new CpuInstructionLine() { IsInvalid = true };
                 }
@@ -164,7 +164,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 (string, byte[], int) chosenInstruction;
-                var selectorExpression = GetExpressionForInstructionArgument(opcode, firstArgument);
+                var selectorExpression = GetExpressionForInstructionArgument(opcode, firstArgument, true);
                 Address selectorExpressionValue;
                 try {
                     selectorExpressionValue = EvaluateIfNoSymbolsOrPass2(selectorExpression);
@@ -197,7 +197,7 @@ namespace Konamiman.Nestor80.Assembler
                 
                 if(chosenInstruction.Item1 is "x" or "y") {
                     (var secondArgumentExpressionText, isNegativeIxy) = GetExpressionAndSignFromIndexArgument(secondArgument);
-                    var secondArgumentExpression = GetExpressionForInstructionArgument(opcode, secondArgumentExpressionText);
+                    var secondArgumentExpression = GetExpressionForInstructionArgument(opcode, secondArgumentExpressionText, true);
                     if(secondArgumentExpression is null) {
                         return new CpuInstructionLine() { IsInvalid = true };
                     }
@@ -309,7 +309,7 @@ namespace Konamiman.Nestor80.Assembler
                 (expressionText, isNegativeIxy) = GetExpressionAndSignFromIndexArgument(variableArgument);
             }
 
-            var argumentExpression = GetExpressionForInstructionArgument(opcode, expressionText);
+            var argumentExpression = GetExpressionForInstructionArgument(opcode, expressionText, CpuInstrArgTypeIsByte(variableArgType));
             if(argumentExpression is null) {
                 return new CpuInstructionLine() { IsInvalid = true };
             }
@@ -321,6 +321,9 @@ namespace Konamiman.Nestor80.Assembler
             if(!adjustOk) walker.DiscardRemaining();
             return adjustOk ? instructionLine : new CpuInstructionLine() { IsInvalid = true };
         }
+
+        private static bool CpuInstrArgTypeIsByte(CpuInstrArgType type) =>
+            type is CpuInstrArgType.Byte or CpuInstrArgType.ByteInParenthesis or CpuInstrArgType.OffsetFromCurrentLocation or CpuInstrArgType.IxOffset or CpuInstrArgType.IyOffset;
 
         private static void CompleteInstructionLine(CpuInstructionLine line)
         {
@@ -467,10 +470,10 @@ namespace Konamiman.Nestor80.Assembler
             return true;
         }
 
-        private static Expression GetExpressionForInstructionArgument(string opcode, string argument)
+        private static Expression GetExpressionForInstructionArgument(string opcode, string argument, bool isByte)
         {
             try {
-                var expression = state.GetExpressionFor(argument);
+                var expression = state.GetExpressionFor(argument, isByte: isByte);
                 return expression;
             }
             catch(InvalidExpressionException ex) {

@@ -139,7 +139,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 Expression expression = null;
                 try {
-                    expression = state.GetExpressionFor(expressionText, forDefb: isByte);
+                    expression = state.GetExpressionFor(expressionText, forDefb: isByte, isByte: isByte);
 
                     if(expression.IsRawBytesOutput) {
                         var part = (RawBytesOutput)expression.Parts[0];
@@ -178,7 +178,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 catch(InvalidExpressionException ex) {
                     AddZero();
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 }
             }
 
@@ -212,7 +212,7 @@ namespace Konamiman.Nestor80.Assembler
 
                     if(!walker.AtEndOfLine) {
                         var valueExpressionText = walker.ExtractExpression();
-                        var valueExpression = state.GetExpressionFor(valueExpressionText);
+                        var valueExpression = state.GetExpressionFor(valueExpressionText, isByte: true);
                         var valueAddress = EvaluateIfNoSymbolsOrPass2(valueExpression);
                         if(valueAddress is null) {
                             state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Byte);
@@ -226,7 +226,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 catch(InvalidExpressionException ex) {
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                     walker.DiscardRemaining();
                 }
 
@@ -265,7 +265,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 catch(InvalidExpressionException ex) {
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
+                    AddError(ex.ErrorCode, $"Invalid expression: {ex.Message}");
                     walker.DiscardRemaining();
                 }
 
@@ -333,7 +333,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 walker.DiscardRemaining();
                 return new ChangeOriginLine();
             }
@@ -467,7 +467,7 @@ namespace Konamiman.Nestor80.Assembler
                 return new AssemblyEndLine() { EndAddress = endAddress.Value, EndAddressArea = endAddress.Type };
             }
             catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 walker.DiscardRemaining();
                 state.End(Address.AbsoluteZero);
                 return new AssemblyEndLine();
@@ -514,7 +514,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 walker.DiscardRemaining();
                 return line;
             }
@@ -610,7 +610,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             catch(InvalidExpressionException ex) {
                 Expression.DefaultRadix = backupRadix;
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 walker.DiscardRemaining();
                 return new ChangeRadixLine();
             }
@@ -759,7 +759,7 @@ namespace Konamiman.Nestor80.Assembler
                 return new ChangeListingPageLine() { NewPageSize = pageSize.Value };
             }
             catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 walker.DiscardRemaining();
                 return new ChangeListingPageLine();
             }
@@ -810,7 +810,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 catch(InvalidExpressionException ex) {
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression: {ex.Message}");
+                    AddError(ex.ErrorCode, $"Invalid expression: {ex.Message}");
                 }
 
             if(outputBytes is not null) {
@@ -923,7 +923,7 @@ namespace Konamiman.Nestor80.Assembler
                     expressionValue = expression.Evaluate();
                 }
                 catch(InvalidExpressionException ex) {
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                     partToPrint = $"{{{originalExpressionText}}}";
                 }
 
@@ -1007,7 +1007,7 @@ namespace Konamiman.Nestor80.Assembler
                     expressionValue = expression.Evaluate();
                 }
                 catch(InvalidExpressionException ex) {
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                     walker.DiscardRemaining();
                     return null;
                 }
@@ -1308,7 +1308,7 @@ namespace Konamiman.Nestor80.Assembler
                     phaseAddress = phaseAddressExpression.Evaluate();
                 }
                 catch(InvalidExpressionException ex) {
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                     walker.DiscardRemaining();
                     return new PhaseLine();
                 }
@@ -1410,7 +1410,7 @@ namespace Konamiman.Nestor80.Assembler
                 repetitionsCount = repetitionsExpression.Evaluate();
             }
             catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 walker.DiscardRemaining();
                 return new MacroExpansionLine();
             }
@@ -1514,7 +1514,7 @@ namespace Konamiman.Nestor80.Assembler
                     macroExpansionParameters[i] = Expression.NumberToStringInCurrentRadix(argValue.Value);
                 }
                 catch(InvalidExpressionException ex) {
-                    AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{arg}' for {opcode.ToUpper()}: {ex.Message}");
+                    AddError(ex.ErrorCode, $"Invalid expression '{arg}' for {opcode.ToUpper()}: {ex.Message}");
                     return false;
                 }
             }
@@ -1551,7 +1551,7 @@ namespace Konamiman.Nestor80.Assembler
                 stringText = ((RawBytesOutput)expression.Parts[0]).OriginalString;
             }
             catch(InvalidExpressionException ex) {
-                AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression '{stringText}' for {opcode.ToUpper()}: {ex.Message}");
+                AddError(ex.ErrorCode, $"Invalid expression '{stringText}' for {opcode.ToUpper()}: {ex.Message}");
                 return new MacroExpansionLine();
             }
 

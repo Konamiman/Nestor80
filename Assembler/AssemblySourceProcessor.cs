@@ -640,7 +640,7 @@ namespace Konamiman.Nestor80.Assembler
                         hasExternalsOutsideTypeOperator = true;
                     }
                     catch(InvalidExpressionException ex) {
-                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: {ex.Message}");
+                        AddError(ex.ErrorCode, $"Invalid expression for {processedLine.Opcode.ToUpper()}: {ex.Message}");
                         continue;
                     }
                 }
@@ -655,6 +655,12 @@ namespace Konamiman.Nestor80.Assembler
                         continue;
                     }
 
+                    var linkItems = GetLinkItemsGroupFromExpression(processedLine, expressionPendingEvaluation);
+                    if(linkItems != null) {
+                        relocatables.Add(linkItems);
+                    }
+                }
+                else if(expressionPendingEvaluation.Expression.HasRelocatableToStoreAsByte) {
                     var linkItems = GetLinkItemsGroupFromExpression(processedLine, expressionPendingEvaluation);
                     if(linkItems != null) {
                         relocatables.Add(linkItems);

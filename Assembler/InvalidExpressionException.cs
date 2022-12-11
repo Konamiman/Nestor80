@@ -1,9 +1,14 @@
-﻿namespace Konamiman.Nestor80.Assembler
+﻿using Konamiman.Nestor80.Assembler.Output;
+
+namespace Konamiman.Nestor80.Assembler
 {
     internal class InvalidExpressionException : Exception
     {
-        public InvalidExpressionException(string message) : base(message)
+        public InvalidExpressionException(string message, AssemblyErrorCode errorCode = AssemblyErrorCode.InvalidExpression) : base(message)
         {
+            ErrorCode = errorCode;
         }
+
+        public AssemblyErrorCode ErrorCode { get; }
     }
 }

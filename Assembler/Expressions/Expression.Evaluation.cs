@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Output;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -193,6 +194,15 @@ namespace Konamiman.Nestor80.Assembler
                     if(poppedAddress is null) {
                         return null;
                     }
+                    
+                    if(uop is not TypeOperator && !poppedAddress.IsAbsolute && isByte) {
+                        if(uop.ExtendedLinkItemType is null) {
+                            Throw($"Operator {uop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte", AssemblyErrorCode.InvalidForRelocatable);
+                            return null;
+                        }
+                        HasRelocatableToStoreAsByte = true;
+                        return null;
+                    }
 
                     if(uop is TypeOperator && externalSymbolFound) {
                         operationResult = Address.Absolute(0x80);
@@ -217,6 +227,15 @@ namespace Konamiman.Nestor80.Assembler
                     var poppedItem1 = stack.Pop();
                     var poppedAddress1 = ResolveAddressOrSymbol(poppedItem1);
                     if(poppedAddress1 is null) {
+                        return null;
+                    }
+
+                    if((!poppedAddress1.IsAbsolute || !poppedAddress2.IsAbsolute) && isByte) {
+                        if(bop.ExtendedLinkItemType is null) {
+                            Throw($"Operator {bop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte", AssemblyErrorCode.InvalidForRelocatable);
+                            return null;
+                        }
+                        HasRelocatableToStoreAsByte = true;
                         return null;
                     }
 
