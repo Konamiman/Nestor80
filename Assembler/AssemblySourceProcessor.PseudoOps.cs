@@ -96,6 +96,7 @@ namespace Konamiman.Nestor80.Assembler
             { "LOCAL", ProcessLocalLine },
             { ".RELAB", ProcessRelabLine },
             { ".XRELAB", ProcessXRelabLine },
+            { "COMMON", ProcessCommonLine }
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -294,8 +295,29 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessAsegLine(string opcode, SourceLineWalker walker) => ProcessChangeAreaLine(AddressType.ASEG);
 
-        static ProcessedSourceLine ProcessChangeAreaLine(AddressType area)
+        static ProcessedSourceLine ProcessCommonLine(string opcode, SourceLineWalker walker)
         {
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()} requires a common block name enclosed between two / characters");
+                return new ChangeAreaLine();
+            }
+
+            var commonBlockNameExpression = walker.ExtractExpression();
+            if(!commonBlockNameRegex.IsMatch(commonBlockNameExpression)) {
+                AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()} requires a common block name having valid label characters and enclosed between two / characters");
+                return new ChangeAreaLine();
+            }
+
+            var commonBlockName = commonBlockNameExpression.Trim('/', ' ', '\t').ToUpper();
+            return ProcessChangeAreaLine(AddressType.COMMON, commonBlockName);
+        }
+
+        static ProcessedSourceLine ProcessChangeAreaLine(AddressType area, string commonName = null)
+        {
+            if(!(area is AddressType.COMMON ^ commonName is null)) {
+                throw new InvalidOperationException($"{nameof(ProcessChangeAreaLine)}: {nameof(area)} is {area} and {nameof(commonName)} is {commonName}, that's illegal!");
+            }
+
             if(buildType == BuildType.Absolute && area != AddressType.ASEG) {
                 AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing area to {area} when the output type is absolute has no effect");
             }
@@ -305,7 +327,7 @@ namespace Konamiman.Nestor80.Assembler
                 return new ChangeAreaLine();
             }
 
-            state.SwitchToArea(area);
+            state.SwitchToArea(area, commonName);
 
             return new ChangeAreaLine() {
                 NewLocationArea = state.CurrentLocationArea,

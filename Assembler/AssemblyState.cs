@@ -39,6 +39,9 @@ namespace Konamiman.Nestor80.Assembler
 
         private ushort nextLocalSymbolNumber = 0;
 
+        private readonly Dictionary<string, int> commonAreaSizes = new();
+        private string currentCommonBlockName = null;
+
         public bool InsideNamedMacroInsideFalseConditional { get; set; } = false;
 
         public int IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
@@ -94,7 +97,8 @@ namespace Konamiman.Nestor80.Assembler
             InsideNamedMacroInsideFalseConditional = false;
             IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
             RelativeLabelsEnabled = Configuration.AllowRelativeLabels;
-            LastNonRelativeLabel= null;
+            LastNonRelativeLabel = null;
+            currentCommonBlockName = null;
             CurrentRelativeLabels.Clear();
             modules.Clear();
 
@@ -168,26 +172,33 @@ namespace Konamiman.Nestor80.Assembler
 
         public Address GetCurrentLocation() => new(CurrentLocationArea, CurrentLocationPointer);
 
-        public void SwitchToArea(AddressType area)
+        public void SwitchToArea(AddressType area, string commonName = null)
         {
             if(IsCurrentlyPhased && area is not AddressType.ASEG) {
                 throw new InvalidOperationException($"{nameof(SwitchToArea)} isn't intended to be executed while in .PHASE mode");
             }
 
-            //TODO: Handle sizes of commons
-            if(area == CurrentLocationArea)
-                return;
+            AdjustAreaSize();
 
-            if(area == AddressType.COMMON) {
-                CurrentLocationPointer = 0;
+            CurrentLocationPointer = area is AddressType.COMMON ? (ushort)0 : LocationPointersByArea[area];
+            CurrentLocationArea = area;
+            currentCommonBlockName = commonName;
+        }
+
+        private void AdjustAreaSize()
+        {
+            if(CurrentLocationArea is AddressType.COMMON) {
+                if(commonAreaSizes.ContainsKey(currentCommonBlockName)) {
+                    commonAreaSizes[currentCommonBlockName] = Math.Max(commonAreaSizes[currentCommonBlockName], CurrentLocationPointer);
+                }
+                else {
+                    commonAreaSizes.Add(currentCommonBlockName, CurrentLocationPointer);
+                }
             }
             else {
                 AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
                 LocationPointersByArea[CurrentLocationArea] = CurrentLocationPointer;
-                CurrentLocationPointer = LocationPointersByArea[area];
             }
-
-            CurrentLocationArea = area;
         }
 
         public void SwitchToLocation(ushort location)
@@ -196,32 +207,24 @@ namespace Konamiman.Nestor80.Assembler
                 throw new InvalidOperationException($"{nameof(SwitchToLocation)} isn't intended to be executed while in .PHASE mode");
             }
 
-            //TODO: Handle commons
-            if(location != CurrentLocationPointer) {
-                CurrentLocationPointer = location;
-                AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
-            }
-        }
-
-        public ushort GetLocationPointer(AddressType area)
-        {
-            //TODO: Handle commons
-            if(area != AddressType.COMMON) {
-                return LocationPointersByArea[area];
+            if(location == CurrentLocationPointer) {
+                return;
             }
 
-            return 0;
+            AdjustAreaSize();
+            CurrentLocationPointer = location;
         }
 
         public ushort GetAreaSize(AddressType area)
         {
-            //TODO: Handle commons
-            if(area != AddressType.COMMON) {
-                return AreaSizes[area];
+            if(area == AddressType.COMMON) {
+                throw new InvalidOperationException($"{nameof(GetAreaSize)} isn't intended to be invoked for common blocks");
             }
 
-            return 0;
+            return AreaSizes[area];
         }
+
+        public Dictionary<string, int> GetCommonBlockSizes() => commonAreaSizes;
 
         public void IncreaseLocationPointer(int amount)
         {
@@ -318,11 +321,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public void WrapUp()
         {
-            //TODO: Handle sizes of commons
-            if(CurrentLocationArea != AddressType.COMMON) {
-                AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
-                LocationPointersByArea[CurrentLocationArea] = CurrentLocationPointer;
-            }
+            AdjustAreaSize();
         }
 
         public SymbolInfo GetSymbol(ref string name)

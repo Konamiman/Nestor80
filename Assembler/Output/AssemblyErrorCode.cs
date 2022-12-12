@@ -18,6 +18,7 @@
         DephaseWithoutPhase,
         UnterminatedPhase,
         SameEffectiveExternal,
+        SameEffectiveCommon,
         UnterminatedModule,
         RootWithoutModule,
         TruncatedRequestFilename,

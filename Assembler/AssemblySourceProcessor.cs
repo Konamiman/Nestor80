@@ -67,6 +67,7 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Regex ProgramNameRegex = new(@"^\('(?<name>[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*)'\)", RegxOp);
         private static readonly Regex LegacySubtitleRegex = new(@"^\('(?<name>[^']*)'\)", RegxOp);
         private static readonly Regex printStringExpressionRegex = new(@"(?<=\{)[^}]*(?=\})", RegxOp);
+        private static readonly Regex commonBlockNameRegex = new(@"^/[ \t]*/|/[A-Z$@?._][A-Z$@?._0-9]*/$", RegxOp);
 
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
@@ -178,6 +179,17 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.SameEffectivePublic, $"Public symbols {names} actually refer to the same one: {dupe.First().EffectiveName}", withLineNumber: false);
             }
 
+            var duplicateCommonBlocks = state
+                .GetCommonBlockSizes()
+                .Where(x => x.Key.Length > MaxEffectiveExternalNameLength)
+                .GroupBy(n => n.Key[..MaxEffectiveExternalNameLength])
+                .Where(n => n.Count() > 1)
+                .ToArray();
+            foreach(var dupe in duplicateCommonBlocks) {
+                var names = string.Join(", ", dupe.Select(d => d.Key).ToArray());
+                AddError(AssemblyErrorCode.SameEffectiveCommon, $"Common block names {names} actually refer to the same one: {dupe.First().Key[..MaxEffectiveExternalNameLength]}", withLineNumber: false);
+            }
+
             if(buildType == BuildType.Automatic)
                 buildType = BuildType.Absolute;
 
@@ -199,7 +211,7 @@ namespace Konamiman.Nestor80.Assembler
                 ProgramName = programName,
                 ProgramAreaSize = programSize,
                 DataAreaSize = state.GetAreaSize(AddressType.DSEG),
-                CommonAreaSizes = new(), //TODO: Handle commons
+                CommonAreaSizes = state.GetCommonBlockSizes(),
                 ProcessedLines = state.ProcessedLines.ToArray(),
                 Symbols = symbols,
                 Errors = state.GetErrors(),
