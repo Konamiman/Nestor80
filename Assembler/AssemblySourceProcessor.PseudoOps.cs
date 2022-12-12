@@ -41,8 +41,8 @@ namespace Konamiman.Nestor80.Assembler
             { "PAGE", ProcessSetListingNewPageLine },
             { "$EJECT", ProcessSetListingNewPageLine },
             { ".PRINTX", ProcessPrintxLine },
-            { "DEFZ", ProcessDefineZeroTerminatedStringLine },
-            { "DZ", ProcessDefineZeroTerminatedStringLine },
+            { "DEFZ", ProcessDefzLine },
+            { "DZ", ProcessDefzLine },
             { ".REQUEST", ProcessRequestLinkFilesLine },
             { ".LIST", ProcessListingControlLine },
             { ".XLIST", ProcessListingControlLine },
@@ -99,12 +99,15 @@ namespace Konamiman.Nestor80.Assembler
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
-            => ProcessDefbOrDefwLine(opcode, walker, true);
+            => ProcessDefbOrDefwLine(opcode, walker, isByte: true);
 
         static ProcessedSourceLine ProcessDefwLine(string opcode, SourceLineWalker walker)
-            => ProcessDefbOrDefwLine(opcode, walker, false);
+            => ProcessDefbOrDefwLine(opcode, walker, isByte: false);
 
-        static ProcessedSourceLine ProcessDefbOrDefwLine(string opcode, SourceLineWalker walker, bool isByte)
+        static ProcessedSourceLine ProcessDefzLine(string opcode, SourceLineWalker walker)
+            => ProcessDefbOrDefwLine(opcode, walker, isByte: true, addZeroAtTheEnd: true);
+
+        static ProcessedSourceLine ProcessDefbOrDefwLine(string opcode, SourceLineWalker walker, bool isByte, bool addZeroAtTheEnd = false)
         {
             var line = new DefbLine();
             var outputBytes = new List<byte>();
@@ -180,6 +183,10 @@ namespace Konamiman.Nestor80.Assembler
                     AddZero();
                     AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 }
+            }
+
+            if(addZeroAtTheEnd) {
+                outputBytes.AddRange(Expression.ZeroCharBytes);
             }
 
             state.IncreaseLocationPointer(outputBytes.Count);
@@ -787,42 +794,6 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(PrintMessage is not null && line.PrintedText is not null && ((state.InPass1 && line.PrintInPass1) || (state.InPass2 && line.PrintInPass2)))
                 PrintMessage(null, line.PrintedText);
-        }
-
-        static ProcessedSourceLine ProcessDefineZeroTerminatedStringLine(string opcode, SourceLineWalker walker)
-        {
-            var line = new DefbLine();
-            byte[] outputBytes = null;
-
-            if(walker.AtEndOfLine) {
-                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one string as argument");
-            }
-            else try {
-                    var expressionText = walker.ExtractExpression();
-                    var expression = state.GetExpressionFor(expressionText, forDefb: true);
-
-                    if(expression.IsRawBytesOutput) {
-                        var bytes = (RawBytesOutput)expression.Parts[0];
-                        outputBytes = bytes.Concat(Expression.ZeroCharBytes).ToArray();
-                    }
-                    else {
-                        AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs one single string as argument");
-                    }
-                }
-                catch(InvalidExpressionException ex) {
-                    AddError(ex.ErrorCode, $"Invalid expression: {ex.Message}");
-                }
-
-            if(outputBytes is not null) {
-                state.IncreaseLocationPointer(outputBytes.Length);
-            }
-
-            line.OutputBytes = outputBytes ?? Array.Empty<byte>();
-            line.RelocatableParts = Array.Empty<RelocatableOutputPart>();
-            line.NewLocationArea = state.CurrentLocationArea;
-            line.NewLocationCounter = state.CurrentLocationPointer;
-
-            return line;
         }
 
         static ProcessedSourceLine ProcessRequestLinkFilesLine(string opcode, SourceLineWalker walker)
