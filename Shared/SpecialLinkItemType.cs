@@ -1,5 +1,10 @@
 ﻿namespace Konamiman.Nestor80
 {
+    //Special link item 'H':
+    //Expects a file named like B plus .REL, text file having a number and a label,
+    //the number is the start address of data area (which is placed anyway before program area),
+    //the label is for I don't know what.
+
     public enum SpecialLinkItemType
     {
         ArithmeticOperator = 0x41,

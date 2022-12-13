@@ -29,8 +29,6 @@ namespace Konamiman.Nestor80.Assembler
         private static int errorsGenerated = 0;
         private static string programName = null;
 
-        private static int namedMacroInFalseConditionalNestingLevel = 0;
-
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
             "AF", "HL", "BC", "DE", "IX", "IY",
@@ -130,7 +128,6 @@ namespace Konamiman.Nestor80.Assembler
                 DoPass();
                 if(!state.HasErrors) {
                     state.SwitchToPass2(buildType);
-                    namedMacroInFalseConditionalNestingLevel = 0;
 
                     if(Pass2Started is not null) {
                         Pass2Started(null, EventArgs.Empty);

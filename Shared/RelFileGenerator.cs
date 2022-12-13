@@ -8,8 +8,8 @@ namespace Konamiman.Nestor80
 {
     public class RelFileGenerator
     {
-        private List<byte> buffer = new List<byte>();
-        private BitStreamWriter bsw;
+        private readonly List<byte> buffer = new();
+        private readonly BitStreamWriter bsw;
 
         public RelFileGenerator()
         {
@@ -68,18 +68,18 @@ namespace Konamiman.Nestor80
             AddLinkItemCore(type, addressType, address, Encoding.ASCII.GetBytes(B));
         }
 
-        public void AddExtensionLinkItem(byte type, AddressType addressType, uint address, string B)
+        public void AddExtensionLinkItem(byte type, string B)
         {
-            AddExtensionLinkItem(type, addressType, address, Encoding.ASCII.GetBytes(B));
+            AddExtensionLinkItem(type, Encoding.ASCII.GetBytes(B));
         }
 
-        public void AddExtensionLinkItem(byte type, AddressType addressType, uint address, byte[] B)
+        public void AddExtensionLinkItem(byte type, byte[] B)
         {
             var bytes = new byte[] { type }.Concat(B).ToArray();
             AddLinkItemCore((LinkItemType)4, null, null, bytes);
         }
 
-        private void AddLinkItemCore(LinkItemType type, AddressType? addressType, uint? address, byte[]? B)
+        private void AddLinkItemCore(LinkItemType type, AddressType? addressType, uint? address, byte[] B)
         {
             bsw.Write(1, 1);
             bsw.Write(0, 2);
