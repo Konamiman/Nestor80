@@ -21,7 +21,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Assembler\Assembler.csproj" />
-    <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 
 </Project>
