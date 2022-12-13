@@ -217,7 +217,8 @@ namespace Konamiman.Nestor80.Assembler
                 Errors = state.GetErrors(),
                 EndAddressArea = state.EndAddress is null ? AddressType.ASEG : state.EndAddress.Type,
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
-                BuildType = buildType
+                BuildType = buildType,
+                MaxRelocatableSymbolLength = MaxEffectiveExternalNameLength
             };
         }
 

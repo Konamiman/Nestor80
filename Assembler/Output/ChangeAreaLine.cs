@@ -5,6 +5,8 @@
         public AddressType NewLocationArea { get; set; }
         public ushort NewLocationCounter { get; set; }
 
-        public override string ToString() => $"{base.ToString()}, {NewLocationArea} {NewLocationCounter}";
+        public string CommonBlockName { get; set; }
+
+        public override string ToString() => $"{base.ToString()}, {NewLocationArea} {NewLocationCounter} {CommonBlockName}";
     }
 }

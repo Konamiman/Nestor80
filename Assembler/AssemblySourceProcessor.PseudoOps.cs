@@ -331,7 +331,8 @@ namespace Konamiman.Nestor80.Assembler
 
             return new ChangeAreaLine() {
                 NewLocationArea = state.CurrentLocationArea,
-                NewLocationCounter = state.CurrentLocationPointer
+                NewLocationCounter = state.CurrentLocationPointer,
+                CommonBlockName = commonName,
             };
         }
 

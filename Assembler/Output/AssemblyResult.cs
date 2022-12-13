@@ -22,8 +22,13 @@
 
         public BuildType BuildType { get; set; }
 
+        public int MaxRelocatableSymbolLength { get; set; }
+
         public bool HasErrors => Errors.Any(e => !e.IsWarning && !e.IsFatal);
 
         public bool HasFatals => Errors.Any(e => e.IsFatal);
+
+        public string EffectiveRelocatableSymbolLength(string symbol) =>
+            symbol.Length > MaxRelocatableSymbolLength ? symbol[..MaxRelocatableSymbolLength] : symbol;
     }
 }

@@ -131,11 +131,13 @@ namespace Konamiman.Nestor80.Assembler
             referencedExternals = new List<string>();
             ushort endAddress = 0;
             bool changedToAseg = false;
+            string currentCommonBlockName = null;
             currentLocationArea = AddressType.CSEG;
             locationCounters = new Dictionary<AddressType, ushort>() {
                 { AddressType.CSEG, 0 },
                 { AddressType.DSEG, 0 },
                 { AddressType.ASEG, 0 },
+                { AddressType.COMMON, 0 }
             };
 
             var publicSymbols = assemblyResult.Symbols
@@ -152,6 +154,12 @@ namespace Konamiman.Nestor80.Assembler
             foreach(var symbol in publicSymbols) {
                 WriteLinkItem(LinkItemType.EntrySymbol, symbol.Name);
             }
+
+            foreach(var commonBlockSize in assemblyResult.CommonAreaSizes) {
+                var name = assemblyResult.EffectiveRelocatableSymbolLength(commonBlockSize.Key);
+                WriteLinkItem(LinkItemType.DefineCommonSize, AddressType.ASEG, (ushort)commonBlockSize.Value, name);
+            }
+
             WriteLinkItem(LinkItemType.DataAreaSize, AddressType.ASEG, (ushort)assemblyResult.DataAreaSize);
             if(assemblyResult.ProgramAreaSize > 0) {
                 WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.CSEG, (ushort)assemblyResult.ProgramAreaSize);
@@ -184,6 +192,18 @@ namespace Konamiman.Nestor80.Assembler
                     //Failure to do so can lead to Link80 failing with "Intersecting Data area"!
                     changedToAseg = cal.NewLocationArea is AddressType.ASEG;
                     if(!changedToAseg) {
+                        if(cal.NewLocationArea is AddressType.COMMON) {
+                            //Setting currentCommonBlockName to the full block name (as specified in code)
+                            //instead of the effective name is on purpose for compatibility with Macro80,
+                            //so consecutive blocks "ABCDEFXXX" and "ABCDEFZZZ" will generate two
+                            //"select common block ABCDEF" link items even though only one would be needed.
+                            if(cal.CommonBlockName != currentCommonBlockName) { 
+                                var name = assemblyResult.EffectiveRelocatableSymbolLength(cal.CommonBlockName);
+                                WriteLinkItem(LinkItemType.SelectCommonBlock, name);
+                            }
+                            currentCommonBlockName = cal.CommonBlockName;
+                            locationCounters[AddressType.COMMON] = 0;
+                        }
                         WriteLinkItem(LinkItemType.SetLocationCounter, cal.NewLocationArea, cal.NewLocationCounter);
                     }
                     currentLocationArea = cal.NewLocationArea;
