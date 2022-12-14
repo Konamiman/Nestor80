@@ -169,6 +169,38 @@ namespace Konamiman.Nestor80.N80
                 Run N80 with the --list-encodings argument to get a list of available encodings.
                 Default is UTF-8.
 
+            -l, --listing-file [<file path>]
+                Generate a listing file.
+            
+                If <file path> is omitted, a file with the same name of the source file
+                and .LST extension (unless a different extension is specified with 
+                --listing-file-extension) will be generated in the current directory.
+            
+                If <file path> is a directory (instead of a file), the listing file
+                will be generated in that directory, and the file name will be as when
+                the argument is omitted.
+            
+                If <file path> is relative it will be considered relative to
+                the current directory.
+            
+                If <file path> starts with '$/' it will be considered relative to
+                the directory of the source file.
+            
+                If <file path> is just '$' then the file will be generated in
+                the directory of the source file, and the file name will be
+                as when the argument is omitted.
+
+            -le, --listing-file-encoding
+                Text encoding for the generated listing file, it can be an encoding name
+                or a codepage number Run N80 with the --list-encodings argument to get 
+                a list of available encodings. Default is UTF-8.
+
+            -le, --listing-file-extension [.]<extension>
+                The extension for the generated listing file. This value is used only when the
+                name of the listing file is chosen as the same name of the input file
+                (because no listing file path is specified, or because the specified path
+                is a directory). Default is .LST
+
             -me, --max-errors <count>
                 Stop the assembly process after reaching the specified number of errors
                 (not including warnings, and the process will still stop on the first fatal error).
@@ -209,6 +241,19 @@ namespace Konamiman.Nestor80.N80
             
             -noap, --no-org-as-phase
                 Don't treat ORG statements as .PHASE statements (default).
+
+            -nofe, --no-output-file-extension
+                Forget any previous --output-file-extension argument supplied and use the default
+                extension for the output file name (if the output file name is automatically selected,
+                see --output-file-extension).
+
+            -nol, --no-listing-file
+                Don't generate a listing file (default).
+
+            -nolx, --no-listing-file-extension
+                Forget any previous --listing-file-extension argument supplied and use the default
+                extension for the listing file name (if the listing file name is automatically selected,
+                see --listing-file-extension).
 
             -nsb, --no-show-banner
                 Don't display the program title and copyright notice banner.
@@ -269,9 +314,12 @@ namespace Konamiman.Nestor80.N80
                 N80 FILE.ASM --output-file-case lower --> generates file.bin or file.rel
                 N80 FILE.ASM --output-file-case lower --output-file-extension COM --> generates file.COM
 
+                This settings affects the casing of the generated listing file too
+                if a --listing-file argument is supplied.
+
             -ofe, --output-file-extension [.]<extension>
                 The extension for the generated output file. This value is used only when the
-                name of the output file is chosen as the same name of the output file
+                name of the output file is chosen as the same name of the input file
                 (because no output file path is specified, or because the specified path
                 is a directory). Default is .BIN when the build type is absolute and .REL
                 when the build type is relocatable.

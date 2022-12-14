@@ -12,8 +12,9 @@ namespace Konamiman.Nestor80.N80
         const int ERR_BAD_ARGUMENTS = 1;
         const int ERR_CANT_OPEN_INPUT_FILE = 2;
         const int ERR_CANT_CREATE_OUTPUT_FILE = 3;
-        const int ERR_ASSEMBLY_ERROR = 4;
-        const int ERR_ASSEMBLY_FATAL = 5;
+        const int ERR_CANT_CREATE_LISTING_FILE = 4;
+        const int ERR_ASSEMBLY_ERROR = 5;
+        const int ERR_ASSEMBLY_FATAL = 6;
 
         const int OF_CASE_ORIGINAL = 0;
         const int OF_CASE_LOWER = 1;
@@ -48,6 +49,11 @@ namespace Konamiman.Nestor80.N80
         static bool sourceInErrorMessage;
         static int outputFileCase;
         static bool allowRelativeLabels;
+        static string listingFileName = null;
+        static string listingFilePath = null;
+        static Encoding listingFileEncoding;
+        static bool mustGenerateListingFile;
+        static string listingFileExtension;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -157,8 +163,23 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(outputFileErrorMessage is not null) {
-                PrintFatal($"Can't create output file ({outputFilePath}): {outputFileErrorMessage}");
+                PrintFatal($"Can't create output file{(outputFilePath is null ? "" : $" ({outputFilePath})")}: {outputFileErrorMessage}");
                 return ERR_CANT_CREATE_OUTPUT_FILE;
+            }
+
+            if(mustGenerateListingFile) {
+                string listingFileErrorMessage;
+                try {
+                    listingFileErrorMessage = ProcessListingFileArgument(listingFileName);
+                }
+                catch(Exception ex) {
+                    listingFileErrorMessage = ex.Message;
+                }
+
+                if(listingFileErrorMessage is not null) {
+                    PrintFatal($"Can't create listing file{(listingFilePath is null ? "" : $" ({listingFilePath})")}: {listingFileErrorMessage}");
+                    return ERR_CANT_CREATE_LISTING_FILE;
+                }
             }
 
             PrintProgress($"Input file: {inputFilePath}\r\n", 1);
@@ -370,7 +391,12 @@ namespace Konamiman.Nestor80.N80
                         OF_CASE_UPPER => "UPPER",
                         _ => "Original"
                     };
-                info += $"Output file case: {outputFileCaseString}";
+                info += $"Output file case: {outputFileCaseString}\r\n";
+            }
+
+            if(mustGenerateListingFile) {
+                info += $"Listing file: {listingFilePath}\r\n";
+                info += $"Listing file encoding: {listingFileEncoding.WebName}\r\n";
             }
 
             PrintProgress(info, 3);
@@ -413,6 +439,10 @@ namespace Konamiman.Nestor80.N80
             currentFileDirectory = inputFileDirectory;
             outputFileCase = OF_CASE_ORIGINAL;
             allowRelativeLabels = false;
+            listingFileName = null;
+            listingFileEncoding = Encoding.UTF8;
+            mustGenerateListingFile = false;
+            listingFileExtension = null;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -475,6 +505,58 @@ namespace Konamiman.Nestor80.N80
             }
             else {
                 return "Directory not found";
+            }
+
+            return null;
+        }
+
+        private static string ProcessListingFileArgument(string fileSpecification)
+        {
+            var isAutoFilename = false;
+
+            if(fileSpecification is null) {
+                fileSpecification = Path.Combine(Directory.GetCurrentDirectory(), inputFileName);
+                isAutoFilename = true;
+            }
+            else if(fileSpecification is "$") {
+                fileSpecification = Path.Combine(inputFileDirectory, inputFileName);
+                isAutoFilename = true;
+            }
+            else if(fileSpecification.StartsWith("$/")) {
+                fileSpecification = Path.Combine(inputFileDirectory, fileSpecification[2..]);
+            }
+
+            fileSpecification = Path.GetFullPath(fileSpecification);
+
+            if(Directory.Exists(fileSpecification)) {
+                listingFilePath = Path.Combine(fileSpecification, inputFileName);
+                isAutoFilename = true;
+            }
+            else if(Directory.Exists(Path.GetDirectoryName(fileSpecification))) {
+                listingFilePath = fileSpecification;
+            }
+            else {
+                return "Directory not found";
+            }
+
+            if(isAutoFilename) {
+                if(outputFileCase is OF_CASE_ORIGINAL) {
+                    listingFilePath = Path.ChangeExtension(listingFilePath, outputFileExtension ?? ".LST");
+                }
+                else {
+                    if(listingFileExtension is null) {
+                        listingFilePath = Path.ChangeExtension(listingFilePath, ".LST");
+                    }
+
+                    var directoryName = Path.GetDirectoryName(listingFilePath);
+                    var fileName = Path.GetFileName(listingFilePath);
+                    fileName = outputFileCase is OF_CASE_LOWER ? fileName.ToLower() : fileName.ToUpper();
+                    listingFilePath = Path.Combine(directoryName ?? "", fileName);
+
+                    if(listingFileExtension is not null) {
+                        listingFilePath = Path.ChangeExtension(listingFilePath, listingFileExtension);
+                    }
+                }
             }
 
             return null;
@@ -736,6 +818,9 @@ namespace Konamiman.Nestor80.N80
                     i++;
                     outputFileExtension = args[i];
                 }
+                else if(arg is "-nofe" or "--no-output-file-extension") {
+                    outputFileExtension = null;
+                }
                 else if(arg is "-abe" or "--allow-bare-expressions") {
                     allowBareExpressions = true;
                 }
@@ -777,6 +862,49 @@ namespace Konamiman.Nestor80.N80
                 }
                 else if(arg is "-narl" or "--no-allow-relative-labels") {
                     allowRelativeLabels = false;
+                }
+                else if(arg is "-l" or "--listing-file") {
+                    mustGenerateListingFile = true;
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        listingFileName = null;
+                    }
+                    else {
+                        listingFileName = args[i + 1];
+                        i++;
+                    }
+                }
+                else if(arg is "-nol" or "--no-listing-file") {
+                    mustGenerateListingFile = false;
+                    listingFileName = null;
+                }
+                else if(arg is "-le" or "--listing-file-encoding") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by an encoding page or name";
+                    }
+                    Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+                    var listingFileEncodingName = args[i + 1];
+                    try {
+                        if(int.TryParse(listingFileEncodingName, out int encodingPage)) {
+                            listingFileEncoding = Encoding.GetEncoding(encodingPage);
+                        }
+                        else {
+                            listingFileEncoding = Encoding.GetEncoding(listingFileEncodingName);
+                        }
+                    }
+                    catch {
+                        return $"Unknown source file encoding '{listingFileEncodingName}'";
+                    }
+                    i++;
+                }
+                else if(arg is "-lx" or "--listing-file-extension") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a file extension";
+                    }
+                    i++;
+                    listingFileExtension = args[i];
+                }
+                else if(arg is "-nolx" or "--no-listing-file-extension") {
+                    listingFileExtension = null;
                 }
                 else {
                     return $"Unknwon argument '{arg}'";
