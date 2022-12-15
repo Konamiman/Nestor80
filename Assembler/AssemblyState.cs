@@ -98,7 +98,6 @@ namespace Konamiman.Nestor80.Assembler
             IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
             RelativeLabelsEnabled = Configuration.AllowRelativeLabels;
             LastNonRelativeLabel = null;
-            currentCommonBlockName = null;
             CurrentRelativeLabels.Clear();
             modules.Clear();
 
@@ -170,7 +169,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool IsCurrentlyPhased => CurrentPhasedLocationPointer is not null;
 
-        public Address GetCurrentLocation() => new(CurrentLocationArea, CurrentLocationPointer);
+        public Address GetCurrentLocation() => new(CurrentLocationArea, CurrentLocationPointer, CurrentLocationArea is AddressType.COMMON ? currentCommonBlockName : null);
 
         public void SwitchToArea(AddressType area, string commonName = null)
         {

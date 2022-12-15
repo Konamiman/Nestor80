@@ -195,7 +195,7 @@ namespace Konamiman.Nestor80.Assembler
                         return null;
                     }
                     
-                    if(uop is not TypeOperator && !poppedAddress.IsAbsolute && isByte) {
+                    if(uop is not TypeOperator and not UnaryPlusOperator && !poppedAddress.IsAbsolute && isByte) {
                         if(uop.ExtendedLinkItemType is null) {
                             Throw($"Operator {uop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte", AssemblyErrorCode.InvalidForRelocatable);
                             return null;

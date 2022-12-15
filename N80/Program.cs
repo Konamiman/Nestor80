@@ -186,14 +186,14 @@ namespace Konamiman.Nestor80.N80
 
             PrintArgumentsAndIncludeDirs();
 
-            var errCode = DoAssembly(out int writtenBytes, out int warnCount, out int errCount, out int fatalCount);
-            if(errCode != ERR_SUCCESS) {
+            var errCode = DoAssembly(out int writtenBytes, out int warnCount, out int errCount, out int fatalCount, out int listingWrittenBytes);
+            if(errCode is not ERR_SUCCESS and not ERR_CANT_CREATE_LISTING_FILE) {
                 generateOutputFile = false;
             }
 
             totalTimeMeasurer.Stop();
 
-            if(errCode == ERR_SUCCESS) {
+            if(errCode is ERR_SUCCESS or ERR_CANT_CREATE_LISTING_FILE) {
                 if(warnCount == 0) {
                     PrintProgress("\r\nAssembly completed!", 1);
                 }
@@ -202,6 +202,10 @@ namespace Konamiman.Nestor80.N80
                 }
                 else {
                     PrintProgress($"\r\nAssembly completed with {warnCount} warnings", 1);
+                }
+
+                if(mustGenerateListingFile) {
+
                 }
 
                 if(showAssemblyDuration) {
@@ -231,6 +235,11 @@ namespace Konamiman.Nestor80.N80
                 PrintProgress($"{writtenBytes} bytes written", 1);
             } else {
                 PrintProgress("\r\nNo output file generated", 1);
+            }
+
+            if(mustGenerateListingFile && errCode is ERR_SUCCESS) {
+                PrintProgress($"\r\nListing file: {listingFilePath}", 1);
+                PrintProgress($"{listingWrittenBytes} bytes written", 1);
             }
 
             return errCode;
@@ -937,10 +946,10 @@ namespace Konamiman.Nestor80.N80
             return ProcessArguments(fileArgs, true);
         }
 
-        private static int DoAssembly(out int writtenBytes, out int warnCount, out int errCount, out int fatalCount)
+        private static int DoAssembly(out int writtenBytes, out int warnCount, out int errCount, out int fatalCount, out int listingWrittenBytes)
         {
             Stream inputStream;
-            writtenBytes = warnCount = errCount = fatalCount = 0;
+            writtenBytes = warnCount = errCount = fatalCount = listingWrittenBytes = 0;
 
             try {
                 inputStream = File.OpenRead(inputFilePath);
@@ -1037,6 +1046,19 @@ namespace Konamiman.Nestor80.N80
             }
 
             outputStream.Close();
+
+            if(mustGenerateListingFile) {
+                try {
+                    var listingStream = File.Create(listingFilePath);
+                    var listingStreamWriter = new StreamWriter(listingStream, listingFileEncoding);
+                    listingWrittenBytes = ListingFileGenerator.GenerateListingFile(result, listingStreamWriter);
+                    listingStream.Close();
+                }
+                catch(Exception ex) {
+                    PrintFatal($"Can't create listing file{(listingFilePath is null ? "" : $" ({listingFilePath})")}: {ex.Message}");
+                    return ERR_CANT_CREATE_LISTING_FILE;
+                }
+            }
 
             return ERR_SUCCESS;
         }
