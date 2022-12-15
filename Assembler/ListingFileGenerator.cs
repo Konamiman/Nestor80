@@ -5,6 +5,8 @@ namespace Konamiman.Nestor80.Assembler
     public static class ListingFileGenerator
     {
         const int bytesPerRow = 4;
+        const int bytesAreaSize = 22;
+        static string emptyBytesArea = new string(' ', bytesAreaSize);
 
         private static Dictionary<AddressType, string> addressSuffixes = new() {
             { AddressType.CSEG, "'" },
@@ -19,8 +21,9 @@ namespace Konamiman.Nestor80.Assembler
         static bool isAbsoluteBuild;
 
         static IProducesOutput currentOutputProducerLine;
-        static int outputBytesPrintedTotal;
+        static int totalOutputBytesRemaining;
         static int nextRelocatableIndex;
+        static int outputIndex;
 
         public static int GenerateListingFile(AssemblyResult assemblyResult, StreamWriter writer)
         {
@@ -39,6 +42,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 while(currentOutputProducerLine is not null) {
                     ProcessCurrentOutputLine();
+                    writer.WriteLine(emptyBytesArea);
                 }
             }
 
@@ -51,8 +55,7 @@ namespace Konamiman.Nestor80.Assembler
             var mustPrintAddress = processedLine.Label is not null;
             ushort increaseLocationCounterBy = 0;
             AddressType? changeAreaTo = null;
-            var writtenOutputCharsCount = 0;
-
+            //WIP: handle .phase
             if(processedLine is ChangeAreaLine cal) {
                 if(!isAbsoluteBuild) {
                     changeAreaTo = cal.NewLocationArea;
@@ -62,8 +65,11 @@ namespace Konamiman.Nestor80.Assembler
             else if(processedLine is IProducesOutput ipo) {
                 if(ipo.OutputBytes.Length > 0) {
                     currentOutputProducerLine = ipo;
-                    outputBytesPrintedTotal = 0;
+                    totalOutputBytesRemaining = ipo.OutputBytes.Length;
                     nextRelocatableIndex = 0;
+                    outputIndex = 0;
+                    ProcessCurrentOutputLine();
+                    writer.WriteLine(processedLine.Line);
                     return;
                 }
                 else {
@@ -87,23 +93,22 @@ namespace Konamiman.Nestor80.Assembler
                 locationCounters[currentLocationArea] += increaseLocationCounterBy;
             }
 
+            writer.Write(emptyBytesArea);
             writer.WriteLine(processedLine.Line);
         }
 
         private static void ProcessCurrentOutputLine()
         {
-            var printedBytes = 0;
-            var outputIndex = 0;
+            var bytesRemainingInRow = Math.Min(totalOutputBytesRemaining, bytesPerRow);
             var printedChars = 0;
-            var mustPrintSource = outputBytesPrintedTotal == 0;
 
             PrintLineAddress(true);
 
-            while(printedBytes < bytesPerRow) {
+            while(bytesRemainingInRow > 0) {
                 if(nextRelocatableIndex < currentOutputProducerLine.RelocatableParts.Length && currentOutputProducerLine.RelocatableParts[nextRelocatableIndex].Index == outputIndex) {
                     var relocatable = currentOutputProducerLine.RelocatableParts[nextRelocatableIndex];
                     var relocatableSize = relocatable.IsByte ? 1 : 2;
-                    if(printedBytes + relocatableSize > bytesPerRow) {
+                    if(relocatableSize > bytesRemainingInRow) {
                         break;
                     }
 
@@ -116,28 +121,34 @@ namespace Konamiman.Nestor80.Assembler
                         var value = relocatableAddress.Value;
                         writer.Write(relocatableSize == 1 ? $"{value:X2}" : $"{value:X4}");
                         writer.Write(addressSuffixes[relocatableAddress.Type]);
+                        if(relocatableSize is 2 && relocatableAddress.Type is not AddressType.ASEG) {
+                            writer.Write(" ");
+                            printedChars++;
+                        }
                         printedChars += relocatableSize == 1 ? 3 : 5;
                     }
 
-                    printedBytes += relocatableSize;
-                    outputBytesPrintedTotal += relocatableSize;
+                    bytesRemainingInRow -= relocatableSize;
+                    totalOutputBytesRemaining -= relocatableSize;
                     outputIndex += relocatableSize;
+                    locationCounters[currentLocationArea] += (ushort)relocatableSize;
+
+                    nextRelocatableIndex++;
                 }
                 else {
                     var byteToPrint = currentOutputProducerLine.OutputBytes[outputIndex];
                     writer.Write($"{byteToPrint:X2} ");
+                    bytesRemainingInRow--;
+                    totalOutputBytesRemaining--;
                     outputIndex++;
-                    printedChars++;
+                    printedChars += 3;
+                    locationCounters[currentLocationArea]++;
                 }
             }
 
-            locationCounters[currentLocationArea] += (ushort)printedBytes;
+            writer.Write(new string(' ', bytesAreaSize - printedChars));
 
-            if(mustPrintSource) {
-                writer.WriteLine(((ProcessedSourceLine)currentOutputProducerLine).Line);
-            }
-
-            if(printedBytes >= bytesPerRow) {
+            if(totalOutputBytesRemaining == 0) {
                 currentOutputProducerLine = null;
             }
         }
@@ -145,10 +156,10 @@ namespace Konamiman.Nestor80.Assembler
         private static void PrintLineAddress(bool printAddress)
         {
             if(printAddress) {
-                writer.Write($"  {locationCounters[currentLocationArea]:X4}{addressSuffixes[currentLocationArea]} ");
+                writer.Write($"  {locationCounters[currentLocationArea]:X4}{addressSuffixes[currentLocationArea]}");
             }
             else {
-                writer.Write("        ");
+                writer.Write("       ");
             }
 
             writer.Write("   ");
