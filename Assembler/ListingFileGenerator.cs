@@ -45,6 +45,13 @@ namespace Konamiman.Nestor80.Assembler
         static bool currentlyListingFalseConditionals;
         static bool tfcondState;
 
+        static int mainPageNumber;
+        static int subPageNumber;
+        static int linesPerPage;
+        static int printedLines;
+        static string title;
+        static string subtitle;
+
         public static int GenerateListingFile(AssemblyResult assemblyResult, StreamWriter writer)
         {
             ListingFileGenerator.writer = writer;
@@ -65,6 +72,17 @@ namespace Konamiman.Nestor80.Assembler
 
             tfcondState = true;
             currentlyListingFalseConditionals = tfcondState;
+
+            mainPageNumber = 0;
+            subPageNumber = 0;
+            linesPerPage = 50;
+            printedLines = 0;
+
+            var titleLine = assemblyResult.ProcessedLines.FirstOrDefault(l => l is SetListingTitleLine);
+            title = titleLine is null ? "" : ((SetListingTitleLine)titleLine).Title;
+            subtitle = null;
+
+            DoPageChange(1);
 
             ProcessLines(assemblyResult.ProcessedLines);
 
@@ -90,7 +108,7 @@ namespace Konamiman.Nestor80.Assembler
                 PrintLineAddress(false);
                 sb.Append(emptyBytesArea);
                 PrintExtraFlags();
-                PrintLine(processedLine);
+                PrintLineSource(processedLine);
                 if(listMacroExpansionProducingOutput || listMacroExpansionNotProducingOutput) {
                     macroExpansionDepthLevel++;
                     ProcessLines(mel.Lines);
@@ -101,7 +119,26 @@ namespace Konamiman.Nestor80.Assembler
             var mustPrintAddress = processedLine.Label is not null;
             ushort increaseLocationCounterBy = 0;
             AddressType? changeAreaTo = null;
-            //WIP: handle (sub)titles, page breaks
+            var incrementSubpage = false;
+            var isMainpageInstruction = false;
+
+            void PrintLineAsIs()
+            {
+                PrintLineAddress(mustPrintAddress);
+                sb.Append(emptyBytesArea);
+                PrintExtraFlags();
+                PrintLineSource(processedLine);
+            }
+
+            var mainPagesChange = processedLine.FormFeedsCount;
+            if(processedLine is ChangeListingPageLine clpl && clpl.IsMainPageChange) {
+                mainPagesChange++;
+                //We want the "mainpage" instruction itself to be printed
+                //before the actual page change happens
+                PrintLineAsIs();
+                DoPageChange(mainPagesChange);
+                return;
+            }
 
             if(processedLine is SkippedLine && !currentlyListingFalseConditionals) {
                 return;
@@ -124,7 +161,7 @@ namespace Konamiman.Nestor80.Assembler
                     nextRelocatableIndex = 0;
                     outputIndex = 0;
                     ProcessCurrentOutputLine();
-                    PrintLine(processedLine);
+                    PrintLineSource(processedLine);
                     return;
                 }
                 else {
@@ -148,11 +185,8 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             else if(processedLine is IncludeLine incl) {
-                PrintLineAddress(false);
-                sb.Append(emptyBytesArea);
-                PrintExtraFlags();
-                PrintLine(processedLine);
                 includeDepthLevel++;
+                PrintLineAsIs();
                 ProcessLines(incl.Lines);
                 includeDepthLevel--;
                 return;
@@ -181,8 +215,20 @@ namespace Konamiman.Nestor80.Assembler
                     currentlyListingFalseConditionals = tfcondState;
                 }
             }
+            else if(processedLine is ChangeListingPageLine clpl2 && !clpl2.IsMainPageChange) {
+                incrementSubpage = true;
+                if(clpl2.NewPageSize != 0) {
+                    linesPerPage = clpl2.NewPageSize;
+                }
+            }
+            else if(processedLine is SetListingSubtitleLine slsl) {
+                subtitle = slsl.Subtitle;
+            }
 
             if(macroExpansionDepthLevel > 0 && !listMacroExpansionNotProducingOutput) {
+                if(mainPagesChange > 0) {
+                    DoPageChange(mainPagesChange);
+                }
                 return;
             }
 
@@ -207,6 +253,10 @@ namespace Konamiman.Nestor80.Assembler
                 isPhased = false;
             }
 
+            if(mainPagesChange > 0) {
+                DoPageChange(mainPagesChange);
+            }
+
             PrintLineAddress(mustPrintAddress);
 
             if(changeAreaTo.HasValue) {
@@ -218,7 +268,11 @@ namespace Konamiman.Nestor80.Assembler
 
             sb.Append(emptyBytesArea);
             PrintExtraFlags();
-            PrintLine(processedLine);
+            PrintLineSource(processedLine);
+
+            if(incrementSubpage) {
+                DoPageChange(0);
+            }
         }
 
         private static void ProcessCurrentOutputLine()
@@ -322,7 +376,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static void PrintLine(ProcessedSourceLine line)
+        private static void PrintLineSource(ProcessedSourceLine line)
         {
             if(macroExpansionDepthLevel == 0) {
                 sb.Append(line.Line);
@@ -356,6 +410,33 @@ namespace Konamiman.Nestor80.Assembler
         {
             writer.WriteLine(sb.ToString());
             sb.Clear();
+            printedLines++;
+            if(printedLines == linesPerPage) {
+                DoPageChange(0);
+            }
+        }
+
+        private static void DoPageChange(int mainPagesIncrement)
+        {
+            if(mainPagesIncrement > 0) {
+                mainPageNumber += mainPagesIncrement;
+                subPageNumber = 0;
+            }
+            else {
+                subPageNumber++;
+            }
+
+            var titleLine = $"\f{title}\tNestor80\t1.0\tPAGE\t{mainPageNumber}{(subPageNumber == 0 ? "" : $"-{subPageNumber}")}";
+            writer.WriteLine(titleLine);
+            writer.WriteLine(subtitle);
+            writer.WriteLine();
+            if(mainPagesIncrement == 0) {
+                writer.WriteLine();
+                printedLines = 4;
+            }
+            else {
+                printedLines = 3;
+            }
         }
     }
 }

@@ -39,6 +39,8 @@ namespace Konamiman.Nestor80.Assembler
             { "SUBTTL", ProcessSetListingSubtitleLine },
             { "$TITLE", ProcessLegacySetListingSubtitleLine },
             { "PAGE", ProcessSetListingNewPageLine },
+            { "SUBPAGE", ProcessSetListingNewPageLine },
+            { "MAINPAGE", ProcessChangeListingMainPageLine },
             { "$EJECT", ProcessSetListingNewPageLine },
             { ".PRINTX", ProcessPrintxLine },
             { "DEFZ", ProcessDefzLine },
@@ -769,15 +771,11 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessSetListingNewPageLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                return new ChangeListingPageLine();
+                return new ChangeListingPageLine() { NewPageSize = 0 };
             }
 
             try {
                 var pageSizeText = walker.ExtractExpression();
-                if(string.Equals("BREAK", pageSizeText, StringComparison.OrdinalIgnoreCase)) {
-                    return new ChangeListingPageLine() { IsMainPageChange = true };
-                }
-
                 var pageSizeExpression = state.GetExpressionFor(pageSizeText);
                 var pageSize = pageSizeExpression.Evaluate();
                 if(!pageSize.IsAbsolute) {
@@ -793,6 +791,11 @@ namespace Konamiman.Nestor80.Assembler
                 walker.DiscardRemaining();
                 return new ChangeListingPageLine();
             }
+        }
+
+        static ProcessedSourceLine ProcessChangeListingMainPageLine(string opcode, SourceLineWalker walker)
+        {
+            return new ChangeListingPageLine() { IsMainPageChange = true };
         }
 
         static ProcessedSourceLine ProcessPrintxLine(string opcode, SourceLineWalker walker)
