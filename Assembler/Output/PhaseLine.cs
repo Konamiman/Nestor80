@@ -2,7 +2,6 @@
 {
     public class PhaseLine : ProcessedSourceLine, IChangesLocationCounter
     {
-        public ushort Address { get; set; }
         public AddressType NewLocationArea { get; set; }
         public ushort NewLocationCounter { get; set; }
 
