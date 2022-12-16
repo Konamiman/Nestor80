@@ -1,5 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Output;
-using System.Diagnostics;
+using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -20,6 +20,8 @@ namespace Konamiman.Nestor80.Assembler
             { AddressType.ASEG, " " },
             { AddressType.COMMON, "!" },
         };
+
+        private static readonly StringBuilder sb = new();
 
         private static StreamWriter writer;
         static AddressType currentLocationArea;
@@ -77,7 +79,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 while(currentOutputProducerLine is not null) {
                     ProcessCurrentOutputLine();
-                    writer.WriteLine("");
+                    WriteBufferedText();
                 }
             }
         }
@@ -86,7 +88,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             void ProcessMacroExpansionLine(MacroExpansionLine mel) {
                 PrintLineAddress(false);
-                writer.Write(emptyBytesArea);
+                sb.Append(emptyBytesArea);
                 PrintExtraFlags();
                 PrintLine(processedLine);
                 if(listMacroExpansionProducingOutput || listMacroExpansionNotProducingOutput) {
@@ -99,7 +101,7 @@ namespace Konamiman.Nestor80.Assembler
             var mustPrintAddress = processedLine.Label is not null;
             ushort increaseLocationCounterBy = 0;
             AddressType? changeAreaTo = null;
-            //WIP: handle (sub)titles, page breaks, ;; should not print blank line in macro expansions
+            //WIP: handle (sub)titles, page breaks
 
             if(processedLine is SkippedLine && !currentlyListingFalseConditionals) {
                 return;
@@ -147,7 +149,7 @@ namespace Konamiman.Nestor80.Assembler
             }
             else if(processedLine is IncludeLine incl) {
                 PrintLineAddress(false);
-                writer.Write(emptyBytesArea);
+                sb.Append(emptyBytesArea);
                 PrintExtraFlags();
                 PrintLine(processedLine);
                 includeDepthLevel++;
@@ -214,7 +216,7 @@ namespace Konamiman.Nestor80.Assembler
                 IncreaseLocationCounter(increaseLocationCounterBy);
             }
 
-            writer.Write(emptyBytesArea);
+            sb.Append(emptyBytesArea);
             PrintExtraFlags();
             PrintLine(processedLine);
         }
@@ -235,16 +237,16 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     if(relocatable is LinkItemsGroup lig) {
-                        writer.Write(relocatableSize == 1 ? "00*" : "0000*");
+                        sb.Append(relocatableSize == 1 ? "00*" : "0000*");
                         printedChars += relocatableSize == 1 ? 3 : 5;
                     }
                     else {
                         var relocatableAddress = (RelocatableAddress)relocatable;
                         var value = relocatableAddress.Value;
-                        writer.Write(relocatableSize == 1 ? $"{value:X2}" : $"{value:X4}");
-                        writer.Write(addressSuffixes[relocatableAddress.Type]);
+                        sb.Append(relocatableSize == 1 ? $"{value:X2}" : $"{value:X4}");
+                        sb.Append(addressSuffixes[relocatableAddress.Type]);
                         if(relocatableSize is 2 && relocatableAddress.Type is not AddressType.ASEG) {
-                            writer.Write(" ");
+                            sb.Append(" ");
                             printedChars++;
                         }
                         printedChars += relocatableSize == 1 ? 3 : 5;
@@ -259,7 +261,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     var byteToPrint = currentOutputProducerLine.OutputBytes[outputIndex];
-                    writer.Write($"{byteToPrint:X2} ");
+                    sb.Append($"{byteToPrint:X2} ");
                     bytesRemainingInRow--;
                     totalOutputBytesRemaining--;
                     outputIndex++;
@@ -268,7 +270,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            writer.Write(new string(' ', bytesAreaSize - printedChars));
+            sb.Append(new string(' ', bytesAreaSize - printedChars));
             PrintExtraFlags();
 
             if(totalOutputBytesRemaining == 0) {
@@ -289,60 +291,71 @@ namespace Konamiman.Nestor80.Assembler
             if(printAddress) {
                 var area = isPhased ? currentPhasedLocationArea : currentLocationArea;
                 var counter = isPhased ? currentPhasedLocationCounter : locationCounters[currentLocationArea];
-                writer.Write($"  {counter:X4}{addressSuffixes[area]}");
+                sb.Append($"  {counter:X4}{addressSuffixes[area]}");
             }
             else {
-                writer.Write("       ");
+                sb.Append("       ");
             }
 
-            writer.Write("   ");
+            sb.Append("   ");
         }
 
         private static void PrintExtraFlags()
         {
             if(macroExpansionDepthLevel > 0 && includeDepthLevel == 0) {
-                writer.Write(flagsAreaWithPlus);
+                sb.Append(flagsAreaWithPlus);
             }
             else if(macroExpansionDepthLevel == 0 && includeDepthLevel == 1) {
-                writer.Write(flagsAreaWithC);
+                sb.Append(flagsAreaWithC);
             }
             else if(macroExpansionDepthLevel > 0 && includeDepthLevel == 1) {
-                writer.Write(flagsAreaWithCAndPlus);
+                sb.Append(flagsAreaWithCAndPlus);
             }
             else if(macroExpansionDepthLevel == 0 && includeDepthLevel > 1) {
-                writer.Write($" C{includeDepthLevel}".PadRight(extraFlagsAreaSize));
+                sb.Append($" C{includeDepthLevel}".PadRight(extraFlagsAreaSize));
             }
             else if(macroExpansionDepthLevel > 0 && includeDepthLevel > 1) {
-                writer.Write($"+C{includeDepthLevel}".PadRight(extraFlagsAreaSize));
+                sb.Append($"+C{includeDepthLevel}".PadRight(extraFlagsAreaSize));
             }
             else {
-                writer.Write(emptyExtraFlagsArea);
+                sb.Append(emptyExtraFlagsArea);
             }
         }
 
         private static void PrintLine(ProcessedSourceLine line)
         {
             if(macroExpansionDepthLevel == 0) {
-                writer.WriteLine(line.Line);
+                sb.Append(line.Line);
+                WriteBufferedText();
                 return;
             }
             try {
                 if(line.Line.Length >= line.EffectiveLineLength + 2 && line.Line.Substring(line.EffectiveLineLength, 2) == ";;") {
                     var lineWithoutComment = line.Line[..line.EffectiveLineLength];
                     if(lineWithoutComment.Length > 0) {
-                        writer.WriteLine(lineWithoutComment);
+                        sb.Append(lineWithoutComment);
                     }
                     else {
-                        writer.WriteLine("");
+                        //Line is empty after removing the ";;" comment? We don't want to print anything at all then
+                        sb.Clear();
+                        return;
                     }
                 }
                 else {
-                    writer.WriteLine(line.Line);
+                    sb.Append(line.Line);
                 }
             }
             catch {
-                writer.WriteLine(line.Line);
+                sb.Append(line.Line);
             }
+
+            WriteBufferedText();
+        }
+
+        private static void WriteBufferedText()
+        {
+            writer.WriteLine(sb.ToString());
+            sb.Clear();
         }
     }
 }
