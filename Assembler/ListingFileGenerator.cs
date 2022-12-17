@@ -80,7 +80,8 @@ namespace Konamiman.Nestor80.Assembler
 
             var titleLine = assemblyResult.ProcessedLines.FirstOrDefault(l => l is SetListingTitleLine);
             title = titleLine is null ? "" : ((SetListingTitleLine)titleLine).Title;
-            subtitle = null;
+            var subtitleLine = assemblyResult.ProcessedLines.FirstOrDefault(l => l is SetListingSubtitleLine);
+            subtitle = subtitleLine is null ? "" : ((SetListingSubtitleLine)subtitleLine).Subtitle;
 
             DoPageChange(1);
 
@@ -105,10 +106,13 @@ namespace Konamiman.Nestor80.Assembler
         private static void ProcessLine(ProcessedSourceLine processedLine)
         {
             void ProcessMacroExpansionLine(MacroExpansionLine mel) {
-                PrintLineAddress(false);
-                sb.Append(emptyBytesArea);
-                PrintExtraFlags();
-                PrintLineSource(processedLine);
+                if(listMacroExpansionNotProducingOutput || macroExpansionDepthLevel == 0) {
+                    PrintLineAddress(false);
+                    sb.Append(emptyBytesArea);
+                    PrintExtraFlags();
+                    PrintLineSource(processedLine);
+                }
+
                 if(listMacroExpansionProducingOutput || listMacroExpansionNotProducingOutput) {
                     macroExpansionDepthLevel++;
                     ProcessLines(mel.Lines);
@@ -120,7 +124,6 @@ namespace Konamiman.Nestor80.Assembler
             ushort increaseLocationCounterBy = 0;
             AddressType? changeAreaTo = null;
             var incrementSubpage = false;
-            var isMainpageInstruction = false;
 
             void PrintLineAsIs()
             {
@@ -342,6 +345,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void PrintLineAddress(bool printAddress)
         {
+            //TODO: Print value (not address) for constant definitions
             if(printAddress) {
                 var area = isPhased ? currentPhasedLocationArea : currentLocationArea;
                 var counter = isPhased ? currentPhasedLocationCounter : locationCounters[currentLocationArea];
