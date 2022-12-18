@@ -5,16 +5,15 @@ namespace Konamiman.Nestor80.Assembler
 {
     public static class ListingFileGenerator
     {
-        const int bytesPerRow = 4;
-        const int bytesAreaSize = 15;
+        private static int bytesAreaSize;
         const int extraFlagsAreaSize = 7;
-        const int symbolColumns = 4;
-        const int maxSymbolLength = 16;
-        static readonly string emptyBytesArea = new(' ', bytesAreaSize);
+        static string emptyBytesArea;
         static readonly string emptyExtraFlagsArea = new(' ', extraFlagsAreaSize);
         static readonly string flagsAreaWithPlus = "+" + new string(' ', extraFlagsAreaSize-1);
         static readonly string flagsAreaWithC = " C" + new string(' ', extraFlagsAreaSize - 2);
         static readonly string flagsAreaWithCAndPlus = "+C" + new string(' ', extraFlagsAreaSize - 2);
+
+        private static ListingFileConfiguration config;
 
         private static readonly Dictionary<AddressType, string> addressSuffixes = new() {
             { AddressType.CSEG, "'" },
@@ -57,9 +56,15 @@ namespace Konamiman.Nestor80.Assembler
 
         static bool printingSymbols;
 
-        public static int GenerateListingFile(AssemblyResult assemblyResult, StreamWriter writer)
+        public static int GenerateListingFile(AssemblyResult assemblyResult, StreamWriter writer, ListingFileConfiguration config)
         {
+            if(!config.ListCode && !config.ListSymbols) {
+                // ¯\_(ツ)_/¯
+                return 0;
+            }
+
             ListingFileGenerator.writer = writer;
+            ListingFileGenerator.config = config;
             isAbsoluteBuild = assemblyResult.BuildType == BuildType.Absolute;
             currentLocationArea = isAbsoluteBuild ? AddressType.ASEG : AddressType.CSEG;
             locationCounters = new Dictionary<AddressType, ushort>() {
@@ -69,13 +74,16 @@ namespace Konamiman.Nestor80.Assembler
                 { AddressType.COMMON, 0 }
             };
 
+            bytesAreaSize = (config.BytesPerRow * 3) + 3;
+            emptyBytesArea = new(' ', bytesAreaSize);
+
             includeDepthLevel = 0;
             macroExpansionDepthLevel = 0;
             currentMacroLine = null;
             listMacroExpansionProducingOutput = true;
             listMacroExpansionNotProducingOutput = false;
 
-            tfcondState = true;
+            tfcondState = config.ListFalseConditionals;
             currentlyListingFalseConditionals = tfcondState;
 
             mainPageNumber = 0;
@@ -90,11 +98,14 @@ namespace Konamiman.Nestor80.Assembler
             var subtitleLine = assemblyResult.ProcessedLines.FirstOrDefault(l => l is SetListingSubtitleLine);
             subtitle = subtitleLine is null ? "" : ((SetListingSubtitleLine)subtitleLine).Subtitle;
 
-            DoPageChange(1);
+            if(config.ListCode) {
+                DoPageChange(1);
+                ProcessLines(assemblyResult.ProcessedLines);
+            }
 
-            ProcessLines(assemblyResult.ProcessedLines);
-
-            PrintSymbols(assemblyResult.BuildType, assemblyResult.Symbols, assemblyResult.MacroNames, assemblyResult.CommonAreaSizes.Keys.ToArray());
+            if(config.ListSymbols) {
+                PrintSymbols(assemblyResult.BuildType, assemblyResult.Symbols, assemblyResult.MacroNames, assemblyResult.CommonAreaSizes.Keys.ToArray());
+            }
 
             writer.Flush();
             return (int)writer.BaseStream.Position;
@@ -293,7 +304,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void ProcessCurrentOutputLine()
         {
-            var bytesRemainingInRow = Math.Min(totalOutputBytesRemaining, bytesPerRow);
+            var bytesRemainingInRow = Math.Min(totalOutputBytesRemaining, config.BytesPerRow);
             var printedChars = 0;
 
             PrintLineAddress(true);
@@ -306,7 +317,7 @@ namespace Konamiman.Nestor80.Assembler
                         break;
                     }
 
-                    if(relocatable is LinkItemsGroup lig) {
+                    if(relocatable is LinkItemsGroup) {
                         sb.Append(relocatableSize == 1 ? "00*" : "0000*");
                         printedChars += relocatableSize == 1 ? 3 : 5;
                     }
@@ -316,7 +327,7 @@ namespace Konamiman.Nestor80.Assembler
                         sb.Append(relocatableSize == 1 ? $"{value:X2}" : $"{value:X4}");
                         sb.Append(addressSuffixes[relocatableAddress.Type]);
                         if(relocatableSize is 2 && relocatableAddress.Type is not AddressType.ASEG) {
-                            sb.Append(" ");
+                            sb.Append(' ');
                             printedChars++;
                         }
                         printedChars += relocatableSize == 1 ? 3 : 5;
@@ -528,8 +539,10 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static void PrintSymbolsCollection(Symbol[] symbols, bool printValue = true)
+        private static void PrintSymbolsCollection(Symbol[] symbolObjects, bool printValue = true)
         {
+            var symbols = symbolObjects.Select(s => new { Name = config.UppercaseSymbolNames ? s.Name.ToUpper() : s.Name, s.Value, s.ValueArea }).ToArray();
+
             var symbolsPrintedInRow = 0;
             sb.Clear();
 
@@ -537,12 +550,12 @@ namespace Konamiman.Nestor80.Assembler
                 if(printValue) {
                     sb.Append($"{symbol.Value:X4}{addressSuffixes[symbol.ValueArea]}\t");
                 }
-                var symbolName = symbol.Name.Length > maxSymbolLength ? symbol.Name[..(maxSymbolLength - 3)] + "..." : symbol.Name.PadRight(maxSymbolLength, ' ');
+                var symbolName = symbol.Name.Length > config.MaxSymbolLength ? symbol.Name[..(config.MaxSymbolLength - 3)] + "..." : symbol.Name.PadRight(config.MaxSymbolLength, ' ');
                 sb.Append(symbolName);
                 sb.Append('\t');
 
                 symbolsPrintedInRow++;
-                if(symbolsPrintedInRow == symbolColumns) {
+                if(symbolsPrintedInRow == config.SymbolsPerRow) {
                     WriteBufferedText();
                     symbolsPrintedInRow = 0;
                 }
@@ -555,16 +568,20 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void PrintSymbolsCollection(string[] symbols)
         {
+            if(config.UppercaseSymbolNames) {
+                symbols = symbols.Select(s => s.ToUpper()).ToArray();
+            }
+
             var symbolsPrintedInRow = 0;
             sb.Clear();
 
             foreach(var symbol in symbols.OrderBy(s => s).ToArray()) {
-                var symbolName = symbol.Length > maxSymbolLength ? symbol[..(maxSymbolLength - 3)] + "..." : symbol.PadRight(maxSymbolLength, ' ');
+                var symbolName = symbol.Length > config.MaxSymbolLength ? symbol[..(config.MaxSymbolLength - 3)] + "..." : symbol.PadRight(config.MaxSymbolLength, ' ');
                 sb.Append(symbolName);
                 sb.Append('\t');
 
                 symbolsPrintedInRow++;
-                if(symbolsPrintedInRow == symbolColumns) {
+                if(symbolsPrintedInRow == config.SymbolsPerRow) {
                     WriteBufferedText();
                     symbolsPrintedInRow = 0;
                 }

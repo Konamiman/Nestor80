@@ -190,12 +190,44 @@ namespace Konamiman.Nestor80.N80
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
+            -lbpl, --listing-bytes-per-line
+                How many bytes to print in one single line of text for instructions that generate
+                an arbitrary number of bytes (typically DB or DW) when generating the listing file;
+                for instructions that generate more bytes multiple lines of text will be generated.
+                Default is 4.
+
             -le, --listing-file-encoding
                 Text encoding for the generated listing file, it can be an encoding name
                 or a codepage number Run N80 with the --list-encodings argument to get 
                 a list of available encodings. Default is UTF-8.
 
-            -le, --listing-file-extension [.]<extension>
+            -lfc, --listing-false-conditionals
+                Include conditional block that evaluate to false when generating the listing file
+                (this is the default). This can also be controlled in the source code by using
+                the .TFCOND, .LFCOND and .SFCOND instructions.
+
+            -lic, --listing-include-code
+                Include the processed source code when generating the listing file
+                (this is the default).
+
+            -lis, --listing-include-symbols
+                Include the generted symbols and macro names when generating the listing file
+                (this is the default).
+
+            -lmsl, --listing-max-symbol-length
+                The maximum length that will be printed for each symbol name when generating
+                the symbols list of the listing file; longer symbol names will be truncated
+                to this length and get "..." appended at the end". Default is 16.
+
+            -lspl, --listing-symbols-per-line
+                The number of symbols that will be included in one single line of text
+                when generating the symbols list of the listing file. Default is 4.
+
+            -lus, --listing-uppercase-symbols
+                Uppercase the symbol names when printing them in the listing file
+                (mimics the behavior of Macro80).
+
+            -lx, --listing-file-extension [.]<extension>
                 The extension for the generated listing file. This value is used only when the
                 name of the listing file is chosen as the same name of the input file
                 (because no listing file path is specified, or because the specified path
@@ -235,6 +267,21 @@ namespace Konamiman.Nestor80.N80
                 This argument has effect only when the build type is relocatable. It will cause areas
                 defined with "DEFS <size>" statements to not be initialized (the DEFS instruction
                 will be treated as equivalent to "ORG $+<size>"). This is the default behavior.
+
+            -nlfc, --no-listing-false-conditionals
+                Don't include conditional block that evaluate to false when generating the listing
+                file. This can also be controlled in the source code by using the .TFCOND, .LFCOND
+                and .SFCOND instructions.
+
+            -nlic, --no-listing-include-code
+                Don't include the processed source code when generating the listing file.
+
+            -nlis, --no-listing-include-symbols
+                Don't include the generted symbols and macro names when generating the listing file.
+
+            -nlus, --no-listing-uppercase-symbols
+                Don't uppercase the symbol names when printing them in the listing file
+                (keep the original casing from the source code). This is the default.
 
             -no, --no-output
                 Process the input file but don't generate the output file.

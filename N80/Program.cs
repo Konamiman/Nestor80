@@ -68,6 +68,8 @@ namespace Konamiman.Nestor80.N80
         static string currentFileDirectory;
         static int printedWarningsCount = 0;
 
+        static readonly ListingFileConfiguration listingConfig = new();
+
         static int Main(string[] args)
         {
             totalTimeMeasurer.Start();
@@ -452,6 +454,14 @@ namespace Konamiman.Nestor80.N80
             listingFileEncoding = Encoding.UTF8;
             mustGenerateListingFile = false;
             listingFileExtension = null;
+
+            listingConfig.MaxSymbolLength = 16;
+            listingConfig.ListFalseConditionals = true;
+            listingConfig.ListCode = true;
+            listingConfig.ListSymbols = true;
+            listingConfig.BytesPerRow = 4;
+            listingConfig.SymbolsPerRow = 4;
+            listingConfig.UppercaseSymbolNames = false;
         }
 
         private static string FormatTimespan(TimeSpan ts)
@@ -915,6 +925,69 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nolx" or "--no-listing-file-extension") {
                     listingFileExtension = null;
                 }
+                else if(arg is "-lspl" or "--listing-symbols-per-line") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a number";
+                    }
+
+                    if(int.TryParse(args[i + 1], out int symbolsPerLine)) {
+                        listingConfig.SymbolsPerRow = Math.Clamp(symbolsPerLine, 1, 256);
+                    }
+                    else {
+                        return $"The {arg} argument needs to be followed by a number";
+                    }
+                    i++;
+                }
+                else if(arg is "-lmsl" or "--listing-max-symbol-length") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a number";
+                    }
+
+                    if(int.TryParse(args[i + 1], out int maxSymbolLength)) {
+                        listingConfig.MaxSymbolLength = Math.Clamp(maxSymbolLength, 4, 256);
+                    }
+                    else {
+                        return $"The {arg} argument needs to be followed by a number";
+                    }
+                    i++;
+                }
+                else if(arg is "-lic" or "--listing-include-code") {
+                    listingConfig.ListCode = true;
+                }
+                else if(arg is "-nlic" or "--no-listing-include-code") {
+                    listingConfig.ListCode = false;
+                }
+                else if(arg is "-lis" or "--listing-include-symbols") {
+                    listingConfig.ListSymbols = true;
+                }
+                else if(arg is "-nlis" or "--no-listing-include-symbols") {
+                    listingConfig.ListSymbols = false;
+                }
+                else if(arg is "-lfc" or "--listing-false-conditionals") {
+                    listingConfig.ListFalseConditionals = true;
+                }
+                else if(arg is "-nlfc" or "--no-listing-false-conditionals") {
+                    listingConfig.ListFalseConditionals = false;
+                }
+                else if(arg is "-lbpl" or "--listing-bytes-per-line") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a number";
+                    }
+
+                    if(int.TryParse(args[i + 1], out int bytesPerLine)) {
+                        listingConfig.BytesPerRow = Math.Clamp(bytesPerLine, 2, 256);
+                    }
+                    else {
+                        return $"The {arg} argument needs to be followed by a number";
+                    }
+                    i++;
+                }
+                else if(arg is "-lus" or "--listing-uppercase-symbols") {
+                    listingConfig.UppercaseSymbolNames = true;
+                }
+                else if(arg is "-nlus" or "--no-listing-uppercase-symbols") {
+                    listingConfig.UppercaseSymbolNames = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -1051,7 +1124,7 @@ namespace Konamiman.Nestor80.N80
                 try {
                     var listingStream = File.Create(listingFilePath);
                     var listingStreamWriter = new StreamWriter(listingStream, listingFileEncoding);
-                    listingWrittenBytes = ListingFileGenerator.GenerateListingFile(result, listingStreamWriter);
+                    listingWrittenBytes = ListingFileGenerator.GenerateListingFile(result, listingStreamWriter, listingConfig);
                     listingStream.Close();
                 }
                 catch(Exception ex) {
