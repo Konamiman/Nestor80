@@ -8,6 +8,8 @@ namespace Konamiman.Nestor80.Assembler
         const int bytesPerRow = 4;
         const int bytesAreaSize = 15;
         const int extraFlagsAreaSize = 7;
+        const int symbolColumns = 4;
+        const int maxSymbolLength = 16;
         static readonly string emptyBytesArea = new(' ', bytesAreaSize);
         static readonly string emptyExtraFlagsArea = new(' ', extraFlagsAreaSize);
         static readonly string flagsAreaWithPlus = "+" + new string(' ', extraFlagsAreaSize-1);
@@ -53,6 +55,8 @@ namespace Konamiman.Nestor80.Assembler
         static string title;
         static string subtitle;
 
+        static bool printingSymbols;
+
         public static int GenerateListingFile(AssemblyResult assemblyResult, StreamWriter writer)
         {
             ListingFileGenerator.writer = writer;
@@ -79,6 +83,8 @@ namespace Konamiman.Nestor80.Assembler
             linesPerPage = 50;
             printedLines = 0;
 
+            printingSymbols = false;
+
             var titleLine = assemblyResult.ProcessedLines.FirstOrDefault(l => l is SetListingTitleLine);
             title = titleLine is null ? "" : ((SetListingTitleLine)titleLine).Title;
             var subtitleLine = assemblyResult.ProcessedLines.FirstOrDefault(l => l is SetListingSubtitleLine);
@@ -87,6 +93,8 @@ namespace Konamiman.Nestor80.Assembler
             DoPageChange(1);
 
             ProcessLines(assemblyResult.ProcessedLines);
+
+            PrintSymbols(assemblyResult.BuildType, assemblyResult.Symbols, assemblyResult.MacroNames, assemblyResult.CommonAreaSizes.Keys.ToArray());
 
             writer.Flush();
             return (int)writer.BaseStream.Position;
@@ -420,11 +428,17 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void WriteBufferedText()
         {
-            writer.WriteLine(sb.ToString());
+            PrintLine(sb.ToString());
             sb.Clear();
+        }
+
+        private static void PrintLine(string value = "")
+        {
+            writer.WriteLine(value);
             printedLines++;
             if(printedLines == linesPerPage) {
                 DoPageChange(0);
+                printedLines = 0;
             }
         }
 
@@ -438,7 +452,7 @@ namespace Konamiman.Nestor80.Assembler
                 subPageNumber++;
             }
 
-            var titleLine = $"\f{title}\tNestor80\t1.0\tPAGE\t{mainPageNumber}{(subPageNumber == 0 ? "" : $"-{subPageNumber}")}";
+            var titleLine = $"\f{title}\tNestor80\t1.0\tPAGE\t{(printingSymbols ? "S" : mainPageNumber)}{(subPageNumber == 0 ? "" : $"-{subPageNumber}")}";
             writer.WriteLine(titleLine);
             writer.WriteLine(subtitle);
             writer.WriteLine();
@@ -448,6 +462,116 @@ namespace Konamiman.Nestor80.Assembler
             }
             else {
                 printedLines = 3;
+            }
+        }
+
+        private static void PrintSymbols(BuildType buildType, Symbol[] symbols, string[] macroNames, string[] commonAreaNames)
+        {
+            printingSymbols = true;
+            DoPageChange(1);
+
+            if(buildType is BuildType.Absolute) {
+                PrintLine();
+                if(symbols.Length > 0) {
+                    PrintLine("Symbols:");
+                    PrintSymbolsCollection(symbols);
+                }
+                else {
+                    PrintLine("No symbols defined");
+                }
+            }
+            else {
+                PrintLine();
+                var localSymbols = symbols.Where(s => !s.IsPublic && s.Type != SymbolType.External).ToArray();
+                if(symbols.Length > 0) {
+                    PrintLine("Local symbols:");
+                    PrintSymbolsCollection(symbols.Where(s => !s.IsPublic && s.Type != SymbolType.External).ToArray());
+                }
+                else {
+                    PrintLine("No local symbols defined");
+                }
+
+                PrintLine();
+                var publicSymbols = symbols.Where(s => s.IsPublic).ToArray();
+                if(publicSymbols.Length > 0) {
+                    PrintLine("Public symbols:");
+                    PrintSymbolsCollection(symbols.Where(s => s.IsPublic).ToArray());
+                }
+                else {
+                    PrintLine("No public symbols defined");
+                }
+
+                PrintLine();
+                var externalSymbols = symbols.Where(s => s.Type is SymbolType.External).ToArray();
+                if(externalSymbols.Length > 0) {
+                    PrintLine("External symbols:");
+                    PrintSymbolsCollection(symbols.Where(s => s.Type is SymbolType.External).ToArray(), false);
+                }
+                else {
+                    PrintLine("No external symbols defined");
+                }
+            }
+
+            PrintLine();
+            if(macroNames.Length > 0) {
+                PrintLine("Named macros:");
+                PrintSymbolsCollection(macroNames);
+            }
+            else {
+                PrintLine("No named macros defined");
+            }
+
+            if(commonAreaNames.Length > 0) {
+                PrintLine();
+                PrintLine("Common areas:");
+                PrintSymbolsCollection(commonAreaNames);
+            }
+        }
+
+        private static void PrintSymbolsCollection(Symbol[] symbols, bool printValue = true)
+        {
+            var symbolsPrintedInRow = 0;
+            sb.Clear();
+
+            foreach(var symbol in symbols.OrderBy(s => s.Name).ToArray()) {
+                if(printValue) {
+                    sb.Append($"{symbol.Value:X4}{addressSuffixes[symbol.ValueArea]}\t");
+                }
+                var symbolName = symbol.Name.Length > maxSymbolLength ? symbol.Name[..(maxSymbolLength - 3)] + "..." : symbol.Name.PadRight(maxSymbolLength, ' ');
+                sb.Append(symbolName);
+                sb.Append('\t');
+
+                symbolsPrintedInRow++;
+                if(symbolsPrintedInRow == symbolColumns) {
+                    WriteBufferedText();
+                    symbolsPrintedInRow = 0;
+                }
+            }
+
+            if(symbolsPrintedInRow > 0) {
+                WriteBufferedText();
+            }
+        }
+
+        private static void PrintSymbolsCollection(string[] symbols)
+        {
+            var symbolsPrintedInRow = 0;
+            sb.Clear();
+
+            foreach(var symbol in symbols.OrderBy(s => s).ToArray()) {
+                var symbolName = symbol.Length > maxSymbolLength ? symbol[..(maxSymbolLength - 3)] + "..." : symbol.PadRight(maxSymbolLength, ' ');
+                sb.Append(symbolName);
+                sb.Append('\t');
+
+                symbolsPrintedInRow++;
+                if(symbolsPrintedInRow == symbolColumns) {
+                    WriteBufferedText();
+                    symbolsPrintedInRow = 0;
+                }
+            }
+
+            if(symbolsPrintedInRow > 0) {
+                WriteBufferedText();
             }
         }
     }

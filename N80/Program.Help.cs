@@ -112,7 +112,7 @@ namespace Konamiman.Nestor80.N80
             
                 In auto mode the build type will be set as absolute if an ORG statement is found
                 in the code before a CPU instruction, a label defined as public with "::", or any
-                of the following instructions: CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DS,
+                of the following instructions: CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DZ,
                 PUBLIC, EXTRN, .REQUEST; otherwise the build type will be set as relocatable.
 
                 The --org-as-phase argument will also set the build type to absolute.

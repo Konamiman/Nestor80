@@ -215,7 +215,8 @@ namespace Konamiman.Nestor80.Assembler
                 EndAddressArea = state.EndAddress is null ? AddressType.ASEG : state.EndAddress.Type,
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
                 BuildType = buildType,
-                MaxRelocatableSymbolLength = MaxEffectiveExternalNameLength
+                MaxRelocatableSymbolLength = MaxEffectiveExternalNameLength,
+                MacroNames = state.NamedMacros.Keys.ToArray()
             };
         }
 

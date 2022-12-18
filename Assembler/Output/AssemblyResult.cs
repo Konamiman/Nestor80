@@ -30,5 +30,7 @@
 
         public string EffectiveRelocatableSymbolLength(string symbol) =>
             symbol.Length > MaxRelocatableSymbolLength ? symbol[..MaxRelocatableSymbolLength] : symbol;
+
+        public string[] MacroNames { get; set; }
     }
 }
