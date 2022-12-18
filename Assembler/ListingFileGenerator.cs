@@ -41,6 +41,7 @@ namespace Konamiman.Nestor80.Assembler
         private static int includeDepthLevel;
         private static int macroExpansionDepthLevel;
         private static MacroExpansionLine currentMacroLine;
+        private static ConstantDefinitionLine currentConstantDefinitionLine;
 
         static bool currentlyListingFalseConditionals;
         static bool tfcondState;
@@ -124,6 +125,7 @@ namespace Konamiman.Nestor80.Assembler
             ushort increaseLocationCounterBy = 0;
             AddressType? changeAreaTo = null;
             var incrementSubpage = false;
+            currentConstantDefinitionLine = null;
 
             void PrintLineAsIs()
             {
@@ -154,7 +156,10 @@ namespace Konamiman.Nestor80.Assembler
                 return;
             }
 
-            if(processedLine is IProducesOutput ipo) {
+            if(processedLine is ConstantDefinitionLine cdl) {
+                currentConstantDefinitionLine = cdl;
+            }
+            else if(processedLine is IProducesOutput ipo) {
                 if(macroExpansionDepthLevel > 0 && !listMacroExpansionProducingOutput) {
                     return;
                 }
@@ -345,8 +350,11 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void PrintLineAddress(bool printAddress)
         {
-            //TODO: Print value (not address) for constant definitions
-            if(printAddress) {
+            if(currentConstantDefinitionLine is not null) {
+                sb.Append($"  {currentConstantDefinitionLine.Value:X4}{addressSuffixes[currentConstantDefinitionLine.ValueArea]}");
+                currentConstantDefinitionLine = null;
+            }
+            else if(printAddress) {
                 var area = isPhased ? currentPhasedLocationArea : currentLocationArea;
                 var counter = isPhased ? currentPhasedLocationCounter : locationCounters[currentLocationArea];
                 sb.Append($"  {counter:X4}{addressSuffixes[area]}");
