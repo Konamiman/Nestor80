@@ -39,7 +39,7 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly string[] conditionalInstructions = new[] {
             "IF", "IFT", "IFE", "IFF",
             "IFDEF", "IFNDEF", "IF1", "IF2",
-            "IFB", "IFNB", "IFIDN", "IFDIF",
+            "IFB", "IFNB", "IFIDN", "IFDIF", "IFIDNI", "IFDIFI",
             "IFABS", "IFREL", "ELSE", "ENDIF",
             "IFCPU", "IFNCPU"
         };

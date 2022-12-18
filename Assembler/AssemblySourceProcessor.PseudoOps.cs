@@ -73,8 +73,10 @@ namespace Konamiman.Nestor80.Assembler
             { "ENDC", ProcessEndifLine },
             { "IFB", ProcessIfBlankLine },
             { "IFNB", ProcessIfNotBlankLine },
-            { "IFIDN", ProcessIfIdenticalLine },
-            { "IFDIF", ProcessIfDifferentLine },
+            { "IFIDN", ProcessIfIdenticalLineCaseSensitive },
+            { "IFIDNI", ProcessIfIdenticalLineCaseInsensitive },
+            { "IFDIF", ProcessIfDifferentLineCaseSensitive },
+            { "IFDIFI", ProcessIfDifferentLineCaseInsensitive },
             { ".WARN", ProcessUserWarningLine },
             { ".ERROR", ProcessUserErrorLine },
             { ".FATAL", ProcessUserFatalLine },
@@ -1101,7 +1103,13 @@ namespace Konamiman.Nestor80.Assembler
             return ProcessIfLine(opcode, evaluator);
         }
 
-        static ProcessedSourceLine ProcessIfIdenticalLine(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessIfIdenticalLineCaseSensitive(string opcode, SourceLineWalker walker) =>
+            ProcessIfIdenticalLine(opcode, walker, true);
+
+        static ProcessedSourceLine ProcessIfIdenticalLineCaseInsensitive(string opcode, SourceLineWalker walker) =>
+            ProcessIfIdenticalLine(opcode, walker, false);
+
+        static ProcessedSourceLine ProcessIfIdenticalLine(string opcode, SourceLineWalker walker, bool caseSensitive)
         {
             bool? evaluator()
             {
@@ -1117,13 +1125,19 @@ namespace Konamiman.Nestor80.Assembler
                     return null;
                 }
 
-                return text1 == text2;
+                return caseSensitive ? text1 == text2 : text1.Equals(text2, StringComparison.OrdinalIgnoreCase);
             }
 
             return ProcessIfLine(opcode, evaluator);
         }
 
-        static ProcessedSourceLine ProcessIfDifferentLine(string opcode, SourceLineWalker walker)
+        static ProcessedSourceLine ProcessIfDifferentLineCaseSensitive(string opcode, SourceLineWalker walker) =>
+            ProcessIfDifferentLine(opcode, walker, true);
+
+        static ProcessedSourceLine ProcessIfDifferentLineCaseInsensitive(string opcode, SourceLineWalker walker) =>
+            ProcessIfDifferentLine(opcode, walker, false);
+
+        static ProcessedSourceLine ProcessIfDifferentLine(string opcode, SourceLineWalker walker, bool caseSensitive)
         {
             bool? evaluator()
             {
@@ -1139,7 +1153,7 @@ namespace Konamiman.Nestor80.Assembler
                     return null;
                 }
 
-                return text1 != text2;
+                return caseSensitive ? text1 != text2 : !text1.Equals(text2, StringComparison.OrdinalIgnoreCase);
             }
 
             return ProcessIfLine(opcode, evaluator);
