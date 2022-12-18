@@ -64,7 +64,11 @@ namespace Konamiman.Nestor80.Assembler
 
         public IExpressionPart[] Parts { get; private set; }
 
-        static Expression() => DefaultRadix = 10;
+        static Expression()
+        {
+            DefaultRadix = 10;
+            operators["NEQ"] = NotEqualsOperator.Instance;
+        }
 
         public string Source { get; init; }
 
@@ -546,7 +550,7 @@ namespace Konamiman.Nestor80.Assembler
             throw new InvalidExpressionException(message, errorCode);
         }
 
-        private static Dictionary<string, ArithmeticOperator> operators = new ArithmeticOperator[] {
+        private static readonly Dictionary<string, ArithmeticOperator> operators = new ArithmeticOperator[] {
             AndOperator.Instance,
             DivideOperator.Instance,
             EqualsOperator.Instance,
