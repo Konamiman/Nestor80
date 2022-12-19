@@ -15,5 +15,7 @@
         public int BytesPerRow { get; set; }
 
         public bool UppercaseSymbolNames { get; set; }
+
+        public string TitleSignature { get; set; }
     }
 }

@@ -463,7 +463,7 @@ namespace Konamiman.Nestor80.Assembler
                 subPageNumber++;
             }
 
-            var titleLine = $"\f{title}\tNestor80\t1.0\tPAGE\t{(printingSymbols ? "S" : mainPageNumber)}{(subPageNumber == 0 ? "" : $"-{subPageNumber}")}";
+            var titleLine = $"\f{title}\t{config.TitleSignature}\tPAGE\t{(printingSymbols ? "S" : mainPageNumber)}{(subPageNumber == 0 ? "" : $"-{subPageNumber}")}";
             writer.WriteLine(titleLine);
             writer.WriteLine(subtitle);
             writer.WriteLine();
