@@ -193,8 +193,6 @@ namespace Konamiman.Nestor80.N80
                 generateOutputFile = false;
             }
 
-            totalTimeMeasurer.Stop();
-
             if(errCode is ERR_SUCCESS or ERR_CANT_CREATE_LISTING_FILE) {
                 if(warnCount == 0) {
                     PrintProgress("\r\nAssembly completed!", 1);
@@ -204,15 +202,6 @@ namespace Konamiman.Nestor80.N80
                 }
                 else {
                     PrintProgress($"\r\nAssembly completed with {warnCount} warnings", 1);
-                }
-
-                if(mustGenerateListingFile) {
-
-                }
-
-                if(showAssemblyDuration) {
-                    PrintDuration($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
-                    PrintDuration($"Total time:    {FormatTimespan(totalTimeMeasurer.Elapsed)}");
                 }
             }
             else {
@@ -242,6 +231,14 @@ namespace Konamiman.Nestor80.N80
             if(mustGenerateListingFile && errCode is ERR_SUCCESS) {
                 PrintProgress($"\r\nListing file: {listingFilePath}", 1);
                 PrintProgress($"{listingWrittenBytes} bytes written", 1);
+            }
+
+            totalTimeMeasurer.Stop();
+
+            if(showAssemblyDuration) {
+                WriteLine();
+                PrintDuration($"Assembly time: {FormatTimespan(assemblyTimeMeasurer.Elapsed)}");
+                PrintDuration($"Total time:    {FormatTimespan(totalTimeMeasurer.Elapsed)}");
             }
 
             return errCode;
