@@ -7,8 +7,4 @@
     <RootNamespace>Konamiman.Nestor80.Assembler</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Shared\Shared.csproj" />
-  </ItemGroup>
-
 </Project>
