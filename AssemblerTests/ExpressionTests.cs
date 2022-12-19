@@ -516,7 +516,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         static object[] TestFailingValidationSource = {
             new object[] { "((1)", "Extra ( found" },
             new object[] { "(1))", "Missing (" },
-            new object[] { "3 NOT", "NOT can only be preceded by (" },
+            new object[] { "3 NOT", "NOT can only be preceded by an operator or (" },
             new object[] { "* 3", "* can only be preceded by a number, a symbol, or )" },
             new object[] { "(1) 3", "A number can only be preceded by an operator or by (" },
             new object[] { "(FOO) 3", "A number can only be preceded by an operator or by (" },
@@ -656,11 +656,17 @@ namespace Konamiman.Nestor80.AssemblerTests
                     return null;
                 }
             };
-            
+
             var exp = Expression.Parse(line);
             exp.ValidateAndPostifixize();
-            var result = exp.Evaluate();
-            Assert.AreEqual(Address.Absolute((ushort)expectedResult), result);
+            if(line.Contains("EXT")) {
+                Assert.Throws<ExpressionContainsExternalReferencesException>(() => exp.Evaluate());
+            }
+            else {
+                exp.ValidateAndPostifixize();
+                var result = exp.Evaluate();
+                Assert.AreEqual(Address.Absolute((ushort)expectedResult), result);
+            }
         }
 
         private static void AssertParsesToNumber(string expressionString, ushort number) =>
