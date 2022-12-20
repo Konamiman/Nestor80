@@ -17,6 +17,9 @@ namespace Konamiman.Nestor80.N80
                    N80 --list-encodings
             """;
 
+        /// <summary>
+        /// Full help text, displayed when the program is run with the -h or --help argument.
+        /// </summary>
         static readonly string extendedHelpText = $"""
 
             <source file>
@@ -131,6 +134,10 @@ namespace Konamiman.Nestor80.N80
             -dfa, --default-file-args
                 Read arguments from the .N80 file in the directory of the input file (default).
                 This argument is ignored when found inside an arguments file (.N80 or any other).
+
+            -do, --do-aoutput
+                Generate an output file (this is the default behavior).
+                This argument is the opposite of --no-output.
             
             -ds, --define-symbols <symbol>[=<value>][,<symbol>[=<value>][,...]]
                 Predefine symbols for the assembled program.
@@ -284,7 +291,8 @@ namespace Konamiman.Nestor80.N80
                 (keep the original casing from the source code). This is the default.
 
             -no, --no-output
-                Process the input file but don't generate the output file.
+                Process the input file but don't generate the output file (the <output file> argument,
+                if specified, is ignored). This argument is the opposite of --do-output.
             
             -noap, --no-org-as-phase
                 Don't treat ORG statements as .PHASE statements (default).

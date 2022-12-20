@@ -6,6 +6,23 @@ using System.Text;
 
 namespace Konamiman.Nestor80.N80
 {
+
+    /// <summary>
+    /// This is the class that glues all the pieces together to turn Nestor80 into an executable application.
+    /// In a nutshell what it does is:
+    /// 
+    /// 1. Parse and verify the arguments from all sources (command line, N80_args environment item, argument files).
+    /// 2. Use the <see cref="AssemblySourceProcessor"/> class to process the source code, passing an instance
+    ///    of <see cref="AssemblyConfiguration"/> populated from the arguments.
+    /// 3. Use the <see cref="OutputGenerator"/> class to generate an absolute or relocatable file from
+    ///    the <see cref="AssemblyResult"/> instance that resulted from the source file processing.
+    /// 4. If requested via --listing argument, use the <see cref="ListingFileGenerator"/> class to generate a listing file
+    ///    from the result of the source code processing, passing an instance of <see cref="ListingFileConfiguration"/>
+    ///    populated from the arguments.
+    ///    
+    /// The events produced by <see cref="AssemblySourceProcessor"/> are captured in order to display messages
+    /// (generated with .PRINT and similar) and errors as they are generated, and to process INCLUDE instructions.
+    /// </summary>
     internal partial class Program
     {
         const int ERR_SUCCESS = 0;
@@ -240,6 +257,11 @@ namespace Konamiman.Nestor80.N80
         }
 
         static bool blankLinePrinted = false;
+
+        /// <summary>
+        /// Write a line of text to the console, avoiding writing two consecutive blank lines.
+        /// </summary>
+        /// <param name="text">The text to write</param>
         static void WriteLine(string text = "")
         {
             if(blankLinePrinted) {
@@ -257,6 +279,11 @@ namespace Konamiman.Nestor80.N80
             blankLinePrinted = text == "" || text.EndsWith("\r\n");
         }
 
+        /// <summary>
+        /// Write a line to the error output:
+        /// If the error output is redirected write it as is, otherwise resort to <see cref="WriteLine(string)"/>.
+        /// </summary>
+        /// <param name="text">The text to write</param>
         static void ErrorWriteLine(string text = "")
         {
             if(Console.IsErrorRedirected) {
@@ -267,6 +294,12 @@ namespace Konamiman.Nestor80.N80
             }
         }
 
+        /// <summary>
+        /// Generate the program arguments to use by merging the command line arguments,
+        /// the contents of the N80_ARGS variable, and the .N80 arguments file if they exist.
+        /// </summary>
+        /// <param name="commandLineArgs"></param>
+        /// <returns>The actual program arguments to use.</returns>
         private static string[] MaybeMergeArgsWithEnvAndFile(string[] commandLineArgs)
         {
             string[] fileArgs = null;
@@ -283,6 +316,8 @@ namespace Konamiman.Nestor80.N80
 
             var cmdAndEnvArgs = envArgs.Concat(commandLineArgs).ToArray();
 
+            //The arguments list could contain both --default-file-args and --no-default-file-args arguments.
+            //The last one specified wins, so we need to check whether they are present or not AND in which order.
             var indexOfLastFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-dfa" or "--default-file-args")?.index ?? -1;
             var indexOfLastNoFileArgs = cmdAndEnvArgs.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-ndfa" or "--no-default-file-args")?.index ?? -1;
             if(indexOfLastNoFileArgs != -1 && indexOfLastFileArgs < indexOfLastNoFileArgs) {
@@ -315,6 +350,9 @@ namespace Konamiman.Nestor80.N80
             }
         }
 
+        /// <summary>
+        /// Print the entire set of program arguments and include directories when in full verbosity mode.
+        /// </summary>
         private static void PrintArgumentsAndIncludeDirs()
         {
             if(verbosityLevel < 3) {
@@ -410,6 +448,12 @@ namespace Konamiman.Nestor80.N80
             return what ? "YES" : "NO";
         }
 
+        /// <summary>
+        /// Split a string by spaces, taking in account that a space escaped with "\ "
+        /// needs to be kept as is.
+        /// </summary>
+        /// <param name="argsString">The string to split.</param>
+        /// <returns>The parts the string has been split in.</returns>
         private static string[] SplitWithEscapedSpaces(string argsString)
         {
             argsString = argsString.Replace(@"\ ", "\u0001");
@@ -417,6 +461,10 @@ namespace Konamiman.Nestor80.N80
             return parts.Select(p => p.Replace("\u0001", " ")).ToArray();
         }
 
+        /// <summary>
+        /// Reset the configuration to default values, effectively forgetting
+        /// any previous command line arguments processed.
+        /// </summary>
         static void ResetConfig()
         {
             inputFileEncoding = Encoding.UTF8;
@@ -467,11 +515,19 @@ namespace Konamiman.Nestor80.N80
 
         private static void SetShowBannerFlag(string[] args)
         {
+            //The arguments list could contain both --show-banner and --no-show-banner arguments.
+            //The last one specified wins, so we need to check whether they are present or not AND in which order.
             var indexOfLastShowBanner = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-sb" or "--show-banner")?.index ?? -1;
             var indexOfLastNoShowBanner = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-nsb" or "--no-show-banner")?.index ?? -1;
             showBanner = indexOfLastNoShowBanner == -1 || indexOfLastShowBanner > indexOfLastNoShowBanner;
         }
 
+        /// <summary>
+        /// Process the input file argument, taking in account that a relative path
+        /// refers to the current directory.
+        /// </summary>
+        /// <param name="fileSpecification"></param>
+        /// <returns>An error message, or null if no error.</returns>
         private static string ProcessInputFileArgument(string fileSpecification)
         {
             if(!Path.IsPathRooted(fileSpecification)) {
@@ -489,29 +545,44 @@ namespace Konamiman.Nestor80.N80
             return null;
         }
 
+        /// <summary>
+        /// Process the output file argument, taking in account the rules for resolving
+        /// a missing argument, a relative path, "$" and "$/", and a path being
+        /// a directory rather than a file.
+        /// </summary>
+        /// <param name="fileSpecification">The argument as supplied in the command line.</param>
+        /// <returns>An error message, or null if no error.</returns>
         private static string ProcessOutputFileArgument(string fileSpecification)
         {
+            //mustProcessOutputFileName is set to true whenever the output file name
+            //needs to be automatically generated from the input file name.
+
             if(fileSpecification is null) {
+                //No argument: use current directory and auto file name.
                 outputFilePath = Path.Combine(Directory.GetCurrentDirectory(), inputFileName);
                 mustProcessOutputFileName = true;
                 return null;
             }
 
             if(fileSpecification is "$") {
+                //"$": Use the input file directory and auto file name.
                 fileSpecification = Path.Combine(inputFileDirectory, inputFileName);
                 mustProcessOutputFileName = true;
             }
             else if(fileSpecification.StartsWith("$/")) {
+                //"$/": Make it relative to the directory of the input file.
                 fileSpecification = Path.Combine(inputFileDirectory, fileSpecification[2..]);
             }
 
             fileSpecification = Path.GetFullPath(fileSpecification);
 
             if(Directory.Exists(fileSpecification)) {
+                //It's a directory: use it with auto file name.
                 outputFilePath = Path.Combine(fileSpecification, inputFileName);
                 mustProcessOutputFileName = true;
             }
             else if(Directory.Exists(Path.GetDirectoryName(fileSpecification))) {
+                //It's a file: use it as is.
                 outputFilePath = fileSpecification;
             }
             else {
@@ -521,6 +592,12 @@ namespace Konamiman.Nestor80.N80
             return null;
         }
 
+        /// <summary>
+        /// Process the listing file argument. The processing rules are the same
+        /// as for <see cref="ProcessOutputFileArgument(string)"/>.
+        /// </summary>
+        /// <param name="fileSpecification">The argument as supplied in the command line.</param>
+        /// <returns>An error message, or null if no error.</returns>
         private static string ProcessListingFileArgument(string fileSpecification)
         {
             var isAutoFilename = false;
@@ -550,6 +627,8 @@ namespace Konamiman.Nestor80.N80
                 return "Directory not found";
             }
 
+            //File extension is processed here because contrary to the output file path,
+            //there's no further processing of this argument.
             if(isAutoFilename) {
                 if(outputFileCase is OF_CASE_ORIGINAL) {
                     listingFilePath = Path.ChangeExtension(listingFilePath, outputFileExtension ?? ".LST");
@@ -573,12 +652,21 @@ namespace Konamiman.Nestor80.N80
             return null;
         }
 
+        /// <summary>
+        /// Process arguments coming from the command line or from an arguments file.
+        /// </summary>
+        /// <param name="args">The arguments to process.</param>
+        /// <param name="fromFile">True if the arguments come from a file, false if they come from the command line.</param>
+        /// <returns>An error message or null if no error.</returns>
         private static string ProcessArguments(string[] args, bool fromFile = false)
         {
             for(int i=0; i<args.Length; i++) {
                 var arg = args[i];
                 if(arg is "-no" or "--no-output") {
                     generateOutputFile = false;
+                }
+                else if(arg is "-do" or "--do-aoutput") {
+                    generateOutputFile = true;
                 }
                 else if(arg is "-ie" or "--input-encoding") {
                     if(i == args.Length - 1 || args[i + 1][0] == '-') {
@@ -988,6 +1076,13 @@ namespace Konamiman.Nestor80.N80
             return null;
         }
 
+        /// <summary>
+        /// Process arguments coming from a file, taking in account
+        /// that a relative path refers to the current directory
+        /// and "$/" refers to the directory of the source file.
+        /// </summary>
+        /// <param name="fileName">The file path.</param>
+        /// <returns>An error message, or null if no error.</returns>
         private static string ProcessArgsFromFile(string fileName)
         {
             string filePath;
@@ -1011,10 +1106,21 @@ namespace Konamiman.Nestor80.N80
             return ProcessArguments(fileArgs, true);
         }
 
+        /// <summary>
+        /// Do the actual assembly process after all the arguments have been processed.
+        /// </summary>
+        /// <param name="writtenBytes">Returns the size of the generated output file.</param>
+        /// <param name="warnCount">Returns the count of warnings generated.</param>
+        /// <param name="errCount">Returns the count of normal errors generated.</param>
+        /// <param name="fatalCount">Returns the count of fatal errors generated.</param>
+        /// <param name="listingWrittenBytes">Returns the count of the generated listing file.</param>
+        /// <returns>An error code to be returned by the program.</returns>
         private static int DoAssembly(out int writtenBytes, out int warnCount, out int errCount, out int fatalCount, out int listingWrittenBytes)
         {
             Stream inputStream;
             writtenBytes = warnCount = errCount = fatalCount = listingWrittenBytes = 0;
+
+            // Step 1: Process source
 
             try {
                 inputStream = File.OpenRead(inputFilePath);
@@ -1024,7 +1130,7 @@ namespace Konamiman.Nestor80.N80
                 return ERR_CANT_OPEN_INPUT_FILE;
             }
 
-            AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated1;
+            AssemblySourceProcessor.AssemblyErrorGenerated += AssemblySourceProcessor_AssemblyErrorGenerated;
             AssemblySourceProcessor.BuildTypeAutomaticallySelected += AssemblySourceProcessor_BuildTypeAutomaticallySelected;
             AssemblySourceProcessor.Pass2Started += AssemblySourceProcessor_Pass2Started;
             AssemblySourceProcessor.IncludedFileFinished += AssemblySourceProcessor_IncludedFileFinished;
@@ -1081,36 +1187,42 @@ namespace Konamiman.Nestor80.N80
                 }
             }
 
-            Stream outputStream;
+            // Step 2: generate output, only if step 1 didn't generate errors AND the --no-output argument wasn't specified.
 
-            try {
-                outputStream = File.Create(outputFilePath);
-            }
-            catch(Exception ex) {
-                PrintFatal($"Can't create output file: {ex.Message}");
-                return ERR_CANT_CREATE_OUTPUT_FILE;
+            if(generateOutputFile) {
+                Stream outputStream;
+
+                try {
+                    outputStream = File.Create(outputFilePath);
+                }
+                catch(Exception ex) {
+                    PrintFatal($"Can't create output file: {ex.Message}");
+                    return ERR_CANT_CREATE_OUTPUT_FILE;
+                }
+
+                if(result.ProgramName is null) {
+                    var inputFileNameNoExt = Path.GetFileNameWithoutExtension(inputFileName).ToUpper();
+                    result.ProgramName =
+                        inputFileNameNoExt.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
+                        inputFileNameNoExt[..AssemblySourceProcessor.MaxEffectiveExternalNameLength] :
+                        inputFileNameNoExt;
+                }
+
+                try {
+                    writtenBytes =
+                        result.BuildType is BuildType.Relocatable ?
+                        OutputGenerator.GenerateRelocatable(result, outputStream, initDefs) :
+                        OutputGenerator.GenerateAbsolute(result, outputStream, orgAsPhase);
+                }
+                catch(Exception ex) {
+                    PrintFatal($"Can't write to output file ({outputFilePath}): {ex.Message}");
+                    return ERR_CANT_CREATE_OUTPUT_FILE;
+                }
+
+                outputStream.Close();
             }
 
-            if(result.ProgramName is null) {
-                var inputFileNameNoExt = Path.GetFileNameWithoutExtension(inputFileName).ToUpper();
-                result.ProgramName =
-                    inputFileNameNoExt.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
-                    inputFileNameNoExt[..AssemblySourceProcessor.MaxEffectiveExternalNameLength] :
-                    inputFileNameNoExt;
-            }
-
-            try {
-                writtenBytes =
-                    result.BuildType is BuildType.Relocatable ?
-                    OutputGenerator.GenerateRelocatable(result, outputStream, initDefs):
-                    OutputGenerator.GenerateAbsolute(result, outputStream, orgAsPhase);
-            }
-            catch(Exception ex) {
-                PrintFatal($"Can't write to output file ({outputFilePath}): {ex.Message}");
-                return ERR_CANT_CREATE_OUTPUT_FILE;
-            }
-
-            outputStream.Close();
+            // Step 3: generate listing file, if requested via --listing argument.
 
             if(mustGenerateListingFile) {
                 try {
@@ -1131,23 +1243,44 @@ namespace Konamiman.Nestor80.N80
             return ERR_SUCCESS;
         }
 
+        /// <summary>
+        /// Handler for the <see cref="AssemblySourceProcessor.IncludedFileFinished"/> event.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private static void AssemblySourceProcessor_IncludedFileFinished(object sender, EventArgs e)
         {
             currentFileDirectory = PreviousCurrentFileDirectories.Pop();
         }
 
+        /// <summary>
+        /// Handler for the <see cref="AssemblySourceProcessor.Pass2Started"/> event.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private static void AssemblySourceProcessor_Pass2Started(object sender, EventArgs e)
         {
             inPass2 = true;
             PrintProgress($"\r\nPass 2 started\r\n", 2);
         }
 
+        /// <summary>
+        /// Handler for the <see cref="AssemblySourceProcessor.BuildTypeAutomaticallySelected"/> event.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e">File name and line number in which the decision was made, and build type chosen.</param>
         private static void AssemblySourceProcessor_BuildTypeAutomaticallySelected(object sender, (string, int, BuildType) e)
         {
             var fileName = e.Item1 is null ? "" : $"[{e.Item1}]: ";
             PrintProgress($"\r\n{fileName}Line {e.Item2}: Build type automatically selected: {e.Item3}", 2);
         }
 
+        /// <summary>
+        /// Format an assembly error for printing in the console.
+        /// </summary>
+        /// <param name="error">The error to format.</param>
+        /// <param name="prefix">The error type prefix to use.</param>
+        /// <returns>Formatted error message.</returns>
         private static string FormatAssemblyError(AssemblyError error, string prefix)
         {
             var fileName = error.IncludeFileName is null ? "" : $"[{error.IncludeFileName}] ";
@@ -1163,12 +1296,22 @@ namespace Konamiman.Nestor80.N80
             return $"\r\n{prefix}: {errorCode}{fileName}{macroInfo}{lineNumber}{error.Message}\r\n{lineText}";
         }
 
+        /// <summary>
+        /// Handler for the <see cref="AssemblySourceProcessor.PrintMessage"/> event.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private static void AssemblySourceProcessor_PrintMessage(object sender, string e)
         {
             PrintAssemblyPrint(e);
         }
 
-        private static void AssemblySourceProcessor_AssemblyErrorGenerated1(object sender, AssemblyError error)
+        /// <summary>
+        /// Handler for the <see cref="AssemblySourceProcessor.AssemblyErrorGenerated"/> event.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e">The error that has been generated.</param>
+        private static void AssemblySourceProcessor_AssemblyErrorGenerated(object sender, AssemblyError error)
         {
             if(error.IsWarning && skippedWarnings.Contains(error.Code)) {
                 return;
@@ -1185,6 +1328,11 @@ namespace Konamiman.Nestor80.N80
             }
         }
 
+        /// <summary>
+        /// Print a generated warning if it's not configured as ignored
+        /// and if either is not a duplicate or verbosity level is at least 2.
+        /// </summary>
+        /// <param name="error">The warning to print.</param>
         private static void PrintWarning(AssemblyError error)
         {
             var isDuplicateWarning = warningsFromPass1.Contains(error);
@@ -1250,6 +1398,10 @@ namespace Konamiman.Nestor80.N80
             ErrorWriteLine();
         }
 
+        /// <summary>
+        /// Print a text resulting from a .PRINT or similar statement in source code.
+        /// </summary>
+        /// <param name="text"></param>
         private static void PrintAssemblyPrint(string text)
         {
             if(colorPrint) {
@@ -1295,6 +1447,18 @@ namespace Konamiman.Nestor80.N80
 
         static readonly Stack<string> PreviousCurrentFileDirectories = new();
 
+        /// <summary>
+        /// Callback passed to <see cref="AssemblySourceProcessor"/> to resolve INCLUDE instructions.
+        /// 
+        /// Relative files are searched in this order: current directory, the directory of the currently
+        /// INCLUDEd file (or the input file if none), extra include directories in the order
+        /// they were specified.
+        /// 
+        /// <see cref="PreviousCurrentFileDirectories"/> is a stack used to keep track of the directories 
+        /// for the nested INCLUDEd files.
+        /// </summary>
+        /// <param name="includeFilePath">The argument of the INCLUDE instruction.</param>
+        /// <returns>An open stream for the INCLUDEd file, or null if file is not found.</returns>
         private static Stream GetStreamForInclude(string includeFilePath)
         {
             static Stream Process(string filePath)
