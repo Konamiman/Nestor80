@@ -147,8 +147,10 @@ namespace Konamiman.Nestor80.Assembler
                     code: AssemblyErrorCode.UnexpectedError,
                     message: $"Unexpected error: ({ex.GetType().Name}) {ex.Message}"
                 );
-                
+
+                #if DEBUG
                 throw;
+                #endif
             }
 
             state.WrapUp();

@@ -1121,6 +1121,9 @@ namespace Konamiman.Nestor80.N80
                 }
                 catch(Exception ex) {
                     PrintFatal($"Can't create listing file{(listingFilePath is null ? "" : $" ({listingFilePath})")}: {ex.Message}");
+                    #if DEBUG
+                    throw;
+                    #endif
                     return ERR_CANT_CREATE_LISTING_FILE;
                 }
             }
