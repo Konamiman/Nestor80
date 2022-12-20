@@ -55,6 +55,7 @@ namespace Konamiman.Nestor80.Assembler
         static string subtitle;
 
         static bool printingSymbols;
+        static bool listingActive;
 
         public static int GenerateListingFile(AssemblyResult assemblyResult, StreamWriter writer, ListingFileConfiguration config)
         {
@@ -92,6 +93,7 @@ namespace Konamiman.Nestor80.Assembler
             printedLines = 0;
 
             printingSymbols = false;
+            listingActive = true;
 
             var titleLine = assemblyResult.ProcessedLines.FirstOrDefault(l => l is SetListingTitleLine);
             title = titleLine is null ? "" : ((SetListingTitleLine)titleLine).Title;
@@ -240,6 +242,12 @@ namespace Konamiman.Nestor80.Assembler
                 else if(lcl.Type is ListingControlType.Tfcond) {
                     tfcondState = !tfcondState;
                     currentlyListingFalseConditionals = tfcondState;
+                }
+                else if(lcl.Type is ListingControlType.List) {
+                    listingActive = true;
+                }
+                else if(lcl.Type is ListingControlType.XList) {
+                    listingActive = false;
                 }
             }
             else if(processedLine is ChangeListingPageLine clpl2 && !clpl2.IsMainPageChange) {
@@ -445,6 +453,10 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void PrintLine(string value = "")
         {
+            if(!listingActive) {
+                return;
+            }
+
             writer.WriteLine(value);
             printedLines++;
             if(printedLines == linesPerPage) {

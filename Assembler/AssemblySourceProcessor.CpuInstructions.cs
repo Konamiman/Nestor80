@@ -3,6 +3,8 @@ using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
+    //This file contains the code that processes source lines representing CPU instructions.
+
     public partial class AssemblySourceProcessor
     {
         private static readonly Regex ixPlusArgumentRegex = new(@"^\(\s*IX\s*[+-][^)]+\)$", RegxOp);
@@ -26,6 +28,13 @@ namespace Konamiman.Nestor80.Assembler
             { CpuParsedArgType.IyPlusOffset, CpuInstrArgType.IyOffset }
         };
 
+        /// <summary>
+        /// Process a source line that represents a CPU instruction.
+        /// </summary>
+        /// <param name="opcode">The instruction opcode.</param>
+        /// <param name="walker">A walker to be used to retrieve the remaining of the source line, pointing past the opcode.</param>
+        /// <returns>The result of processing the source line.</returns>
+        /// <exception cref="Exception"></exception>
         private static ProcessedSourceLine ProcessCpuInstruction(string opcode, SourceLineWalker walker)
         {
             byte[] instructionBytes = null;
@@ -72,8 +81,8 @@ namespace Konamiman.Nestor80.Assembler
 
             // There's at least one variable argument.
 
-            var firstArgumentType = GetCpuInstructionArgumentPatternNew(firstArgument);
-            var secondArgumentType = GetCpuInstructionArgumentPatternNew(secondArgument);
+            var firstArgumentType = GetCpuInstructionArgumentPattern(firstArgument);
+            var secondArgumentType = GetCpuInstructionArgumentPattern(secondArgument);
 
             if(string.Equals("LD", opcode, StringComparison.OrdinalIgnoreCase) &&
                 firstArgumentType is CpuParsedArgType.IxPlusOffset or CpuParsedArgType.IyPlusOffset &&
@@ -342,6 +351,18 @@ namespace Konamiman.Nestor80.Assembler
             return (expressionText, ixRegisterSign == "-");
         }
 
+        /// <summary>
+        /// Given a variable argument for an instruction, and an expression that represents it,
+        /// try to evaluate it and either use <see cref="ProcessArgumentForInstruction"/> to process the resulting value,
+        /// register it as an expression pending evaluation, or register it as a relocatable address
+        /// in the resulting instance of <see cref="ProcessedSourceLine"/>.
+        /// </summary>
+        /// <param name="line">The generated processed line.</param>
+        /// <param name="argumentExpression">The expression representing the argument.</param>
+        /// <param name="argBytePosition">The position of the argument in the byte array that the instruction produces.</param>
+        /// <param name="argType">The argument type.</param>
+        /// <param name="isNegativeIxy">True if the instruction is IX/IY with negative offset.</param>
+        /// <returns></returns>
         private static bool AdjustInstructionLineForExpression(CpuInstructionLine line, Expression argumentExpression, int argBytePosition, CpuInstrArgType argType, bool isNegativeIxy = false)
         {
             Address variableArgumentValue;
@@ -387,7 +408,7 @@ namespace Konamiman.Nestor80.Assembler
             return true;
         }
 
-        private static CpuParsedArgType GetCpuInstructionArgumentPatternNew(string argument)
+        private static CpuParsedArgType GetCpuInstructionArgumentPattern(string argument)
         {
             if(argument is null)
                 return CpuParsedArgType.None;
@@ -413,6 +434,19 @@ namespace Konamiman.Nestor80.Assembler
             return CpuParsedArgType.Number;
         }
 
+        /// <summary>
+        /// Given a variable argument for an instruction, and provided that the corresponding expression has been already evaluated,
+        /// process and validate the resulting value taking in account special cases (such as DJNZ or JR offsets, IX/IY instruction offsets)
+        /// and updating the generated instruction bytes as appropriate.
+        /// </summary>
+        /// <param name="opcode">Instruction opcode.</param>
+        /// <param name="argumentType">Argument type.</param>
+        /// <param name="instructionBytes">Instruction bytes to be updated.</param>
+        /// <param name="value">Evaluated expression value.</param>
+        /// <param name="position">Position of the argument in the instruction bytes array.</param>
+        /// <param name="isNegativeIxy">True if the instruction is IX/IY with negative offset.</param>
+        /// <returns>True on success, false on error.</returns>
+        /// <exception cref="Exception"></exception>
         private static bool ProcessArgumentForInstruction(string opcode, CpuInstrArgType argumentType, byte[] instructionBytes, Address value, int position, bool isNegativeIxy = false)
         {
             if(argumentType is CpuInstrArgType.OffsetFromCurrentLocation) {
@@ -439,7 +473,7 @@ namespace Konamiman.Nestor80.Assembler
                 return true;
             }
 
-            else if(argumentType is CpuInstrArgType.Word or CpuInstrArgType.WordInParenthesis&& value.IsAbsolute) {
+            else if(argumentType is CpuInstrArgType.Word or CpuInstrArgType.WordInParenthesis && value.IsAbsolute) {
                 instructionBytes[position] = value.ValueAsByte;
                 instructionBytes[position + 1] = (byte)((value.Value & 0xFF00) >> 8);
                 return true;

@@ -10,7 +10,13 @@ using Konamiman.Nestor80.Assembler.Output;
 
 namespace Konamiman.Nestor80.Assembler
 {
-    public partial class AssemblySourceProcessor
+    /// <summary>
+    /// This class provides an <see cref="AssemblySourceProcessor.Assemble(Stream, Encoding, AssemblyConfiguration)"/> method that processes
+    /// a unit of source code (coming from any stream) and returns an <see cref="AssemblyResult"/> object that can be used to
+    /// generate an output file with <see cref="OutputGenerator"/> and a listing file with <see cref="ListingFileGenerator"/>.
+    /// A handful of events are provided to monitor the progress of the assembly process.
+    /// </summary>
+    public static partial class AssemblySourceProcessor
     {
         const int MAX_LINE_LENGTH = 1034;
         const int MAX_INCLUDE_NESTING = 34;
@@ -76,16 +82,36 @@ namespace Konamiman.Nestor80.Assembler
 
         private static readonly ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
 
+        /// <summary>
+        /// Event fired when the assembly process generates an assembly error.
+        /// </summary>
         public static event EventHandler<AssemblyError> AssemblyErrorGenerated;
+
+        /// <summary>
+        /// Event fired when the .PRINTX, .PRINT, .PRINT1 or .PRINT2 instructions are processed,
+        /// the argument is the text to print.
+        /// </summary>
         public static event EventHandler<string> PrintMessage;
+
+        /// <summary>
+        /// Event fired when the build type is automatically selected (only if build type passed in configuration was "auto").
+        /// The arguments are the file name and line number where the decision was made, and the build type chosen.
+        /// </summary>
         public static event EventHandler<(string, int, BuildType)> BuildTypeAutomaticallySelected;
+
+        /// <summary>
+        /// Event fired when pass 2 starts.
+        /// </summary>
         public static event EventHandler Pass2Started;
+
+        /// <summary>
+        /// Event fired when the processing of an INCLUDEd file finishes
+        /// (so processing resumes at the point after the INCLUDE instruction
+        /// in the previous INCLUDEd file or in the input file).
+        /// </summary>
         public static event EventHandler IncludedFileFinished;
 
-        private AssemblySourceProcessor()
-        {
-        }
-
+        //This runs the first time that any static member of the class is accessed.
         static AssemblySourceProcessor()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -97,12 +123,24 @@ namespace Konamiman.Nestor80.Assembler
             return Enum.GetNames<CpuType>().Contains(cpuName, StringComparer.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Process (assemble) a unit of source code.
+        /// </summary>
+        /// <param name="source">The source code to process.</param>
+        /// <param name="configuration">The configuration to use for the process.</param>
+        /// <returns>The result of the processing.</returns>
         public static AssemblyResult Assemble(string source, AssemblyConfiguration configuration = null)
         {
             var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(source));
             return Assemble(sourceStream, Encoding.UTF8, configuration ?? new AssemblyConfiguration());
         }
 
+        /// <summary>
+        /// Process (assemble) a unit of source code.
+        /// </summary>
+        /// <param name="sourceStream">The source code to process.</param>
+        /// <param name="configuration">The configuration to use for the process.</param>
+        /// <returns>The result of the processing.</returns>
         public static AssemblyResult Assemble(Stream sourceStream, Encoding sourceStreamEncoding, AssemblyConfiguration configuration)
         {
             try {
@@ -222,6 +260,10 @@ namespace Konamiman.Nestor80.Assembler
             };
         }
 
+        /// <summary>
+        /// Process any symbols that were passed with the -ds or --define-symbols arguments.
+        /// </summary>
+        /// <param name="predefinedSymbols">A list of symbol name and value pairs.</param>
         private static void ProcessPredefinedsymbols((string, ushort)[] predefinedSymbols)
         {
             foreach((var symbol, var value) in predefinedSymbols) {
@@ -242,6 +284,10 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        /// <summary>
+        /// Perform an assembly pass, basically by processing source lines one by one (<see cref="ProcessSourceLine(string, int?)"/> does that)
+        /// and keeping track of macro expansion and INCLUDEd files.
+        /// </summary>
         private static void DoPass()
         {
             while(!state.EndReached) {
@@ -294,6 +340,15 @@ namespace Konamiman.Nestor80.Assembler
             AssemblyEndWarnings();
         }
 
+        /// <summary>
+        /// Process one single line of source code and return an instance of <see cref="ProcessedSourceLine"/>
+        /// that represents the line and can be used when generating the output file or the listing file
+        /// (each and every source line generates an instance of <see cref="ProcessedSourceLine"/>, no exceptions, even blank lines
+        /// and lines inside false conditionals).
+        /// </summary>
+        /// <param name="line">The source line to process, with form feed chars removed.</param>
+        /// <param name="formFeedCharsCount">How many form feed chars (FFh) were present in the original source line.</param>
+        /// <returns>The result of processing the line.</returns>
         private static ProcessedSourceLine ProcessSourceLine(string line, int? formFeedCharsCount = null)
         {
             ProcessedSourceLine processedLine = null;
@@ -398,7 +453,6 @@ namespace Konamiman.Nestor80.Assembler
             //BAR: endif  --> label registered
             //
             //That's why we don't register the label beforehand unless the line contains only the label.
-
             if(!definingMacro && symbol.EndsWith(':') && !(state.Configuration.AllowBareExpressions && symbol[0] is '"' or '\'')) {
                 if(IsValidSymbolName(symbol)) {
                     label = symbol;
@@ -601,6 +655,9 @@ namespace Konamiman.Nestor80.Assembler
             return processedLine;
         }
 
+        /// <summary>
+        /// Once the assembly process has finished, throws the appropriate "global" (not related to a particular source line) warnings.
+        /// </summary>
         private static void AssemblyEndWarnings()
         {
             if(state.InConditionalBlock) {
@@ -624,6 +681,14 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        /// <summary>
+        /// Process the instructions that were left as "pending evaluation" when the corresponding source line was processed.
+        /// An expression will be considered as pending evaluation during pass 1 when referencing symbols, this method will be used
+        /// in pass 2 to resolve them. Expressions referencing relocatable values that need to be stored as a byte need special
+        /// processing and thus will also be marked as pending evaluation and processed by this method.
+        /// </summary>
+        /// <param name="processedLine">The processed line.</param>
+        /// <param name="expressionsPendingEvaluation">The expressions to process.</param>
         private static void ProcessExpressionsPendingEvaluation(ProcessedSourceLine processedLine, List<ExpressionPendingEvaluation> expressionsPendingEvaluation)
         {
             if(processedLine is ConstantDefinitionLine cdl) {
@@ -704,6 +769,16 @@ namespace Konamiman.Nestor80.Assembler
             line.RelocatableParts = relocatables.ToArray();
         }
 
+        /// <summary>
+        /// Converts an expression into a collection of objects representing link items that can be later used
+        /// when generating a Link80 compatible relocatable file. This processing is needed when the expression
+        /// contains external symbol references or relocatable values that are to be stored as a byte
+        /// (these expressions can't be evaluated at assembly time and need to be evaluated at linking time).
+        /// </summary>
+        /// <param name="processedLine">The processed line that contains the expression.</param>
+        /// <param name="expressionPendingEvaluation">The expression to process.</param>
+        /// <returns>A <see cref="LinkItemsGroup"/> object containing the resulting link items.</returns>
+        /// <exception cref="InvalidOperationException"></exception>
         private static LinkItemsGroup GetLinkItemsGroupFromExpression(ProcessedSourceLine processedLine, ExpressionPendingEvaluation expressionPendingEvaluation)
         {
             var items = new List<LinkItem>();
@@ -745,6 +820,15 @@ namespace Konamiman.Nestor80.Assembler
             return new LinkItemsGroup() { Index = expressionPendingEvaluation.LocationInOutput, IsByte = expressionPendingEvaluation.IsByte, LinkItems = items.ToArray() };
         }
 
+        /// <summary>
+        /// Get a symbol to be used in the evaluation of a expression, taking in account
+        /// if the symbol already exists or not, if it's external, and if a prefix needs to be added
+        /// (for modules and relative labels).
+        /// </summary>
+        /// <param name="name">Symbol name.</param>
+        /// <param name="isExternal">True if the symbol is referenced as external with a ## suffix.</param>
+        /// <param name="isRoot">True if a symbol is referenced as root with a : prefix.</param>
+        /// <returns>The retrieved (or newly created) symbol object.</returns>
         private static SymbolInfo GetSymbolForExpression(string name, bool isExternal, bool isRoot)
         {
             if(name == "$") {
@@ -781,6 +865,13 @@ namespace Konamiman.Nestor80.Assembler
             return symbol;
         }
 
+        /// <summary>
+        /// Process a label definition found while processing a source line.
+        /// This is more complex than just creating a new symbol, since we must check if a symbol with the same name already exists
+        /// (and if so, is it actually the same label? Does it have the same value in passes 1 and 2? Is it now referred as external
+        /// but it wasn't previously? Etc).
+        /// </summary>
+        /// <param name="label">The label as found in the source, with : or :: sufffix.</param>
         private static void ProcessLabelDefinition(string label)
         {
             if(label is null || (state.Configuration.AllowBareExpressions && label[0] is '"' or '\'')) {
@@ -867,6 +958,12 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        /// <summary>
+        /// Set the string encoding to use for converting strings provided in DEFB instructions into sequences of bytes.
+        /// </summary>
+        /// <param name="encodingNameOrCodepage">The encoding name or code page.</param>
+        /// <param name="initial">True if the encoding is being selected initially via configuration, false if it's being selected in code with the .strenc instruction.</param>
+        /// <returns>True on success, false on error (unknown or unsupported encoding).</returns>
         private static bool SetStringEncoding(string encodingNameOrCodepage, bool initial = false)
         {
             if(encodingNameOrCodepage.Equals("ASCII", StringComparison.OrdinalIgnoreCase))
@@ -893,6 +990,13 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        /// <summary>
+        /// Register a new assembly error. Most of the work is done by <see cref="AssemblyState.AddError(AssemblyErrorCode, string, bool)"/>,
+        /// but here we fire the appropriate event and check if we have reached the maximum errors count.
+        /// </summary>
+        /// <param name="code"></param>
+        /// <param name="message"></param>
+        /// <param name="withLineNumber"></param>
         static void AddError(AssemblyErrorCode code, string message, bool withLineNumber = true)
         {
             var error = state.AddError(code, message, withLineNumber);

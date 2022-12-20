@@ -5,102 +5,303 @@ using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
+    //This file contains the processing code for the assembler pseudo-operators (all the instructions that aren't CPU instructions).
+
     public partial class AssemblySourceProcessor
     {
+        /// <summary>
+        /// Dictionary of processing callbacks by instruction code.
+        /// Aliases are handled by defining additional entries for the same callback.
+        /// See <see cref="ProcessPrintOrUserErrorLine"/> for the allowed expression interpolation formats.
+        /// </summary>
         readonly static Dictionary<string, Func<string, SourceLineWalker, ProcessedSourceLine>> PseudoOpProcessors = new(StringComparer.OrdinalIgnoreCase) {
-            { "DB", ProcessDefbLine },
-            { "DEFB", ProcessDefbLine },
-            { "DEFM", ProcessDefbLine },
-            { "DW", ProcessDefwLine },
-            { "DEFW", ProcessDefwLine },
-            { "DS", ProcessDefsLine },
-            { "DEFS", ProcessDefsLine },
-            { "DC", ProcessDcLine },
-            { "CSEG", ProcessCsegLine },
-            { "DSEG", ProcessDsegLine },
-            { "ASEG", ProcessAsegLine },
-            { "ORG", ProcessOrgLine },
-            { "EXT", ProcessExternalDeclarationLine },
-            { "EXTRN", ProcessExternalDeclarationLine },
-            { "EXTERNAL", ProcessExternalDeclarationLine },
-            { "PUBLIC", ProcessPublicDeclarationLine },
-            { "GLOBAL", ProcessPublicDeclarationLine },
-            { "ENTRY", ProcessPublicDeclarationLine },
-            { "END", ProcessEndLine },
-            { ".COMMENT", ProcessDelimitedCommentStartLine },
-            { ".STRENC", ProcessSetEncodingLine },
-            { ".STRESC", ProcessChangeStringEscapingLine },
-            { ".RADIX", ProcessChangeRadixLine },
-            { ".8080", ProcessChangeCpuTo8080Line },
-            { ".Z80", ProcessChangeCpuToZ80Line },
-            { ".CPU", ProcessChangeCpuLine },
-            { "NAME", ProcessSetProgramNameLine },
-            { "TITLE", ProcessSetListingTitleLine },
-            { "SUBTTL", ProcessSetListingSubtitleLine },
-            { "$TITLE", ProcessLegacySetListingSubtitleLine },
-            { "PAGE", ProcessSetListingNewPageLine },
-            { "SUBPAGE", ProcessSetListingNewPageLine },
-            { "MAINPAGE", ProcessChangeListingMainPageLine },
+            
+            // $EJECT [<page size>]: Alias for PAGE
             { "$EJECT", ProcessSetListingNewPageLine },
-            { ".PRINTX", ProcessPrintxLine },
-            { "DEFZ", ProcessDefzLine },
-            { "DZ", ProcessDefzLine },
-            { ".REQUEST", ProcessRequestLinkFilesLine },
-            { ".LIST", ProcessListingControlLine },
-            { ".XLIST", ProcessListingControlLine },
-            { ".TFCOND", ProcessListingControlLine },
-            { ".SFCOND", ProcessListingControlLine },
-            { ".LFCOND", ProcessListingControlLine },
+
+            // $TITLE('title'): Alias for SUBTTL
+            { "$TITLE", ProcessLegacySetListingSubtitleLine },
+
+            // .8080: Unsupported, always throws error
+            { ".8080", ProcessChangeCpuTo8080Line },
+
+            // .COMMENT <delimiter>: Start multiline comment
+            { ".COMMENT", ProcessDelimitedCommentStartLine },
+
+            // .CPU <cpu>: Change current CPU
+            { ".CPU", ProcessChangeCpuLine },
+
+            // .CREF: Unsupported, does nothing
             { ".CREF", ProcessListingControlLine },
-            { ".XCREF", ProcessListingControlLine },
-            { ".LALL", ProcessListingControlLine },
-            { ".SALL", ProcessListingControlLine },
-            { ".XALL", ProcessListingControlLine },
-            { ".PRINT", ProcessPrintLine },
-            { ".PRINT1", ProcessPrint1Line },
-            { ".PRINT2", ProcessPrint2Line },
-            { "IF", ProcessIfTrueLine },
-            { "COND", ProcessIfTrueLine },
-            { "IFT", ProcessIfTrueLine },
-            { "IFE", ProcessIfFalseLine },
-            { "IFF", ProcessIfFalseLine },
-            { "IFDEF", ProcessIfDefinedLine },
-            { "IFNDEF", ProcessIfNotDefinedLine },
-            { "IF1", ProcessIf1Line },
-            { "IF2", ProcessIf2Line },
-            { "ELSE", ProcessElseLine },
-            { "ENDIF", ProcessEndifLine },
-            { "ENDC", ProcessEndifLine },
-            { "IFB", ProcessIfBlankLine },
-            { "IFNB", ProcessIfNotBlankLine },
-            { "IFIDN", ProcessIfIdenticalLineCaseSensitive },
-            { "IFIDNI", ProcessIfIdenticalLineCaseInsensitive },
-            { "IFDIF", ProcessIfDifferentLineCaseSensitive },
-            { "IFDIFI", ProcessIfDifferentLineCaseInsensitive },
-            { ".WARN", ProcessUserWarningLine },
-            { ".ERROR", ProcessUserErrorLine },
-            { ".FATAL", ProcessUserFatalLine },
-            { ".PHASE", ProcessPhaseLine },
+
+            // .DEPHASE: End a phased block
             { ".DEPHASE", ProcessDephaseLine },
-            { "ENDOUT", ProcessEndoutLine },
-            { "MODULE", ProcessModuleLine },
-            { "ENDMOD", ProcessEndModuleLine },
-            { "ROOT", ProcessRootLine },
-            { "IFABS", ProcessIfAbsLine },
-            { "IFREL", ProcessIfRelLine },
-            { "IFCPU", ProcessIfCpuLine },
-            { "IFNCPU", ProcessIfNotCpuLine },
-            { "REPT", ProcessReptLine },
-            { "ENDM", ProcessEndmLine },
-            { "IRP", ProcessIrpLine },
-            { "IRPC", ProcessIrpcLine },
-            { "EXITM", ProcessExitmLine },
-            { "CONTM", ProcessContmLine },
-            { "IRPS", ProcessIrpsLine },
-            { "LOCAL", ProcessLocalLine },
+
+            // .ERROR <text>: Produce an assembly normal error
+            { ".ERROR", ProcessUserErrorLine },
+
+            // .FATAL <text>: Produce an assembly fatal error
+            { ".FATAL", ProcessUserFatalLine },
+
+            // .LALL: List all lines in macro expansions in listing
+            { ".LALL", ProcessListingControlLine },
+
+            // .LFCOND: List all lines in false conditional blocks in listing
+            { ".LFCOND", ProcessListingControlLine },
+
+            // .LIST: Restore code output in listing
+            { ".LIST", ProcessListingControlLine },
+
+            // .PHASE <address>: Start phased block
+            { ".PHASE", ProcessPhaseLine },
+
+            // .PRINT <text>: Print message in both passes
+            { ".PRINT", ProcessPrintLine },
+
+            // .PRINT1 <text>: Print message in pass 1
+            { ".PRINT1", ProcessPrint1Line },
+
+            // .PRINT2 <text>: Print message in pass 2
+            { ".PRINT2", ProcessPrint2Line },
+
+            // .PRINTX <delimiter><text>[<delimiter>]: Legacy print message
+            { ".PRINTX", ProcessPrintxLine },
+
+            // .RADIX <radix>: Change default radix for numbers
+            { ".RADIX", ProcessChangeRadixLine },
+
+            // .RELAB: Enable relative labels
             { ".RELAB", ProcessRelabLine },
+
+            // .REQUEST: Request symbols from an external file
+            { ".REQUEST", ProcessRequestLinkFilesLine },
+
+            // .SALL: Suppress output of macro expansion lines in listings
+            { ".SALL", ProcessListingControlLine },
+
+            // .SFCOND: Suppress lines in false conditional blocks in listing
+            { ".SFCOND", ProcessListingControlLine },
+
+            // .STRENC <encoding name or page>: Change the encoding used to convert strings to bytes
+            { ".STRENC", ProcessSetEncodingLine },
+
+            // .STRESC ON|OFF: Enable or disable escape sequences in strings
+            { ".STRESC", ProcessChangeStringEscapingLine },
+
+            // .TFCOND: Toggle the inclusion of false conditional blocks in listing
+            //          (relative to the previous .TFCOND, unrelated to the state set by .LFCOND or .SFCOND)
+            { ".TFCOND", ProcessListingControlLine },
+
+            // .WARN <text>: Produce an assembly warning
+            { ".WARN", ProcessUserWarningLine },
+
+            // .XALL: Only list lines that produce output in macro expansions in listing
+            { ".XALL", ProcessListingControlLine },
+
+            // .XCREF: Unsupported, does nothing
+            { ".XCREF", ProcessListingControlLine },
+
+            // .XLIST: Suppress output of code lines in listing
+            { ".XLIST", ProcessListingControlLine },
+
+            // .XRELAB: Disable relative labels
             { ".XRELAB", ProcessXRelabLine },
-            { "COMMON", ProcessCommonLine }
+            
+            // .Z80: Select Z80 as the current CPU
+            { ".Z80", ProcessChangeCpuToZ80Line },
+
+            // ASEG: Select the absolute segment
+            { "ASEG", ProcessAsegLine },
+
+            // COMMON /<name>/: Select a common block
+            { "COMMON", ProcessCommonLine },
+
+            // COND: Alias for IF
+            { "COND", ProcessIfTrueLine },
+
+            // CONTM: Finish macro expansion but proceed with next repetiton
+            { "CONTM", ProcessContmLine },
+
+            // CSEG: Select the code segment
+            { "CSEG", ProcessCsegLine },
+
+            // DB: Alias for DEFB
+            { "DB", ProcessDefbLine },
+
+            // DC <string>: Define string with last cahacter having MSB set
+            { "DC", ProcessDcLine },
+
+            // DEFB <byte or string>[,<byte or string>[,...]]: Define sequence of bytes
+            { "DEFB", ProcessDefbLine },
+
+            // DEFM: Alias for DRFB
+            { "DEFM", ProcessDefbLine },
+
+            // DEFB <size>[,<value>]: Define space
+            { "DEFS", ProcessDefsLine },
+
+            // DEFW <word>[,<word>[,...]]: Define words
+            { "DEFW", ProcessDefwLine },
+
+            // DEFZ <byte or string>[,<byte or string>[,...]]: Define sequence of bytes
+            //      with a zero character (converted according to current encoding) appended at the end
+            { "DEFZ", ProcessDefzLine },
+
+            // DS: Alias for DEFS
+            { "DS", ProcessDefsLine },
+
+            // DSEG: Select the data segment
+            { "DSEG", ProcessDsegLine },
+
+            // DW: Alias for DEFW
+            { "DW", ProcessDefwLine },
+
+            // DZ: Alias for DEFZ
+            { "DZ", ProcessDefzLine },
+
+            // ELSE: Start alternate conditional block 
+            { "ELSE", ProcessElseLine },
+
+            // END: End the assembly process
+            { "END", ProcessEndLine },
+
+            // ENDC: Alias for ENDIF
+            { "ENDC", ProcessEndifLine },
+
+            // ENDIF: Finish conditional block
+            { "ENDIF", ProcessEndifLine },
+
+            // ENDM: Finish named macro declaration or repeat macro expansion
+            { "ENDM", ProcessEndmLine },
+
+            // ENDMOD: Finish current module
+            { "ENDMOD", ProcessEndModuleLine },
+
+            // ENDOUT: Continue assembling, but suppress output from this point
+            { "ENDOUT", ProcessEndoutLine },
+
+            // ENTRY: Alias for PUBLIC
+            { "ENTRY", ProcessPublicDeclarationLine },
+
+            // EXITM: Finish macro expansion inclusing pending repetitions
+            { "EXITM", ProcessExitmLine },
+
+            // EXT: Alias for EXTRN
+            { "EXT", ProcessExternalDeclarationLine },
+
+            // EXTRN: Alias for EXTRN
+            { "EXTERNAL", ProcessExternalDeclarationLine },
+
+            // EXTERNAL <symbol>[,<symbol>[,...]]: Declare symbols as externals
+            { "EXTRN", ProcessExternalDeclarationLine },
+
+            // GLOBAL: Alias for PUBLIC
+            { "GLOBAL", ProcessPublicDeclarationLine },
+
+            // IF <condition>: Start "if condition is true" block
+            { "IF", ProcessIfTrueLine },
+
+            // IF1: Start "if in pass 1" block
+            { "IF1", ProcessIf1Line },
+
+            // IF1: Start "if in pass 2" block
+            { "IF2", ProcessIf2Line },
+
+            // IFABS: Start "if in absolute assembly mode" block
+            { "IFABS", ProcessIfAbsLine },
+
+            // IFB <text>: Start "if text is blank" block (< and > are literal)
+            { "IFB", ProcessIfBlankLine },
+
+            // IFCPU <cpu name>: Start "if current cpu is" block
+            { "IFCPU", ProcessIfCpuLine },
+
+            // IFDEF <symbol>: Start "if symbol is defined" blocl
+            { "IFDEF", ProcessIfDefinedLine },
+
+            // IFDIF <text1>,<text2>: Start "if text1 1 is different from text2" block
+            //       (< and > are literal)
+            { "IFDIF", ProcessIfDifferentLineCaseSensitive },
+
+            // IFDIF <text1>,<text2>: Start "if text1 is different from text2 case-insensitive" block
+            //       (< and > are literal)
+            { "IFDIFI", ProcessIfDifferentLineCaseInsensitive },
+
+            //IFE: Alias for IFF
+            { "IFE", ProcessIfFalseLine },
+
+            //IFF <expression>: Start "if false" block
+            { "IFF", ProcessIfFalseLine },
+
+            // IFIDN <text1>,<text2>: Start "if text1 is identical to text2" block
+            //       (< and > are literal)
+            { "IFIDN", ProcessIfIdenticalLineCaseSensitive },
+
+            // IFIDNI <text1>,<text2>: Start "if text1 is identical to text2 case-insensitive" block
+            //        (< and > are literal)
+            { "IFIDNI", ProcessIfIdenticalLineCaseInsensitive },
+
+            // IFB <text>: Start "if text is not blank" block (< and > are literal)
+            { "IFNB", ProcessIfNotBlankLine },
+
+            // IFNCPU <cpu name>: Start "if current cpu is not" block
+            { "IFNCPU", ProcessIfNotCpuLine },
+
+            // IFNDEF <symbol>: Start "if symbol is not defined" block
+            { "IFNDEF", ProcessIfNotDefinedLine },
+
+            // IFREL: Start "if in relocatable mode" block
+            { "IFREL", ProcessIfRelLine },
+
+            // IFT: Alias for IF
+            { "IFT", ProcessIfTrueLine },
+
+            // IRP <dummy>,<arg[,arg[,...]]>: Start indefinite repeat macro expansion
+            //                                (< and > for args are literal)
+            { "IRP", ProcessIrpLine },
+
+            // IRP <dummy>,<string>: Start repeat for each char macro expansion (raw string)
+            { "IRPC", ProcessIrpcLine },
+
+            // IRP <dummy>,<string>: Start repeat for each char macro expansion
+            //                       (with string syntax as DEFB)
+            { "IRPS", ProcessIrpsLine },
+
+            // LOCAL <symbol>[,<symbol>[,...]]: Define symbols as local to the macro
+            { "LOCAL", ProcessLocalLine },
+
+            // MAINPAGE: Change the listing main page (same as encountering a line feed char)
+            { "MAINPAGE", ProcessChangeListingMainPageLine },
+
+            // MODULE <name>: Start a module
+            { "MODULE", ProcessModuleLine },
+
+            // NAME <text>: Set program name
+            { "NAME", ProcessSetProgramNameLine },
+
+            // ORG <address>: Change the location counter in the current area
+            { "ORG", ProcessOrgLine },
+
+            // PAGE [<size>]: Change the current subpage, optionally setting the new page size
+            { "PAGE", ProcessSetListingNewPageLine },
+
+            // PUBLIC <symbol>[,<symbol>[,...]]: Declare symbols as public
+            { "PUBLIC", ProcessPublicDeclarationLine },
+
+            // REPT <count>: Start a repeat macro expansion
+            { "REPT", ProcessReptLine },
+
+            // ROOT <symbol>[,<symbol>[,...]]: Declare symbols as root (defined outside the current module)
+            { "ROOT", ProcessRootLine },
+
+            // SUBPAGE: Alias for PAGE
+            { "SUBPAGE", ProcessSetListingNewPageLine },
+
+            // SUBTTL <text>: Set the subtitle for listing
+            { "SUBTTL", ProcessSetListingSubtitleLine },
+
+            // TITLE <text>: Set the title for listing
+            { "TITLE", ProcessSetListingTitleLine },
         };
 
         static ProcessedSourceLine ProcessDefbLine(string opcode, SourceLineWalker walker)
@@ -882,16 +1083,23 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessUserFatalLine(string opcode, SourceLineWalker walker)
             => ProcessPrintOrUserErrorLine(opcode, walker, errorSeverity: AssemblyErrorSeverity.Fatal);
 
-        // {expression}
-        // {expression:d}
-        // {expression:d5}
-        // {expression:D5}
-        // {expression:b}
-        // {expression:b5}
-        // {expression:B5}
-        // {expression:h}
-        // {expression:h5}
-        // {expression:H5}
+        /// <summary>
+        /// Handler for .PRINT(1/2), .WARN, .ERR and .FATAL instructions.
+        /// These admit interpolating expressions with the following format:
+        /// 
+        /// {expression[:radix[size]]}
+        /// 
+        /// where radix is D,d (decimal), H,h,X,x (hexadecimal) or B,b (Binary)
+        /// and size is the max number of digits to print, e.g.:
+        /// 
+        /// .PRINT2 Value of FOO is: {FOO:H4}
+        /// 
+        /// </summary>
+        /// <param name="opcode"></param>
+        /// <param name="walker"></param>
+        /// <param name="printInPass"></param>
+        /// <param name="errorSeverity"></param>
+        /// <returns></returns>
         static ProcessedSourceLine ProcessPrintOrUserErrorLine(string opcode, SourceLineWalker walker, int? printInPass = null, AssemblyErrorSeverity errorSeverity = AssemblyErrorSeverity.None)
         {
             var rawText = walker.GetRemainingRaw();
