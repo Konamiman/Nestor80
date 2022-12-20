@@ -1,4 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler.Output;
+﻿using Konamiman.Nestor80.Assembler;
 
 namespace Konamiman.Nestor80.N80
 {

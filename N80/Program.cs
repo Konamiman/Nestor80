@@ -1,5 +1,4 @@
 ﻿using Konamiman.Nestor80.Assembler;
-using Konamiman.Nestor80.Assembler.Output;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;

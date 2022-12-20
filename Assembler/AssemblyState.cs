@@ -4,6 +4,10 @@ using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// An instance of this class is used by <see cref="AssemblySourceProcessor"/> to keep track of the assembly process, 
+    /// including current area and location pointer, current macro definition/expansion status, INCLUDEd files in use, etc.
+    /// </summary>
     internal class AssemblyState
     {
         public AssemblyState(AssemblyConfiguration configuration, Stream sourceStream, Encoding sourceStreamEncoding)
@@ -73,7 +77,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public Address EndAddress { get; private set; }
 
-        public void End(Address address)
+        public void RegisterEndInstruction(Address address)
         {
             if(address is null)
                 throw new ArgumentNullException(nameof(address));
@@ -323,6 +327,13 @@ namespace Konamiman.Nestor80.Assembler
             AdjustAreaSize();
         }
 
+        /// <summary>
+        /// Get the <see cref="SymbolInfo"/> instance for a given symbol name,
+        /// if the symbol exists. If necessary, the symbol name modified to prepend it
+        /// with the current module or non-relative label.
+        /// </summary>
+        /// <param name="name">Symbol name, it may get modified.</param>
+        /// <returns>Symbol object, or null if that symbol hasn't appeared in the source yet.</returns>
         public SymbolInfo GetSymbol(ref string name)
         {
             if(CurrentMacroExpansionState is NamedMacroExpansionState nmes) {
@@ -481,6 +492,12 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        /// <summary>
+        /// Given a symbol name, prefixes it with the current module or non-relative label name
+        /// if needed, unless the symbol is declared as root for the current module or is prefixed with ":".
+        /// </summary>
+        /// <param name="symbol">Symbol to check.</param>
+        /// <returns>Symbol (maybe) prefixed with the current module or non-relative label name.</returns>
         public string Modularize(string symbol)
         {
             var inModule = CurrentModule is not null;
@@ -593,7 +610,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
             else if(CurrentMacroMode is MacroMode.Expansion) {
-                //TODO: this never reached?
+                //TODO: this is never reached?
                 CurrentMacroExpansionState.ExpansionProcessedLine.Lines = CurrentMacroExpansionState.ProcessedLines.ToArray();
                 if(previousExpansionStates.Count == 0) {
                     CurrentMacroExpansionState = null;
@@ -696,10 +713,24 @@ namespace Konamiman.Nestor80.Assembler
 
         public readonly List<string> MainSourceLines = new();
 
+        /// <summary>
+        /// Return a <see cref="Expression"/> object from a expression text.
+        /// A cache of expression objects is used so that expressions defined in pass 1
+        /// can be recycled in pass 2 (note that what gets cached is the expression object
+        /// itself, not the expression evaluation result).
+        /// </summary>
+        /// <param name="sourceLine">Source line.</param>
+        /// <param name="forDefb">True if the expression is part of a DEFB line (strings are treated differently).</param>
+        /// <param name="isByte">True if the expression is to be evaluated as a single byte.</param>
+        /// <returns>The cached or newly generated expression.</returns>
         public Expression GetExpressionFor(string sourceLine, bool forDefb = false, bool isByte=false)
         {
             Expression expression;
             if(sourceLine.Contains('$')) {
+                // When "$" is used as a label it refers to the current location counter,
+                // thus we can't cache the expression. "$" could also be part of a
+                // regular label or inside a string, but for simplicity we just check
+                // if the character is present in the source line.
                 expression = Expression.Parse(sourceLine, forDefb, isByte);
                 expression.ValidateAndPostifixize();
                 return expression;

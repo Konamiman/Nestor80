@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Konamiman.Nestor80.Assembler.Output
+namespace Konamiman.Nestor80.Assembler
 {
     public enum AssemblyErrorSeverity
     {

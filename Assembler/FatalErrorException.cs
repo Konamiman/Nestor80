@@ -1,6 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler.Output;
-
-namespace Konamiman.Nestor80.Assembler
+﻿namespace Konamiman.Nestor80.Assembler
 {
     internal class FatalErrorException : Exception
     {

@@ -1,5 +1,11 @@
-﻿namespace Konamiman.Nestor80.Assembler.Output
+﻿using Konamiman.Nestor80.Assembler.Output;
+
+namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// Represents the result of a source code assembly processing.
+    /// This is returned by <see cref="AssemblySourceProcessor.Assemble(Stream, System.Text.Encoding, AssemblyConfiguration)"/>.
+    /// </summary>
     public class AssemblyResult
     {
         public string ProgramName { get; set; }

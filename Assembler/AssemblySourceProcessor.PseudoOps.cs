@@ -680,13 +680,13 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessEndLine(string opcode, SourceLineWalker walker)
         {
             if(walker.AtEndOfLine) {
-                state.End(Address.AbsoluteZero);
+                state.RegisterEndInstruction(Address.AbsoluteZero);
                 return new AssemblyEndLine() { Line = walker.SourceLine };
             }
 
             if(buildType == BuildType.Absolute) {
                 AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, "The argument of the END statement is ignored when the output type is absolute");
-                state.End(Address.AbsoluteZero);
+                state.RegisterEndInstruction(Address.AbsoluteZero);
                 return new AssemblyEndLine() { Line = walker.SourceLine, EffectiveLineLength = walker.DiscardRemaining() };
             }
 
@@ -698,13 +698,13 @@ namespace Konamiman.Nestor80.Assembler
                 //therefore, the end address expression must be evaluable at this point!
                 var endAddress = endAddressExpression.Evaluate();
 
-                state.End(endAddress);
+                state.RegisterEndInstruction(endAddress);
                 return new AssemblyEndLine() { EndAddress = endAddress.Value, EndAddressArea = endAddress.Type };
             }
             catch(InvalidExpressionException ex) {
                 AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                 walker.DiscardRemaining();
-                state.End(Address.AbsoluteZero);
+                state.RegisterEndInstruction(Address.AbsoluteZero);
                 return new AssemblyEndLine();
             }
         }

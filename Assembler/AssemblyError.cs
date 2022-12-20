@@ -1,5 +1,8 @@
-﻿namespace Konamiman.Nestor80.Assembler.Output
+﻿namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// Represents an error produced during the source code assembly process.
+    /// </summary>
     public class AssemblyError
     {
         public const int MAX_STORED_SOURCE_TEXT_LENGTH = 80;
@@ -11,13 +14,15 @@
             LineNumber = lineNumber;
             IncludeFileName = includeFileName;
             MacroNamesAndLines = macroNamesAndLines;
-            Severity = code switch {
+            Severity = code switch
+            {
                 < AssemblyErrorCode.FirstError => AssemblyErrorSeverity.Warning,
                 < AssemblyErrorCode.FirstFatal => AssemblyErrorSeverity.Error,
                 _ => AssemblyErrorSeverity.Fatal
             };
 
-            if(sourceLineText is not null) {
+            if (sourceLineText is not null)
+            {
                 sourceLineText = sourceLineText.Trim();
                 SourceLineText = sourceLineText.Length > MAX_STORED_SOURCE_TEXT_LENGTH ? sourceLineText[..(MAX_STORED_SOURCE_TEXT_LENGTH - 3)] + "..." : sourceLineText;
             }
@@ -47,20 +52,21 @@
         {
             var lineNumbePrefix = LineNumber == null ? "" : $"In line {LineNumber}: ";
             var fileNamePrefix = IncludeFileName == null ? "" : $"[{IncludeFileName}] ";
-            var macroPrefix = IsMacroLine ? $"<{string.Join(" --> ",MacroNamesAndLines.Select(nl => $"{nl.Item1}:{nl.Item2}").ToArray())}> " : "";
+            var macroPrefix = IsMacroLine ? $"<{string.Join(" --> ", MacroNamesAndLines.Select(nl => $"{nl.Item1}:{nl.Item2}").ToArray())}> " : "";
             return $"{fileNamePrefix}{macroPrefix}{lineNumbePrefix}{Message}";
         }
 
         public static bool operator ==(AssemblyError error1, AssemblyError error2)
         {
-            if(error1 is null || error2 is null) {
+            if (error1 is null || error2 is null)
+            {
                 return false;
             }
 
             return error1.Code == error2.Code &&
                 error1.LineNumber == error2.LineNumber &&
                 error1.IncludeFileName == error2.IncludeFileName &&
-                (error1.MacroNamesAndLines ?? Array.Empty<(string,int)>()).SequenceEqual(error2.MacroNamesAndLines ?? Array.Empty<(string, int)>());
+                (error1.MacroNamesAndLines ?? Array.Empty<(string, int)>()).SequenceEqual(error2.MacroNamesAndLines ?? Array.Empty<(string, int)>());
         }
 
         public static bool operator !=(AssemblyError error1, AssemblyError error2)
@@ -70,7 +76,7 @@
 
         public override bool Equals(object obj)
         {
-            if(obj == null || GetType() != obj.GetType())
+            if (obj == null || GetType() != obj.GetType())
                 return false;
 
             var error2 = (AssemblyError)obj;

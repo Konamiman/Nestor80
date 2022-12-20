@@ -1,7 +1,9 @@
-﻿namespace Konamiman.Nestor80.Assembler.Output
+﻿namespace Konamiman.Nestor80.Assembler
 {
     public enum AssemblyErrorCode : byte
     {
+        //Warnings
+
         None = 0,
         NoEndStatement = 1,
         UnexpectedContentAtEndOfLine,
@@ -26,6 +28,8 @@
         DuplicatedMacro,
         UserWarning,
         LastWarning = UserWarning,
+
+        //Normal errors
 
         FirstError = 64,
         InvalidExpression = 64,
@@ -52,6 +56,8 @@
         LocalOutOfMacro,
         UserError,
         LasetError = UserError,
+
+        //Fatal errors
 
         FirstFatal = 128,
         UnexpectedError = 128,

@@ -1,7 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
-using Konamiman.Nestor80.Assembler.Output;
 
 namespace Konamiman.Nestor80.Assembler
 {

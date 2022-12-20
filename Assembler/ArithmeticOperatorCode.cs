@@ -1,5 +1,8 @@
 ﻿namespace Konamiman.Nestor80
 {
+    /// <summary>
+    /// Codes for the "arithmetic operator" extension link item as supported by Link80.
+    /// </summary>
     public enum ArithmeticOperatorCode
     {
         StoreAsByte = 1,

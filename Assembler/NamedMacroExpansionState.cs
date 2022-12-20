@@ -31,6 +31,13 @@ namespace Konamiman.Nestor80.Assembler
 
         private Dictionary<string, string> processedLocalSymbols = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// Given a symbol name, check if it's a local symbol inside a named macro expansion
+        /// and then replace it with the corresponding "..number".
+        /// </summary>
+        /// <param name="symbolName">Symbol name to check.</param>
+        /// <param name="newLocalSymbolNumber">Number to use if a replacement is needed, it gets increased in that case.</param>
+        /// <returns>Converted (maybe) symbol name.</returns>
         public bool MaybeConvertLocalSymbolName(ref string symbolName, ref ushort newLocalSymbolNumber)
         {
             if(LocalSymbols is null) {
