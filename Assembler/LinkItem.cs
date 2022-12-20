@@ -4,12 +4,13 @@ namespace Konamiman.Nestor80
 {
     public class LinkItem
     {
-        public LinkItem(LinkItemType type, AddressType addressType, ushort addressValue)
-            : this(type, addressType, addressValue, Array.Empty<byte>())
-        { }
-
         public LinkItem(LinkItemType type, byte[] symbolBytes)
             : this(type, AddressType.ASEG, 0, symbolBytes)
+        { }
+
+#if false
+        public LinkItem(LinkItemType type, AddressType addressType, ushort addressValue)
+            : this(type, addressType, addressValue, Array.Empty<byte>())
         { }
 
         public LinkItem(LinkItemType type, string symbol)
@@ -19,6 +20,7 @@ namespace Konamiman.Nestor80
         public LinkItem(LinkItemType type, AddressType addressType, ushort addressValue, string symbol)
             : this(type, addressType, addressValue, Encoding.ASCII.GetBytes(symbol))
         { }
+#endif
 
         public LinkItem(LinkItemType type, AddressType addressType, ushort addressValue, byte[] symbolBytes)
         {

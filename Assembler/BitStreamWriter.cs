@@ -1,19 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Konamiman.Nestor80
+﻿namespace Konamiman.Nestor80
 {
     /// <summary>
-    /// A stream-like writer for packing bits into a byte buffer
+    /// A stream-like writer for packing bits into a byte buffer. This is used to
+    /// generate relocatable files compatible with Link-80.
     /// </summary>
-    /// <remarks>This class is to be used with the BitStreamReader for reading
-    /// and writing bytes. Note that the bytes should be read in the same order
-    /// and lengths as they were written to retrieve the same values.
-    /// See remarks in BitStreamReader regarding compatibility with the native C++
-    /// BitStream class.</remarks>
     public class BitStreamWriter
     {
         /// <summary>

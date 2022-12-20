@@ -416,7 +416,7 @@ namespace Konamiman.Nestor80.Assembler
                 PreviousFileName = CurrentIncludeFilename,
                 ProcessedLine = includeLine, 
                 PreviousLineNumber = CurrentLineNumber,
-                PreviousLines = ProcessedLines, 
+                PreviousProcessedLines = ProcessedLines, 
                 PreviousSourceStreamReader = SourceStreamReader
             };
 
@@ -447,7 +447,7 @@ namespace Konamiman.Nestor80.Assembler
 
             CurrentLineNumber = previousState.PreviousLineNumber + 1;
             SourceStreamReader = previousState.PreviousSourceStreamReader;
-            ProcessedLines = previousState.PreviousLines;
+            ProcessedLines = previousState.PreviousProcessedLines;
             CurrentIncludeFilename = previousState.PreviousFileName;
 
             InsideIncludedFile = includeStates.Count > 0;
