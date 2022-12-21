@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.Relocatable;
 using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
@@ -119,7 +120,6 @@ namespace Konamiman.Nestor80.Assembler
                 if(line is LinesContainerLine lcl) {
                     result.Add(line);
                     result.AddRange(FlattenLinesList(lcl.Lines));
-                    result.Add(new ContainedLinesEnd());
                 }
                 else {
                     result.Add(line);

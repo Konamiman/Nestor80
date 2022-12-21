@@ -1,10 +1,13 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using Konamiman.Nestor80.Assembler.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Errors;
 using Konamiman.Nestor80.Assembler.Expressions;
-using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
+using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
+using Konamiman.Nestor80.Assembler.Infrastructure;
 using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.Relocatable;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
 

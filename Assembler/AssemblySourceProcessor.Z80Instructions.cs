@@ -1,3 +1,5 @@
+using Konamiman.Nestor80.Assembler.Infrastructure;
+
 namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor

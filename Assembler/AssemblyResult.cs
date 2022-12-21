@@ -1,4 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler.Output;
+﻿using Konamiman.Nestor80.Assembler.Errors;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -22,12 +22,22 @@ namespace Konamiman.Nestor80.Assembler
 
         public Symbol[] Symbols { get; set; }
 
+        /// <summary>
+        /// The area of the end address if specified in an END instruction, otherwise zero.
+        /// </summary>
         public AddressType EndAddressArea { get; set; }
 
+        /// <summary>
+        /// The end address if specified in an END instruction, otherwise zero.
+        /// </summary>
         public ushort EndAddress { get; set; }
 
         public BuildType BuildType { get; set; }
 
+        /// <summary>
+        /// The maximum length allowed for relocatable symbols, as limited by
+        /// the target relocatable file format.
+        /// </summary>
         public int MaxRelocatableSymbolLength { get; set; }
 
         public bool HasErrors => Errors.Any(e => !e.IsWarning && !e.IsFatal);

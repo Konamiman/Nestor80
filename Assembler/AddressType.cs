@@ -1,4 +1,4 @@
-﻿namespace Konamiman.Nestor80
+﻿namespace Konamiman.Nestor80.Assembler
 {
     public enum AddressType : byte
     {

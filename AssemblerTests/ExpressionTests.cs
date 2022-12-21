@@ -1,8 +1,11 @@
 ﻿using NUnit.Framework;
 using Konamiman.Nestor80.Assembler;
-using Konamiman.Nestor80.Assembler.ArithmeticOperations;
 using System.Text;
 using Konamiman.Nestor80.Assembler.Expressions;
+using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
+using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
+using Konamiman.Nestor80.Assembler.Relocatable;
+using Konamiman.Nestor80.Assembler.Infrastructure;
 
 namespace Konamiman.Nestor80.AssemblerTests
 {

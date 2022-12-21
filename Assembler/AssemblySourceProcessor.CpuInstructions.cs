@@ -1,4 +1,8 @@
-﻿using Konamiman.Nestor80.Assembler.Output;
+﻿using Konamiman.Nestor80.Assembler.Errors;
+using Konamiman.Nestor80.Assembler.Expressions;
+using Konamiman.Nestor80.Assembler.Infrastructure;
+using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.Relocatable;
 using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler

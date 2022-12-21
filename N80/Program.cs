@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler;
+using Konamiman.Nestor80.Assembler.Errors;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
@@ -1234,8 +1235,9 @@ namespace Konamiman.Nestor80.N80
                     PrintFatal($"Can't create listing file{(listingFilePath is null ? "" : $" ({listingFilePath})")}: {ex.Message}");
                     #if DEBUG
                     throw;
-                    #endif
+                    #else
                     return ERR_CANT_CREATE_LISTING_FILE;
+                    #endif
                 }
             }
 

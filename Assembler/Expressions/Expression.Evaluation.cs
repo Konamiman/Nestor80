@@ -1,6 +1,10 @@
-﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
+﻿using Konamiman.Nestor80.Assembler.Errors;
 using Konamiman.Nestor80.Assembler.Expressions;
-using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
+using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
+using Konamiman.Nestor80.Assembler.Infrastructure;
+using Konamiman.Nestor80.Assembler.Relocatable;
+using System;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -10,6 +14,11 @@ namespace Konamiman.Nestor80.Assembler
 
         public bool HasTypeOperator => Parts.Any(p => p is TypeOperator);
 
+        /// <summary>
+        /// Validate the expression and convert it to postfix format using the shunting yard algorithm.
+        /// This needs to be done before the expression is evaluated.
+        /// </summary>
+        /// <exception cref="Exception"></exception>
         public void ValidateAndPostifixize()
         {
             if(IsPostfixized) return;
@@ -85,6 +94,10 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        /// <summary>
+        /// Convert the expression to postfix format using the shunting yard algorithm.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
         private void Postfixize()
         {
             // https://itdranik.com/en/math-expressions-shunting-yard-algorithm-en/
@@ -153,8 +166,22 @@ namespace Konamiman.Nestor80.Assembler
 
         private bool externalSymbolFound;
 
+        /// <summary>
+        /// Try to evaluate the expression, if an unknown symbol is found throw an exception.
+        /// </summary>
+        /// <returns></returns>
         public Address Evaluate() => EvaluateCore(false, true);
+
+        /// <summary>
+        /// Evaluate the expression, but if it contains symbols return null;
+        /// </summary>
+        /// <returns></returns>
         public Address EvaluateIfNoSymbols() => EvaluateCore(true, false);
+
+        /// <summary>
+        /// Try to evaluate the expression, if an unknown symbol is found return null.
+        /// </summary>
+        /// <returns></returns>
         public Address TryEvaluate() => EvaluateCore(false, false);
 
         private Address EvaluateCore(bool stopOnSymbolFound, bool throwOnUnknownSymbol)
@@ -245,7 +272,7 @@ namespace Konamiman.Nestor80.Assembler
                     var address = ResolveAddressOrSymbol(item);
                     if(externalSymbolFound) {
                         if(processedPartsCount > 0) {
-                            //At least keep what we have calculated so far
+                            //At least keep what we have calculated so far.
                             Parts = Parts.Skip(processedPartsCount - 1).ToArray();
                             Parts[0] = stack.Pop();
                         }

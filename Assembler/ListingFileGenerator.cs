@@ -1,4 +1,6 @@
-﻿using Konamiman.Nestor80.Assembler.Output;
+﻿using Konamiman.Nestor80.Assembler.Infrastructure;
+using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.Relocatable;
 using System.Text;
 
 namespace Konamiman.Nestor80.Assembler

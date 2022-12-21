@@ -1,11 +1,22 @@
-﻿using Konamiman.Nestor80.Assembler.ArithmeticOperations;
+﻿using Konamiman.Nestor80.Assembler.Errors;
 using Konamiman.Nestor80.Assembler.Expressions;
-using Konamiman.Nestor80.Assembler.Expressions.ArithmeticOperations;
+using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
+using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
+using Konamiman.Nestor80.Assembler.Infrastructure;
+using Konamiman.Nestor80.Assembler.Relocatable;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// Represents an expression that at some point in the assembly process can be evaluated
+    /// (except when it contains references to external symbols).
+    /// <remarks>
+    /// Before an expression can be evaluated its <see cref="ValidateAndPostifixize"/> method
+    /// needs to be executed.
+    /// </remarks>
+    /// </summary>
     internal partial class Expression {
         private Expression(IExpressionPart[] parts = null, string source = null)
         {
@@ -40,11 +51,17 @@ namespace Konamiman.Nestor80.Assembler
 
         private static readonly Dictionary<int, byte[]> ZeroCharBytesByEncoding = new();
 
+        /// <summary>
+        /// The bytes to which a '\0' character translates with <see cref="OutputStringEncoding"/>.
+        /// </summary>
         public static byte[] ZeroCharBytes { get; private set; }
 
         public bool HasRelocatableToStoreAsByte { get; private set; }
 
         private static Encoding _OutputStringEncoding;
+        /// <summary>
+        /// The string encoding to use when converting strings in DEFB instructions to collection of bytes.
+        /// </summary>
         public static Encoding OutputStringEncoding
         {
             get => _OutputStringEncoding;
@@ -58,22 +75,43 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-
+        /// <summary>
+        /// The callback to use to resolve a symbol.
+        /// The first argument is the symbol name, the second is true if the symbol
+        /// is declared as external with the ## suffix, the third is true if the symbol
+        /// is declared as root with the : prefix.
+        /// </summary>
         public static Func<string, bool, bool, SymbolInfo> GetSymbol { get; set; } = (_, _, _) => null;
 
+        /// <summary>
+        /// The parts that compose the expression, will be in postfix format
+        /// after <see cref="Postfixize"/> is executed.
+        /// </summary>
         public IExpressionPart[] Parts { get; private set; }
 
+        //This runs the first time that any static member of the class is accessed.
         static Expression()
         {
             DefaultRadix = 10;
             operators["NEQ"] = NotEqualsOperator.Instance;
         }
 
+        /// <summary>
+        /// The source code line that was used to generate the expression.
+        /// Kept for reference only, not used after parsed.
+        /// </summary>
         public string Source { get; init; }
 
+        /// <summary>
+        /// If true, the \ character is used to define escape sequences
+        /// in strings delimited by ".
+        /// </summary>
         public static bool AllowEscapesInStrings = false;
 
         private static int _DefaultRadix;
+        /// <summary>
+        /// Default radix to use when parsing numbers that don't have a radix suffix.
+        /// </summary>
         public static int DefaultRadix
         {
             get => _DefaultRadix;
@@ -122,12 +160,16 @@ namespace Konamiman.Nestor80.Assembler
             { '+', "u+" }, { '-', "u-" },
         };
 
-        public static Expression FromParts(params IExpressionPart[] parts)
+        /// <summary>
+        /// Create an instance directly from a collection of parts.
+        /// This is used for unit tests only.
+        /// </summary>
+        /// <param name="parts"></param>
+        /// <returns></returns>
+        internal static Expression FromParts(params IExpressionPart[] parts)
         {
             return new Expression(parts.ToArray());
         }
-
-        public static Expression Empty => FromParts();
 
         /// <summary>
         /// Parse a string representing an expression.
@@ -273,6 +315,9 @@ namespace Konamiman.Nestor80.Assembler
             ParseAndRegisterNumber(extractedNumber, radix, increaseStringPointerBy: match.Length);
         }
 
+        /// <summary>
+        /// Extract a hexadecimal number in the format x'abc'.
+        /// </summary>
         private static void ExtractXNumber()
         {
             Match match = null;
@@ -435,6 +480,8 @@ namespace Konamiman.Nestor80.Assembler
         private static void ProcessOperator(string theOperator)
         {
             if(theOperator is "=") {
+                // = is allowed as an alias for EQ
+                // for compatibility with other assemblers.
                 AddExpressionPart(operators["EQ"]);
             }
             else if(theOperator is "(") {

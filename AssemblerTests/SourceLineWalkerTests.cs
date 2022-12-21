@@ -1,4 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler;
+﻿using Konamiman.Nestor80.Assembler.Infrastructure;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
 using NUnit.Framework;
 

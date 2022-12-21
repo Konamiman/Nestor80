@@ -1,4 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler;
+﻿using Konamiman.Nestor80.Assembler.Errors;
 
 namespace Konamiman.Nestor80.N80
 {
