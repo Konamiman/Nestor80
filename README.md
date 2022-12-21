@@ -1,13 +1,23 @@
 # Nestor80
 
-Nestor80 is [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) assembler written in C#
-and "fully" compatible with the [Microsoft MACRO-80](https://en.wikipedia.org/wiki/Microsoft_MACRO-80) assembler.
+Nestor80 is [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) and [R800](https://en.wikipedia.org/wiki/R800_(CPU)) assembler written in C# and "fully" compatible with the [Microsoft MACRO-80](https://en.wikipedia.org/wiki/Microsoft_MACRO-80) assembler.
 
-## Feature highlight
+## Features highlight
 
 * **Multiplatform**. Runs on any machine/OS that supports [the .NET 6 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0); of course this includes Windows, Linux and macOS.
+
 * Almost fully **compatible with [Microsoft MACRO-80](https://en.wikipedia.org/wiki/Microsoft_MACRO-80)** for Z80 code (Nestor80 can't assemble 8080 code). Most of the incompatibilites are for obscure or undocumented features.
+
 * Can produce **absolute and relocatable binary files**. Relocatable files conform to the format used by Microsoft LINK-80.
+
+* Supports **Z80 undocumented instructions** and **[R800](https://en.wikipedia.org/wiki/R800_(CPU)) instructions**.
+
+* Over 50 **program arguments** for fine-grained customization of the assembling process and the listing file generation (but all are optional and have sensible defaults). Pass arguments in the command line, in a file, and/or in an environment variable.
+
+* **Detailed, comprehensive error reporting**, unlike MACRO-80:
+
+![](docs/img/ConsoleErrors.png)
+
 * Use **unlimited length, arbitrary character encoding symbols** in your code:
 
 ```
@@ -17,11 +27,7 @@ and "fully" compatible with the [Microsoft MACRO-80](https://en.wikipedia.org/wi
 
   _Public and external symbols are still limited to ASCII-only and up to 6 characters in length, this is a limitation of the relocatable file format used by LINK-80._
 
-* **Detailed, comprehensive error reporting**:
-
-![](docs/img/ConsoleErrors.png)
-
-* **Modern string handling**: it's possible to choose the encoding to be used when converting text strings (supplied as arguments to `DEFB` instructions) to sequences of bytes, and all of the [.NET escape sequences](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/strings/#string-escape-sequences) are allowed in strings.
+* **Modern string handling**: it's possible to choose the encoding to be used when converting text strings (supplied as arguments to `DEFB` instructions) to sequences of bytes, and all of the [C# string escape sequences](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/strings/#string-escape-sequences) are allowed in strings.
 
 ```
   .STRENC 850
@@ -47,3 +53,86 @@ endif
 ```
 
 * **Nested INCLUDEd files** (MACRO-80 allows only one level for `INCLUDE`) and of course, **support for arbitrary paths** for included files.
+
+* [Sjasm](https://github.com/Konamiman/Sjasm)-style **modules and relative labels**:
+
+```
+call GRAPHICS.INIT
+call SOUND.INIT
+ret
+
+    module GRAPHICS
+INIT:
+    ;Init graphics
+    endmod
+
+    module SOUND
+INIT:
+    ;Init sound
+    endmod
+
+INANE:
+    ld b,34
+.loop:  ;Actually assembled as INANE.loop
+    djnz .loop
+    ret
+
+USELESS:
+    ld b,89
+.loop:  ;Actually assembled as USELESS.loop
+    djnz .loop
+    ret
+```
+
+## Getting started.
+
+1. Head to [the releases page](https://github.com/konamiman/Nestor80/releases) and download the appropriate variant for your system. Note that:
+   * The "Framework dependant" and "Portable" variants require [the .NET 6 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) to be installed. 
+   * The "Standalone" variants don't require the .NET runtime to be installed, but they are much bigger in size (about 60MB vs about 400KB for the framework dependand variants).
+   * To run the "Portable" variant you need to use the `dotnet` tool (installed as part of the .NET runtime): `dotnet N80.dll <arguments>`. Otherwise this variant works exactly like the "native" ones.
+
+2. Paste this sample Z80 code (a "hello world" ROM for [MSX computers](https://en.wikipedia.org/wiki/MSX)) in a text file, name it HELLO.ASM:
+
+```
+CHGET: equ 009Fh
+CHPUT: equ 00A2h
+
+    org 4000h
+
+    db 41h,42h
+    dw START
+    ds 4010h-$
+
+START:
+    call PRINT
+    call CHGET
+    ret
+
+PRINT:
+    ld hl,HELLO
+loop:
+    ld a,(hl)
+    or a
+    ret z
+    call CHPUT
+    inc hl
+    jr loop
+
+HELLO:
+    db "Hello, world!\r\n"
+    db "Press any key...\0"
+
+    ;Pading to get a 16K ROM
+    ;(required by some emulators)
+    ds 8000h-$
+```
+
+3. Run the following: `N80 HELLO.ASM`.
+
+![](docs/img/Hello.png)
+
+The source will be assembled and a binary file named `HELLO.BIN` will be produced (if you want the file name to be `HELLO.ROM` instead, run `N80 HELLO.ASM HELLO.ROM` or `N80 HELLO.ASM --output-file-extension ROM`).
+
+4. Burn the resulting `HELLO.BIN/.ROM` file in a flash cartridge, insert it in your MSX, and turn it on. Or (probably easier) use an MSX emulator such as [WebMSX](http://webmsx.org/).
+
+![](docs/img/HelloRunning.png)
