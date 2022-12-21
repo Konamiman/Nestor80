@@ -2,6 +2,9 @@
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// Expansion state class for repeat with arguments macros (those that are defined with the IRP, IRPC and IRPS instructions).
+    /// </summary
     internal class ReptWithParamsExpansionState : MacroExpansionState
     {
         private static readonly string[] singleNullArray = new string[] { null };

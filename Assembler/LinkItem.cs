@@ -2,6 +2,9 @@
 
 namespace Konamiman.Nestor80
 {
+    /// <summary>
+    /// Represents a "link item" as defined by the Link80 relocatable file format.
+    /// </summary>
     public class LinkItem
     {
         public LinkItem(LinkItemType type, byte[] symbolBytes)
@@ -66,10 +69,19 @@ namespace Konamiman.Nestor80
 
         public LinkItemType Type { get; set; }
 
+        /// <summary>
+        /// Type of the address in the "A" field, if present.
+        /// </summary>
         public AddressType AddressType { get; set; }
 
+        /// <summary>
+        /// Value of the address in the "A" field, if present.
+        /// </summary>
         public ushort AddressValue { get; set; }
 
+        /// <summary>
+        /// Bytes in the "B" field, if present.
+        /// </summary>
         public byte[] SymbolBytes { get; set; }
 
         public bool HasAddress => Type >= LinkItemType.DefineCommonSize;

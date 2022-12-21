@@ -2,6 +2,9 @@
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// Expansion state class for repeat with count macros (those that are defined with the REPT instruction).
+    /// </summary>
     internal class ReptWithCountExpansionState : MacroExpansionState
     {
         public ReptWithCountExpansionState(LinesContainerLine expansionProcessedLine, string[] lines, int count, int sourceLineNumber)

@@ -1,5 +1,8 @@
 ﻿namespace Konamiman.Nestor80
 {
+    /// <summary>
+    /// This class is used by <see cref="BitStreamWriter"/>.
+    /// </summary>
     internal static class Native
     {
         internal const int BitsPerByte = 8;

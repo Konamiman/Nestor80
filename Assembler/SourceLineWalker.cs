@@ -1,8 +1,14 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Collections.Generic;
+using System.Diagnostics.Metrics;
+using System.Linq.Expressions;
 using System.Text;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// This class allows to extract parts (tokens and expressions) sequentially from a source code text line.
+    /// </summary>
     internal class SourceLineWalker
     {
         const char COMMENT_START = ';';
@@ -26,13 +32,10 @@ namespace Konamiman.Nestor80.Assembler
             SkipBlanks();
         }
 
+        /// <summary>
+        /// True if we have reached the end of the line or a ";" that indicates a comment.
+        /// </summary>
         public bool AtEndOfLine => logicalEndOfLineReached || CheckEndOfLine();
-
-        public void Rewind()
-        {
-            linePointer = 0;
-            SkipBlanks();
-        }
 
         public void BackupPointer()
         {
@@ -45,6 +48,11 @@ namespace Konamiman.Nestor80.Assembler
             logicalEndOfLineReached = false;
         }
 
+        /// <summary>
+        /// Extract characters until the end of the line or a given terminator is found.
+        /// </summary>
+        /// <param name="terminator">The terminator character to look for.</param>
+        /// <returns></returns>
         public string GetUntil(char terminator)
         {
             if(AtEndOfLine) return "";
@@ -61,22 +69,15 @@ namespace Konamiman.Nestor80.Assembler
             return new string(chars.ToArray());
         }
 
-        public string GetRemainingRaw()
+        /// <summary>
+        /// Get the remaining of the physical line (including the comment if present).
+        /// </summary>
+        /// <returns></returns>
+        public string GetRemaining()
         {
             var text = linePointer >= sourceLine.Length ? "" : sourceLine[linePointer..];
             linePointer = sourceLine.Length;
             return text;
-        }
-
-        public string GetRemaining()
-        {
-            if(AtEndOfLine) {
-                return "";
-            }
-
-            var remaining = sourceLine[linePointer..];
-            linePointer = sourceLine.Length;
-            return remaining;
         }
         
 
@@ -193,6 +194,10 @@ namespace Konamiman.Nestor80.Assembler
             return expression;
         }
 
+        /// <summary>
+        /// Extract a symbol that is optionally enclosed in angle brackets.
+        /// </summary>
+        /// <returns></returns>
         public string ExtractAngleBracketedOrSymbol()
         {
             if(AtEndOfLine) {
@@ -210,6 +215,10 @@ namespace Konamiman.Nestor80.Assembler
             return sourceLine[linePointer] == '<' ? ExtractAngleBracketed() : ExtractSymbol();
         }
 
+        /// <summary>
+        /// Extract text enclosed in angle brackets.
+        /// </summary>
+        /// <returns></returns>
         public string ExtractAngleBracketed()
         {
             if(AtEndOfLine) {
@@ -244,6 +253,10 @@ namespace Konamiman.Nestor80.Assembler
             return null;
         }
 
+        /// <summary>
+        /// Advance the current character pointer until a comma (or the end of the line or a comment) is found.
+        /// </summary>
+        /// <returns></returns>
         public bool SkipComma()
         {
             if(AtEndOfLine) {
@@ -281,6 +294,10 @@ namespace Konamiman.Nestor80.Assembler
             return EffectiveLength;
         }
 
+        /// <summary>
+        /// Get the effective line length, defined as the line length not counting the comment if present,
+        /// once the line processing has finished.
+        /// </summary>
         public int EffectiveLength
         { 
             get
@@ -333,6 +350,24 @@ namespace Konamiman.Nestor80.Assembler
             return line;
         }
 
+        /// <summary>
+        /// Extract an arguments list for the MACRO and IRP statement.
+        /// 
+        /// The code is complex to account for the extraction rules (compatible with Macro80):
+        /// - Arguments are delimited by comma or space, spaces around are trimmed out.
+        /// - An empty item causes a single repetition with nul (empty) argument.
+        /// - "!" causes the next char to be taken literally(so even if comma or space it's part of the argument)
+        /// - Arguments themselves can be delimited by angle brackets, with multiple nesting levels
+        ///   (and inside an argument delimited like that spaces and commas are taken literally).
+        /// - After the closing angle bracket, anything is ignored and no error is generated 
+        ///   (this includes additional "out of sequence " closing angle brackets).
+        /// - If there's at least one space between final arggument and the closing angle bracket,
+        ///   one extra empty argument is added to the list.
+        /// - Same for one comma (possibly followed by spaces) between the final argument and the closing angle bracket.
+        /// - % treats what's next until the comma as expression to be evaluated.
+        /// </summary>
+        /// <param name="requireDelimiter">True if angle bracket delimiters are required.</param>
+        /// <returns></returns>
         public (string[],int) ExtractArgsListForIrp(bool requireDelimiter = true)
         {
             SkipBlanks();
@@ -494,6 +529,13 @@ namespace Konamiman.Nestor80.Assembler
             return (args.ToArray(), delimiterNestingLevel - (requireDelimiter ? 0 : 1));
         }
 
+        /// <summary>
+        /// Extract an arguments list for IRPC.
+        /// 
+        /// IRPC expects a raw string ending with a space or tab,
+        /// but angle brackets can be used to define a region containing such characters.
+        /// </summary>
+        /// <returns></returns>
         public (string[], int) ExtractArgsListForIrpc()
         {
             SkipBlanks();
@@ -535,6 +577,24 @@ namespace Konamiman.Nestor80.Assembler
             return (args.ToArray(), delimiterNestingLevel);
         }
 
+        /// <summary>
+        /// Given a source line and a list of macro arguments, replace occurrences of each argument
+        /// in each line with placeholders compatible con <see cref="String.Format(IFormatProvider?, string, object?)"/>
+        /// (so {0}, {1} etc) keeping in mind word delimiters and that text inside strings and comments need to be skipped.
+        /// 
+        /// For example, if arguments are FOO and BAR (in that order), the line:
+        /// 
+        /// db FOO,BAR,FOOBAR,"FOO is BAR" ;Yes the FOO and the BAR
+        /// 
+        /// is converted to:
+        /// 
+        /// db {0},{1},FOOBAR,"FOO is BAR" ;Yes the FOO and the BAR
+        /// 
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="arg"></param>
+        /// <param name="placeholderNumber"></param>
+        /// <returns></returns>
         public static string ReplaceMacroLineArgWithPlaceholder(string line, string arg, int placeholderNumber)
         {
             var stringLimits = new List<(int, int)>();

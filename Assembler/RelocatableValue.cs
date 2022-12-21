@@ -1,6 +1,9 @@
 ﻿namespace Konamiman.Nestor80
 {
-    public class RelocatableAddress : RelocatableOutputPart
+    /// <summary>
+    /// Represents a relocatable value as defined by the Link80 relocatable file format.
+    /// </summary>
+    public class RelocatableValue : RelocatableOutputPart
     {
         public AddressType Type { get; set; }
 

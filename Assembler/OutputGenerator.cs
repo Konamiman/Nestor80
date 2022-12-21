@@ -3,8 +3,20 @@ using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// This class contains methods to convert the result of processing a source unit
+    /// (an <see cref="AssemblyResult"/>) into an absolute or relocatable binary file.
+    /// </summary>
     public static class OutputGenerator
     {
+        /// <summary>
+        /// Generate an absolute binary file from an <see cref="AssemblyResult"/>.
+        /// </summary>
+        /// <param name="assemblyResult">Assembly result ro use for the file generation.</param>
+        /// <param name="outputStream">The stream to write the result to.</param>
+        /// <param name="orgAsPhase">If true, treat ORG statements as equivalent to PHASE statements.</param>
+        /// <returns>How many bytes have been written to the stream.</returns>
+        /// <exception cref="ArgumentException"></exception>
         public static int GenerateAbsolute(AssemblyResult assemblyResult, Stream outputStream, bool orgAsPhase = false)
         {
             var memory = new byte[65536];
@@ -16,7 +28,7 @@ namespace Konamiman.Nestor80.Assembler
                 throw new ArgumentException("Absolute output can be genereated only for assembly results with a built type of 'Absolute'");
             }
 
-            var lines = FlatLinesList(assemblyResult.ProcessedLines);
+            var lines = FlattenLinesList(assemblyResult.ProcessedLines);
             var addressDecidingLine = lines.FirstOrDefault(l => l is ChangeOriginLine or IProducesOutput);
             if(addressDecidingLine is ChangeOriginLine first_chol) {
                 firstAddress = first_chol.NewLocationCounter;
@@ -95,7 +107,7 @@ namespace Konamiman.Nestor80.Assembler
             return outputSize;
         }
 
-        private static ProcessedSourceLine[] FlatLinesList(ProcessedSourceLine[] lines)
+        private static ProcessedSourceLine[] FlattenLinesList(ProcessedSourceLine[] lines)
         {
             if(!lines.Any(l => l is LinesContainerLine)) {
                 return lines;
@@ -106,7 +118,7 @@ namespace Konamiman.Nestor80.Assembler
             foreach(var line in lines) {
                 if(line is LinesContainerLine lcl) {
                     result.Add(line);
-                    result.AddRange(FlatLinesList(lcl.Lines));
+                    result.AddRange(FlattenLinesList(lcl.Lines));
                     result.Add(new ContainedLinesEnd());
                 }
                 else {
@@ -123,6 +135,13 @@ namespace Konamiman.Nestor80.Assembler
         static Dictionary<AddressType, ushort> locationCounters;
         static List<string> referencedExternals;
 
+        /// <summary>
+        /// Generate a Link80 compatible relative file from an <see cref="AssemblyResult"/>.
+        /// </summary>
+        /// <param name="assemblyResult">Assembly result ro use for the file generation.</param>
+        /// <param name="outputStream">The stream to write the result to.</param>
+        /// <param name="initDefs">If true, intialize DEFS blocks with no value with zeros; if false, treat these blocks as equivalent to ORG $+size.</param>
+        /// <returns></returns>
         public static int GenerateRelocatable(AssemblyResult assemblyResult, Stream outputStream, bool initDefs)
         {
             var output = new List<byte>();
@@ -165,7 +184,7 @@ namespace Konamiman.Nestor80.Assembler
                 WriteLinkItem(LinkItemType.ProgramAreaSize, AddressType.CSEG, (ushort)assemblyResult.ProgramAreaSize);
             }
 
-            var lines = FlatLinesList(assemblyResult.ProcessedLines);
+            var lines = FlattenLinesList(assemblyResult.ProcessedLines);
             foreach(var line in lines) {
                 if(line is DefineSpaceLine dsl) {
                     if(changedToAseg) {
@@ -278,7 +297,7 @@ namespace Konamiman.Nestor80.Assembler
                     locationCounters[currentLocationArea]++;
                     continue;
                 }
-                if(currentRelocatablePart is RelocatableAddress rad) {
+                if(currentRelocatablePart is RelocatableValue rad) {
                     if(rad.IsByte) {
                         WriteExtensionLinkItem(SpecialLinkItemType.Address, (byte)rad.Type, (byte)(rad.Value & 0xFF), (byte)((rad.Value >> 8) & 0xFF));
                         WriteExtensionLinkItem(SpecialLinkItemType.ArithmeticOperator, (byte)ArithmeticOperatorCode.StoreAsByte);
@@ -369,6 +388,14 @@ namespace Konamiman.Nestor80.Assembler
             locationCounters[currentLocationArea] += (ushort)(group.IsByte ? 1 : 2);
         }
 
+        /// <summary>
+        /// Given a group of link items that represents a postfix expression
+        /// and contains exactly one external symbol reference, try to optimize it
+        /// to an "external + offset" item. This is done by trying to evaluate
+        /// the expression considering the external symbol reference as a 0; 
+        /// if the evaluation succeeds and produces a number, the optimization is possible.
+        /// </summary>
+        /// <param name="group"></param>
         private static void MaybeConvertToExtPlusOffset(LinkItemsGroup group)
         {
             var items = group.LinkItems;

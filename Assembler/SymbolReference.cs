@@ -2,14 +2,23 @@
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// Represents a reference to a symbol found inside an expression.
+    /// </summary>
     public class SymbolReference : IExpressionPart
     {
         public static SymbolReference For(string name, bool isExternal = false) => new() { SymbolName = name, IsExternal = isExternal };
 
         public string SymbolName { get; set; }
 
+        /// <summary>
+        /// True if the symbol is referenced as external with the ## suffix.
+        /// </summary>
         public bool IsExternal { get; set; }
 
+        /// <summary>
+        /// True if the symbol is references as public with the : prefix.
+        /// </summary>
         public bool IsRoot { get; set; }
 
         public static bool operator ==(SymbolReference symbolref1, object symbolref2)

@@ -1,5 +1,8 @@
 ﻿namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// Holds information about a symbol found in the source code.
+    /// </summary>
     internal class SymbolInfo
     {
         private SymbolType _Type;
@@ -41,6 +44,11 @@
 
         public bool IsRedefinible => Type == SymbolType.Defl;
 
+        /// <summary>
+        /// If the symbol is declared as public its effective name (the name that will be used to refer to the symbol
+        /// in the resulting relocatable file) is the original name truncated to 6 characters.
+        /// This is a limitation of the Link80 relocatable file format.
+        /// </summary>
         public string EffectiveName { get; private set; }
 
         private bool _IsPublic;

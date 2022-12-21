@@ -376,7 +376,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else {
                         AddZero();
-                        relocatables.Add(new RelocatableAddress() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value });
+                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value });
                         if(!isByte) index++;
                     }
                 }
@@ -1061,7 +1061,7 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessListingControlLine(string opcode, SourceLineWalker walker)
         {
-            var type = (ListingControlType)Enum.Parse(typeof(ListingControlType), opcode[1..], ignoreCase: true);
+            var type = (ListingControlInstructionType)Enum.Parse(typeof(ListingControlInstructionType), opcode[1..], ignoreCase: true);
             return new ListingControlLine() { Type = type };
         }
 
@@ -1102,7 +1102,7 @@ namespace Konamiman.Nestor80.Assembler
         /// <returns></returns>
         static ProcessedSourceLine ProcessPrintOrUserErrorLine(string opcode, SourceLineWalker walker, int? printInPass = null, AssemblyErrorSeverity errorSeverity = AssemblyErrorSeverity.None)
         {
-            var rawText = walker.GetRemainingRaw();
+            var rawText = walker.GetRemaining();
             var sb = new StringBuilder();
             var lastIndex = 0;
             var expressionMatches = printStringExpressionRegex.Matches(rawText);

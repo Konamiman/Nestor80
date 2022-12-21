@@ -520,7 +520,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             return address.IsAbsolute ?
                 null :
-                new RelocatableAddress() { Type = address.Type, Value = address.Value, Index = index, IsByte = (size == 1) };
+                new RelocatableValue() { Type = address.Type, Value = address.Value, Index = index, IsByte = (size == 1) };
         }
     }
 }

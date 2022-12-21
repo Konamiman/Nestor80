@@ -610,7 +610,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else if(state.Configuration.AllowBareExpressions) {
                     opcode = "RAW DB";
-                    processedLine = ProcessDefbLine(opcode, new SourceLineWalker(symbol + " " + walker.GetRemainingRaw()));
+                    processedLine = ProcessDefbLine(opcode, new SourceLineWalker(symbol + " " + walker.GetRemaining()));
                 }
                 else {
                     opcode = symbol;
@@ -756,7 +756,7 @@ namespace Konamiman.Nestor80.Assembler
 
                     }
                     else {
-                        relocatables.Add(new RelocatableAddress() { 
+                        relocatables.Add(new RelocatableValue() { 
                             Index = expressionPendingEvaluation.LocationInOutput, 
                             IsByte = expressionPendingEvaluation.IsByte,
                             Type = expressionValue.Type, 

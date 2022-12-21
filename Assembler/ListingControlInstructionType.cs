@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80
 {
-    public enum ListingControlType
+    public enum ListingControlInstructionType
     {
         Unknown,
         List,

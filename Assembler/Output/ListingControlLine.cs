@@ -2,7 +2,7 @@
 {
     public class ListingControlLine : ProcessedSourceLine
     {
-        public ListingControlType Type { get; set; }
+        public ListingControlInstructionType Type { get; set; }
 
         public override string ToString() => $"{base.ToString()}, {Type}";
     }

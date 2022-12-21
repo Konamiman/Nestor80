@@ -2,6 +2,11 @@
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// An onbject with information used to keep track of a running macro definition
+    /// (while processing the source lines between the MACRO, IRP etc instruction 
+    /// and the corresponding ENDM instruction).
+    /// </summary>
     internal static class MacroDefinitionState
     {
         public static void StartDefinition(MacroType macroType, ProcessedSourceLine processedLine, int startLineNumber)

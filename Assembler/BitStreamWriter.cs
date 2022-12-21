@@ -2,7 +2,10 @@
 {
     /// <summary>
     /// A stream-like writer for packing bits into a byte buffer. This is used to
-    /// generate relocatable files compatible with Link-80.
+    /// generate relocatable files compatible with Link80.
+    /// 
+    /// Class adapted from
+    /// https://referencesource.microsoft.com/#PresentationCore/Shared/MS/Internal/Ink/BitStream.cs
     /// </summary>
     public class BitStreamWriter
     {

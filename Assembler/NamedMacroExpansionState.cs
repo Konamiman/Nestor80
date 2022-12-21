@@ -2,6 +2,9 @@
 
 namespace Konamiman.Nestor80.Assembler
 {
+    /// <summary>
+    /// Expansion state class for named macros (those that are defined with the MACRO instruction).
+    /// </summary>
     internal class NamedMacroExpansionState : MacroExpansionState
     {
         public NamedMacroExpansionState(string macroName, LinesContainerLine expansionProcessedLine, string[] templateLines, int argumentsCount, string[] parameters, int sourceLineNumber)
@@ -29,7 +32,7 @@ namespace Konamiman.Nestor80.Assembler
 
         public string MacroName { get; }
 
-        private Dictionary<string, string> processedLocalSymbols = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> processedLocalSymbols = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Given a symbol name, check if it's a local symbol inside a named macro expansion

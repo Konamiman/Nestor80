@@ -1,5 +1,8 @@
 ﻿namespace Konamiman.Nestor80
 {
+    /// <summary>
+    /// Types of "link items" as defined by the Link80 relocatable file format.
+    /// </summary>
     public enum LinkItemType: byte
     {
         EntrySymbol = 0,
