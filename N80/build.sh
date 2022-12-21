@@ -45,8 +45,8 @@ if [ -z "$1" ]; then
 		fi
 fi
 
-rm -f Release/Portable/*.exe
-find Release -name *.pdb -type f -delete
+rm -f ./Release/Portable/*.exe
+find ./Release -name *.pdb -type f -delete
 
 echo
 output 3 "Build succeeded!"
