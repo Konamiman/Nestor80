@@ -25,9 +25,9 @@ Nestor80 is [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) and [R800](https://en
 このラベルは誇張されていますがNestor80がいかに強力であるかを示しています equ 34 ;This too!
 ```
 
-  _Public and external symbols are still limited to ASCII-only and up to 6 characters in length, this is a limitation of the relocatable file format used by LINK-80._
+  _When generating relocatable code, public and external symbols are still limited to ASCII-only and up to 6 characters in length, this is a limitation of the relocatable file format used by LINK-80._
 
-* **Modern string handling**: it's possible to choose the encoding to be used when converting text strings (supplied as arguments to `DEFB` instructions) to sequences of bytes, and all of the [C# string escape sequences](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/strings/#string-escape-sequences) are allowed in strings.
+* **Modern string handling**: it's possible to choose the encoding to be used when converting text strings (supplied as arguments to `DEFB` instructions) to sequences of bytes, and all of the [C# string escape sequences](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/strings/#string-escape-sequences) are allowed in strings:
 
 ```
   .STRENC 850
@@ -40,7 +40,7 @@ HELLO_JP:
 
   .STRENC default
 JOKE:  
-  defb " A tab,\ta line feed\nand a form feed\fwalk into a bar...\0"
+  defb "A tab,\ta line feed\nand a form feed\fwalk into a bar...\0"
 
 ```
 
@@ -84,12 +84,34 @@ USELESS:
     ret
 ```
 
+* **Programmatic API**. The `Assembler.dll` library file can be referenced and used from any .NET language in order to assemble code from an IDE or any kind of custom tool. Here's a simple example in C#:
+
+```C#
+var sourceStream = File.OpenRead("PROGRAM.ASM");
+var assemblyConfig = new AssemblyConfiguration() { BuildType = BuildType.Absolute };
+var assemblyResult = AssemblySourceProcessor.Assemble(sourceStream, Encoding.UTF8, assemblyConfig);
+sourceStream.Close();
+
+if(!result.HasErrors) {
+	var outputStream = File.Create("PROGRAM.BIN");
+	OutputGenerator.GenerateAbsolute(assemblyResult, outputStream);
+	outputStream.Close();
+	
+	var listingStreamWriter = File.CreateText("PROGRAM.LST");
+	var listingConfig = new ListingFileConfiguration() { TitleSignature = "My simple assembler" };
+	ListingFileGenerator.GenerateListingFile(assemblyResult, listingStreamWriter, listingConfig);
+	listingStreamWriter.Close();
+}
+```
+
 ## Getting started.
 
-1. Head to [the releases page](https://github.com/konamiman/Nestor80/releases) and download the appropriate variant for your system. Note that:
+1. Head to [the releases page](https://github.com/konamiman/Nestor80/releases) and download the appropriate Nestor80 variant for your system. Note that:
    * The "Framework dependant" and "Portable" variants require [the .NET 6 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) to be installed. 
    * The "Standalone" variants don't require the .NET runtime to be installed, but they are much bigger in size (about 60MB vs about 400KB for the framework dependand variants).
-   * To run the "Portable" variant you need to use the `dotnet` tool (installed as part of the .NET runtime): `dotnet N80.dll <arguments>`. Otherwise this variant works exactly like the "native" ones.
+   * You'll need the "Portable" variant if your system supports .NET 6 but there isn't a a native variant (standalone or framework dependant) available. To run this variant the `dotnet` tool (installed as part of the .NET runtime) needs to be used as follows: `dotnet N80.dll <arguments>`. Otherwise this variant works exactly like the native ones.
+
+_You may want to get a standalone variant if you just want to give Nestor80 a try, but if you plan to use it regularly the framework dependant variants are recommended._
 
 2. Paste this sample Z80 code (a "hello world" ROM for [MSX computers](https://en.wikipedia.org/wiki/MSX)) in a text file, name it HELLO.ASM:
 
@@ -122,7 +144,7 @@ HELLO:
     db "Hello, world!\r\n"
     db "Press any key...\0"
 
-    ;Pading to get a 16K ROM
+    ;Padding to get a 16K ROM
     ;(required by some emulators)
     ds 8000h-$
 ```

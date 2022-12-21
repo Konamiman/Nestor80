@@ -1159,10 +1159,10 @@ namespace Konamiman.Nestor80.N80
             errCount = result.Errors.Count(e => !e.IsWarning && !e.IsFatal);
             fatalCount = result.Errors.Count(e => e.IsFatal);
 
-            if(result.HasFatals) {
+            if(result.HasFatalErrors) {
                 return ERR_ASSEMBLY_FATAL;
             }
-            else if(result.HasErrors) {
+            else if(result.HasNonFatalErrors) {
                 return ERR_ASSEMBLY_ERROR;
             }
 

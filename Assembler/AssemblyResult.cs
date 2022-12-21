@@ -40,9 +40,13 @@ namespace Konamiman.Nestor80.Assembler
         /// </summary>
         public int MaxRelocatableSymbolLength { get; set; }
 
-        public bool HasErrors => Errors.Any(e => !e.IsWarning && !e.IsFatal);
+        public bool HasWarnings => Errors.Any(e => e.IsWarning);
 
-        public bool HasFatals => Errors.Any(e => e.IsFatal);
+        public bool HasErrors => Errors.Any(e => !e.IsWarning);
+
+        public bool HasNonFatalErrors => Errors.Any(e => !e.IsWarning && !e.IsFatal);
+
+        public bool HasFatalErrors => Errors.Any(e => e.IsFatal);
 
         public string EffectiveRelocatableSymbolLength(string symbol) =>
             symbol.Length > MaxRelocatableSymbolLength ? symbol[..MaxRelocatableSymbolLength] : symbol;
