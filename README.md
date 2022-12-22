@@ -194,7 +194,7 @@ In call cases Nestor80 will be built in the `N80/Release` directory.
 
 ## Bugs! 🐞
 
-The assembler syntax supported by MACRO-80 is quite complex and thus Nestor80 is a complex program. Expect to find bugs in the first few releases, especially when dealing with complex macros and conditional blocks in code; if you are one of the lucky ones, please [submit an issue in GitHub](https://github.com/Konamiman/Nestor80/issues/new) so that I can take a look. Add as many information as possible to help me reproduce the error, including the error message and the "offending" source code snippet.
+The assembler syntax supported by MACRO-80 is quite complex and thus Nestor80 is a complex program. Expect to find bugs in the first few releases, especially when dealing with complex macros and conditional blocks in code; if you are one of the lucky ones, please [submit an issue in GitHub](https://github.com/Konamiman/Nestor80/issues/new) so that I can take a look. Please add as many information as possible to help me reproduce the error, including the error message and the "offending" source code snippet.
 
 
 ## Last but certainly not least
