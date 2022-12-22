@@ -256,7 +256,7 @@ The symbol bytes field will have two bytes: the fixed value 41h, and an arithmet
 * 10: Divide.
 * 11: Module (remaining of integer division).
 
-Note that not all the existing operators are in the list (e.g. AND, OR... are missing). Trying to use an unsupported operator iin an expression with relocatable symbol references will result in an error at assembly time.
+Note that not all the existing operators are in the list (e.g. AND, OR... are missing). Trying to use an unsupported operator in an expression with external symbol references will result in an error at assembly time.
 
 Here's an example of a complete link item representing the "Not" operator:
 
@@ -292,7 +292,7 @@ Example for the value 1234h in the data segment:
 
 ### Example of link items group
 
-The assembler instruction `LD A,3+(NOT FOO)` would generate the following sequence of extension link items in the generated relocatable file (notice the postfix format
+The assembler instruction `LD A,3+(NOT FOO##)` would generate the following sequence of extension link items in the generated relocatable file (notice the postfix format
 and the "Store as byte" operator, needed because the argument of `LD A,n` is one single byte):
 
 ```
