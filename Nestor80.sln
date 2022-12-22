@@ -5,10 +5,8 @@ VisualStudioVersion = 17.2.32505.173
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{49C74F4D-1B8E-41C6-A973-7123185EB696}"
 	ProjectSection(SolutionItems) = preProject
-		HELLO.ASM = HELLO.ASM
 		D:\Dropbox\Dropbox\m80l80.txt = D:\Dropbox\Dropbox\m80l80.txt
 		README.md = README.md
-		SOURCE.MAC = SOURCE.MAC
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Assembler", "Assembler\Assembler.csproj", "{789D3C4E-D0A7-48F7-8C42-28DF7492705E}"

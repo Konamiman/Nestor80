@@ -351,3 +351,10 @@ MigrationBackup/
 
 launchSettings.json
 /ParseRel/Properties/PublishProfiles/FolderProfile.pubxml
+
+*.ASM
+*.MAC
+*.BIN
+*.REL
+*.PRN
+*.LST

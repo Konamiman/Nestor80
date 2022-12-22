@@ -1,8 +1,0 @@
-	TITLE TheProg
-
-	;Let's go!
-;1  ;2
-
-	ld a,34 ;Nice!
-	this is long long long time ago you see what happens when the line is too long???
-	ld b,(ix+34)
