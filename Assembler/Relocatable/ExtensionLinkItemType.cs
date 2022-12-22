@@ -5,7 +5,7 @@
     //the number is the start address of data area (which is placed anyway before program area),
     //the label is for I don't know what.
 
-    public enum SpecialLinkItemType
+    public enum ExtensionLinkItemType
     {
         ArithmeticOperator = 0x41,
         ReferenceExternal = 0x42,

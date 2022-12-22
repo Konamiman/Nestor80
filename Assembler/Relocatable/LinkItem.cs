@@ -36,7 +36,7 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
         public static LinkItem ForAddressReference(AddressType addressType, ushort addressValue)
         {
             var symbolBytes = new byte[4];
-            symbolBytes[0] = (byte)SpecialLinkItemType.Address;
+            symbolBytes[0] = (byte)ExtensionLinkItemType.Address;
             symbolBytes[1] = (byte)addressType;
             symbolBytes[2] = (byte)(addressValue & 0xFF);
             symbolBytes[3] = (byte)(addressValue >> 8 & 0xFF);
@@ -52,7 +52,7 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
             }
 
             var symbolBytes = new byte[symbol.Length + 1];
-            symbolBytes[0] = (byte)SpecialLinkItemType.ReferenceExternal;
+            symbolBytes[0] = (byte)ExtensionLinkItemType.ReferenceExternal;
             Encoding.ASCII.GetBytes(symbol.ToCharArray(), 0, symbol.Length, symbolBytes, 1);
 
             return new LinkItem(LinkItemType.ExtensionLinkItem, symbolBytes);
@@ -61,7 +61,7 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
         public static LinkItem ForArithmeticOperator(ArithmeticOperatorCode arithmeticOperator)
         {
             var symbolBytes = new byte[2];
-            symbolBytes[0] = (byte)SpecialLinkItemType.ArithmeticOperator;
+            symbolBytes[0] = (byte)ExtensionLinkItemType.ArithmeticOperator;
             symbolBytes[1] = (byte)arithmeticOperator;
 
             return new LinkItem(LinkItemType.ExtensionLinkItem, symbolBytes);
@@ -89,16 +89,16 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
 
         public bool HasSymbolBytes => Type <= LinkItemType.DefineEntryPoint;
 
-        public bool IsExternalReference => Type == LinkItemType.ExtensionLinkItem && (SpecialLinkItemType)SymbolBytes[0] == SpecialLinkItemType.ReferenceExternal;
+        public bool IsExternalReference => Type == LinkItemType.ExtensionLinkItem && (ExtensionLinkItemType)SymbolBytes[0] == ExtensionLinkItemType.ReferenceExternal;
 
-        public bool IsAddressReference => Type == LinkItemType.ExtensionLinkItem && (SpecialLinkItemType)SymbolBytes[0] == SpecialLinkItemType.Address;
+        public bool IsAddressReference => Type == LinkItemType.ExtensionLinkItem && (ExtensionLinkItemType)SymbolBytes[0] == ExtensionLinkItemType.Address;
 
         public ushort ReferencedAddressValue => (ushort)(SymbolBytes[2] | SymbolBytes[3] << 8);
 
         public AddressType ReferencedAddressType => (AddressType)SymbolBytes[1];
 
         public ArithmeticOperatorCode? ArithmeticOperator =>
-            Type == LinkItemType.ExtensionLinkItem && (SpecialLinkItemType)SymbolBytes[0] == SpecialLinkItemType.ArithmeticOperator ?
+            Type == LinkItemType.ExtensionLinkItem && (ExtensionLinkItemType)SymbolBytes[0] == ExtensionLinkItemType.ArithmeticOperator ?
             (ArithmeticOperatorCode)SymbolBytes[1] : null;
 
         public bool IsPlusOrMinus => ArithmeticOperator is ArithmeticOperatorCode.Plus or ArithmeticOperatorCode.Minus;
@@ -113,18 +113,18 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
 
             if (Type == LinkItemType.ExtensionLinkItem)
             {
-                var specialLinkItemType = (SpecialLinkItemType)SymbolBytes[0];
-                if (specialLinkItemType == SpecialLinkItemType.Address)
+                var specialLinkItemType = (ExtensionLinkItemType)SymbolBytes[0];
+                if (specialLinkItemType == ExtensionLinkItemType.Address)
                 {
                     var addressType = (AddressType)SymbolBytes[1];
                     var addressValue = (ushort)(SymbolBytes[2] | SymbolBytes[3] << 8);
                     s += $", Reference address, {addressType} {addressValue:X4}";
                 }
-                else if (specialLinkItemType == SpecialLinkItemType.ReferenceExternal)
+                else if (specialLinkItemType == ExtensionLinkItemType.ReferenceExternal)
                 {
                     s += $", Reference external, {GetSymbolName()}";
                 }
-                else if (specialLinkItemType == SpecialLinkItemType.ArithmeticOperator)
+                else if (specialLinkItemType == ExtensionLinkItemType.ArithmeticOperator)
                 {
                     s += $", Arithmetic operator, {(ArithmeticOperatorCode)SymbolBytes[1]}";
                 }

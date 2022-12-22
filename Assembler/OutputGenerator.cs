@@ -299,8 +299,8 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 if(currentRelocatablePart is RelocatableValue rad) {
                     if(rad.IsByte) {
-                        WriteExtensionLinkItem(SpecialLinkItemType.Address, (byte)rad.Type, (byte)(rad.Value & 0xFF), (byte)((rad.Value >> 8) & 0xFF));
-                        WriteExtensionLinkItem(SpecialLinkItemType.ArithmeticOperator, (byte)ArithmeticOperatorCode.StoreAsByte);
+                        WriteExtensionLinkItem(ExtensionLinkItemType.Address, (byte)rad.Type, (byte)(rad.Value & 0xFF), (byte)((rad.Value >> 8) & 0xFF));
+                        WriteExtensionLinkItem(ExtensionLinkItemType.ArithmeticOperator, (byte)ArithmeticOperatorCode.StoreAsByte);
                         WriteByte(0);
                         locationCounters[currentLocationArea]++;
                     }
@@ -364,22 +364,22 @@ namespace Konamiman.Nestor80.Assembler
 
             foreach(var item in group.LinkItems) {
                 if(item.IsExternalReference) {
-                    WriteExtensionLinkItem(SpecialLinkItemType.ReferenceExternal, Encoding.ASCII.GetBytes(item.GetSymbolName().ToUpper()));
+                    WriteExtensionLinkItem(ExtensionLinkItemType.ReferenceExternal, Encoding.ASCII.GetBytes(item.GetSymbolName().ToUpper()));
                     referencedExternals.Add(item.GetSymbolName());
                 }
                 else if(item.IsAddressReference) {
-                    WriteExtensionLinkItem(SpecialLinkItemType.Address, item.SymbolBytes[1], item.SymbolBytes[2], item.SymbolBytes[3]);
+                    WriteExtensionLinkItem(ExtensionLinkItemType.Address, item.SymbolBytes[1], item.SymbolBytes[2], item.SymbolBytes[3]);
                 }
                 else {
                     var op = item.ArithmeticOperator;
                     if(op is null) {
                         throw new Exception($"Unexpected type of link item found in group: {item}");
                     }
-                    WriteExtensionLinkItem(SpecialLinkItemType.ArithmeticOperator, (byte)op);
+                    WriteExtensionLinkItem(ExtensionLinkItemType.ArithmeticOperator, (byte)op);
                 }
             }
 
-            WriteExtensionLinkItem(SpecialLinkItemType.ArithmeticOperator, group.IsByte ? (byte)ArithmeticOperatorCode.StoreAsByte : (byte)ArithmeticOperatorCode.StoreAsWord);
+            WriteExtensionLinkItem(ExtensionLinkItemType.ArithmeticOperator, group.IsByte ? (byte)ArithmeticOperatorCode.StoreAsByte : (byte)ArithmeticOperatorCode.StoreAsWord);
             WriteByte(0);
             if(!group.IsByte) {
                 WriteByte(0);
@@ -520,7 +520,7 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static void WriteExtensionLinkItem(SpecialLinkItemType type, params byte[] symbolBytes)
+        private static void WriteExtensionLinkItem(ExtensionLinkItemType type, params byte[] symbolBytes)
         {
             bitWriter.Write(0b100, 3);
             bitWriter.Write((byte)LinkItemType.ExtensionLinkItem, 4);
