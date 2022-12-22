@@ -1,4 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler;
+﻿using Konamiman.Nestor80.Assembler.Infrastructure;
 using NUnit.Framework;
 
 namespace Konamiman.Nestor80.AssemblerTests

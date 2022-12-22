@@ -313,7 +313,7 @@ namespace Konamiman.Nestor80.AssemblerTests
             };
 
             var ex = Assert.Throws<Exception>(new TestDelegate(testAction));
-            Assert.AreEqual("String of 3 bytes found as part of an expression, this should have been filtered out by Expression.Parse", ex.Message);
+            Assert.AreEqual("String of 3 bytes found as part of an expression, this should have been filtered out by Expression.Parse", ex?.Message);
         }
 
         [TestCase(true)]
@@ -538,7 +538,7 @@ namespace Konamiman.Nestor80.AssemblerTests
             };
 
             var ex = Assert.Throws<InvalidExpressionException>(new TestDelegate(testAction));
-            Assert.AreEqual(exceptionMessage, ex.Message);
+            Assert.AreEqual(exceptionMessage, ex?.Message);
         }
 
         [Test]
@@ -688,7 +688,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         {
             var ex = Assert.Throws<InvalidExpressionException>(new TestDelegate(code));
             if(message is not null)
-                Assert.AreEqual(message, ex.Message);
+                Assert.AreEqual(message, ex?.Message);
         }
 
         private static void AssertGenerates(string expressionString, params IExpressionPart[] parts) =>

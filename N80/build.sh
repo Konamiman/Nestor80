@@ -36,7 +36,7 @@ if [ -z "$1" ]; then
 			publish $PROFILE
 		done
 	else
-		if [ -f "$1.pubxml" ]; then
+		if [ -f "./Properties/PublishProfiles/$1.pubxml" ]; then
 			banner $1
 			publish $1
 		else

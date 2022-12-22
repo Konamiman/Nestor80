@@ -158,3 +158,23 @@ The source will be assembled and a binary file named `HELLO.BIN` will be produce
 4. Burn the resulting `HELLO.BIN/.ROM` file in a flash cartridge, insert it in your MSX, and turn it on. Or (probably easier) use an MSX emulator such as [WebMSX](http://webmsx.org/).
 
 ![](docs/img/HelloRunning.png)
+
+
+## Building Nestor80
+
+If you want to build Nestor80 itself you have two options:
+
+1. Use [Visual Studio](https://visualstudio.microsoft.com/) (2022 or newer)
+
+Open the Nestor80 solution, right click in the N80 project, click "Publish" in the menu, select the publish profile for the desired variant and click the "Publish" button.
+
+2. Use a dedicated script
+
+Open a command prompt, go to the `N80` directory and run the `build.sh` script. Running it without arguments will build all the variants;
+to build just one pass its name (the name of the corresponding `.pubxml` file in the `N80\Properties\PublishProfiles` directory) as an argument,
+e.g. `./build.sh FrameworkDependant__linux_x64`.
+
+In Linux and macOS you can run the script directly, in Windows 10 and 11 you need to have [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) installed
+and run it like this: `wsl ./build.sh`
+
+In call cases Nestor80 will be built in the `N80/Release` directory.
