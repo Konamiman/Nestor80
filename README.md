@@ -54,7 +54,7 @@ endif
 
 * **Nested INCLUDEd files** (MACRO-80 allows only one level for `INCLUDE`) and of course, **support for arbitrary paths** for included files.
 
-* [Sjasm](https://github.com/Konamiman/Sjasm)-style **modules and relative labels**:
+* Additionally to being compatible with MACRO-80 it also borrows a few features from other assemblers, like [Sjasm](https://github.com/Konamiman/Sjasm)-style **modules and relative labels**:
 
 ```
 call GRAPHICS.INIT
