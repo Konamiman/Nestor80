@@ -27,7 +27,7 @@ Nestor80 is [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) and [R800](https://en
 
   _When generating relocatable code, public and external symbols are still limited to ASCII-only and up to 6 characters in length, this is a limitation of [the relocatable file format used by LINK-80](docs/RelocatableFileformat.md)._
 
-* **Modern string handling**: it's possible to choose the encoding to be used when converting text strings (supplied as arguments to `DEFB` instructions) to sequences of bytes, and all of the [C# string escape sequences](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/strings/#string-escape-sequences) are allowed in strings:
+* **Modern string handling**: it's possible to choose the encoding to be used when converting text strings (supplied as arguments to `DEFB` instructions) to sequences of bytes, and most of the [C# string escape sequences](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/strings/#string-escape-sequences) are allowed in strings:
 
 ```
   .STRENC 850

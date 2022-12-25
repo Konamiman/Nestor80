@@ -94,6 +94,8 @@ namespace Konamiman.Nestor80.Assembler
         {
             DefaultRadix = 10;
             operators["NEQ"] = NotEqualsOperator.Instance;
+            operators["LTE"] = LessThanOrEqualOperator.Instance;
+            operators["GTE"] = GreaterThanOrEqualOperator.Instance;
         }
 
         /// <summary>
@@ -445,6 +447,8 @@ namespace Konamiman.Nestor80.Assembler
             var matchLength = theString.Length;
             if(escapesAllowed) {
                 try {
+                    //Important: the \U and \x escape sequences defined for C# strings
+                    //are not supported by Regex.Unescape; all others are, including \u
                     theString = Regex.Unescape(theString);
                 }
                 catch(Exception ex) {

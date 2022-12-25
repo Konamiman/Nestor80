@@ -93,8 +93,11 @@ It's possible to instruct Nestor80 to produce an absolute file or a relocatable 
 
 Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an `ORG` instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
 
-Some assembler instructions make sense only in the context of relocatable code. See "Writing relocatable code" for more details.
+⚠ If the build type is forced to absolute with `--build-type` but the code contains no `ORG` instructions, an implicit `ORG 0` at the beginning of the code is assumed.
 
+Some assembler instructions make sense only in the context of relocatable code, for example `CSEG`, `DSEG`, `PUBLIC` OR `EXTRN`; these instructions will do nothing, and the assembler will throw warnings, if they are found while assembling absolute code. 
+
+See "Writing relocatable code" for more details about how relocatable code programming works.
 
 
 ## Source code format
@@ -242,7 +245,6 @@ Sequence | Name | Value
 \v | Vertical tab | 0Bh
 \u | Unicode escape sequence (4 hex digits) | Example: \u0012 = 12h<br/>Example: \uABCD = CDh, ABh (in UTF-16)
 
-
 The support for escape sequences in double-quoted strings can be disabled by using the Nestor80 command line argument `--no-string-escapes` or the instruction `.STRESC OFF` in code. When escape sequences are disabled the double quote
 character itself can still be escaped by doubling it:
 
@@ -257,5 +259,46 @@ the `\` character was considered a regular character with no escaping meaning.
 ⚠ Note that when string escaping is enabled the only way to escape the double quote character is to use the `\"` sequence or the `\u0022` sequence; the special sequence `""` is available only when escape sequences are disabled.
 
 An empty string (e.g. `DEFB ''`) produces no output.
+
+
+### Expressions
+
+An _expression_ is a combination of numeric constants, symbols and arithmetic operators that are ultimately evaluated to a numeric value. When assembling relocatable code, expressions that contain external symbol references aren't evaluated; instead, they are outputted to the target relocatable file "as is" to that the evaluation will happen at linking time once the values of all the involved external references have been resolved (see "Writing relocatable code").
+
+Nestor80 defines the following arithmetic operators:
+
+Operator | Meaning | Precedence | Allowed with externals?
+---------|---------|------------|------------------------
+`NUL`      | Rest of expression<br/> is empty? | 9 | See note
+`LOW`      | Low byte of | 8 | ✔️
+`HIGH`     | High byte of | 8 | ✔️
+`*`        | Multiplication | 7 | ✔️
+`/`        | Integer division | 7 | ✔️
+`MOD`      | Remaining of integer division | 7 | ✔️
+`SHR`      | Shift right | 7 | ❌
+`SHL`      | Shift left | 7 | ❌
+`-` (unary) | Unary minus | 6 | ✔️
+`+`        | Addition | 5 | ✔️
+`-`        | Substraction  | 5 | ✔️
+`EQ`       | Equals | 4 | ❌
+`=` 🆕    | Equals | 4 | ❌
+`NE`       | Not equals | 4 | ❌
+`NEQ` 🆕  | Not equals | 4 | ❌
+`LT`       | Less than | 4 | ❌
+`LE`       | Less than or equal  | 4 | ❌
+`LTE` 🆕  | Less than or equal  | 4 | ❌
+`GT`       | Greater than | 4 | ❌
+`GE`       | Greater than or equal | 4 | ❌
+`GTE` 🆕  | Greater than or equal | 4 | ❌
+`NOT`      | Bitwise NOT<br/>(one's complement) | 3 | ✔️
+`AND`      | Bitwise AND | 2 | ❌
+`OR`       | Bitwise OR | 1 | ❌
+`XOR`      | Bitwise XOR | 1 | ❌
+
+The `NUL` operator is special: if the remaining of the source code line after the operator (not including the comment, if present) has any characters other than spaces and tabs, it will evaluate to 0; otherwise it will evaluate to 0FFFFh. This is useful mainly in the context of macro expansions.
+
+The operator precedence determines how the expression is evaluated: subexpressions involving operators of higher precedence are computed first, and operators with the same precedence are applied in the order in which they appear in the expression. For example, the expression `2+3*4` evaluates to 14 because `*` has higher precedence than `+`. Parenthesis can be used to override the default operator precedence, for example `(2+3)*4` evaluates to 20.
+
+When writing relocatable code only a subset of the existing operators can be used in expressions involving external references, this is a limitation given by [the relocatable file format](RelocatableFileFormat.md). Trying to use one of the unsupported operators in such an expression will result in an assembly error.
 
 
