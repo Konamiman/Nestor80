@@ -337,7 +337,12 @@ namespace Konamiman.Nestor80.Assembler
                     continue;
                 }
 
-                var operand = ResolveAddressOrSymbol(newParts[index-1]);
+                var previousPart = newParts[index-1];
+                if(previousPart is not Address and not SymbolReference) {
+                    Throw("The TYPE operator can only be followed by a numeric constant or a symbol");
+                }
+
+                var operand = ResolveAddressOrSymbol(previousPart);
                 if(externalSymbolFound) {
                     calculatedType = Address.Absolute(0x80);
                     externalSymbolFound = false;
@@ -346,7 +351,7 @@ namespace Konamiman.Nestor80.Assembler
                     calculatedType = TypeOperator.Instance.Operate(operand, null);
                 }
                 else if(throwOnUnknownSymbol) {
-                    Throw($"Unknown symbol: {((SymbolReference)newParts[index-1]).SymbolName}");
+                    Throw($"Unknown symbol: {((SymbolReference)previousPart).SymbolName}");
                 }
                 else {
                     return true;

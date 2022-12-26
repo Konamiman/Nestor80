@@ -269,7 +269,8 @@ Nestor80 defines the following arithmetic operators:
 
 Operator | Meaning | Precedence | Allowed with externals?
 ---------|---------|------------|------------------------
-`NUL`      | Rest of expression<br/> is empty? | 9 | See note
+`NUL`      | Rest of expression<br/> is empty? | 10 | See note
+`TYPE`     | Argument type | 9 | See note
 `LOW`      | Low byte of | 8 | ✔️
 `HIGH`     | High byte of | 8 | ✔️
 `*`        | Multiplication | 7 | ✔️
@@ -295,7 +296,23 @@ Operator | Meaning | Precedence | Allowed with externals?
 `OR`       | Bitwise OR | 1 | ❌
 `XOR`      | Bitwise XOR | 1 | ❌
 
-The `NUL` operator is special: if the remaining of the source code line after the operator (not including the comment, if present) has any characters other than spaces and tabs, it will evaluate to 0; otherwise it will evaluate to 0FFFFh. This is useful mainly in the context of macro expansions.
+The `NUL` and `TYPE` operators are special:
+
+* `NUL` works as follows: if the remaining of the source code line after the operator (not including the comment, if present) has any characters other than spaces and tabs, it will evaluate to 0; otherwise it will evaluate to 0FFFFh. This is useful mainly in the context of macro expansions.
+
+* `TYPE` will evaluate to a fixed absolute value depending on the type of the argument passed to it:
+
+Argument type |  Value
+--------------|-------
+External symbol reference | 0x80
+Numeric constant or absolute symbol | 0x20
+Symbol defined in the code segment | 0x21
+Symbol defined in the data segment | 0x22
+Symbol defined in a COMMON block | 0x23
+
+For example `TYPE FOO##` evaluates to 0x80, and `TYPE FOO` evaluates to 0x21 if `FOO` is a label defined in the code segment. Of course, when assembling absolute code `TYPE` will evaluate everything to 0x20.
+
+⚠🚫 The `TYPE` operator is intended to be used with plain symbols and will act weirdly with complex expressions. For example, `TYPE (FOO##+1)` will evaluate to A0h in MACRO-80 and throw an error in Nestor80.
 
 The operator precedence determines how the expression is evaluated: subexpressions involving operators of higher precedence are computed first, and operators with the same precedence are applied in the order in which they appear in the expression. For example, the expression `2+3*4` evaluates to 14 because `*` has higher precedence than `+`. Parenthesis can be used to override the default operator precedence, for example `(2+3)*4` evaluates to 20.
 
