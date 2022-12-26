@@ -454,6 +454,16 @@ namespace Konamiman.Nestor80.N80
                 instruction directly in code. You may want to disallow escape sequences
                 when compiling old sources that were intended to be assembled with Macro80.
 
+            Nestor80 exit codes are:
+
+                0: Success
+                1: Invalid arguments
+                2: Error opening or reading the input file
+                3: Error creating or writing to the output file
+                4: Error creating or writing to the listing file
+                5: Assembly errors were thrown
+                6: An assembly fatal error was thrown
+
             Full documentation (and donation links, wink wink):
             https://github.com/Konamiman/Nestor80
             """;
