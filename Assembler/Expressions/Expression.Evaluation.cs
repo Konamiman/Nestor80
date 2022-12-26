@@ -4,7 +4,6 @@ using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
 using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
 using Konamiman.Nestor80.Assembler.Infrastructure;
 using Konamiman.Nestor80.Assembler.Relocatable;
-using System;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -201,6 +200,13 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
+            if(HasTypeOperator) {
+                var unknownSymbolsFound = ResolveTypeOperators(throwOnUnknownSymbol);
+                if(unknownSymbolsFound) {
+                    return null;
+                }
+            }
+
             externalSymbolFound = false;
 
             var stack = new Stack<IExpressionPart>();
@@ -221,7 +227,7 @@ namespace Konamiman.Nestor80.Assembler
                         return null;
                     }
                     
-                    if(uop is not TypeOperator and not UnaryPlusOperator && !poppedAddress.IsAbsolute && isByte) {
+                    if(uop is not UnaryPlusOperator && !poppedAddress.IsAbsolute && isByte) {
                         if(uop.ExtendedLinkItemType is null) {
                             Throw($"Operator {uop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte", AssemblyErrorCode.InvalidForRelocatable);
                             return null;
@@ -230,13 +236,7 @@ namespace Konamiman.Nestor80.Assembler
                         return null;
                     }
 
-                    if(uop is TypeOperator && externalSymbolFound) {
-                        operationResult = Address.Absolute(0x80);
-                        externalSymbolFound = false;
-                    }
-                    else {
-                        operationResult = uop.Operate(poppedAddress, null);
-                    }
+                    operationResult = uop.Operate(poppedAddress, null);
                     stack.Push(operationResult);
                 }
                 else if(item is BinaryOperator bop) {
@@ -261,6 +261,7 @@ namespace Konamiman.Nestor80.Assembler
                             Throw($"Operator {bop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte", AssemblyErrorCode.InvalidForRelocatable);
                             return null;
                         }
+
                         HasRelocatableToStoreAsByte = true;
                         return null;
                     }
@@ -306,6 +307,57 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             return (Address)result;
+        }
+
+        /// <summary>
+        /// Transform the expression parts so that TYPE operators are resolved.
+        /// </summary>
+        /// <remarks>
+        /// The TYPE operator is special in that it's the only one that makes external symbol references
+        /// disappear (TYPE FOO## evaluates to absolute 80h). We want these to be resolved before the actual
+        /// expression evaluation happens so that we don't end up having later "fake" external references
+        /// (especially if the evaluation is interrupted due to e.g. a relocatable address having to be stored
+        /// as a byte and thus the expression needs to be written "as is" to the resulting relocatable file).
+        /// 
+        /// The TYPE operator is the one having the highest precedence and thus doing such a "selective evaluation"
+        /// is easy, we just need to replace pairs of TYPE+argument with the calculated value.
+        /// </remarks>
+        /// <param name="throwOnUnknownSymbol">True to throw an exception if an unknown symbol is found.</param>
+        /// <returns>True if unknown symbols were found (and no exception was thrown)</returns>
+        private bool ResolveTypeOperators(bool throwOnUnknownSymbol)
+        {
+            var newParts = Parts.ToList();
+
+            var index = 1; //We know that item at 0 is not a TYPE operator, validation would have failed if so.
+            Address calculatedType = null;
+
+            while(index < newParts.Count) {
+                if(newParts[index] is not TypeOperator) {
+                    index++;
+                    continue;
+                }
+
+                var operand = ResolveAddressOrSymbol(newParts[index-1]);
+                if(externalSymbolFound) {
+                    calculatedType = Address.Absolute(0x80);
+                    externalSymbolFound = false;
+                }
+                else if(operand is not null) {
+                    calculatedType = TypeOperator.Instance.Operate(operand, null);
+                }
+                else if(throwOnUnknownSymbol) {
+                    Throw($"Unknown symbol: {((SymbolReference)newParts[index-1]).SymbolName}");
+                }
+                else {
+                    return true;
+                }
+
+                newParts[index] = calculatedType;
+                newParts.RemoveAt(index - 1);
+            }
+
+            Parts = newParts.ToArray();
+            return false;
         }
 
         private Address ResolveAddressOrSymbol(IExpressionPart part)

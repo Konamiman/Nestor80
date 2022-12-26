@@ -707,18 +707,22 @@ namespace Konamiman.Nestor80.Assembler
             foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
                 var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => new { s.SymbolName, IsRoot = s.IsRoot || s.IsExternal });
                 var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbolWithoutLocalNameReplacement(s.IsRoot ? s.SymbolName : state.Modularize(s.SymbolName)));
-                var hasExternalsOutsideTypeOperator = false;
+                var hasExternalReferences = false;
                 Address expressionValue = null;
 
-                if(!expressionPendingEvaluation.Expression.HasTypeOperator && referencedSymbols.Any(s => s.IsExternal)) {
-                    hasExternalsOutsideTypeOperator = true;
+                if(expressionPendingEvaluation.Expression.HasTypeOperator) {
+                    throw new Exception($"Expression '{expressionPendingEvaluation.Expression.Source}' has unresolved TYPE operators, that should never happen");
+                }
+
+                if(referencedSymbols.Any(s => s.IsExternal)) {
+                    hasExternalReferences = true;
                 }
                 else {
                     try {
                         expressionValue = expressionPendingEvaluation.Expression.Evaluate();
                     }
                     catch(ExpressionReferencesExternalsException) {
-                        hasExternalsOutsideTypeOperator = true;
+                        hasExternalReferences = true;
                     }
                     catch(InvalidExpressionException ex) {
                         AddError(ex.ErrorCode, $"Invalid expression for {processedLine.Opcode.ToUpper()}: {ex.Message}");
@@ -726,7 +730,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
 
-                if(hasExternalsOutsideTypeOperator) {
+                if(hasExternalReferences) {
                     var unknownSymbols = referencedSymbols.Where(s => !s.IsExternal && !s.HasKnownValue);
                     foreach(var symbol in unknownSymbols) {
                         AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: unknown symbol {symbol.Name}");
@@ -803,10 +807,6 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else if(part is ArithmeticOperator op) {
-                    if(op is TypeOperator) {
-                        AddError(AssemblyErrorCode.InvalidExpression, $"Operator TYPE is not allowed in expressions involving external references (except when the external reference is the argument for TYPE)");
-                        return null;
-                    }
                     if(op is not UnaryPlusOperator) {
                         if(op.ExtendedLinkItemType is null) {
                             AddError(AssemblyErrorCode.InvalidForRelocatable, $"Operator {op} is not allowed in expressions involving external references");
