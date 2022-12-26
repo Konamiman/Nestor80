@@ -11,8 +11,7 @@ The following icons are used in this document:
 
 ✨ A "sparks" icon is used when referring to a feature or instruction that was already available in MACRO-80 but has been enhanced or improved in a backwards-compatible way in Nestor80.
 
-🚫 A "forbidden" icon is used to refer to a MACRO-80 feature or instruction that is not available or has changed in a backwards-incompatible way in Nestor80.
- Old source code intended for MACRO-80 and relying in such features or instructions will likely require changes before being suitable for assembly with Nestor80.
+🚫 A "forbidden" icon is used to refer to a MACRO-80 feature or instruction that is not available or has changed in a backwards-incompatible way in Nestor80. Old source code intended for MACRO-80 and relying in such features or instructions will likely require changes before being suitable for assembly with Nestor80.
 
 ⚠ A "warning" icon is used when discussing a tricky, subtle or confusing subject; or in general to bring attention to an important concept.
 
@@ -89,7 +88,7 @@ Relocatable files can't be executed, instead a linker (typically LINK-80) must b
 
 It's possible to instruct Nestor80 to produce an absolute file or a relocatable file by using the `--build-type` command line argument, but by default Nestor80 will decide the appropriate type automatically. The decision is taken as follows:
 
-> If an ORG statement is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: `CSEG`, `DSEG`, `COMMON`, `DEFB`, `DEFW`, `DEFS`, `DC`, `DEFZ`, `PUBLIC`, `EXTRN`, `.REQUEST`, the build type will be absolute; otherwise the build type will be relocatable.
+> If an `ORG` instruction is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: `CSEG`, `DSEG`, `COMMON`, `DEFB`, `DEFW`, `DEFS`, `DC`, `DEFZ`, `PUBLIC`, `EXTRN`, `.REQUEST`, then the build type will be absolute; otherwise the build type will be relocatable.
 
 Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an `ORG` instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
 
@@ -271,11 +270,11 @@ Operator | Meaning | Precedence | Allowed with externals?
 ---------|---------|------------|------------------------
 `NUL`      | Rest of expression<br/> is empty? | 10 | See note
 `TYPE`     | Argument type | 9 | See note
-`LOW`      | Low byte of | 8 | ✔️
-`HIGH`     | High byte of | 8 | ✔️
+`LOW`      | Low byte | 8 | ✔️
+`HIGH`     | High byte | 8 | ✔️
 `*`        | Multiplication | 7 | ✔️
 `/`        | Integer division | 7 | ✔️
-`MOD`      | Remaining of integer division | 7 | ✔️
+`MOD`      | Remaining of<br/>integer division | 7 | ✔️
 `SHR`      | Shift right | 7 | ❌
 `SHL`      | Shift left | 7 | ❌
 `-` (unary) | Unary minus | 6 | ✔️
@@ -316,6 +315,12 @@ For example `TYPE FOO##` evaluates to 0x80, and `TYPE FOO` evaluates to 0x21 if 
 
 The operator precedence determines how the expression is evaluated: subexpressions involving operators of higher precedence are computed first, and operators with the same precedence are applied in the order in which they appear in the expression. For example, the expression `2+3*4` evaluates to 14 because `*` has higher precedence than `+`. Parenthesis can be used to override the default operator precedence, for example `(2+3)*4` evaluates to 20.
 
+The `HIGH` and `LOW` operators evaluate to the high and low byte of a 16 bit value, respectively; for example `HIGH 1234h` is 12h and `LOW 1234h` is 34h. When applied to relocatable values, the entire 16 bit value is written to the generated relocatable file and the evaluation is performed at linking time; for example if `FOO` is a label defined as address 1234h in the code segment, and the linker is instructed to use address 8511h as the base for the code segment, then `HIGH FOO` will properly evaluate to 97h and `LOW FOO` to 45h in the target program.
+
 When writing relocatable code only a subset of the existing operators can be used in expressions involving external references, this is a limitation given by [the relocatable file format](RelocatableFileFormat.md). Trying to use one of the unsupported operators in such an expression will result in an assembly error.
 
+#### Bare expressions
 
+MACRO-80 allows _bare expressions_ lines, these are lines that have no operand and contain just a list of comma-separated expressions; these lines are treated as `DEFB` instructions. For example the line `1,2,3,4` is equivalent to `DEFB 1,2,3,4`.
+
+In Nestor80 bare expressions aren't supported by default 🚫, but they will be supported if the `--allow-bare-expressions` command line argument is used. You might need this to assemble old source code, but in general bare expressions shouldn't be used since they can cause confussion (for example if you intend to introduce a named macro expansion and mistype the macro name you'll get a confusing "symbol not found" error).
