@@ -39,6 +39,8 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public bool InPass1 => !InPass2;
 
+        public int CurrentPass => InPass2 ? 2 : 1;
+
         public bool HasErrors => Errors.Any(e => !e.IsWarning);
 
         public int CurrentLineNumber { get; private set; } = 1;

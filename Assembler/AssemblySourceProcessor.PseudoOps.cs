@@ -1094,9 +1094,9 @@ namespace Konamiman.Nestor80.Assembler
         /// {expression[:radix[size]]}
         /// 
         /// where radix is D,d (decimal), H,h,X,x (hexadecimal) or B,b (Binary)
-        /// and size is the max number of digits to print, e.g.:
+        /// and size is the min number of digits to print (zeros are added to the left as needed), e.g.:
         /// 
-        /// .PRINT2 Value of FOO is: {FOO:H4}
+        /// .PRINT2 Value of FOO is: {FOO:H4}h
         /// 
         /// </summary>
         /// <param name="opcode"></param>
@@ -1110,7 +1110,7 @@ namespace Konamiman.Nestor80.Assembler
             var sb = new StringBuilder();
             var lastIndex = 0;
             var expressionMatches = printStringExpressionRegex.Matches(rawText);
-            if(expressionMatches.Count == 0) {
+            if(expressionMatches.Count == 0 || (printInPass.HasValue && state.CurrentPass != printInPass )) {
                 return GetLineForPrintOrUserError(rawText, walker, printInPass, errorSeverity);
             }
 

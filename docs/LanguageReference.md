@@ -319,6 +319,44 @@ The `HIGH` and `LOW` operators evaluate to the high and low byte of a 16 bit val
 
 When writing relocatable code only a subset of the existing operators can be used in expressions involving external references, this is a limitation given by [the relocatable file format](RelocatableFileFormat.md). Trying to use one of the unsupported operators in such an expression will result in an assembly error.
 
+
+#### Expression interpolation 🆕
+
+The messages to be printed during the assembly process with the `.PRINT`, `.WARN`, `.ERROR` and `.FATAL` instructions support _expression interpolation_, that is, they can include expressions that will be evaluated and the result printed as part of the message.
+
+To interpolate an expression in an instruction it must be enclosed in `{` and `}`, using the following format:
+
+```
+{expression[:radix[size]]}
+```
+
+where:
+
+* `radix` specifies the radix to use to print the expression value, and can be one of the following:
+  * `D` or `d` for decimal.
+  * `B` or `b` for binary.
+  * `X` or `H` for hexadecimal with uppercase letters.
+  * `x` or `h` for hexadecimal with lowercase letters.
+
+The default radix used if none specified is 10, regardless of any radix set with the `.RADIX` instruction.
+
+* `size` is the minimum number of digits that will be printed. The printed value will be padded to the left with zeros if needed.
+
+For example, the following line
+
+```
+.print 20+11 equals {20+11}, or {20+11:H}h, or {20+11:x4}h, or {20+11:b8}b.
+```
+
+will print
+
+```
+20+11 equals 31, or 1Fh, or 001fh, or 00011111b.
+```
+
+⚠ All the symbols included in interpolated expressions must be known when the instruction is processed (this implies that the expressions can't contain external symbol references), otherwise an error will be thrown and the messages will be printed with the "offending" expressions unevaluated. Usually you'll want to use `.PRINT2` instead of `.PRINT` or `.PRINT1` to ensure that.
+
+
 #### Bare expressions
 
 MACRO-80 allows _bare expressions_ lines, these are lines that have no operand and contain just a list of comma-separated expressions; these lines are treated as `DEFB` instructions. For example the line `1,2,3,4` is equivalent to `DEFB 1,2,3,4`.
