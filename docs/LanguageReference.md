@@ -139,8 +139,7 @@ MACRO-80 treats source code characters with the high bit set as line numbers gen
 
 ### Symbols
 
-A _symbol_ is a named 8 or 16 bit value. When assembling relocatable code this value can belong to the absolute, code or data segment or in a COMMON block. 
-Valid characters for symbols are letters (any unicode letter is allowed, not just ASCII letters ✨), digits, and these: `$.?@_`. The first character of a symbol can't be a digit.
+A _symbol_ is a named 8 or 16 bit value. When assembling relocatable code this value can belong to the absolute, code or data segment or to a COMMON block. Valid characters for symbols are letters (any unicode letter is allowed, not just ASCII letters ✨), digits, and these: `$.?@_`. The first character of a symbol can't be a digit.
 
 Nestor80 treats symbols in a case-insensitive way, e.g. `foo`, `FOO` and `Foo` refer all to the same symbol.
 
@@ -148,14 +147,36 @@ There's in principle no limit for the length of a symbol ✨, but when assemblin
 This limitation is given by [the format of the LINK-80 relocatable files](RelocatableFileFormat.md). Nestor80 will issue a warning if it finds two or more external symbols that are
 different but share the first 6 characters (since these will get their names truncated and thus be actually the same symbol), and will throw an error if the same happens with public symbols.
 
-When writing relocatable code, a symbol reference can have the `##` suffix to indicate that it's an external symbol (a symbol that is defined in another relocatable file). This is equivalent to
-using the `EXTRN` instruction.
+When writing relocatable code, the following suffixes are allowed for symbols:
+
+* A symbol reference can have the `##` suffix to indicate that it's an _external symbol_ (a symbol that is defined in another relocatable file). This is equivalent to using the `EXTRN` instruction:
+
+```
+ld hl,FOO##
+
+;Equivalent to:
+
+EXTRN FOO
+ld hl,FOO
+```
+
+* A label can be defined with the `::` suffix (instead of just `:`) to indicate that it's a _public symbol_ (a symbol that can be accessed from another relocatable file). This is equivalent to using the `PUBLIC` instruction:
+
+```
+FOO::
+  ;Some code
+
+;Equivalent to:
+
+PUBLIC FOO
+FOO:
+  ;Some code
+```
 
 
 ### Numeric constants
 
-Numeric constants can be specified in any [radix](https://en.wikipedia.org/wiki/Radix) from 2 to 16. The default radix is 10 but this can be changed with the `.RADIX` instruction.
-When the radix is 11 or higher the letters A to F (case insensitive) are used to represents the digits after the 9.
+Numeric constants can be specified in any [radix](https://en.wikipedia.org/wiki/Radix) from 2 to 16. The default radix is 10 but this can be changed with the `.RADIX` instruction. When the radix is 11 or higher the letters A to F (case insensitive) are used to represents the digits after the 9.
 
 In order to specify a number in a radix different from the default one the following notations can be used
 (prefixes and suffixes are case-insensitive):
@@ -194,19 +215,22 @@ A string can be used as equivalent to the numeric constant resulting from encodi
 
 1. The current character encoding must produce at most two bytes for the string (an error will be thrown otherwise).
 2. A string that produces two bytes in the current character encoding is interpreted as a big-endian value in `DEFB` instructions, and as a low-endian value elsewhere.
-3. An empty string produces no output.
+3. An empty string produces no output in a `DEFB` statement, and the value zero everywhere else.
 
 The second rule exists for consistency with how `DEFB` converts strings into bytes in the general case (strings of any length).
 
 The following example listing illustrates how strings are converted to bytes following these rules:
 
 ```
-                       .STRENC ASCII
-0000                   defb ''
-0000    41             defb 'A'
-0001    42 41          defw 'AB'
-0003    41 42          defb 'AB'
-0005    41 42 43 44    defb 'ABCD'
+                         .STRENC ASCII
+  0000                   defb ''
+  0000    41             defb 'A'
+  0001    42 41          defw 'AB'
+  0003    41 42          defb 'AB'
+  0005    41 42 43 44    defb 'ABCD'
+  0009    00 00          defw ''
+  000B    3E 00          ld a,''
+  000D    21 00 00       ld hl,''
 ```
 
 ### Strings
