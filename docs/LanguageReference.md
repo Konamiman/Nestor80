@@ -386,3 +386,229 @@ will print
 MACRO-80 allows _bare expressions_ lines, these are lines that have no operand and contain just a list of comma-separated expressions; these lines are treated as `DEFB` instructions. For example the line `1,2,3,4` is equivalent to `DEFB 1,2,3,4`.
 
 In Nestor80 bare expressions aren't supported by default 🚫, but they will be supported if the `--allow-bare-expressions` command line argument is used. You might need this to assemble old source code, but in general bare expressions shouldn't be used since they can cause confussion (for example if you intend to introduce a named macro expansion and mistype the macro name you'll get a confusing "symbol not found" error).
+
+
+## Advanced features
+
+### Modules ✨
+
+A _module_ is a set of consecutive source code lines grouped under a unique name. All symbols defined inside a module (and by default, also all the non-external referenced symbols) will be considered _relative_ to the module name; this means that the effective symbol name will be `module_name.symbol`. Example:
+
+```
+MAIN_INIT:
+  call GRAPHICS.init
+  call SOUND.init
+  ret
+
+module GRAPHICS
+
+init:
+  ;Some unique init
+initloop:
+  ;Some repeated init
+  djnz initloop
+  ret
+
+endmod
+
+module SOUND
+
+init:
+  ;Some unique init
+initloop:
+  ;Some repeated init
+  djnz initloop
+  ret
+
+endmod
+```
+
+The above code is equivalent to the following one that doesn't use modules:
+
+```
+MAIN_INIT:
+  call GRAPHICS.init
+  call SOUND.init
+  ret
+
+GRAPHICS.init:
+  ;Some unique init
+GRAPHICS.initloop:
+  ;Some repeated init
+  djnz GRAPHICS.initloop
+  ret
+
+SOUND.init:
+  ;Some unique init
+SOUND.initloop:
+  ;Some repeated init
+  djnz SOUND.initloop
+  ret
+```
+
+In order to refer to a symbol defined outside the module there are two options:
+
+1. Prepend the symbol name with a colon, `:`
+2. Use the `ROOT` instruction to list the symbols that are to be considered as defined outside the module.
+
+Example:
+
+```
+CHPUT equ 00A2h
+
+MAIN_INIT:
+  call GRAPHICS.init
+  call SOUND.init
+  ret
+
+module GRAPHICS
+
+init:
+  ld a,'!'
+  call :CHPUT
+  ret
+
+endmod
+
+module SOUND
+
+root CHPUT
+
+init:
+  ld a,'?'
+  call CHPUT
+  ret
+
+endmod
+```
+
+Modules can be nested:
+
+```
+MAIN_INIT:
+  call GRAPHICS.LOWRES.init
+  ret
+
+module GRAPHICS
+module LOWRES
+
+init:
+  ;Do init
+  ret
+
+endmod
+endmod
+```
+
+When a symbols starts with a dot, no extra dot will be added when concatenating the symbol name and the module name, so `.symbol` becomes `module.symbol`, not `module..symbol`:
+
+```
+MAIN_INIT:
+  call GRAPHICS.init
+  call GRAPHICS..reinit
+  ret
+
+module GRAPHICS
+
+.init:
+  ;Do init
+  ret
+
+..reinit:
+  ;Do reinit
+  ret
+
+endmod
+```
+
+
+### Relative labels ✨
+
+A _relative label_ is a label that starts with a dot, `.`, and is found after a non-relative label; the former is considered to be relative to the later, that is, the effective label name for `.relative` is `non_relative.relative`:
+
+```
+.relab
+
+print:
+  ;Init
+.loop:
+  ;Stuff
+  djnz .loop
+  ret	
+
+update:
+  ;Init
+.loop:
+  ;Stuff
+  djnz .loop
+  ret	
+```
+
+The above code is equivalent to the following one that doesn't use relative labels:
+
+```
+print:
+  ;Init
+print.loop:
+  ;Stuff
+  djnz print.loop
+  ret	
+
+update:
+  ;Init
+update.loop:
+  ;Stuff
+  djnz update.loop
+  ret	
+```
+
+⚠ Relative labels are disabled by default. To enable the feature the `.RELAB` instruction must be used; conversely, the `.XRELAB` instruction disables the feature.
+
+Any symbol whose name starts with a dot will be considered a relative label if the feature is enabled and at least one non-relative label has been declared. In order to reference a symbol whose name starts with a dot but is not a relative label there are two options:
+
+1. Prepend the symbol name with a colon, `:`
+2. Temporarily disable the relative labels with `.XRELAB`
+
+Example:
+
+```
+.STROUT equ 09h
+BDOS equ 0005h
+
+print:
+  ld c,:.STROUT
+  call BDOS
+  ret	
+
+reprint:
+  .xrelab
+  ld c,.STROUT
+  .relab
+  call BDOS
+  ret
+```
+
+The last non-relative symbol is forgotten (and thus symbols starting with a dot go back to being considered regular symbols) when:
+
+1. A module is entered (`MODULE` instruction) or exited (`ENDMOD` instruction).
+2. The feature is enabled with `.RELAB` or disabled with `.XRELAB` (even if it was already enabled or disabled).
+
+⚠ The relative symbols feature affects not only the symbol _usages_ but also the symbol _definitions_, which can be confusing. Consider this example:
+
+```
+.relab
+
+foo:
+  ;Do stuff
+  ret
+
+.STROUT equ 09h  ;"Symbol .STROUT not found" error because this is actually foo.STROUT !!
+```
+
+If you need to declare non-relative constants whose name starts with a dot make sure to either:
+
+* Declare them at the beginning of the code, before any non-relative label is declared; or
+* Declare them with the feature disabled (with `.XRELAB`); or
+* Use an extra `.RELAB` before the constant declaration to force Nestor80 to forget the last non-relative label.
+
+As a rule of thumb it's a good idea to enable the feature only when really needed.
