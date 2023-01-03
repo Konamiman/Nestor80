@@ -58,7 +58,16 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public Dictionary<string, NamedMacroDefinitionLine> NamedMacros { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
 
-        public bool RelativeLabelsEnabled { get; set; }
+        private bool _RelativeLabelsEnabled;
+        public bool RelativeLabelsEnabled
+        {
+            get => _RelativeLabelsEnabled;
+            set
+            {
+                _RelativeLabelsEnabled = value;
+                RegisterLastNonRelativeLabel(null);
+            }
+        }
 
         public void RegisterPendingExpression(
             ProcessedSourceLine line,
@@ -106,8 +115,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             InsideNamedMacroInsideFalseConditional = false;
             IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
             RelativeLabelsEnabled = Configuration.AllowRelativeLabels;
-            LastNonRelativeLabel = null;
-            CurrentRelativeLabels.Clear();
+            RegisterLastNonRelativeLabel(null);
             modules.Clear();
 
             SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
@@ -504,6 +512,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void EnterModule(string name)
         {
+            RegisterLastNonRelativeLabel(null);
             modules.Push((CurrentModule, currentRootSymbols));
             CurrentModule = CurrentModule is null ? name : $"{CurrentModule}.{name}";
             currentRootSymbols = new HashSet<string>(
@@ -519,6 +528,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             }
 
             (CurrentModule, currentRootSymbols) = modules.Pop();
+            RegisterLastNonRelativeLabel(null);
         }
 
         public void RegisterRootSymbols(IEnumerable<string> symbols)
