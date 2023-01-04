@@ -672,3 +672,80 @@ FOO:
 
 ld a,.STROUT  ;No error, really referencing ".STROUT" due to the second .relab
 ```
+
+
+## Assembler instructions reference
+
+This section lists all the assembler instructions supported by Nestor80. Any instruction alias is listed together with the "canonical" instruction name.
+
+® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions.
+
+
+### .COMMENT
+
+_Syntax:_ `.COMMENT <delimiter><text><delimiter>`
+
+Defines a block comment with support for multiple lines. The first character found after the instruction will be considered the delimiter, and all text found in the source code until the delimiter is found again will be considered a comment and not processed. Example:
+
+```
+.COMMENT * Here we go!
+
+This is a comment, anything until another asterisk is found is ignored.
+
+*
+
+ld a,34 ;Regular code again
+```
+
+The entire line where the closing delimiter will be considered as part of the comment and thus ignored:
+
+```
+.COMMENT *
+
+Blah blah
+
+* This is still ignored!
+
+ld a,34 ;Regular code again
+```
+
+
+### .CPU 🆕
+
+_Syntax:_ `.CPU <cpu name>`
+
+Changes the target CPU for the assembled code. 
+
+Currently the supported CPUs are `Z80` (default) and `R800`. The only difference is that setting the R800 as the target CPU enables the `MULUB` and `MULUW` instructions:
+
+```
+MULUB A,A
+MULUB A,B
+MULUB A,C
+MULUB A,D
+MULUB A,E
+MULUB A,H
+MULUB A,L
+MULUW HL,BC
+MULUW HL,DE
+MULUW HL,HL
+MULUW HL,SP
+```
+
+[The Z80 undocumented instructions](http://www.z80.info/z80undoc.htm) are always supported.
+
+
+### .CREF 🚫
+
+_Syntax:_: `.CREF` 
+
+In Macro80 this instruction enabled the inclusion of cross-reference information when generating a listing file. Nestor80 doesn't implement cross-reference information generation and thus this instruction does nothing.
+
+
+
+### PAGE (SUBPAGE 🆕, $EJECT)
+
+_Syntax:_ `PAGE <page size>`
+
+_Aliases:_ `SUBPAGE`, `$EJECT`
+
