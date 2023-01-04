@@ -173,6 +173,53 @@ FOO:
   ;Some code
 ```
 
+### Named constants
+
+A _named constant_ (or just "constant") is a symbol that represents a numeric value and can be used in expressions. There are two types of constants: fixed and redefinible. The value of a _fixed_ constant can't be altered, while the value of a _redefinible_ constant can, by using a new constant definition instruction with the same constant name.
+
+A fixed constant is defined using the following syntax: `<name>[:] EQU <value expression>`. The colon after the constant name is optional ✨ (in Macro80 the colon after the constant name isn't allowed). Example:
+
+```
+FOO equ 34
+FOO: equ 30+4  ;Allowed since the value is the same
+
+ld a,FOO+6     ;Equivalent to "ld a,40"
+
+FOO equ 89     ;"Symbol already exists" error
+```
+
+A redefinible constant is (re)defined using the following syntax: `<name>[:] DEFL <value expression>`. As in the case of the fixed constants, the colon after the constant name is optional ✨. Example:
+
+```
+FOO defl 34
+ld a,FOO      ;Equivalent to "ld a,34"
+
+FOO: defl 89
+ld a,FOO      ;Equivalent to "ld a,89"
+
+FOO defl FOO+1   ;The constant itself can be part of the redefinition expression
+ld a,FOO      ;Equivalent to "ld a,90"
+```
+
+For compatibility with Macro80 the `ASET` instruction is allowed as an alias for `DEFL`.
+
+
+Note that `EQU` and `DEFL` can't be mixed for the same constant name:
+
+```
+FOO equ 1
+FOO defl 2    ;"Symbol already exists" error
+```
+
+```
+FOO defl 1
+FOO equ 2     ;"Symbol already exists" error
+```
+
+⚠ You may think that the term "constant" isn't really appropriate for redefinible values. The term "variable", however, has been avoided on purpose to avoid confussion with how the word is normally used in the context of software development, as "value that can change at runtime"; a redefinible constant can have its value changed _at assemble time_, **not** at runtime.
+
+⚠ (🚫?) The Macro80 manual mentions also the instruction `SET` as an additional alias for `DEFL`, but in practice it doesn't work as such: `SET` is only recognized as the Z80 instruction of the same name in Macro80. Nestor80 behaves as Macro80 behaves and not as the Macro80 documentation says, so you can't use `SET` to define constants.
+
 
 ### Numeric constants
 
