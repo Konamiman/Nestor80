@@ -84,6 +84,13 @@ namespace Konamiman.Nestor80.Assembler
         public static Func<string, bool, bool, SymbolInfo> GetSymbol { get; set; } = (_, _, _) => null;
 
         /// <summary>
+        /// The callback to use to get the full "modularized" symbol name
+        /// (prefixed with a module name or with a non-relative label name if needed),
+        /// this is used to include the full symbol name in "Unknown symbol" exceptions.
+        /// </summary>
+        public static Func<string, string> ModularizeSymbolName { get; set; } = name => name;
+
+        /// <summary>
         /// The parts that compose the expression, will be in postfix format
         /// after <see cref="Postfixize"/> is executed.
         /// </summary>

@@ -164,6 +164,7 @@ namespace Konamiman.Nestor80.Assembler
                 state.DefaultOutputStringEncoding = Expression.OutputStringEncoding;
 
                 Expression.GetSymbol = GetSymbolForExpression;
+                Expression.ModularizeSymbolName = name => state.Modularize(name);
                 Expression.AllowEscapesInStrings = configuration.AllowEscapesInStrings;
 
                 DoPass();

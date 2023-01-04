@@ -550,7 +550,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         /// </summary>
         /// <param name="symbol">Symbol to check.</param>
         /// <returns>Symbol (maybe) prefixed with the current module or non-relative label name.</returns>
-        public string Modularize(string symbol)
+        public string Modularize(string symbol, bool isConstantDefinition = false)
         {
             var inModule = CurrentModule is not null;
 
@@ -561,7 +561,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
             var isDot = symbol[0] is '.';
             var isRelativeLabel = false;
-            if (RelativeLabelsEnabled && isDot && LastNonRelativeLabel is not null)
+            if (!isConstantDefinition && RelativeLabelsEnabled && isDot && LastNonRelativeLabel is not null)
             {
                 symbol = LastNonRelativeLabel + symbol;
                 isRelativeLabel = true;

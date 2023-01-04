@@ -281,7 +281,8 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     if(address is null) {
                         if(throwOnUnknownSymbol) {
-                            Throw($"Unknown symbol: {((SymbolReference)item).SymbolName}");
+                            var symbolName = ModularizeSymbolName(((SymbolReference)item).SymbolName);
+                            Throw($"Unknown symbol: {symbolName}");
                         }
                         else {
                             return null;
@@ -351,7 +352,8 @@ namespace Konamiman.Nestor80.Assembler
                     calculatedType = TypeOperator.Instance.Operate(operand, null);
                 }
                 else if(throwOnUnknownSymbol) {
-                    Throw($"Unknown symbol: {((SymbolReference)previousPart).SymbolName}");
+                    var symbolName = ModularizeSymbolName(((SymbolReference)previousPart).SymbolName);
+                    Throw($"Unknown symbol: {symbolName}");
                 }
                 else {
                     return true;
