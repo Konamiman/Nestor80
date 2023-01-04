@@ -78,10 +78,7 @@ namespace Konamiman.Nestor80.Assembler
 
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
-        private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "SET", "ASET" };
-
-        //Constant definition opcodes that are allowed after a symbol name followed by a colon
-        private static readonly string[] constantDefinitionOpcodesMinusSet = { "EQU", "DEFL", "ASET" };
+        private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "ASET" };
 
         private static readonly ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
 
@@ -534,7 +531,7 @@ namespace Konamiman.Nestor80.Assembler
             // TITLE EQU 1      ---> defines constant "TITLE" with value 1
             // FOO: TITLE EQU 1 ---> sets the program title as "EQU 1"
             if(!definingMacro && !state.InFalseConditional && !walker.AtEndOfLine) {
-                if(label is not null && constantDefinitionOpcodesMinusSet.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
+                if(label is not null && constantDefinitionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
                     opcode = symbol;
                     processedLine = ProcessConstantDefinition(opcode: opcode, name: label.TrimEnd(':'), walker: walker);
                     label = null;
