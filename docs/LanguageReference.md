@@ -564,7 +564,21 @@ update.loop:
 
 ⚠ Relative labels are disabled by default. To enable the feature the `.RELAB` instruction must be used; conversely, the `.XRELAB` instruction disables the feature.
 
-Any symbol whose name starts with a dot will be considered a relative label if the feature is enabled and at least one non-relative label has been declared. In order to reference a symbol whose name starts with a dot but is not a relative label there are two options:
+Within expressions any symbol whose name starts with a dot will be considered a relative label if the feature is enabled and at least one non-relative label has been declared previously, this can lead to errors when referencing constants:
+
+```
+.relab
+
+.STROUT equ 09h
+
+FOO:
+  ;Do stuff
+  ret
+
+ld a,.STROUT  ;Error: symbol "FOO.STROUT" not found
+```
+
+In order to reference a symbol whose name starts with a dot but is not a relative label there are two options:
 
 1. Prepend the symbol name with a colon, `:`
 2. Temporarily disable the relative labels with `.XRELAB`
@@ -572,6 +586,8 @@ Any symbol whose name starts with a dot will be considered a relative label if t
 Example:
 
 ```
+.relab
+
 .STROUT equ 09h
 BDOS equ 0005h
 
@@ -593,22 +609,19 @@ The last non-relative symbol is forgotten (and thus symbols starting with a dot 
 1. A module is entered (`MODULE` instruction) or exited (`ENDMOD` instruction).
 2. The feature is enabled with `.RELAB` or disabled with `.XRELAB` (even if it was already enabled or disabled).
 
-⚠ The relative symbols feature affects not only the symbol _usages_ but also the symbol _definitions_, which can be confusing. Consider this example:
+Example:
+
 
 ```
 .relab
 
-foo:
+.STROUT equ 09h
+
+FOO:
   ;Do stuff
   ret
 
-.STROUT equ 09h  ;"Symbol .STROUT not found" error because this is actually foo.STROUT !!
+.relab
+
+ld a,.STROUT  ;No error, really referencing ".STROUT" due to the second .relab
 ```
-
-If you need to declare non-relative constants whose name starts with a dot make sure to either:
-
-* Declare them at the beginning of the code, before any non-relative label is declared; or
-* Declare them with the feature disabled (with `.XRELAB`); or
-* Use an extra `.RELAB` before the constant declaration to force Nestor80 to forget the last non-relative label.
-
-As a rule of thumb it's a good idea to enable the feature only when really needed.
