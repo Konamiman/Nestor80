@@ -720,9 +720,18 @@ namespace Konamiman.Nestor80.Assembler
                 return new DelimitedCommentLine() { Delimiter = '\0', IsLastLine = true };
             }
 
-            var delimiter = walker.ExtractSymbol()[0];
-            state.MultiLineCommandDelimiter = delimiter;
-            return new DelimitedCommentLine() { Delimiter = delimiter };
+            var text = walker.GetRemaining();
+            var delimiter = text[0];
+            var processedLine = new DelimitedCommentLine() { Delimiter = delimiter };
+
+            if(text.IndexOf(delimiter, 1) == -1) {
+                state.MultiLineCommandDelimiter = delimiter;
+            }
+            else { 
+                processedLine.IsLastLine = true;
+            }
+
+            return processedLine;
         }
 
         static ProcessedSourceLine ProcessConstantDefinition(string opcode, string name, SourceLineWalker walker = null, Expression expression = null)
