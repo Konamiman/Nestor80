@@ -73,7 +73,9 @@ DEFA MACRO ADDR
 ENDM
 ```
 
-⚠ Unlike MACRO-80, Nestor80 will skip pass 2 if errors are found in pass 1  (but not if only warnings are found). Thus during the development process it's possible to find that some assembly errors seemingly "appear from nowhere" after some other errors were fixed (the former being errors found in pass 2 and the later being errors found in pass 1).
+⚠ Unlike MACRO-80, Nestor80 will skip pass 2 if errors are found in pass 1  (but not if only warnings are found). Thus during the development process it's possible to find that some assembly errors seemingly "appear from nowhere" after some other errors were fixed (the former being errors found in pass 2 and the later being errors found in pass 1). A fatal error will terminate the assembly process immediately.
+
+The location counter can be temporarily modified to account for code that will be executed at a different address, see `.PHASE`.
 
 
 ### Absolute and relocatable code
@@ -581,14 +583,14 @@ print:
 .loop:
   ;Stuff
   djnz .loop
-  ret	
+  ret
 
 update:
   ;Init
 .loop:
   ;Stuff
   djnz .loop
-  ret	
+  ret
 ```
 
 The above code is equivalent to the following one that doesn't use relative labels:
@@ -599,14 +601,14 @@ print:
 print.loop:
   ;Stuff
   djnz print.loop
-  ret	
+  ret
 
 update:
   ;Init
 update.loop:
   ;Stuff
   djnz update.loop
-  ret	
+  ret
 ```
 
 ⚠ Relative labels are disabled by default. To enable the feature the `.RELAB` instruction must be used; conversely, the `.XRELAB` instruction disables the feature.
@@ -685,7 +687,7 @@ This section lists all the assembler instructions supported by Nestor80. Any ins
 
 _Syntax:_ `.COMMENT <delimiter><text><delimiter>`
 
-Defines a block comment with support for multiple lines. The first character found after the instruction will be considered the delimiter, and all text found in the source code until the delimiter is found again will be considered a comment and not processed. Example:
+Defines a block of comment text with support for multiple lines. The first character found after the instruction will be considered the delimiter, and all text found in the source code until the delimiter is found again will be considered a comment and not processed. Example:
 
 ```
 .COMMENT * Here we go!
@@ -697,7 +699,7 @@ This is a comment, anything until another asterisk is found is ignored.
 ld a,34 ;Regular code again
 ```
 
-The entire line where the closing delimiter will be considered as part of the comment and thus ignored:
+The entire line where the closing delimiter is found will be considered as part of the comment and thus ignored:
 
 ```
 .COMMENT *
@@ -737,10 +739,139 @@ MULUW HL,SP
 
 ### .CREF 🚫
 
-_Syntax:_: `.CREF` 
+_Syntax:_ `.CREF` 
 
 In Macro80 this instruction enabled the inclusion of cross-reference information when generating a listing file. Nestor80 doesn't implement cross-reference information generation and thus this instruction does nothing.
 
+
+### .DEPHASE
+
+_Syntax:_ `.DEPHASE`
+
+Marks the end of a phased code block. See `.PHASE`.
+
+
+### .ERROR 🆕
+
+_Syntax:_ `.ERROR <text>`
+
+Emits an assembly error with the specified text. The text supports expression interpolation.
+
+When one or more errors are emitted in pass 1, pass 2 will be skipped. See "Passes".
+
+
+### .FATAL 🆕
+
+_Syntax:_ `.FATAL <text>`
+
+Throws an fatal error with the specified text. The text supports expression interpolation.
+
+A fatal error will terminate the assembly process immediately.
+
+
+### .LALL
+
+_Syntax:_ `.LALL`
+
+Instructs Nestor80 to include the complete macro text for expanded macros in listings for all macros following the instruction. The default initial condition (also set by `.XALL`) is to include only the source lines that produce any output in the target file (assembler instructions and `DEFB`, `DEFW` etc). See `.XALL`, `.SALL`, "Macros", "Listings".
+
+
+### .LFCOND
+
+_Syntax:_ `.LFCOND`
+
+Instructs Nestor80 to include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. This is the default initial condition unless a `--no-listing-false-conditionals` argument is supplied to Nestor80. See also `.LFCOND`, `.TFCOND`, "Conditional blocks", "Listings".
+
+
+### .LIST
+
+_Syntax:_ `.LIST`
+
+Instructs Nestor80 to include all the source code text following the instruction. This is the default initial condition when Nestor80 is instructed to generate a listing file with the `--listing` argument. See also `.XLIST`, "Listings".
+
+
+### .PHASE
+
+_Syntax:_ `.PHASE <address>`
+
+Starts a phased code block. A _phased code block_ is a set of instructions that are intended to be run at a different memory address (indicated by the `<address>` argument) than the one dictated by the current location pointer. `.DEPHASE` is used to mark the end of a phased code block.
+
+For example, assume that you have the following code in ROM starting at address 4000h and you have RAM starting at address 8000h. Your ROM is banked, with the bank number selected via Z80 port 10h. This is the code that you could use to calculate the 1 byte checksum of a given bank, together with the addresses and output generated for reference:
+
+```
+8000                  RAM_BUFFER equ 8000h
+                    
+                      org 4000h
+                    
+4000    21 13 40      ld hl,CALCULATE_CHECKSUM
+4003    11 00 80      ld de,8000h
+4006    01 1A 00      ld bc,CALCULATE_CHECKSUM_END - CALCULATE_CHECKSUM
+4009    ED B0         ldir
+                    
+400B    3E 01         ld a,1
+400D    CD 00 80      call RAM_BUFFER
+4010    C3 2D 40      jp MORE_CODE
+                    
+                    ;Calculate the 1-byte checksum of a ROM bank.
+                    ;Input:  A = ROM bank number
+                    ;Output: A = Checksum
+4013                CALCULATE_CHECKSUM:
+                      .phase RAM_BUFFER
+                    
+8000    D3 10         out (10h),a
+8002    16 00         ld d,0
+8004    21 00 40      ld hl,4000h
+8007    01 00 40      ld bc,4000h
+                    
+800A                LOOP:
+800A    7E            ld a,(hl)
+800B    82            add a,d
+800C    57            ld d,a
+800D    23            inc hl
+800E    0B            dec bc
+800F    78            ld a,b
+8010    B1            or c
+8011    C2 0A 80      jp nz,LOOP
+                    
+8014    3E 00         ld a,0
+8016    D3 10         out (10h),a  ;Assume the ROM bank number of the caller was 0
+                    
+8018    7A            ld a,d
+8019    C9            ret
+                    
+                      .dephase
+402D                CALCULATE_CHECKSUM_END:
+                    
+                      ;Location counter from before .PHASE is restored here,
+                      ;appropriately updated by the size of the phased block
+402D                MORE_CODE:
+402D    3E 22         ld a,34
+```
+
+Although the starting address of a phased block will normally be an absolute address, using relocatable addresses is also allowed:
+
+```
+0000'                 dseg
+                      org 1000h
+1000"               FOO:
+                  
+1000"                 cseg
+                  
+0000'   3E 22         ld a,34
+                  
+                      .phase FOO
+1000"   00 01 02      db 0,1,2
+                      .dephase
+                  
+0005'   3E 59         ld a,89
+```
+
+🚫 There are two restrictions for phased blocks that weren't present in Macro80:
+
+1. The value of `<address>` must be known by the time the `.PHASE` statement is reached (it can't be an expression containing a symbol that is defined later in code).
+2. Segment change instructions (`ASEG`, `CSEG`, `DSEG`, `COMMON`) aren't allowed inside a phased block.
+
+The second one is something that doesn't seem to be supported by Macro80 anyway: even though no errors are emitted, the location counter gets an incorrect value after a segment change instruction inside a phased block.
 
 
 ### PAGE (SUBPAGE 🆕, $EJECT)

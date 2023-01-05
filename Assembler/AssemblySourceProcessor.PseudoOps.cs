@@ -1517,7 +1517,6 @@ namespace Konamiman.Nestor80.Assembler
          * Additional restrictions compared to Macro80:
          * 
          * - Address must be known when the instruction is reached
-         * - Address must be absolute
          * - Area changes and ORGs are not allowed inside a .PHASE block
          */
         static ProcessedSourceLine ProcessPhaseLine(string opcode, SourceLineWalker walker)
