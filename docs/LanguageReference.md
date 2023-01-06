@@ -773,7 +773,7 @@ A fatal error will terminate the assembly process immediately.
 
 _Syntax:_ `.LALL`
 
-Instructs Nestor80 to include the complete macro text for expanded macros in listings for all macros following the instruction. The default initial condition (also set by `.XALL`) is to include only the source lines that produce any output in the target file (assembler instructions and `DEFB`, `DEFW` etc). See `.XALL`, `.SALL`, "Macros", "Listings".
+Instructs Nestor80 to include the complete macro text for expanded macros in listings following the instruction. The default initial condition (also set by `.XALL`) is to include only the source lines that produce any output in the target file (assembler instructions and `DEFB`, `DEFW` etc). See `.XALL`, `.SALL`, "Macros", "Listings".
 
 
 ### .LFCOND
@@ -901,7 +901,7 @@ Like `.PRINT`, but only prints the text in pass 2. See "Passes".
 
 _Syntax:_ `.PRINTX <delimiter><text>[<delimiter>]`
 
-Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The first character of the text is considered a delimiter, and the text is printed until either the delimiter is found again or the end of the line is found (the end delimiter itself is printed too). For example `.PRINTX /Foo` prints `Foo`, and `.PRINTX /Foo/bar` prints `/Foo/`.
+Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The first character of the text is considered a delimiter, and the text is printed until either the delimiter is found again or the end of the line is found (the delimiters themselves are printed too). For example `.PRINTX /Foo` prints `/Foo`, and `.PRINTX /Foo/bar` prints `/Foo/`.
 
 This instruction is provided for compatibility with Macro80. New programs should use `.PRINT`, `.PRINT1` or `.PRINT2` instead, which don't need a delimiter and support expression interpolation.
 
@@ -936,7 +936,100 @@ Enables the relative labels feature. See also `.XRELAB`.
 
 _Syntax:_ `.REQUEST <filename>[,<filename>[,...]]`
 
-Defines a list of files in which the linker will search for any globals that remain undefined during the linking process. For compatibility with Link80 filenames must be up to 7 characters long, contain only ASCII letters, and can't contain an extension nor any drive or directory specification.
+Defines a list of files in which the linker will search for any globals that remain undefined during the linking process. For compatibility with Link80 filenames must be up to 7 characters long, contain only ASCII letters, and can't contain an extension (`.REL` extension is assumed) nor any drive or directory specification.
+
+
+### .SALL
+
+_Syntax:_ `.SALL`
+
+Instructs Nestor80 to not include macro expansions in listings following the instruction. The default initial condition (also set by `.XALL`) is to include only the source lines that produce any output in the target file (assembler instructions and `DEFB`, `DEFW` etc). See `.XALL`, `.LALL`, "Macros", "Listings".
+
+
+### .SFCOND
+
+_Syntax:_ `.SFCOND`
+
+Instructs Nestor80 to **not** include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. See also `.LFCOND`, `.TFCOND`, "Conditional blocks", "Listings".
+
+
+### .STRENC 🆕
+
+_Syntax:_ `.STRENC <encoding name>|<encoding page>|default`
+
+Sets the character encoding to be used to transform strings to sequences of bytes, typically for the `DEFB` insruction.
+
+The encoding name or page must be one of the encodings supported by the system where Nestor80 is running. Running Nestor80 with the `--list-encodings` argument will show a list of the available encodings; each encoding has an unique name and an unique page number and either of the two can be used to identify the encoding.
+
+The default encoding is 7 bit ASCII unless a different encoding is specified by passing a `--string-encoding` argument to Nestor80. `.STRENC default` will revert to this default encoding.
+
+The encoding name `ASCII` is accepted as an alias for the default 7 bit ASCII encoding (whose "official" name is `US-ASCII`).
+
+See also: "Strings".
+
+
+### .STRESC 🆕
+
+_Syntax:_ `.STRESC ON|OFF`
+
+Turns on or off the support for escape sequences in strings delimited by double quotes, `"`. Escape sequences are enabled by default unless a `--no-string-escapes` argument is passed to Nestor80.
+
+Turning off escape sequences may be needed when compiling old source code intended for Macro80 in which the backslash character `\` is considered a regular character and not an escape sequence initiator. New programs should leave string escaping turned on and take advantage of the escape sequence support as needed.
+
+See "Strings" for a list of the available escape sequences.
+
+
+### .TFCOND
+
+_Syntax:_ `.TFCOND`
+
+Instructs Nestor80 to toggle the inclusion of conditional blocks that evaluate as false in listings, from on to off or the other way around, for all the matching blocks following the instruction. 
+
+The state that gets toggled is the one that was set by the previous instance of `.TFCOND` (any state change performed with `.LFCOND` or `.SFCOND` is ignored). The initial state is "on" unless a `--no-listing-false-conditionals` argument is passed to Nestor80.
+
+See also `.LFCOND`, `.SFCOND`, "Conditional blocks", "Listings".
+
+
+### .WARN 🆕
+
+_Syntax:_ `.WARN <text>`
+
+Emits an assembly warning with the specified text. The text supports expression interpolation.
+
+The warning will be emitted twice, once in pass 1 and once in pass2. If that's undesirable you can enclose the instruction in an `IF1` or `IF2` block. See "Passes".
+
+
+### .XALL
+
+_Syntax:_ `.XALL`
+
+Instructs Nestor80 to include macro expansions in listings following the instruction, but only including the source lines that produce any output in the target file (assembler instructions and `DEFB`, `DEFW` etc); this is the default state for macro expansions in listings. See `.XALL`, `.LALL`, "Macros", "Listings".
+
+
+### .XCREF "🚫"
+
+_Syntax:_ `.XCREF` 
+
+In Macro80 this instruction disabled the inclusion of cross-reference information when generating a listing file (which had been enabled with `.CREF`). Nestor80 doesn't implement cross-reference information generation and thus this instruction is a no-op.
+
+
+### .XLIST
+
+_Syntax:_ `.XLIST`
+
+Instructs Nestor80 to suppress the inclusion in listings of the source code text that follows the instruction, until either the end of the file (or an `END` instruction) is reached or a `.LIST` instruction is encountered. See also "Listings".
+
+
+### .XRELAB 🆕
+
+_Syntax:_ `.XRELAB`
+
+Disables the relative labels feature. See also `.RELAB`.
+
+
+### .Z80
+
+Sets the Z80 as the current target CPU. This instruction is provided for compatibility with Macro80, new programs should use `.CPU Z80` instead.
 
 
 ### PAGE (SUBPAGE 🆕, $EJECT)
