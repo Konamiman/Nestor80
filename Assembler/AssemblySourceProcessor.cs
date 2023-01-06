@@ -28,6 +28,8 @@ namespace Konamiman.Nestor80.Assembler
 
         public const int MaxEffectiveExternalNameLength = 6;
 
+        public const int MaxEffectiveRequestFilenameLength = 7;
+
         private static AssemblyState state;
 
         private static BuildType buildType;

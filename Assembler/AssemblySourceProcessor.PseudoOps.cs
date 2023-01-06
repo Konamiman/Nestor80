@@ -1065,8 +1065,8 @@ namespace Konamiman.Nestor80.Assembler
                 else if(!externalSymbolRegex.IsMatch(filename)) {
                     AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: {filename} is not a valid linker request symbol name, it contains invalid characters");
                 }
-                else if(filename.Length > MaxEffectiveExternalNameLength) {
-                    var truncated = filename[..MaxEffectiveExternalNameLength].ToUpper();
+                else if(filename.Length > MaxEffectiveRequestFilenameLength) {
+                    var truncated = filename[..MaxEffectiveRequestFilenameLength].ToUpper();
                     AddError(AssemblyErrorCode.TruncatedRequestFilename, $"{opcode.ToUpper()}: {filename} is too long, it will be truncated to {truncated}");
                     filenames.Add(truncated);
                 }
