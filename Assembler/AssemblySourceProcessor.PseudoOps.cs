@@ -853,6 +853,12 @@ namespace Konamiman.Nestor80.Assembler
                     return new ChangeRadixLine();
                 }
 
+                // We need to discard the expressions cache to support a case like this one;
+                // db 12  ;Gets cached as 12
+                // .radix 16
+                // db 12  ;Still cached as 12 but it's now 18
+                state.ClearExpressionsCache();
+
                 Expression.DefaultRadix = value.Value;
                 return new ChangeRadixLine() { NewRadix = value.Value };
             }

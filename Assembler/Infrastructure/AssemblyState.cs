@@ -117,6 +117,8 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             RelativeLabelsEnabled = Configuration.AllowRelativeLabels;
             RegisterLastNonRelativeLabel(null);
             modules.Clear();
+            Expression.DefaultRadix = 10;
+            ClearExpressionsCache();
 
             SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
             SwitchToLocation(0);
@@ -802,6 +804,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         private readonly Dictionary<(string, bool), Expression> expressionsBySource = new();
 
         public readonly List<string> MainSourceLines = new();
+
+        public void ClearExpressionsCache()
+        {
+            expressionsBySource.Clear();
+        }
 
         /// <summary>
         /// Return a <see cref="Expression"/> object from a expression text.
