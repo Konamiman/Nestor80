@@ -874,6 +874,71 @@ Although the starting address of a phased block will normally be an absolute add
 The second one is something that doesn't seem to be supported by Macro80 anyway: even though no errors are emitted, the location counter gets an incorrect value after a segment change instruction inside a phased block.
 
 
+### .PRINT 🆕
+
+_Syntax:_ `.PRINT <text>`
+
+Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The message supports expression interpolation.
+
+The text will be printed in both pass 1 and pass 2. Normally you'll want to print the text only in one of the passes, so you should either wrap the `.PRINT` instruction in an `IF1` or `IF2` block, or use the `.PRINT1` or `.PRINT2` instruction instead. See "Passes".
+
+
+### .PRINT1 🆕
+
+_Syntax:_ `.PRINT1 <text>`
+
+Like `.PRINT`, but only prints the text in pass 1. See "Passes".
+
+
+### .PRINT2 🆕
+
+_Syntax:_ `.PRINT1 <text>`
+
+Like `.PRINT`, but only prints the text in pass 2. See "Passes".
+
+
+### .PRINTX
+
+_Syntax:_ `.PRINTX <delimiter><text>[<delimiter>]`
+
+Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The first character of the text is considered a delimiter, and the text is printed until either the delimiter is found again or the end of the line is found (the end delimiter itself is printed too). For example `.PRINTX /Foo` prints `Foo`, and `.PRINTX /Foo/bar` prints `/Foo/`.
+
+This instruction is provided for compatibility with Macro80. New programs should use `.PRINT`, `.PRINT1` or `.PRINT2` instead, which don't need a delimiter and support expression interpolation.
+
+
+### .RADIX
+
+_Syntax:_ `.RADIX <value>`
+
+Changes the default radix for the numeric constants that don't have a radix suffix. `<value>` must evaluate to a number between 2 and 16, and the default radix for numeric constants in `<value>` is 10 regardless of the current default radix.
+
+Example:
+
+```
+db 12      ;12
+
+.radix 16
+db 12      ;18
+
+.radix 2
+db 1010    ;10
+```
+
+
+### .RELAB 🆕
+
+_Syntax:_ `.RELAB`
+
+Enables the relative labels feature. See also `.XRELAB`.
+
+
+### .REQUEST ®
+
+_Syntax:_ `.REQUEST <filename>[,<filename>[,...]]`
+
+Defines a list of files in which the linker will search for any globals that remain undefined during the linking process. For compatibility with Link80 filenames must be up to 7 characters long, contain only ASCII letters, and can't contain an extension nor any drive or directory specification.
+
+
 ### PAGE (SUBPAGE 🆕, $EJECT)
 
 _Syntax:_ `PAGE <page size>`
