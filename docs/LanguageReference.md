@@ -242,9 +242,6 @@ Notation |  Radix
 `X'nnnn'`|  Hexadecimal
 `#nnnn` 🆕 |   Hexadecimal
 
-Overflow of a number beyond two bytes is ignored and the result is the number formed by the low order 16-bits
-(e.g. `123456h` is actually `3456h`).
-
 <blockquote>
 ⚠ The <code>B</code> and <code>D</code> suffixes are actually unusable when the default radix is 12 or higher and 14 or higher, respectively. Consider the following example:
 
@@ -336,6 +333,8 @@ An empty string (e.g. `DEFB ''`) produces no output.
 ### Expressions
 
 An _expression_ is a combination of numeric constants, symbols and arithmetic operators that are ultimately evaluated to a numeric value. When assembling relocatable code, expressions that contain external symbol references aren't evaluated; instead, they are outputted to the target relocatable file "as is" to that the evaluation will happen at linking time once the values of all the involved external references have been resolved (see "Writing relocatable code").
+
+If a 8 bit value is expected (e.g. `DB <value>` or `LD A,<value>`) the expression must evaluate to a 16 bit value whose high byte is either 0 or FFh (otherwise an overflow error will be thrown) and the effective value of the expression is the low byte. On the other hand, if a 16 bit value is expected (e.g. `DW <value>` or `LD HL,<value>`) any overflow beyond the lower 16 bits is ignored and the result is the value formed by the low order 16-bits (e.g. `123456h` is interpreted as `3456h`).
 
 Nestor80 defines the following arithmetic operators:
 
@@ -680,7 +679,7 @@ ld a,.STROUT  ;No error, really referencing ".STROUT" due to the second .relab
 
 This section lists all the assembler instructions supported by Nestor80. Any instruction alias is listed together with the "canonical" instruction name.
 
-® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions.
+® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See "Absolute and relocatable code".
 
 
 ### .COMMENT
@@ -1029,7 +1028,235 @@ Disables the relative labels feature. See also `.RELAB`.
 
 ### .Z80
 
+_Syntax:_ `.Z80`
+
 Sets the Z80 as the current target CPU. This instruction is provided for compatibility with Macro80, new programs should use `.CPU Z80` instead.
+
+
+### ASEG ®
+
+_Syntax:_ `ASEG`
+
+Switches to the absolute segment and sets the location counter to the value it had the last time that segment was switched off with `CSEG`, `DSEG` or `COMMON` (or to zero, if it's the first time this instruction is used).
+
+Example:
+
+```
+ASEG
+;Location counter here: absolute segment 0000h
+
+org 100h
+db 1,2,3,4
+;Location counter here: absolute segment 0104h
+
+CSEG
+db 10,20,30,40
+DSEG
+db 50,60,70,80
+
+ASEG
+;Location counter here: absolute segment 0104h
+```
+
+
+### COMMON ®
+
+_Syntax:_ `COMMON /[<name>]/`
+
+Switches to the COMMON block of the specified name and sets the location counter to zero (**not** to the last known location counter value for the block, this behavior is compatible with Macro80). The COMMON block name must be enclosed in two `/` characters (that aren't part of the name), is case-insensitive, and can be empty.
+
+Example:
+
+```
+COMMON /foo/
+;Location counter here: COMMON FOO 0000h
+
+org 100h
+db 1,2,3,4
+;Location counter here: COMMON FOO 0104h
+
+COMMON //
+;Location counter here: COMMON (empty) 0000h
+
+COMMON /FOO/
+;Location counter here: COMMON FOO 0000h
+```
+
+
+### CONTM 🆕
+
+_Syntax:_ `CONTM`
+
+This instruction is intended to be used inside macro definitions. In named macro expansions it's equivalent to `.EXITM`, in repeat macros it exits the current repetition immediately and then starts over at the next repetition (if there are more repetitions remaining), unlike `.EXITM` which discards any remaining repetition.
+
+Example:
+
+```
+rept 3
+db 1
+db 2
+contm
+db 3
+db 4
+endm
+
+;Generated code:
+
+db 1
+db 2
+db 1
+db 2
+db 1
+db 2
+```
+
+
+### CSEG ®
+
+_Syntax:_ `CSEG`
+
+Switches to the code segment and sets the location counter to the value it had the last time that segment was switched off with `CESG`, `DSEG` or `COMMON`. The code segment is switched on with the location counter set to zero at the start of the source code processing.
+
+Example:
+
+```
+;Location counter here: code segment 0000h
+
+org 100h
+db 1,2,3,4
+;Location counter here: code segment 0104h
+
+ASEG
+db 10,20,30,40
+DSEG
+db 50,60,70,80
+
+CSEG
+;Location counter here: code segment 0104h
+```
+
+
+### DEFB (DB, DEFM)
+
+_Syntax:_ `DEFB <expression or string>[,<expression or string>[,...]]`
+
+_Aliases:_ `DB`, `DEFM`
+
+Defines a sequence of or more raw bytes to be included in the output. Each item must be either an expression that can be evaluated to a byte, or a string; strings are converted to sequences of bytes using the current character encoding.
+
+Example:
+
+```
+FOO equ 10h
+
+.STRENC ASCII
+DEFB 0FF34h,FOO*2,"ABC\r\n"
+
+;Sequence of bytes generated:
+;34h,20h,41h,42h,43h,0Dh,0Ah
+```
+
+See also: "Expressions", "Strings".
+
+
+### DEFS (DS)
+
+_Syntax:_ `DEFS <size>[,<value>]`
+
+_Aliases:_ `DS`
+
+Defines a block of contiguous memory addresses of a given size, to be optionally filled with a repeated byte value.
+
+Example with `<value>` specified:
+
+```
+DEFS 5,34
+
+;Equivalent to:
+
+DEFB 34,34,34,34,34
+```
+
+When `<value>` is not specified the output depends on the build type:
+
+* When the build type is absolute, `DEFB <size>` is equivalent to `DEFB <size>,0`.
+* When the build type is relocatable, by default `DEFB <size>` will generate an output equivalent to `ORG $+<size>`; that is, the location counter will be increased by the specified size and the block will be considered by the linker as a "memory gap" (how memory gaps are filled at linking time is undefined).
+* When the build type is relocatable and a `--initialize-defs` argument is supplied to Nestor80, `DEFB <size>` is equivalent to `DEFB <size>,0`.
+
+See also "Absolute and relocatable code".
+
+
+### DEFW (DW)
+
+_Syntax:_ `DEFW <expression or string>[,<expression or string>[,...]]`
+
+_Aliases:_ `DW`
+
+Defines a sequence of or more raw _words_ (16 bit values) to be included in the output. Each item must be either an expression, or a string that gets converted to at most two bytes using the current character encoding. Expression values are stored in little endian format, and strings are stored as the second byte (of the output generated by the character encoding) first, then the first byte.
+
+Example:
+
+```
+FOO equ 1200h
+
+.STRENC ASCII
+DEFW 7,0ABCDh,FOO+34h,"A","BC"
+
+;Sequence of bytes generated:
+;07h,00h,CDh,ABh,34h,12h,41h,00h,43h,42h
+```
+
+See also: "Expressions", "Strings".
+
+
+### DEFZ (DZ) 🆕
+
+_Syntax:_ `DEFZ <expression or string>[,<expression or string>[,...]]`
+
+_Aliases:_ `DZ`
+
+This instruction is equivalent to `.DEFB`, but appends the bytes that the current character encoding generates for the character `\0` at the end of the generated sequence of bytes. This is useful to define zero-terminated strings without having to explicitly specify the zero character.
+
+Example:
+
+```
+.STRENC ASCII
+DEFZ "Hello"
+
+;Equivalent to:
+
+DEFB "Hello\0"
+
+;...and to:
+
+DEFB "Hello",0
+```
+
+
+### DSEG ®
+
+_Syntax:_ `DSEG`
+
+Switches to the data segment and sets the location counter to the value it had the last time that segment was switched off with `CSEG`, `ASEG` or `COMMON` (or to zero, if it's the first time this instruction is used).
+
+Example:
+
+```
+DSEG
+;Location counter here: data segment 0000h
+
+org 100h
+db 1,2,3,4
+;Location counter here: data segment 0104h
+
+CSEG
+db 10,20,30,40
+ASEG
+db 50,60,70,80
+
+DSEG
+;Location counter here: data segment 0104h
+```
 
 
 ### PAGE (SUBPAGE 🆕, $EJECT)
