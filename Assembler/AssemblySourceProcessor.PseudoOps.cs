@@ -138,7 +138,7 @@ namespace Konamiman.Nestor80.Assembler
             // DEFB <byte or string>[,<byte or string>[,...]]: Define sequence of bytes
             { "DEFB", ProcessDefbLine },
 
-            // DEFM: Alias for DRFB
+            // DEFM: Alias for DEFB
             { "DEFM", ProcessDefbLine },
 
             // DEFB <size>[,<value>]: Define space

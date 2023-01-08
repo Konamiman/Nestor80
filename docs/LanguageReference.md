@@ -1259,9 +1259,153 @@ DSEG
 ```
 
 
+### ELSE
+
+_Syntax:_ `ELSE`
+
+Ends the main condition block of a conditional assembly block and starts the opposite condition block. See "Conditional assembly".
+
+
+### END
+
+_Syntax:_ `END [<address>]`
+
+Ends the assembly process immediately, ignoring any source code remaining in the file.
+
+The optional `<address>` argument is significant only when writing relocatable code, this address will be stored in the relocatable file as the program start address and it's up to the linker to use it during the linking process.
+
+
+### ENDIF
+
+_Syntax:_ `ENDIF`
+
+Ends a conditional assembly block. See "Conditional assembly".
+
+
+### ENDM
+
+_Syntax:_ `ENDM`
+
+Ends a macro definition, and for repeat macros it starts the macro expansion. See "Macros".
+
+
+### ENDMOD
+
+_Syntax:_ `ENDMOD`
+
+Ends the current module. See "Modules".
+
+
+### ENDOUT 🆕
+
+_Syntax:_ `ENDOUT`
+
+Instructs Nestor80 to stop generating output immediately while continuing to process the source code that follows the instruction (thus taking note of symbol definitions). This is useful as an alternative to constant definitions to define memory areas that don't need to be explicitly included in the output file.
+
+Example:
+
+```
+org 100h
+
+BUFFER_SIZE: equ 1024
+
+ld hl,BUFFER
+ld de,BUFFER+1
+ld bc,BUFFER_SIZE-1
+ld (hl),0
+ldir
+
+ld hl,1234h
+ld (FLAGS),hl
+ld a,89h
+ld (FLAGS2),hl
+
+ret
+
+endout
+
+org 8000h
+BUFFER: ds BUFFER_SIZE
+FLAGS: dw 0
+FLAGS2:
+```
+
+Equivalent code without using `ENDOUT`:
+
+```
+org 100h
+
+BUFFER_SIZE: equ 1024
+BUFFER: equ 8000h
+FLAGS: equ BUFFER+BUFFER_SIZE
+FLAGS2: equ FLAGS+2
+
+ld hl,BUFFER
+ld de,BUFFER+1
+ld bc,BUFFER_SIZE-1
+ld (hl),0
+ldir
+
+ld hl,1234h
+ld (FLAGS),hl
+ld a,89h
+ld (FLAGS2),hl
+
+ret
+```
+
+
+### EXITM
+
+_Syntax:_ `EXITM`
+
+This instruction is intended to be used inside macro definitions. It forces the macro expansion to terminate immediately, discarding any remaining repetition (unlike `CONTM` which starts over the next repetition, if any). See "Macros"
+
+Example:
+
+```
+rept 3
+db 1
+db 2
+exitm
+db 3
+db 4
+endm
+
+;Generated code:
+
+db 1
+db 2
+```
+
+
+### EXTRN (EXT, EXTERNAL) ®
+
+_Syntax:_ `EXTRN <symbol>[,<symbol>[,...]]`
+
+_Aliases:_ `EXT`, `EXTERNAL`
+
+Defines one or more symbol names as external, that is, they are supposed to be defined as public symbols by another relocatable program during the linking process. A symbol is also considered external if its name is followed by `##` when it's referenced:
+
+```
+call FOO##
+
+;Equivalent to:
+
+EXTRN FOO
+call FOO
+```
+
+
+
 ### PAGE (SUBPAGE 🆕, $EJECT)
 
 _Syntax:_ `PAGE <page size>`
 
 _Aliases:_ `SUBPAGE`, `$EJECT`
 
+
+
+IF, COND
+ENDIF, ENDC
+PUBLIC, ENTRY, GLOBAL
