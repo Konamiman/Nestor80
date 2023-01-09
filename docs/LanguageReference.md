@@ -681,6 +681,8 @@ This section lists all the assembler instructions supported by Nestor80. Any ins
 
 ® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See "Absolute and relocatable code".
 
+Instruction arguments are specified using the standard notation `<name>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example `IFB`.
+
 
 ### .COMMENT
 
@@ -1395,6 +1397,133 @@ call FOO##
 EXTRN FOO
 call FOO
 ```
+
+
+### IF (IFT, COND)
+
+_Syntax:_ `IF <expression>`
+
+_Aliases:_ `IFT`, `COND`
+
+Starts a conditional assembly block in which the true condition is that `<expression>` evaluates to non-zero. The opposite instruction is `IFF`. See "Conditional assembly".
+
+
+### IF1
+
+_Syntax:_ `IF1`
+
+Starts a conditional assembly block in which the true condition is that the assembler is currently in pass 1. See "Passes", "Conditional assembly".
+
+
+### IF2
+
+_Syntax:_ `IF2`
+
+Starts a conditional assembly block in which the true condition is that the assembler is currently in pass 2. See "Passes", "Conditional assembly".
+
+
+### IFABS 🆕
+
+_Syntax:_ `IFABS`
+
+Starts a conditional assembly block in which the true condition is that the build type is absolute. The opposite instruction is `IFREL`. See "Absolute and relocatable code", "Conditional assembly".
+
+
+### IFB
+
+_Syntax:_ `IFB "<"<text>">"`
+
+Starts a conditional assembly block in which the true condition is that `<text>` is blank (has a zero length, including spaces). `<text>` must be surrounderd by angle brackets. The opposite instruction is `IFNB`.
+
+`IFB` is typically used in macros in order to detect if a given argument is supplied. Example:
+
+```
+FOO macro x,y
+
+ifb <x>
+.error FOO: First argument is required!
+endif
+
+ifb <y>
+.print FOO: No second argument passed.
+else
+.print FOO: Second argument passed: y
+endif
+
+endm
+```
+
+See "Conditional assembly", "Macros".
+
+
+### IFCPU 🆕
+
+_Syntax:_ `IFCPU <cpu name>`
+
+Starts a conditional assembly block in which the true condition is that the current CPU is the one specified. Example:
+
+```
+ifcpu R800
+MULUW HL,BC
+else
+call MULUW_HL_BC
+endif
+```
+
+⚠ A non-existing CPU name passed as argument will evaluate to false and not throw any error.
+
+
+### IFDEF
+
+_Syntax:_ `IFDEF <symbol>`
+
+Starts a conditional assembly block in which the true condition is that `<symbol>` is defined when the instruction is encountered. This may be useful in combination with the `--define-symbols` Nestor80 argument to externally alter how the code is assembled. The opposite instruction is `IFNDEF`.
+
+⚠ Keep in mind that a symbol that gets defined in code is undefined before it's found in pass 1, but it's already defined when pass 2 starts:
+
+```
+.print2 Pass 2 started!
+
+.print Before EQU...
+
+ifdef foo
+.print1 "Foo" is defined in pass 1
+.print2 "Foo" is defined in pass 2
+else
+.print1 "Foo" is NOT defined in pass 1
+.print2 "Foo" is NOT defined in pass 2
+
+endif
+
+foo equ 1
+
+.print After EQU...
+
+ifdef foo
+.print1 "Foo" is defined in pass 1
+.print2 "Foo" is defined in pass 2
+else
+.print1 "Foo" is NOT defined in pass 1
+.print2 "Foo" is NOT defined in pass 2
+endif
+```
+
+This is what gets printed:
+
+```
+Before EQU...
+"Foo" is NOT defined in pass 1
+After EQU...
+"Foo" is defined in pass 1
+Pass 2 started!
+Before EQU...
+"Foo" is defined in pass 2
+After EQU...
+"Foo" is defined in pass 2
+```
+
+See "Passes", "Conditional assembly".
+
 
 
 
