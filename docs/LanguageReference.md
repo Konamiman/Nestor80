@@ -387,6 +387,8 @@ For example `TYPE FOO##` evaluates to 0x80, and `TYPE FOO` evaluates to 0x21 if 
 
 The operator precedence determines how the expression is evaluated: subexpressions involving operators of higher precedence are computed first, and operators with the same precedence are applied in the order in which they appear in the expression. For example, the expression `2+3*4` evaluates to 14 because `*` has higher precedence than `+`. Parenthesis can be used to override the default operator precedence, for example `(2+3)*4` evaluates to 20.
 
+The comparison operators (`GT`, `LT`, `GE`, `LE`, `EQ`, `NE` and equivalents) evaluate to FFFFh if the comparison is true and to zero otherwise. Also they treat the numbers as unsigned integers, this means that an expression like `x lt 0` always evaluates as zero ("false") for any value of `x`. See `IF` for an example of how to test for negative values.
+
 The `HIGH` and `LOW` operators evaluate to the high and low byte of a 16 bit value, respectively; for example `HIGH 1234h` is 12h and `LOW 1234h` is 34h. When applied to relocatable values, the entire 16 bit value is written to the generated relocatable file and the evaluation is performed at linking time; for example if `FOO` is a label defined as address 1234h in the code segment, and the linker is instructed to use address 8511h as the base for the code segment, then `HIGH FOO` will properly evaluate to 97h and `LOW FOO` to 45h in the target program.
 
 When writing relocatable code only a subset of the existing operators can be used in expressions involving external references, this is a limitation given by [the relocatable file format](RelocatableFileFormat.md). Trying to use one of the unsupported operators in such an expression will result in an assembly error.
@@ -1405,7 +1407,41 @@ _Syntax:_ `IF <expression>`
 
 _Aliases:_ `IFT`, `COND`
 
-Starts a conditional assembly block in which the true condition is that `<expression>` evaluates to non-zero. The opposite instruction is `IFF`. See "Conditional assembly".
+Starts a conditional assembly block in which the true condition is that `<expression>` evaluates to non-zero. The opposite instruction is `IFF`.
+
+This instruction is typically used in macros and in combination with comparison operators. Example:
+
+```
+is_positive macro x
+
+if (x) eq 0
+  .print1 '&x' is zero
+else
+  if ((x) and 8000h) eq 8000h
+    .print1 '&x' is negative
+  else
+    .print1 '&x' is positive
+  endif
+endif
+
+endm
+
+is_positive 1+1
+is_positive 1-1
+is_positive 1-2
+```
+
+This is what gets printed:
+
+```
+'1+1' is positive
+'1-1' is zero
+'1-2' is negative
+```
+
+⚠ You may be wondering why the previous example doesn't use `if (x) gt 0` or `if (x) lt 0` for the positive and negative cases. Nestor80 treats all numbers as unsigned integers, and thus `if (x) lt 0` is never true. This behavior is compatible with MACRO-80.
+
+See "Expressions", "Macros", "Conditional assembly".
 
 
 ### IF1
@@ -1460,7 +1496,7 @@ See "Conditional assembly", "Macros".
 
 _Syntax:_ `IFCPU <cpu name>`
 
-Starts a conditional assembly block in which the true condition is that the current CPU is the one specified. Example:
+Starts a conditional assembly block in which the true condition is that the current CPU is the one specified. The opposite instruction is `IFNCPU`. Example:
 
 ```
 ifcpu R800
@@ -1525,6 +1561,139 @@ After EQU...
 See "Passes", "Conditional assembly".
 
 
+### IFDIF
+
+_Syntax:_ `IFDIF "<"<text1>">","<"<text2>">"`
+
+This instruction is the opposite of `IFIDN`: the true condition is that `<text1>` is **not** identical to `<text2>`, including any spaces.
+
+See "Conditional assembly".
+
+
+### IFDIFI 🆕
+
+_Syntax:_ `IFDIFI "<"<text1>">","<"<text2>">"`
+
+This instruction is the opposite of `IFIDNI`: the true condition is that `<text1>` is **not** identical to `<text2>`, including any spaces, with the comparison being done in a case-insensitive way.
+
+See "Conditional assembly".
+
+
+### IFF (IFE)
+
+_Syntax:_ `IFF <expression>`
+
+_Aliases:_ `IFE`
+
+This instruction is the opposite of `IF`: the true condition is that `<expression>` evaluates to zero.
+
+See "Conditional assembly".
+
+
+### IFIDN
+
+_Syntax:_ `IFIDN "<"<text1>">","<"<text2>">"`
+
+Starts a conditional assembly block in which the true condition is that `<text1>` is identical to `<text2>`, including any spaces. The texts must be surrounderd by angle brackets. The opposite instruction is `IFDIFF`.
+
+Example:
+
+```
+compare macro x,y
+
+ifidn <x>,<y>
+.print1 '&x' is identical to '&y'
+else
+.print1 '&x' is NOT identical to '&y'
+endif
+
+endm
+
+compare foo,bar
+compare foo,foo
+compare foo,FOO
+```
+
+This is what gets printed:
+
+```
+'foo' is NOT identical to 'bar'
+'foo' is identical to 'foo'
+'foo' is NOT identical to 'FOO'
+```
+
+See "Conditional assembly".
+
+
+### IFIDNI 🆕
+
+_Syntax:_ `IFIDNI "<"<text1>">","<"<text2>">"`
+
+This instruction is equivalent to `IFIDN`, except that the comparison of `<text1>` and `<text2>` is done in a case-insensitive way. The opposite instruction is `IFDIFFI`.
+
+Example:
+
+```
+compare macro x,y
+
+ifidni <x>,<y>
+.print1 '&x' is case-insensitive identical to '&y'
+else
+.print1 '&x' is NOT case-insensitive identical to '&y'
+endif
+
+endm
+
+compare foo,bar
+compare foo,foo
+compare foo,FOO
+```
+
+This is what gets printed:
+
+```
+'foo' is NOT case-insensitive identical to 'bar'
+'foo' is case-insensitive identical to 'foo'
+'foo' is case-insensitive identical to 'FOO'
+```
+
+See "Conditional assembly".
+
+
+### IFNB
+
+_Syntax:_ `IFNB "<"<text>">"`
+
+This instruction is the opposite of `IFB`: the true condition is that `<text>` is **not** blank (it has a non-zero length, including spaces).
+
+See "Conditional assembly".
+
+
+### IFNCPU
+
+_Syntax:_ `IFNCPU <cpu name>`
+
+This instruction is the opposite of `IFCPU`: the true condition is that the current CPU is **not** the specified one.
+
+⚠ A non-existing CPU name passed as argument will evaluate to true and not throw any error.
+
+See "Conditional assembly".
+
+
+### IFNDEF
+
+_Syntax:_ `IFNDEF <symbol>`
+
+This instruction is the opposite of `IFDEF`: the true condition is that the symbol is **not** defined when the instruction is encountered.
+
+See "Conditional assembly".
+
+
+### IFREL 🆕 ®
+
+_Syntax:_ `IFREL <symbol>`
+
+This instruction is the opposite of `IFABS`: the true condition is that the build type is relative. See "Absolute and relocatable code", "Conditional assembly".
 
 
 ### PAGE (SUBPAGE 🆕, $EJECT)
