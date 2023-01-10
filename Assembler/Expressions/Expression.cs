@@ -29,6 +29,7 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly Dictionary<int, Regex> numberRegexes = new();
         private static readonly Regex xNumberRegex = new("(?<=x')[0-9a-f]*(?=')", RegxOp);
         private static readonly Regex symbolRegex = new("(?<root>:?)(?<symbol>[\\w$@?.]+)(?<external>(##)?)", RegxOp);
+        private static readonly Regex xEscapingRegex = new(@"\\x([0-9a-fA-F]{2})", RegexOptions.Compiled);
         private static readonly Dictionary<char, Regex> unescapedStringRegexes = new() {
             {'\'', new Regex("(?<=')((?<quot>'')|[^'])*(?=')", RegxOp) },
             {'"',  new Regex("(?<=\")((?<quot>\"\")|[^\"])*(?=\")", RegxOp) },
@@ -454,9 +455,7 @@ namespace Konamiman.Nestor80.Assembler
             var matchLength = theString.Length;
             if(escapesAllowed) {
                 try {
-                    //Important: the \U and \x escape sequences defined for C# strings
-                    //are not supported by Regex.Unescape; all others are, including \u
-                    theString = Regex.Unescape(theString);
+                    theString = Unescape(theString);
                 }
                 catch(Exception ex) {
                     Throw($"Error when parsing string: {ex.Message}");
@@ -600,6 +599,19 @@ namespace Konamiman.Nestor80.Assembler
             else if(parsedStringPointer == parsedStringLength) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(IncreaseParsedStringPointer)}: parsed string length is {parsedStringLength} and the string pointer was set to {parsedStringPointer}");
             }
+        }
+
+        /// <summary>
+        /// Process a string possibly containing escape sequences so that those are processed.
+        /// Also add support for "\xHH" sequences, equivalent to "\u00HH".
+        /// 
+        /// Important: the \U and the original \x escape sequences defined for C# strings
+        /// are not supported by Regex.Unescape; all others are, including \u.
+        /// </summary>
+        public static string Unescape(string theString)
+        {
+            theString = xEscapingRegex.Replace(theString, @"\u00$1");
+            return Regex.Unescape(theString);
         }
 
         private static void Throw(string message, AssemblyErrorCode errorCode = AssemblyErrorCode.InvalidExpression)

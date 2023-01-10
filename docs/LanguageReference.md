@@ -312,7 +312,8 @@ Sequence | Name | Value
 \r | Carriage return | 0Dh
 \t | Horizontal tab | 09h
 \v | Vertical tab | 0Bh
-\u | Unicode escape sequence (4 hex digits) | Example: \u0012 = 12h<br/>Example: \uABCD = CDh, ABh (in UTF-16)
+\x | Arbitrary escape sequence (2 hex digits) | Example: \x12 = 12h
+\u | Arbitrary escape sequence (4 hex digits) | Example: \u0012 = 12h<br/>Example: \uABCD = CDh, ABh (in UTF-16)
 
 The support for escape sequences in double-quoted strings can be disabled by using the Nestor80 command line argument `--no-string-escapes` or the instruction `.STRESC OFF` in code. When escape sequences are disabled the double quote
 character itself can still be escaped by doubling it:
@@ -328,6 +329,28 @@ the `\` character was considered a regular character with no escaping meaning.
 ⚠ Note that when string escaping is enabled the only way to escape the double quote character is to use the `\"` sequence or the `\u0022` sequence; the special sequence `""` is available only when escape sequences are disabled.
 
 An empty string (e.g. `DEFB ''`) produces no output.
+
+
+#### Strings in messages for the assembler console
+
+The messages to be printed during the assembly process with the `.PRINT`, `.WARN`, `.ERROR` and `.FATAL` instructions can optionally be enclosed in double quotes, `"`. When that's the case these messages support the same escape sequences that the strings used in expressions, once decoded these will be sent "as is" to the console; also `""` can be used to represent an empty string. For example:
+
+```
+.PRINT1 "Hello\nworld"
+.PRINT1 ""
+.PRINT1 "Printing \"nice\" messages"
+```
+
+This is what will get printed:
+
+```
+Hello
+world
+
+Printing "nice" messages
+```
+
+⚠ Escape sequences are always processed as such in messages enclosed in double quotes for `.PRINT`, `.WARN`, `.ERROR` and `.FATAL` instructions, even if escape sequences for regular strings are disabled with `.STRESC OFF` or by passing the `--no-string-escapes` argument to Nestor80.
 
 
 ### Expressions
@@ -756,20 +779,20 @@ Marks the end of a phased code block. See `.PHASE`.
 
 ### .ERROR 🆕
 
-_Syntax:_ `.ERROR <text>`
+_Syntax:_ `.ERROR ["]<text>["]`
 
 Emits an assembly error with the specified text. The text supports expression interpolation.
 
-When one or more errors are emitted in pass 1, pass 2 will be skipped. See "Passes".
+When one or more errors are emitted in pass 1, pass 2 will be skipped. See "Passes", "Strings in messages for the assembler console".
 
 
 ### .FATAL 🆕
 
-_Syntax:_ `.FATAL <text>`
+_Syntax:_ `.FATAL ["]<text>["]`
 
 Throws an fatal error with the specified text. The text supports expression interpolation.
 
-A fatal error will terminate the assembly process immediately.
+A fatal error will terminate the assembly process immediately. See also "Strings in messages for the assembler console".
 
 
 ### .LALL
@@ -879,25 +902,25 @@ The second one is something that doesn't seem to be supported by Macro80 anyway:
 
 ### .PRINT 🆕
 
-_Syntax:_ `.PRINT <text>`
+_Syntax:_ `.PRINT ["]<text>["]`
 
 Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The message supports expression interpolation.
 
-The text will be printed in both pass 1 and pass 2. Normally you'll want to print the text only in one of the passes, so you should either wrap the `.PRINT` instruction in an `IF1` or `IF2` block, or use the `.PRINT1` or `.PRINT2` instruction instead. See "Passes".
+The text will be printed in both pass 1 and pass 2. Normally you'll want to print the text only in one of the passes, so you should either wrap the `.PRINT` instruction in an `IF1` or `IF2` block, or use the `.PRINT1` or `.PRINT2` instruction instead. See "Passes", "Strings in messages for the assembler console".
 
 
 ### .PRINT1 🆕
 
-_Syntax:_ `.PRINT1 <text>`
+_Syntax:_ `.PRINT1 ["]<text>["]`
 
-Like `.PRINT`, but only prints the text in pass 1. See "Passes".
+Like `.PRINT`, but only prints the text in pass 1. See "Passes", "Strings in messages for the assembler console".
 
 
 ### .PRINT2 🆕
 
-_Syntax:_ `.PRINT1 <text>`
+_Syntax:_ `.PRINT1 ["]<text>["]`
 
-Like `.PRINT`, but only prints the text in pass 2. See "Passes".
+Like `.PRINT`, but only prints the text in pass 2. See "Passes", "Strings in messages for the assembler console".
 
 
 ### .PRINTX
@@ -906,7 +929,7 @@ _Syntax:_ `.PRINTX <delimiter><text>[<delimiter>]`
 
 Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The first character of the text is considered a delimiter, and the text is printed until either the delimiter is found again or the end of the line is found (the delimiters themselves are printed too). For example `.PRINTX /Foo` prints `/Foo`, and `.PRINTX /Foo/bar` prints `/Foo/`.
 
-This instruction is provided for compatibility with Macro80. New programs should use `.PRINT`, `.PRINT1` or `.PRINT2` instead, which don't need a delimiter and support expression interpolation.
+This instruction is provided for compatibility with Macro80. New programs should use `.PRINT`, `.PRINT1` or `.PRINT2` instead, which don't need a delimiter and support expression interpolation and escape sequences in the text.
 
 
 ### .RADIX
@@ -995,11 +1018,11 @@ See also `.LFCOND`, `.SFCOND`, "Conditional blocks", "Listings".
 
 ### .WARN 🆕
 
-_Syntax:_ `.WARN <text>`
+_Syntax:_ `.WARN ["]<text>["]`
 
 Emits an assembly warning with the specified text. The text supports expression interpolation.
 
-The warning will be emitted twice, once in pass 1 and once in pass2. If that's undesirable you can enclose the instruction in an `IF1` or `IF2` block. See "Passes".
+The warning will be emitted twice, once in pass 1 and once in pass2. If that's undesirable you can enclose the instruction in an `IF1` or `IF2` block. See "Passes", "Strings in messages for the assembler console".
 
 
 ### .XALL

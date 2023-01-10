@@ -1122,6 +1122,20 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessPrintOrUserErrorLine(string opcode, SourceLineWalker walker, int? printInPass = null, AssemblyErrorSeverity errorSeverity = AssemblyErrorSeverity.None)
         {
             var rawText = walker.GetRemaining();
+
+            if(rawText[0] is '"' && rawText[^1] is '"') {
+                var processedText = rawText[1..^1];
+                try {
+                    processedText = Expression.Unescape(processedText);
+                }
+                catch(Exception ex) {
+                    AddError(AssemblyErrorCode.InvalidExpression, $"Error when parsing string: {ex.Message}");
+                    return GetLineForPrintOrUserError(rawText, walker, printInPass, errorSeverity);
+                }
+
+                rawText = processedText;
+            }
+
             var sb = new StringBuilder();
             var lastIndex = 0;
             var expressionMatches = printStringExpressionRegex.Matches(rawText);
