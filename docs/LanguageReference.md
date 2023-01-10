@@ -468,7 +468,7 @@ In Nestor80 bare expressions aren't supported by default 🚫, but they will be 
 Nestor80 offers two mechanism for scoping symbols so that the same symbol names can be reused in different parts of the same source code: modules and relative labels.
 
 
-### Modules ✨
+### Modules 🆕
 
 A _module_ is a set of consecutive source code lines grouped under a unique name. All symbols defined inside a module (and by default, also all the non-external referenced symbols) will be considered _relative_ to the module name; this means that the effective symbol name will be `module_name.symbol`. Example:
 
@@ -600,7 +600,7 @@ endmod
 ```
 
 
-### Relative labels ✨
+### Relative labels 🆕
 
 A _relative label_ is a label that starts with a dot, `.`, and is found after a non-relative label; the former is considered to be relative to the later, that is, the effective label name for `.relative` is `non_relative.relative`:
 
@@ -705,11 +705,65 @@ ld a,.STROUT  ;No error, really referencing ".STROUT" due to the second .relab
 ```
 
 
+## Conditional assembly
+
+_Conditional assembly_ is a mechanism that allows to conditionally skip the assembly of blocks of code based on certain conditions. A _conditional assembly block_ has the following format:
+
+```
+<IF instruction> [<arguments>]
+  <true condition block>
+[ELSE
+  <false condition block>]
+ENDIF
+```
+
+where:
+
+* `<IF instruction>` is an assembler instruction that will evaluate to either true or false, depending on the assembly process state and/or the passed `<arguments>` (some instructions don't accept arguments).
+* `<true condition block>` is the block of instructions that will be assembled if the IF instruction evaluates to true.
+* `<false condition block>` is an optional block of instructions that will be assembled if the IF instruction evaluates to false.
+
+Example:
+
+```
+ifcpu R800
+MULUW HL,BC
+else
+call MULUW_HL_BC
+endif
+```
+
+Conditional assembly blocks can be nested, see `IF` for an example.
+
+The following IF instructions are supported by Nestor80, see the reference of each instruction for the syntax details:
+
+Instruction | Argument(s) | Evaluates to true if...
+------------|-------------|------------------------
+`IF`        | expression  | Expression evaluates to non-zero
+`IF1`       |             | Assembler is processing pass 1
+`IF2`       |             | Assembler is processing pass 2
+`IFABS` 🆕 |             | Build type is absolute
+`IFB`       | text        | Text is blank (has zero length)
+`IFCPU` 🆕  | CPU name     | CPU name is the current target CPU
+`IFDEF`     | symbol name | Symbol is defined
+`IFDIF`     | text1, text2 | text1 and text2 are different
+`IFDIFI` 🆕 | text1, text2 | text1 and text2 are different,<br/>with case-insensitive comparison
+`IFF`       | expression  | Expression evaluates to zero
+`IFIDN`     | text1, text2 | text1 and text2 are identical
+`IFIDNI` 🆕 | text1, text2 | text1 and text2 are identical,<br/>with case-insensitive comparison
+`IFNB`      | text        | Text is non-blank (has non-zero length)
+`IFNCPU` 🆕  | CPU name     | CPU name is **not** the current target CPU
+`IFNDEF`     | symbol name | Symbol is **not** defined
+`IFREL` 🆕 |             | Build type is relative
+
+
 ## Assembler instructions reference
 
 This section lists all the assembler instructions supported by Nestor80. Any instruction alias is listed together with the "canonical" instruction name.
 
 ® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See "Absolute and relocatable code" and "Writing relocatable code".
+
+Some instructions have aliases. In most cases these come inherited from MACRO-80, which in turn implemented them for compatibility with even older assemblers. Except where otherwise stated, the syntax for the aliases is exactly the same as the one for the "canonical" instruction.
 
 Instruction arguments are specified using the standard notation `<name>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example `IFB`.
 
@@ -1295,7 +1349,7 @@ DSEG
 
 _Syntax:_ `ELSE`
 
-Ends the main condition block of a conditional assembly block and starts the opposite condition block. See "Conditional assembly".
+Ends the true condition block of a conditional assembly block and starts the false condition block. See "Conditional assembly".
 
 
 ### END
