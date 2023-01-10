@@ -94,6 +94,8 @@ It's possible to instruct Nestor80 to produce an absolute file or a relocatable 
 
 Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an `ORG` instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
 
+⚠ If you want to know the exact source line in which Nestor80 selects the build type, run Nestor80 with a verbosity level of at least two (with the `--status-verbosity` argument).
+
 ⚠ If the build type is forced to absolute with `--build-type` but the code contains no `ORG` instructions, an implicit `ORG 0` at the beginning of the code is assumed.
 
 Some assembler instructions make sense only in the context of relocatable code, for example `CSEG`, `DSEG`, `PUBLIC` OR `EXTRN`; these instructions will do nothing, and the assembler will throw warnings, if they are found while assembling absolute code. 
@@ -913,14 +915,14 @@ The text will be printed in both pass 1 and pass 2. Normally you'll want to prin
 
 _Syntax:_ `.PRINT1 ["]<text>["]`
 
-Like `.PRINT`, but only prints the text in pass 1. See "Passes", "Strings in messages for the assembler console".
+Like `.PRINT`, but only prints the text in pass 1. See "Passes".
 
 
 ### .PRINT2 🆕
 
 _Syntax:_ `.PRINT1 ["]<text>["]`
 
-Like `.PRINT`, but only prints the text in pass 2. See "Passes", "Strings in messages for the assembler console".
+Like `.PRINT`, but only prints the text in pass 2. See "Passes".
 
 
 ### .PRINTX
@@ -1316,7 +1318,7 @@ _Syntax:_ `ENDM`
 Ends a macro definition, and for repeat macros it starts the macro expansion. See "Macros".
 
 
-### ENDMOD
+### ENDMOD 🆕
 
 _Syntax:_ `ENDMOD`
 
@@ -1486,6 +1488,8 @@ Starts a conditional assembly block in which the true condition is that the asse
 _Syntax:_ `IFABS`
 
 Starts a conditional assembly block in which the true condition is that the build type is absolute. The opposite instruction is `IFREL`. See "Absolute and relocatable code", "Conditional assembly".
+
+⚠ If no build type is explicitly selected with the `--build-type` argument, before the build type is automatically selected both `IFABS` and `IFREL` will evaluate to false.
 
 
 ### IFB
@@ -1717,6 +1721,168 @@ See "Conditional assembly".
 _Syntax:_ `IFREL <symbol>`
 
 This instruction is the opposite of `IFABS`: the true condition is that the build type is relative. See "Absolute and relocatable code", "Conditional assembly".
+
+⚠ If no build type is explicitly selected with the `--build-type` argument, before the build type is automatically selected both `IFABS` and `IFREL` will evaluate to false.
+
+
+### IRP
+
+_Syntax:_ `IRP <placeholder>,"<"<argument>[,<argument>[,...]]">"`
+
+Starts an "indefinite repeat" macro, where the macro body is repeated for each of the passed arguments, replacing `<placeholder>` with the argument. The angle brackets around the arguments list are mandatory.
+
+Example:
+
+```
+irp x,<1,2,3>
+db x
+endm
+```
+
+Equivalent code assembled:
+
+```
+db 1
+db 2
+db 3
+```
+
+See "Macros".
+
+
+### IRPC
+
+_Syntax:_ `IRPC <placeholder>,["<"]<characters>[">"]`
+
+Starts an "indefinite repeat for characters" macro, where the macro body is repeated for each of the characters of the passed character sequence. The angle brackets around the arguments list are optional, but you'll need them if you want to add spaces in the list.
+
+Example:
+
+```
+irpc x,123
+db x
+endm
+
+irpc x,<A B>
+db "&x"
+endm
+```
+
+Equivalent code assembled:
+
+```
+db 1
+db 2
+db 3
+db "A"
+db " "
+db "B"
+```
+
+See "Macros".
+
+
+### IRPS 🆕
+
+_Syntax:_ `IRPC <placeholder>,<string>`
+
+Starts an "indefinite repeat for characters" macro, where the macro body is repeated for each of the characters of the passed string. The string has the same format as strings used in expressions, including the support or lack of it for escape sequences.
+
+Example: `IRPS x,"\x41\x42"` will generate the same code as `IRPC x,AB`, (provided that escape sequences in strings aren't disabled).
+
+⚠ Not all escape sequences are supported. For example `\r` will insert a literal line break at the point where the placeholder is encountered, and this will cause either errors or the line to not generate any output.
+
+See "Strings", "Macros".
+
+
+### LOCAL
+
+_Syntax:_ `LOCAL <symbol>[,<symbol>[,...]]`
+
+Used in named macros to declare one or more symbols as local to the macro expansion. When found inside the macro expansions these symbols will be replaced with a label with the format `..<number>`, where the number is in hexadecimal format and increases by one after each usage; so `..0000`, `..0001` etc. Without this mechanism defining labels inside macros wouldn't be supported, since in the second macro expansion "Symbol already defined" errors would be thrown.
+
+Example:
+
+```
+NEVEREND macro
+
+LOCAL loop
+loop: jp loop
+endm
+
+NEVEREND
+NEVEREND
+NEVEREND
+```
+
+The generated code will be equivalent to:
+
+```
+..0000: jp ..0000
+..0001: jp ..0001
+..0002: jp ..0002
+```
+
+See "Macros".
+
+
+### MAINPAGE 🆕
+
+_Syntax:_ `MAINPAGE`
+
+Forces a main page change when generating a listing, equivalently to when a `\f` character (0Ch in ASCII) is found in the source code. See "Listings".
+
+
+### MODULE 🆕
+
+_Syntax:_ `MODULE <name>`
+
+Starts a new module with the specified name. See "Modules".
+
+
+### NAME ®
+
+_Syntax:_ `NAME('<program name>')`
+
+Specifies the program name, which will be set as such in the generated relocatable file. For compatibility with LINK-80 the program name must be composed of ASCII characters, and only the first six characters will be used.
+
+If no program name is explicitly supplied, the program name is taken from the last `TITLE` instruction used. If neither `NAME` nor `TITLE` instructions are present in the code, the program name is taken from the source code file name.
+
+This instruction has no effect when generating absolute code.
+
+See "Writing relocatable code".
+
+
+### ORG
+
+_Syntax:_ `ORG <address>`
+
+Changes the current location pointer, that is, the memory address in which the output is to be generated moving forward in the target program.
+
+When assembling absolute code the `ORG` instruction found with the smallest address value is the "base" address of the file, and subsequent `ORG`s move the location counter accordingly inside the output file relative to this base, filling any gaps with zeros. For example:
+
+```
+org 20
+db 1,2,3
+org 15
+db 4,5,6
+```
+
+The contents of the generated output file will be: 4,5,6,0,0,1,2,3.
+
+When assembling relocatable code any `ORG` statements found inside the absolute segment refer to absolute addresses, but addresses for `ORG` statements found in the code segment, the data segment or a COMMON block are relative to where these segments will end up being assembled in the final program. For example:
+
+```
+dseg
+org 20h
+FOO:
+```
+
+If the resulting relocatable file is linked with the data segment starting at address 100h, then the `FOO` label will refer to address 120h.
+
+The above is true when linking one single relocatable file; when linking two or more it's a bit more complicated since `ORG` refer to the starting address of each segment _in each program_. See "Writing relocatable code" for the full details.
+
+⚠ The build type is by default selected automatically based on what instructions are found (or not found) before the first `ORG` instruction in the source code. See "Absolute and relocatable code".
 
 
 ### PAGE (SUBPAGE 🆕, $EJECT)
