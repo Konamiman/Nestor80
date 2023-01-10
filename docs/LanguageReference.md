@@ -94,7 +94,7 @@ It's possible to instruct Nestor80 to produce an absolute file or a relocatable 
 
 Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an `ORG` instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
 
-⚠ If you want to know the exact source line in which Nestor80 selects the build type, run Nestor80 with a verbosity level of at least two (with the `--status-verbosity` argument).
+⚠ If you want to know the exact source line in which Nestor80 selects the build type, run Nestor80 with a verbosity level of at least two (with the `--verbosity` argument).
 
 ⚠ If the build type is forced to absolute with `--build-type` but the code contains no `ORG` instructions, an implicit `ORG 0` at the beginning of the code is assumed.
 
@@ -463,7 +463,10 @@ MACRO-80 allows _bare expressions_ lines, these are lines that have no operand a
 In Nestor80 bare expressions aren't supported by default 🚫, but they will be supported if the `--allow-bare-expressions` command line argument is used. You might need this to assemble old source code, but in general bare expressions shouldn't be used since they can cause confussion (for example if you intend to introduce a named macro expansion and mistype the macro name you'll get a confusing "symbol not found" error).
 
 
-## Advanced features
+## Symbol scoping
+
+Nestor80 offers two mechanism for scoping symbols so that the same symbol names can be reused in different parts of the same source code: modules and relative labels.
+
 
 ### Modules ✨
 
@@ -706,7 +709,7 @@ ld a,.STROUT  ;No error, really referencing ".STROUT" due to the second .relab
 
 This section lists all the assembler instructions supported by Nestor80. Any instruction alias is listed together with the "canonical" instruction name.
 
-® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See "Absolute and relocatable code".
+® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See "Absolute and relocatable code" and "Writing relocatable code".
 
 Instruction arguments are specified using the standard notation `<name>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example `IFB`.
 
@@ -1425,6 +1428,8 @@ EXTRN FOO
 call FOO
 ```
 
+See also `PUBLIC`.
+
 
 ### IF (IFT, COND)
 
@@ -1870,6 +1875,8 @@ db 4,5,6
 
 The contents of the generated output file will be: 4,5,6,0,0,1,2,3.
 
+If the `--org-as-phase` argument is passed to Nestor80 all the `ORG` statements will be treated as `.PHASE` statements, this means that `ORG`s will be taken in account to assign the appropriate values to labels, but not to decide the placement of the output in the output file: all the file contents will be generated sequentially. In the previous example, the generated file output with `--org-as-phase` would be simply 1,2,3,4,5,6.
+
 When assembling relocatable code any `ORG` statements found inside the absolute segment refer to absolute addresses, but addresses for `ORG` statements found in the code segment, the data segment or a COMMON block are relative to where these segments will end up being assembled in the final program. For example:
 
 ```
@@ -1887,12 +1894,92 @@ The above is true when linking one single relocatable file; when linking two or 
 
 ### PAGE (SUBPAGE 🆕, $EJECT)
 
-_Syntax:_ `PAGE <page size>`
+_Syntax:_ `PAGE [<new page size>]`
 
 _Aliases:_ `SUBPAGE`, `$EJECT`
 
+Forces a subpage change when generating a listing. Additionally, if `<new page size>` is supplied this value becomes the new listing page size in text lines. The default page size is 50, the minimum is 10, and there's no maximum ✨ (the maximum was 255 in MACRO-80).
+
+The `SUBPAGE` alias is introduced in Nestor80 because the word "PAGE" doesn't clearly convey the fact that what is changing is the _sub_page number. It's recommended to combine it with the new `MAINPAGE` instruction if both main page changes and sub page changes are required for listings.
+
+See "Listings".
 
 
-IF, COND
-ENDIF, ENDC
-PUBLIC, ENTRY, GLOBAL
+### PUBLIC (ENTRY, GLOBAL) ®
+
+_Syntax:_ `PUBLIC <symbol>[,<symbol>[,...]]`
+
+_Aliases:_ `ENTRY`, `GLOBAL`
+
+Defines one or more symbol names as public, that is, they will be exposed to other relocatable programs (that can reference them as external) during the linking process. A label is also considered public if its name is followed by `::` when it's declared; for declaring other symbols (e.g. constants) as public the only option is to use the `PUBLIC` instruction.
+
+Example:
+
+```
+FOO::
+
+;Equivalent to:
+
+PUBLIC FOO
+FOO:
+```
+
+See also `EXTRN`.
+
+
+### REPT
+
+_Syntax:_ `REPT <count>`
+
+Starts a "repeat with count" macro. All the lines inside the macro body will be repeated `<count>` times.
+
+Example:
+
+```
+rept 3
+db 1
+db 2
+endm
+```
+
+Equivalent code assembled:
+
+```
+db 1
+db 2
+db 1
+db 2
+db 1
+db 2
+```
+
+See "Macros".
+
+
+### ROOT 🆕
+
+_Syntax:_ `ROOT <symbol>[,<symbol>[,...]]`
+
+This instruction must appear inside a module. It's used to declare one or more symbols that will be considered as a "root" symbol, that is, not relative to the module; thus when these symbols are referenced they won't be prepended with the module name before being evaluated. Another option to achieve the same effect is to prepend the symbol names with a colon, `:`, then they are referenced. See "Modules".
+
+
+### SUBTTL ($TITLE)
+
+_Syntax:_ `SUBTTL <text>`
+
+_Aliases:_ `$TITLE`
+
+Sets the subtitle to be used in the heading of each page of a listing (as the second line of text, right after the title). There's no limit for the length of `<text>` ✨ (in MACRO-80 the text gets truncated to the first 60 characters). See `TITLE`, "Listings".
+
+Note: the syntax for the `$TITLE` alias is `$TITLE('<text>')`.
+
+
+### TITLE
+
+_Syntax:_ `TITLE <text>`
+
+Sets the title to be used in the heading of each page of a listing, as the very first line of text (together with the Nestor80 version number).
+
+The argument given to `TITLE` will also be used, after being truncated to 6 characters, as the program name when generating a relocatable file, unless an explicit program name is supplied with `NAME`. If neither a program name nor a listing title are present in the source code, the program name will be composed from the source code file name.
+
+See `SUBTTL`, "Listings".

@@ -858,7 +858,7 @@ namespace Konamiman.Nestor80.N80
                         return $"Error when processing arguments file {args[i]}: {errorMessage}";
                     }
                 }
-                else if(arg is "-sv" or "--status-verbosity") {
+                else if(arg is "-vb" or "--verbosity") {
                     if(i == args.Length - 1 || args[i + 1][0] == '-') {
                         return $"The {arg} argument needs to be followed by a verbosity level (a number between 0 and 3)";
                     }
