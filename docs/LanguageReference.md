@@ -1730,6 +1730,47 @@ This instruction is the opposite of `IFABS`: the true condition is that the buil
 ⚠ If no build type is explicitly selected with the `--build-type` argument, before the build type is automatically selected both `IFABS` and `IFREL` will evaluate to false.
 
 
+### INCLUDE ($INCLUDE, MACLIB) ✨
+
+_Syntax:_ `INCLUDE <file path>`
+
+_Aliases:_ `$INCLUDE`, `MACLIB`
+
+Starts assembling code read from the specified file. When the end of the file is reached, assembly continues from the line next to the `INCLUDE` instruction in the original source file.
+
+The file include mechanism in Nestor80 implements two important enhancement compared to MACRO-80:
+
+1. `<file path>` accepts full and relative path specifications (with directory and drive -if supported by the operating system where Nestor80 is running- specifications), not just plain file names.
+2. Nested file inclusions (the included file can have in turn `INCLUDE` instructions) are supported up to 34 depth levels.
+
+When `<file path>` is a relative path the file is searched for by considering the path relative to the following locations, in the specified order:
+
+1. The current directory (in the terminal where Nestor80 was run).
+2. The directory of the source file where the `INCLUDE` instruction was found.
+3. Any extra directories passed to Nestor80 with `--include-directory`, in the order in which they were specified.
+
+For example, if Nestor80 is run like this:
+
+```
+~/temp$ N80 projects/SuperGame/main.asm --include-directory ~/libs --include-directory ~/extra
+```
+
+...and `main.asm` contains this line:
+
+```
+INCLUDE data/graphics.asm
+```
+
+...then Nestor80 will search for `graphics.asm` using the following full paths, in that order:
+
+1. `~/temp/data/graphics.asm`
+2. `~/projects/SuperGame/data/graphics.asm`
+3. `~/libs/data/graphics.asm`
+4. `~/extra/data/graphics.asm`
+
+⚠ Always use the regular slash, `/`, as the directory separator in paths for `INCLUDE`. This character is widely recognized as the standard directory separator in all operating systems, and yes, it also works in Windows.
+
+
 ### IRP
 
 _Syntax:_ `IRP <placeholder>,"<"<argument>[,<argument>[,...]]">"`
@@ -1793,7 +1834,7 @@ _Syntax:_ `IRPC <placeholder>,<string>`
 
 Starts an "indefinite repeat for characters" macro, where the macro body is repeated for each of the characters of the passed string. The string has the same format as strings used in expressions, including the support or lack of it for escape sequences.
 
-Example: `IRPS x,"\x41\x42"` will generate the same code as `IRPC x,AB`, (provided that escape sequences in strings aren't disabled).
+Example: `IRPS x,"\x41\x42"` will generate the same code as `IRPC x,AB` (provided that escape sequences in strings aren't disabled).
 
 ⚠ Not all escape sequences are supported. For example `\r` will insert a literal line break at the point where the placeholder is encountered, and this will cause either errors or the line to not generate any output.
 

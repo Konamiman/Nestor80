@@ -68,6 +68,10 @@ namespace Konamiman.Nestor80.Assembler
             "TITLE", "SUBTTL", ".COMMENT", ".PRINTX", ".PRINT", ".PRINT1", ".PRINT2"
         };
 
+        private static readonly string[] includeInstructions = new[] {
+            "INCLUDE", "$INCLUDE", "MACLIB"
+        };
+
         private static readonly string[] instructionsNeedingPass2Reevaluation;
 
         private static CpuType currentCpu;
@@ -593,7 +597,7 @@ namespace Konamiman.Nestor80.Assembler
                     opcode = symbol;
                     processedLine = ProcessCpuInstruction(opcode, walker);
                 }
-                else if(symbol.Equals("INCLUDE", StringComparison.OrdinalIgnoreCase)) {
+                else if(includeInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
                     if(state.CurrentIncludesDeepLevel >= MAX_INCLUDE_NESTING) {
                         ThrowFatal(AssemblyErrorCode.TooManyNestedIncludes, $"Too many nested INCLUDEs, maximum nesting level allowed is {MAX_INCLUDE_NESTING}");
                     }
