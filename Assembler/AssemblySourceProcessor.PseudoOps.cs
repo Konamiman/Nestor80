@@ -267,7 +267,7 @@ namespace Konamiman.Nestor80.Assembler
             // IRP <dummy>,<string>: Start repeat for each char macro expansion (raw string)
             { "IRPC", ProcessIrpcLine },
 
-            // IRP <dummy>,<string>: Start repeat for each char macro expansion
+            // IRPS <dummy>,<string>: Start repeat for each char macro expansion
             //                       (with string syntax as DEFB)
             { "IRPS", ProcessIrpsLine },
 
@@ -940,6 +940,7 @@ namespace Konamiman.Nestor80.Assembler
             var name = match.Groups["name"].Value;
 
             programName = (name.Length > MaxEffectiveExternalNameLength ? name[..MaxEffectiveExternalNameLength] : name).ToUpper();
+            programNameInstructionFound = true;
 
             return new ProgramNameLine() { Name = rawName, EffectiveLineLength = effectiveLineLength };
         }
@@ -948,7 +949,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             var title = walker.GetRemaining();
 
-            if(programName is null) {
+            if(!programNameInstructionFound) {
                 var firstWord = title.Split(' ', '\t')[0];
                 programName = firstWord.Length > MaxEffectiveExternalNameLength ? firstWord[..MaxEffectiveExternalNameLength] : firstWord;
             }

@@ -39,6 +39,7 @@ namespace Konamiman.Nestor80.Assembler
         private static int maxErrors = 0;
         private static int errorsGenerated = 0;
         private static string programName = null;
+        private static bool programNameInstructionFound = false;
 
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
