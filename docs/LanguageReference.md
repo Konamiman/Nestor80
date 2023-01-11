@@ -877,7 +877,7 @@ add a,2
 
 When placeholders are replaced with actual arguments in all macro types (except "Repeat macro with arguments" which doesn't support placeholders) the following rules apply (a placeholder named `foo` is assumed in the examples):
 
-* The placeholder search is case-sensiitive: instances of `FOO` won't be replaced.
+* The placeholder search is case-insensitive: instances of `FOO` will be replaced too.
 * Placeholders are not replaced inside comments, e.g. no replacement will happen in the line `db 0 ;foo`.
 * Placeholders aren't replaced when they are surrounded by valid symbol characters, e.g. replacement will happen in `foo+1` but not in `foobar` or in `?foo`.
 * To overcome the above limitation the `&` character can be used before and if needed also after the placeholder name, for example when the actual argument is `X` then `bar&foo` will be replaced with `barX` and `the&foo&bar` will be replaced with `theXbar`.
@@ -890,6 +890,34 @@ And specifically for named macros:
 * If more arguments are passed to the macro expansion than placeholders were defined in the macro definition, the extra arguments will be ignored. For example, if the macro definition is `FOO: MACRO X,Y,Z`, the macro expansion `FOO 1,2,3,4,5` will be equivalent to `FOO 1,2,3`.
 
 ⚠ The `IFB`, `IFNB`, `IFIDN`, `IFIDNI`, `IFDIF` and `IFDIFI` instructions and the `NUL` operator are useful to check for empty arguments and for exact argument values.
+
+Here's an example that illustrates all the replacement rules. Macro definition:
+
+```
+THEMACRO macro foo
+;Let's do things with foo
+foo: ;Replaced!
+FOO: ;Replaced!
+foobar: ;Mixed with symbol chars? No replacement
+bar&foo: ;Replaced!
+the&foo&bar: ;Replaced!
+db "Oh, the foo! Is this &foo or &foo&bar?"
+endm
+```
+
+Macro usage: `THEMACRO FIZZ`
+
+Macro expansion:
+
+```
+;Let's do things with foo
+FIZZ: ;Replaced!
+FIZZ: ;Replaced!
+foobar: ;Mixed with symbol chars? No replacement
+barFIZZ: ;Replaced!
+theFIZZbar: ;Replaced!
+db "Oh, the foo! Is this FIZZ or FIZZbar?"
+```
 
 
 ## Assembler instructions reference
