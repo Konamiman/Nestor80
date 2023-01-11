@@ -1,6 +1,6 @@
 # Nestor80 assembler language reference
 
-This documents details the source file format supported by Nestor80 and lists all the available assembler instructions (called "pseudo-operators" in the MACRO-80 manual), both the ones inherited from MACRO-80 and the ones newly introduced by Nestor80.
+This documents details the source file format supported by Nestor80 and lists all the available assembler instructions (called "pseudo-operators" in the MACRO-80 manual), both the ones inherited from MACRO-80 and the ones newly introduced by Nestor80. It also explains some basic concepts about how Nestor80 works (e.g. passes, absolute vs relocatable assembly) and details the available advanced features (e.g. conditioanl assembly, macros, symbol scoping).
 
 
 ## Document conventions
@@ -15,12 +15,12 @@ The following icons are used in this document:
 
 ⚠ A "warning" icon is used when discussing a tricky, subtle or confusing subject; or in general to bring attention to an important concept.
 
-Text in _italics_ will be used the first time a new term or concept is introduced. Alternatively, when a concept or term that is introduced in a later section is used, it will link to the defining section.
+Text in _italics_ will be used the first time a new term or concept is introduced. Alternatively, when a concept or term that is introduced in a later section is used, it will link to the section in which it is defined.
 
 
 ## Basic concepts
 
-Before detailing the assembler language reference a couple of concepts related to how the assembler works will be introduced.
+Before detailing the assembler features and the assembler language reference a couple of concepts related to how the assembler works will be introduced.
 
 
 ### Passes
@@ -181,7 +181,7 @@ FOO:
 
 A _named constant_ (or just "constant") is a symbol that represents a numeric value and can be used in expressions. There are two types of constants: fixed and redefinible. The value of a _fixed_ constant can't be altered, while the value of a _redefinible_ constant can, by using a new constant definition instruction with the same constant name.
 
-A fixed constant is defined using the following syntax: `<name>[:] EQU <value expression>`. The colon after the constant name is optional ✨ (in Macro80 the colon after the constant name isn't allowed). Example:
+A fixed constant is defined using the following syntax: `<name>[:] EQU <value expression>`. The colon after the constant name is optional ✨ (in MACRO-80 the colon after the constant name isn't allowed). Example:
 
 ```
 FOO equ 34
@@ -205,7 +205,7 @@ FOO defl FOO+1   ;The constant itself can be part of the redefinition expression
 ld a,FOO      ;Equivalent to "ld a,90"
 ```
 
-For compatibility with Macro80 the `ASET` instruction is allowed as an alias for `DEFL`.
+For compatibility with MACRO-80 the `ASET` instruction is allowed as an alias for `DEFL`.
 
 
 Note that `EQU` and `DEFL` can't be mixed for the same constant name:
@@ -222,7 +222,7 @@ FOO equ 2     ;"Symbol already exists" error
 
 ⚠ You may think that the term "constant" isn't really appropriate for redefinible values. The term "variable", however, has been avoided on purpose to avoid confussion with how the word is normally used in the context of software development, as "value that can change at runtime"; a redefinible constant can have its value changed _at assemble time_, **not** at runtime.
 
-⚠ (🚫?) The Macro80 manual mentions also the instruction `SET` as an additional alias for `DEFL`, but in practice it doesn't work as such: `SET` is only recognized as the Z80 instruction of the same name in Macro80. Nestor80 behaves as Macro80 behaves and not as the Macro80 documentation says, so you can't use `SET` to define constants.
+⚠ (🚫?) The MACRO-80 manual mentions also the instruction `SET` as an additional alias for `DEFL`, but in practice it doesn't work as such: `SET` is only recognized as the Z80 instruction of the same name in MACRO-80. Nestor80 behaves as MACRO-80 behaves and not as the MACRO-80 documentation says, so you can't use `SET` to define constants.
 
 
 ### Numeric constants
@@ -757,6 +757,141 @@ Instruction | Argument(s) | Evaluates to true if...
 `IFREL` 🆕 |             | Build type is relative
 
 
+## Macros
+
+Macros are a powerful mechanism for reusing blocks of code in different parts of the same source file, possibly with changes based on arguments.
+
+A macro needs to first be defined, then expanded. A _macro definition_ consists of an opening instruction (possibly containing arguments), the macro body lines, and a closing `ENDM` instruction. A _macro expansion_ is an actual usage of the macro, where the macro body lines are modified and/or repeated according to the macro definition and the passed arguments.
+
+There are two main types of macros:
+
+* _Repeat macros_: the macro expansion starts immediately after the macro definition finishes, and the macro body lines are repeated a number of times based on the exact macro type and the supplied arguments.
+* _Named macros_: the macro definition includes an unique macro name. The macro expansion happens when the macro name appears in the source code as if it was an instruction, possibly with arguments as specified in the macro definition.
+
+
+### Repeat macro with count
+
+The _repeat macro with count_ is the simplest macro type: it just repeats the body lines the number of times that is passed as argument. The opening instruction is `REPT`.
+
+Example:
+
+```
+rept 1,2,3
+db 1
+db 2
+endm
+```
+
+The macro expansion would be:
+
+```
+db 1
+db 2
+db 1
+db 2
+db 1
+db 2
+```
+
+
+### Repeat macro with arguments
+
+The _repeat macro with arguments_ macro (named "indefinite repeat" in the MACRO-80 documentation) accepts a placeholder and a list of comma-separated arguments in the opening instruction (`IRP`), and generates one repetition per argument in which the placeholder is replaced by the argument.
+
+Example:
+
+Example:
+
+```
+irp x,<1,2,3>
+db x
+endm
+```
+
+The macro expansion would be:
+
+```
+db 1
+db 2
+db 3
+```
+
+The rules for the arguments are as follows:
+
+* Angle brackets around the arguments list are mandatory.
+* Arguments can be separated with commas or with spaces (spaces around the arguments are stripped of before being used in the expansion).
+* Two consecutive commas, `,,`, generate a repetition with an empty string as the argument.
+* Angle brackets can be used inside the arguments list for arguments that contain commas and spaces, e.g. `<< >,<,>>` defines two arguments, a space and a comma.
+
+
+### Repeat macro with characters
+
+The _repeat macro with characters_ macro (named "indefinite repeat characters" in the MACRO-80 documentation) accepts a placeholder and a sequence of characters in the opening instruction (`IRPC`), and generates one repetition per character in which the placeholder is replaced by the argument.
+
+Example equivalent to the one given for "Repeat macro with arguments":
+
+```
+irpc x,123
+db x
+endm
+```
+
+The arguments list can be optionally delimited with angle brackets. This is needed if the characters sequence contains spaces, e.g. `IRPC x,<a b>` has three arguments: `a`, a space, and `b`.
+
+
+### Repeat macro with string 🆕
+
+The _repeat macro with string_ macro uses the new `IRPS` opening instruction which accepts a placeholder and a string, and generates one repetition per character of the string in which the placeholder is replaced by the argument. This is a more flexible version of "Repeat macro with characters", since there are no restrictions for the printable characters that the string can contain and (to some extent) it accepts escape sequences. For example `IRPS x,"\x41\x42\x43"` would be equivalent to `IRPC x,ABC`.
+
+⚠ Not all escape sequences are supported. For example `\r` will insert a literal line break at the point where the placeholder is encountered, and this will cause either errors or the line to not generate any output.
+
+
+### Named macros
+
+To define a named macro the `MACRO` opening instruction is used with the following syntax: `<name>[:] MACRO [<placeholder1>[,<placeholder2>[,...]]]`. The macro is expanded once for each instance of `<name>` used in the code, and the placeholders from the macro definition found in the macro body lines are replaced with the actual arguments passed to the macro expansion. The colon following `<name>` in the macro definition is optional ✨ (in MACRO-80 this colon wasn't allowed).
+
+Here goes a simple example. Macro definition:
+
+```
+SUM: macro first,second
+ld a,first
+add a,second
+endm
+```
+
+Macro usage:
+
+```
+SUM 1,2
+```
+
+Generated macro expansion:
+
+```
+ld a,1
+add a,2
+```
+
+
+### Rules for placeholder replacement
+
+When placeholders are replaced with actual arguments in all macro types (except "Repeat macro with arguments" which doesn't support placeholders) the following rules apply (a placeholder named `foo` is assumed in the examples):
+
+* The placeholder search is case-sensiitive: instances of `FOO` won't be replaced.
+* Placeholders are not replaced inside comments, e.g. no replacement will happen in the line `db 0 ;foo`.
+* Placeholders aren't replaced when they are surrounded by valid symbol characters, e.g. replacement will happen in `foo+1` but not in `foobar` or in `?foo`.
+* To overcome the above limitation the `&` character can be used before and if needed also after the placeholder name, for example when the actual argument is `X` then `bar&foo` will be replaced with `barX` and `the&foo&bar` will be replaced with `theXbar`.
+* Placeholders aren't replaced inside strings by default, e.g. no replacement will happen in the line `db "foo"`.
+* Again, to overcome the above limitation the `&` character can be used before and if needed also after the placeholdder, e.g. if the actual argument is `FIZZ` then `db "&foo"` will be replaced with `db "FIZZ"`.
+
+And specifically for named macros:
+
+* If less arguments are passed to the macro expansion than placeholders were defined in the macro definition, the missing arguments are considered to be empty. For example, if the macro definition is `FOO: MACRO X,Y,Z` and the macro is expanded as `FOO 1,2`, then `X` will get replaced with `1`, `Y` will get replaced with `2`, and `Z` will get replaced with an empty string.
+* If more arguments are passed to the macro expansion than placeholders were defined in the macro definition, the extra arguments will be ignored. For example, if the macro definition is `FOO: MACRO X,Y,Z`, the macro expansion `FOO 1,2,3,4,5` will be equivalent to `FOO 1,2,3`.
+
+⚠ The `IFB`, `IFNB`, `IFIDN`, `IFIDNI`, `IFDIF` and `IFDIFI` instructions and the `NUL` operator are useful to check for empty arguments and for exact argument values.
+
+
 ## Assembler instructions reference
 
 This section lists all the assembler instructions supported by Nestor80. Any instruction alias is listed together with the "canonical" instruction name.
@@ -826,7 +961,7 @@ MULUW HL,SP
 
 _Syntax:_ `.CREF` 
 
-In Macro80 this instruction enabled the inclusion of cross-reference information when generating a listing file. Nestor80 doesn't implement cross-reference information generation and thus this instruction does nothing.
+In MACRO-80 this instruction enabled the inclusion of cross-reference information when generating a listing file. Nestor80 doesn't implement cross-reference information generation and thus this instruction does nothing.
 
 
 ### .DEPHASE
@@ -951,12 +1086,12 @@ Although the starting address of a phased block will normally be an absolute add
 0005'   3E 59         ld a,89
 ```
 
-🚫 There are two restrictions for phased blocks that weren't present in Macro80:
+🚫 There are two restrictions for phased blocks that weren't present in MACRO-80:
 
 1. The value of `<address>` must be known by the time the `.PHASE` statement is reached (it can't be an expression containing a symbol that is defined later in code).
 2. Segment change instructions (`ASEG`, `CSEG`, `DSEG`, `COMMON`) aren't allowed inside a phased block.
 
-The second one is something that doesn't seem to be supported by Macro80 anyway: even though no errors are emitted, the location counter gets an incorrect value after a segment change instruction inside a phased block.
+The second one is something that doesn't seem to be supported by MACRO-80 anyway: even though no errors are emitted, the location counter gets an incorrect value after a segment change instruction inside a phased block.
 
 
 ### .PRINT 🆕
@@ -988,7 +1123,7 @@ _Syntax:_ `.PRINTX <delimiter><text>[<delimiter>]`
 
 Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The first character of the text is considered a delimiter, and the text is printed until either the delimiter is found again or the end of the line is found (the delimiters themselves are printed too). For example `.PRINTX /Foo` prints `/Foo`, and `.PRINTX /Foo/bar` prints `/Foo/`.
 
-This instruction is provided for compatibility with Macro80. New programs should use `.PRINT`, `.PRINT1` or `.PRINT2` instead, which don't need a delimiter and support expression interpolation and escape sequences in the text.
+This instruction is provided for compatibility with MACRO-80. New programs should use `.PRINT`, `.PRINT1` or `.PRINT2` instead, which don't need a delimiter and support expression interpolation and escape sequences in the text.
 
 
 ### .RADIX
@@ -1059,7 +1194,7 @@ _Syntax:_ `.STRESC ON|OFF`
 
 Turns on or off the support for escape sequences in strings delimited by double quotes, `"`. Escape sequences are enabled by default unless a `--no-string-escapes` argument is passed to Nestor80.
 
-Turning off escape sequences may be needed when compiling old source code intended for Macro80 in which the backslash character `\` is considered a regular character and not an escape sequence initiator. New programs should leave string escaping turned on and take advantage of the escape sequence support as needed.
+Turning off escape sequences may be needed when compiling old source code intended for MACRO-80 in which the backslash character `\` is considered a regular character and not an escape sequence initiator. New programs should leave string escaping turned on and take advantage of the escape sequence support as needed.
 
 See "Strings" for a list of the available escape sequences.
 
@@ -1095,7 +1230,7 @@ Instructs Nestor80 to include macro expansions in listings following the instruc
 
 _Syntax:_ `.XCREF` 
 
-In Macro80 this instruction disabled the inclusion of cross-reference information when generating a listing file (which had been enabled with `.CREF`). Nestor80 doesn't implement cross-reference information generation and thus this instruction is a no-op.
+In MACRO-80 this instruction disabled the inclusion of cross-reference information when generating a listing file (which had been enabled with `.CREF`). Nestor80 doesn't implement cross-reference information generation and thus this instruction is a no-op.
 
 
 ### .XLIST
@@ -1116,7 +1251,7 @@ Disables the relative labels feature. See also `.RELAB`.
 
 _Syntax:_ `.Z80`
 
-Sets the Z80 as the current target CPU. This instruction is provided for compatibility with Macro80, new programs should use `.CPU Z80` instead.
+Sets the Z80 as the current target CPU. This instruction is provided for compatibility with MACRO-80, new programs should use `.CPU Z80` instead.
 
 
 ### ASEG ®
@@ -1149,7 +1284,7 @@ ASEG
 
 _Syntax:_ `COMMON /[<name>]/`
 
-Switches to the COMMON block of the specified name and sets the location counter to zero (**not** to the last known location counter value for the block, this behavior is compatible with Macro80). The COMMON block name must be enclosed in two `/` characters (that aren't part of the name), is case-insensitive, and can be empty.
+Switches to the COMMON block of the specified name and sets the location counter to zero (**not** to the last known location counter value for the block, this behavior is compatible with MACRO-80). The COMMON block name must be enclosed in two `/` characters (that aren't part of the name), is case-insensitive, and can be empty.
 
 Example:
 
@@ -1829,7 +1964,7 @@ INCLUDE data/graphics.asm
 
 _Syntax:_ `IRP <placeholder>,"<"<argument>[,<argument>[,...]]">"`
 
-Starts an "indefinite repeat" macro, where the macro body is repeated for each of the passed arguments, replacing `<placeholder>` with the argument. The angle brackets around the arguments list are mandatory.
+Starts a "repeat macro with arguments" macro, where the macro body is repeated for each of the passed arguments, replacing `<placeholder>` with the argument. The angle brackets around the arguments list are mandatory.
 
 Example:
 
