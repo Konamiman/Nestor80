@@ -821,7 +821,7 @@ The rules for the arguments are as follows:
 * Angle brackets around the arguments list are mandatory.
 * Arguments can be separated with commas or with spaces (spaces around the arguments are stripped of before being used in the expansion).
 * Two consecutive commas, `,,`, generate a repetition with an empty string as the argument.
-* Angle brackets can be used inside the arguments list for arguments that contain commas and spaces, e.g. `<< >,<,>>` defines two arguments, a space and a comma.
+* Angle brackets can be used inside the arguments list for arguments that contain commas and spaces, e.g. `<< >,<,>>` defines two arguments, a space and a comma. The `!` character can be used too to use reserved characters and arguments.
 
 
 ### Repeat macro with characters
@@ -872,6 +872,24 @@ ld a,1
 add a,2
 ```
 
+⚠ A new macro definition will replace one that already exists with the same name. Example:
+
+```
+FOO macro
+db 0
+endm
+
+FOO macro
+db 1
+endm
+
+FOO
+```
+
+This will expand to `db 1`.
+
+This behavior is compatible with MACRO-80, but in Nestor80 it will emit a warning.
+
 
 ### Rules for placeholder replacement
 
@@ -917,6 +935,152 @@ foobar: ;Mixed with symbol chars? No replacement
 barFIZZ: ;Replaced!
 theFIZZbar: ;Replaced!
 db "Oh, the foo! Is this FIZZ or FIZZbar?"
+```
+
+### Other special characters
+
+Additionally to '&' the following characters have a special meaning when used in the context of macro expansions:
+
+* `;;`: when a comment inside a macro definition starts with a double semicolon it won't be included in the macro expansion in listings. Example:
+
+```
+THEMACRO macro
+db 1 ;This is a one
+db 2 ;;You won't see this
+endm
+```
+
+The macro expansion is listed as:
+
+```
+       THEMACRO
++      db 1 ;This is a one
++      db 2 
+       end
+```
+
+* `!`: used in argument lists for macro expansions as an escape character: the character following it will be interpreted literally, even if it's a "reserved" character in the context of macro arguments such as a space or a comma. Example:
+
+```
+THEMACRO macro x,y,z
+db "&x"
+db "&y"
+db "&z"
+endm
+
+THEMACRO ! ,!,,!!
+```
+
+Generated macro expansion:
+
+```
+db " "
+db ","
+db "!"
+```
+
+* `%`: placed in front of a macro argument it forces the argument to be interpreted as an expression and to be evaluated, the evaluated value is what gets actually passed as the argument for the macro expansion. Example:
+
+```
+FOO equ 4
+
+THEMACRO macro x
+db x
+endm
+
+THEMACRO %FOO+30
+THEMACRO FOO+30
+end
+```
+
+Generated macro expansion:
+
+```
+db 34
+db FOO+30
+```
+
+### Nesting macros
+
+Macros can be nested according to the following rules:
+
+* Repeat macros can be nested inside other repeat macros and inside named macros.
+* 🚫 Named macros can **not** be nested inside other named macros (this is something that MACRO-80 allowed).
+
+See "Additional macro examples" for examples of nested repeat macros.
+
+
+### Additional macro examples
+
+Here are some additional macro definition and expansion examples, taken from the MACRO-80 manual.
+
+```
+X defl 0
+
+rept 10
+X defl X+1
+db X
+endm
+```
+
+```
+irp X,<1,2,3,4,5,6,7,8,9,10>
+db X
+endm
+```
+
+```
+irpc X,0123456789
+db X+1
+endm
+```
+
+```
+x defl 0
+rept 2
+  rept 5
+    x defl x+1
+    db x
+  endm
+endm
+```
+
+```
+FOO macro N
+  X defl 0
+  rept N
+    X defl X+1
+    db X
+  endm
+endm
+
+FOO 10
+```
+
+All of the above expand to code equivalent to `DB 1,2,3,4,5,6,7,8,9,10`.
+
+```
+MKLAB MACRO Y
+ERR&Y: DB 'Error &Y',0
+ENDM
+
+MKERR MACRO X
+LB DEFL 0
+REPT X
+LB DEFL LB+1
+MKLAB %LB
+ENDM
+ENDM
+
+MKERR 3
+```
+
+The above expands to:
+
+```
+ERR2: DB 'Error 1',0
+ERR2: DB 'Error 2',0
+ERR3: DB 'Error 3',0
 ```
 
 
