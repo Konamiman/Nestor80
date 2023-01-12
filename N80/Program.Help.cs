@@ -284,7 +284,7 @@ namespace Konamiman.Nestor80.N80
                 Don't include the processed source code when generating the listing file.
 
             -nlis, --no-listing-include-symbols
-                Don't include the generted symbols and macro names when generating the listing file.
+                Don't include the generated symbols and macro names when generating the listing file.
 
             -nlus, --no-listing-uppercase-symbols
                 Don't uppercase the symbol names when printing them in the listing file
