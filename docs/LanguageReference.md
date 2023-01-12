@@ -1,5 +1,5 @@
 # Nestor80 assembler language reference
-
+💡
 This documents details the source file format supported by Nestor80 and lists all the available assembler instructions (called "pseudo-operators" in the MACRO-80 manual), both the ones inherited from MACRO-80 and the ones newly introduced by Nestor80. It also explains some basic concepts about how Nestor80 works (e.g. passes, absolute vs relocatable assembly) and details the available advanced features (e.g. conditioanl assembly, macros, symbol scoping).
 
 
@@ -13,11 +13,13 @@ The following icons are used in this document:
 
 🚫 A "forbidden" icon is used to refer to a MACRO-80 feature or instruction that is not available or has changed in a backwards-incompatible way in Nestor80. Old source code intended for MACRO-80 and relying in such features or instructions will likely require changes before being suitable for assembly with Nestor80.
 
-ℹ️ An "information" icon is used when providing an useful suggestion or hint.
+💡 A "lightbulb" icon is used when providing an useful suggestion or hint.
 
 ⚠ A "warning" icon is used when discussing a tricky, subtle or confusing subject; or in general to bring attention to an important concept.
 
 Text in _italics_ will be used the first time a new term or concept is introduced. Alternatively, when a concept or term that is introduced in a later section is used, it will link to the section in which it is defined.
+
+This documents refers to some (but not all) of the available Nestor80 command line arguments. To get the full reference of the existing arguments you can run Nestor80 with the `--help` argument, or you can look at [the help text in the Nestor80 source code](https://github.com/Konamiman/Nestor80/blob/master/N80/Program.Help.cs).
 
 
 ## Basic concepts
@@ -96,7 +98,7 @@ It's possible to instruct Nestor80 to produce an absolute file or a relocatable 
 
 Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an `ORG` instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
 
-ℹ️ If you want to know the exact source line in which Nestor80 selects the build type, run Nestor80 with a verbosity level of at least two (with the `--verbosity` argument).
+💡 If you want to know the exact source line in which Nestor80 selects the build type, run Nestor80 with a verbosity level of at least two (with the `--verbosity` argument).
 
 ⚠ If the build type is forced to absolute with `--build-type` but the code contains no `ORG` instructions, an implicit `ORG 0` at the beginning of the code is assumed.
 
@@ -257,7 +259,7 @@ Notation |  Radix
   That's the reason why the new suffixes `I` (b**I**nary) and `M` (deci**M**al) have been introduced in Nestor80.
 </blockquote>
 
-ℹ️ The `#` prefix for hexadecimal numbers has been introduced in Nestor80 for compatibility with other assemblers that use the same notation, but in general it's recommended to use the `H` suffix instead since `#` could cause confusion with the suffix for external symbols, `##`.
+💡 The `#` prefix for hexadecimal numbers has been introduced in Nestor80 for compatibility with other assemblers that use the same notation, but in general it's recommended to use the `H` suffix instead since `#` could cause confusion with the suffix for external symbols, `##`.
 
 A string can be used as equivalent to the numeric constant resulting from encoding it with the current character encoding, with the following rules:
 
@@ -325,7 +327,7 @@ character itself can still be escaped by doubling it:
 db "The ""escaped"" string"
 ```
 
-ℹ️ It's recommended to disable escape sequences when compiling old code that contains strings, since in MACRO-80 the `\` character was considered a regular character with no escaping meaning.
+💡 It's recommended to disable escape sequences when compiling old code that contains strings, since in MACRO-80 the `\` character was considered a regular character with no escaping meaning.
 <br/><br/>
 ⚠ Note that when string escaping is enabled the only way to escape the double quote character is to use the `\"` sequence or the `\u0022` sequence; the special sequence `""` is available only when escape sequences are disabled.
 
@@ -396,6 +398,8 @@ The `NUL` and `TYPE` operators are special:
 * `NUL` works as follows: if the remaining of the source code line after the operator (not including the comment, if present) has any characters other than spaces and tabs, it will evaluate to 0; otherwise it will evaluate to 0FFFFh. This is useful mainly in the context of macro expansions.
 
 * `TYPE` will evaluate to a fixed absolute value depending on the type of the argument passed to it:
+
+💡 The `IFB` and `IFNB` instructions can be used alternatively to the `NUL` operator in order to check for empty arguments in macros.
 
 Argument type |  Value
 --------------|-------
@@ -906,7 +910,7 @@ And specifically for named macros:
 * If less arguments are passed to the macro expansion than placeholders were defined in the macro definition, the missing arguments are considered to be empty. For example, if the macro definition is `FOO: MACRO X,Y,Z` and the macro is expanded as `FOO 1,2`, then `X` will get replaced with `1`, `Y` will get replaced with `2`, and `Z` will get replaced with an empty string.
 * If more arguments are passed to the macro expansion than placeholders were defined in the macro definition, the extra arguments will be ignored. For example, if the macro definition is `FOO: MACRO X,Y,Z`, the macro expansion `FOO 1,2,3,4,5` will be equivalent to `FOO 1,2,3`.
 
-ℹ️ The `IFB`, `IFNB`, `IFIDN`, `IFIDNI`, `IFDIF` and `IFDIFI` instructions and the `NUL` operator are useful to check for empty arguments and for exact argument values.
+💡 The `IFB`, `IFNB`, `IFIDN`, `IFIDNI`, `IFDIF` and `IFDIFI` instructions and the `NUL` operator are useful to check for empty arguments and for exact argument values.
 
 Here's an example that illustrates all the replacement rules. Macro definition:
 
@@ -1181,8 +1185,9 @@ By default, when Nestor80 is listing a macro expansion it will only include the 
 
 Additionally to the Nestor80 arguments already mentioned, the following ones are available to configure the listing generation process:
 
-WIP...
-
+* `--listing-file-encoding`: the character encoding that will be used to generate the listing file, default is UTF-8.
+* `--no-listing-include-code`: don't actually include the source code in the listing file (list only symbols and macros).
+* `--no-listing-include-symbols`: don't include symbols or macros in the listing file.
 
 
 ## Assembler instructions reference
@@ -2250,7 +2255,7 @@ INCLUDE data/graphics.asm
 3. `~/libs/data/graphics.asm`
 4. `~/extra/data/graphics.asm`
 
-ℹ️ Always use the regular slash, `/`, as the directory separator in paths for `INCLUDE`. This character is widely recognized as the standard directory separator in all operating systems, and yes, it also works in Windows.
+💡 Always use the regular slash, `/`, as the directory separator in paths for `INCLUDE`. This character is widely recognized as the standard directory separator in all operating systems, and yes, it also works in Windows.
 
 
 ### IRP
@@ -2412,7 +2417,7 @@ If the resulting relocatable file is linked with the data segment starting at ad
 
 The above is true when linking one single relocatable file; when linking two or more it's a bit more complicated since `ORG` refer to the starting address of each segment _in each program_. See "Writing relocatable code" for the full details.
 
-ℹ️ The build type is by default selected automatically based on what instructions are found (or not found) before the first `ORG` instruction in the source code. See "Absolute and relocatable code".
+💡 The build type is by default selected automatically based on what instructions are found (or not found) before the first `ORG` instruction in the source code. See "Absolute and relocatable code".
 
 
 ### PAGE (SUBPAGE 🆕, $EJECT)
