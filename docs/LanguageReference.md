@@ -1,6 +1,8 @@
 # Nestor80 assembler language reference
-💡
+
 This documents details the source file format supported by Nestor80 and lists all the available assembler instructions (called "pseudo-operators" in the MACRO-80 manual), both the ones inherited from MACRO-80 and the ones newly introduced by Nestor80. It also explains some basic concepts about how Nestor80 works (e.g. passes, absolute vs relocatable assembly) and details the available advanced features (e.g. conditioanl assembly, macros, symbol scoping).
+
+Nestor80 is almost fully compatible with MACRO-80. You may want to take a look also to [the original MACRO-80 user manual](MACRO-80.txt) for things that might be missing here or that are explained differently. Additionally, the MACRO-80 user manual is also the manual for LINK-80 and LIB-80, so you'll need to have it at hand if you plan to write relocatable code.
 
 
 ## Document conventions

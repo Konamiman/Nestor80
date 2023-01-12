@@ -5,7 +5,6 @@ VisualStudioVersion = 17.2.32505.173
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{49C74F4D-1B8E-41C6-A973-7123185EB696}"
 	ProjectSection(SolutionItems) = preProject
-		D:\Dropbox\Dropbox\m80l80.txt = D:\Dropbox\Dropbox\m80l80.txt
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -14,6 +13,20 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "N80", "N80\N80.csproj", "{9D69D520-8F65-4386-BACF-0E5D57B3B265}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssemblerTests", "AssemblerTests\AssemblerTests.csproj", "{32B2214E-14F9-4F29-9B57-AC6C8A0E6425}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{F7F80F37-5C57-406B-8CDA-A01FF02BBB82}"
+	ProjectSection(SolutionItems) = preProject
+		docs\LanguageReference.md = docs\LanguageReference.md
+		docs\MACRO-80.txt = docs\MACRO-80.txt
+		docs\RelocatableFileFormat.md = docs\RelocatableFileFormat.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "img", "img", "{5162D8DA-4719-43F1-9FF9-5BA9B7323011}"
+	ProjectSection(SolutionItems) = preProject
+		docs\img\ConsoleErrors.png = docs\img\ConsoleErrors.png
+		docs\img\Hello.png = docs\img\Hello.png
+		docs\img\HelloRunning.png = docs\img\HelloRunning.png
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,6 +49,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F7F80F37-5C57-406B-8CDA-A01FF02BBB82} = {49C74F4D-1B8E-41C6-A973-7123185EB696}
+		{5162D8DA-4719-43F1-9FF9-5BA9B7323011} = {F7F80F37-5C57-406B-8CDA-A01FF02BBB82}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {18E51C46-40EE-470B-BC2F-C85520DF61B7}
