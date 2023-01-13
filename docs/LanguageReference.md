@@ -2,7 +2,7 @@
 
 This documents details the source file format supported by Nestor80 and lists all the available assembler instructions (called "pseudo-operators" in the MACRO-80 manual), both the ones inherited from MACRO-80 and the ones newly introduced by Nestor80. It also explains some basic concepts about how Nestor80 works (e.g. passes, absolute vs relocatable assembly) and details the available advanced features (e.g. conditioanl assembly, macros, symbol scoping).
 
-Nestor80 is almost fully compatible with MACRO-80. You may want to take a look also to [the original MACRO-80 user manual](MACRO-80.txt) for things that might be missing here or that are explained differently. Additionally, the MACRO-80 user manual is also the manual for LINK-80 and LIB-80, so you'll need to have it at hand if you plan to write relocatable code.
+Nestor80 is almost fully compatible with MACRO-80. You may want to take a look also to [the original MACRO-80 user manual](MACRO-80.txt) for things that might be missing here or that are explained differently. Additionally, the MACRO-80 user manual is also the manual for LINK-80 and LIB-80, so you'll need to have it at hand if you plan to [write relocatable code](WritingRelocatableCode.md).
 
 
 ## Document conventions
@@ -106,7 +106,7 @@ Put it another way, if you want your code to be automatically detected as intend
 
 Some assembler instructions make sense only in the context of relocatable code, for example [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`PUBLIC`](#public-entry-global-) OR [`EXTRN`](#extrn-ext-external-); these instructions will do nothing, and the assembler will throw warnings, if they are found while assembling absolute code.
 
-See "Writing relocatable code" for more details about how relocatable code programming works.
+See ["Writing relocatable code"](WritingRelocatableCode.md) for more details about how relocatable code programming works.
 
 
 ## Source code format
@@ -360,7 +360,7 @@ Printing "nice" messages
 
 ### Expressions
 
-An _expression_ is a combination of numeric constants, symbols and arithmetic operators that are ultimately evaluated to a numeric value. When assembling relocatable code, expressions that contain external symbol references aren't evaluated; instead, they are outputted to the target relocatable file "as is" to that the evaluation will happen at linking time once the values of all the involved external references have been resolved (see "Writing relocatable code").
+An _expression_ is a combination of numeric constants, symbols and arithmetic operators that are ultimately evaluated to a numeric value. When assembling relocatable code, expressions that contain external symbol references aren't evaluated; instead, they are outputted to the target relocatable file "as is" to that the evaluation will happen at linking time once the values of all the involved external references have been resolved (see ["Writing relocatable code"](WritingRelocatableCode.md)).
 
 If a 8 bit value is expected (e.g. `DB <value>` or `LD A,<value>`) the expression must evaluate to a 16 bit value whose high byte is either 0 or FFh (otherwise an overflow error will be thrown) and the effective value of the expression is the low byte. On the other hand, if a 16 bit value is expected (e.g. `DW <value>` or `LD HL,<value>`) any overflow beyond the lower 16 bits is ignored and the result is the value formed by the low order 16-bits (e.g. `123456h` is interpreted as `3456h`).
 
@@ -1196,7 +1196,7 @@ Additionally to the Nestor80 arguments already mentioned, the following ones are
 
 This section lists all the assembler instructions supported by Nestor80. Any instruction alias is listed together with the "canonical" instruction name.
 
-® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See ["Absolute and relocatable code"](#absolute-and-relocatable-code) and "Writing relocatable code".
+® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See ["Absolute and relocatable code"](#absolute-and-relocatable-code) and ["Writing relocatable code"](WritingRelocatableCode.md).
 
 Some instructions have aliases. In most cases these come inherited from MACRO-80, which in turn implemented them for compatibility with even older assemblers. Except where otherwise stated, the syntax for the aliases is exactly the same as the one for the "canonical" instruction.
 
@@ -2385,7 +2385,7 @@ If no program name is explicitly supplied, the program name is taken from the la
 
 This instruction has no effect when generating absolute code.
 
-See "Writing relocatable code".
+See ["Writing relocatable code"](WritingRelocatableCode.md).
 
 
 ### ORG
@@ -2417,7 +2417,7 @@ FOO:
 
 If the resulting relocatable file is linked with the data segment starting at address 100h, then the `FOO` label will refer to address 120h.
 
-The above is true when linking one single relocatable file; when linking two or more it's a bit more complicated since `ORG` refer to the starting address of each segment _in each program_. See "Writing relocatable code" for the full details.
+The above is true when linking one single relocatable file; when linking two or more it's a bit more complicated since `ORG` refer to the starting address of each segment _in each program_. See ["Writing relocatable code"](WritingRelocatableCode.md) for the full details.
 
 💡 The build type is by default selected automatically based on what instructions are found (or not found) before the first `ORG` instruction in the source code. See ["Absolute and relocatable code"](#absolute-and-relocatable-code).
 
