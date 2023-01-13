@@ -21,6 +21,8 @@ The following icons are used in this document:
 
 Text in _italics_ will be used the first time a new term or concept is introduced. Alternatively, when a concept or term that is introduced in a later section is used, it will link to the section in which it is defined.
 
+Nestor80 treats assembler instructions and CPU instructions in a case-insensitive way. In the examples in this document instructions are written in lower case, while symbols and macro names are written un upper case.
+
 This documents refers to some (but not all) of the available Nestor80 command line arguments. To get the full reference of the existing arguments you can run Nestor80 with the `--help` argument, or you can look at [the help text in the Nestor80 source code](https://github.com/Konamiman/Nestor80/blob/master/N80/Program.Help.cs).
 
 
@@ -41,7 +43,7 @@ call PROGRAM
 ret
 PROGRAM:
 ;Some code here
-RET
+ret
 ```
 
 In pass 1 the assembler does the following:
@@ -66,17 +68,17 @@ Usually the fact that the assembly process takes two passes is transparent for t
 Here's an advanced example from the source code of [Nextor](https://github.com/Nextor). The following macro will store the value of a given symbol, but if the symbol is undefined by the time the macro is expanded in pass 2, it will be specified as an external symbol reference (with the `##` suffix); the `DEFW 0` in pass 1 is needed to keep the location counter consistent in both passes:
 
 ```
-DEFA MACRO ADDR
- IF1
-  DEFW  0
- ELSE
-  IFDEF  ADDR
-   DEFW  ADDR
-  ELSE
-   DEFW  ADDR##
-  ENDIF
- ENDIF
-ENDM
+defa macro ADDR
+ if1
+  defw  0
+ else
+  ifdef ADDR
+   defw ADDR
+  else
+   defw ADDR##
+  endif
+ endif
+endm
 ```
 
 ⚠ Unlike MACRO-80, Nestor80 will skip pass 2 if errors are found in pass 1  (but not if only warnings are found). Thus during the development process it's possible to find that some assembly errors seemingly "appear from nowhere" after some other errors were fixed (the former being errors found in pass 2 and the later being errors found in pass 1). A fatal error will terminate the assembly process immediately.
@@ -166,7 +168,7 @@ ld hl,FOO##
 
 ;Equivalent to:
 
-EXTRN FOO
+extrn FOO
 ld hl,FOO
 ```
 
@@ -178,7 +180,7 @@ FOO::
 
 ;Equivalent to:
 
-PUBLIC FOO
+public FOO
 FOO:
   ;Some code
 ```
@@ -253,8 +255,8 @@ Notation |  Radix
 <blockquote>
 ⚠ The <code>B</code> and <code>D</code> suffixes are actually unusable when the default radix is 12 or higher and 14 or higher, respectively. Consider the following example:
 
-    .RADIX 16
-    DEFW 1010b,1234d
+    .radix 16
+    defw 1010b,1234d
 
   You might think that these are the binary number `1010` and the decimal number `1234`, but that's not the case: these are actually the hexadecimal numbers `010B` and `234D`. This behavior is inherited from MACRO-80.
 
@@ -274,7 +276,7 @@ The second rule exists for consistency with how [`DEFB`](#defb-db-defm) converts
 The following example listing illustrates how strings are converted to bytes following these rules:
 
 ```
-                         .STRENC ASCII
+                         .strenc ASCII
   0000                   defb ''
   0000    41             defb 'A'
   0001    42 41          defw 'AB'
@@ -325,8 +327,8 @@ The support for escape sequences in double-quoted strings can be disabled by usi
 character itself can still be escaped by doubling it:
 
 ```
-.STRESC OFF
-db "The ""escaped"" string"
+.stresc OFF
+defb "The ""escaped"" string"
 ```
 
 💡 It's recommended to disable escape sequences when compiling old code that contains strings, since in MACRO-80 the `\` character was considered a regular character with no escaping meaning.
@@ -341,9 +343,9 @@ An empty string (e.g. `DEFB ''`) produces no output.
 The messages to be printed during the assembly process with the [`.PRINT`](#print-), [`.WARN`](#warn-), [`.ERROR`](#error-) and [`.FATAL`](#fatal-) instructions can optionally be enclosed in double quotes, `"`. When that's the case these messages support the same escape sequences that the strings used in expressions, once decoded these will be sent "as is" to the console; also `""` can be used to represent an empty string. For example:
 
 ```
-.PRINT1 "Hello\nworld"
-.PRINT1 ""
-.PRINT1 "Printing \"nice\" messages"
+.print1 "Hello\nworld"
+.print1 ""
+.print1 "Printing \"nice\" messages"
 ```
 
 This is what will get printed:
@@ -732,7 +734,7 @@ Example:
 
 ```
 ifcpu R800
-MULUW HL,BC
+muluw hl,bc
 else
 call MULUW_HL_BC
 endif
@@ -1062,20 +1064,20 @@ endm
 FOO 10
 ```
 
-All of the above expand to code equivalent to `DB 1,2,3,4,5,6,7,8,9,10`.
+All of the above expand to code equivalent to `defb 1,2,3,4,5,6,7,8,9,10`.
 
 ```
-MKLAB MACRO Y
-ERR&Y: DB 'Error &Y',0
-ENDM
+MKLAB macro Y
+ERR&Y: defb 'Error &Y',0
+endm
 
-MKERR MACRO X
-LB DEFL 0
-REPT X
-LB DEFL LB+1
+MKERR macro X
+LB defl 0
+rept X
+LB defl LB+1
 MKLAB %LB
-ENDM
-ENDM
+endm
+endm
 
 MKERR 3
 ```
@@ -1083,9 +1085,9 @@ MKERR 3
 The above expands to:
 
 ```
-ERR2: DB 'Error 1',0
-ERR2: DB 'Error 2',0
-ERR3: DB 'Error 3',0
+ERR2: defb 'Error 1',0
+ERR2: defb 'Error 2',0
+ERR3: defb 'Error 3',0
 ```
 
 ## Listings
@@ -1210,7 +1212,7 @@ _Syntax:_ `.COMMENT <delimiter><text><delimiter>`
 Defines a block of comment text with support for multiple lines. The first character found after the instruction will be considered the delimiter, and all text found in the source code until the delimiter is found again will be considered a comment and not processed. Example:
 
 ```
-.COMMENT * Here we go!
+.comment * Here we go!
 
 This is a comment, anything until another asterisk is found is ignored.
 
@@ -1222,7 +1224,7 @@ ld a,34 ;Regular code again
 The entire line where the closing delimiter is found will be considered as part of the comment and thus ignored:
 
 ```
-.COMMENT *
+.comment *
 
 Blah blah
 
@@ -1435,13 +1437,13 @@ Changes the default radix for the numeric constants that don't have a radix suff
 Example:
 
 ```
-db 12      ;12
+defb 12      ;12
 
 .radix 16
-db 12      ;18
+defb 12      ;18
 
 .radix 2
-db 1010    ;10
+defb 1010    ;10
 ```
 
 
@@ -1477,13 +1479,13 @@ Instructs Nestor80 to **not** include conditional blocks that evaluate as false 
 
 _Syntax:_ `.STRENC <encoding name>|<encoding page>|default`
 
-Sets the character encoding to be used to transform strings to sequences of bytes, typically for the [`DEFB`](#defb-db-defm) insruction.
+Sets the character encoding to be used to transform strings to sequences of bytes, typically for the [`DEFB`](#defb-db-defm) instruction.
 
-The encoding name or page must be one of the encodings supported by the system where Nestor80 is running. Running Nestor80 with the `--list-encodings` argument will show a list of the available encodings; each encoding has an unique name and an unique page number and either of the two can be used to identify the encoding.
+The encoding name or page must be one of the encodings supported by the system where Nestor80 is running. Running Nestor80 with the `--list-encodings` argument will show a list of the available encodings; each encoding has an unique name and an unique page number and either of the two can be used to identify the encoding. Encoding names are case-insensitive.
 
 The default encoding is 7 bit ASCII unless a different encoding is specified by passing a `--string-encoding` argument to Nestor80. `.STRENC default` will revert to this default encoding.
 
-The encoding name `ASCII` is accepted as an alias for the default 7 bit ASCII encoding (whose "official" name is `US-ASCII`).
+💡 The encoding name `ASCII` is accepted as an alias for the default 7 bit ASCII encoding (whose "official" name is `US-ASCII`).
 
 See also: ["Strings"](#strings).
 
@@ -1563,16 +1565,16 @@ Switches to the absolute segment and sets the location counter to the value it h
 Example:
 
 ```
-ASEG
+aseg
 ;Location counter here: absolute segment 0000h
 
 org 100h
 db 1,2,3,4
 ;Location counter here: absolute segment 0104h
 
-CSEG
+cseg
 db 10,20,30,40
-DSEG
+dseg
 db 50,60,70,80
 
 ASEG
@@ -1589,17 +1591,17 @@ Switches to the COMMON block of the specified name and sets the location counter
 Example:
 
 ```
-COMMON /foo/
+common /foo/
 ;Location counter here: COMMON FOO 0000h
 
 org 100h
 db 1,2,3,4
 ;Location counter here: COMMON FOO 0104h
 
-COMMON //
+common //
 ;Location counter here: COMMON (empty) 0000h
 
-COMMON /FOO/
+common /FOO/
 ;Location counter here: COMMON FOO 0000h
 ```
 
@@ -1647,12 +1649,12 @@ org 100h
 db 1,2,3,4
 ;Location counter here: code segment 0104h
 
-ASEG
+aseg
 db 10,20,30,40
-DSEG
+dseg
 db 50,60,70,80
 
-CSEG
+cseg
 ;Location counter here: code segment 0104h
 ```
 
@@ -1670,7 +1672,7 @@ Example:
 ```
 FOO equ 10h
 
-.STRENC ASCII
+.strenc ASCII
 DEFB 0FF34h,FOO*2,"ABC\r\n"
 
 ;Sequence of bytes generated:
@@ -1691,11 +1693,11 @@ Defines a block of contiguous memory addresses of a given size, to be optionally
 Example with `<value>` specified:
 
 ```
-DEFS 5,34
+defs 5,34
 
 ;Equivalent to:
 
-DEFB 34,34,34,34,34
+defb 34,34,34,34,34
 ```
 
 When `<value>` is not specified the output depends on the build type:
@@ -1720,8 +1722,8 @@ Example:
 ```
 FOO equ 1200h
 
-.STRENC ASCII
-DEFW 7,0ABCDh,FOO+34h,"A","BC"
+.strenc ASCII
+defw 7,0ABCDh,FOO+34h,"A","BC"
 
 ;Sequence of bytes generated:
 ;07h,00h,CDh,ABh,34h,12h,41h,00h,43h,42h
@@ -1741,16 +1743,16 @@ This instruction is equivalent to `.DEFB`, but appends the bytes that the curren
 Example:
 
 ```
-.STRENC ASCII
-DEFZ "Hello"
+.strenc ASCII
+defz "Hello"
 
 ;Equivalent to:
 
-DEFB "Hello\0"
+defb "Hello\0"
 
 ;...and to:
 
-DEFB "Hello",0
+defb "Hello",0
 ```
 
 
@@ -1763,19 +1765,19 @@ Switches to the data segment and sets the location counter to the value it had t
 Example:
 
 ```
-DSEG
+dseg
 ;Location counter here: data segment 0000h
 
 org 100h
 db 1,2,3,4
 ;Location counter here: data segment 0104h
 
-CSEG
+cseg
 db 10,20,30,40
-ASEG
+aseg
 db 50,60,70,80
 
-DSEG
+dseg
 ;Location counter here: data segment 0104h
 ```
 
@@ -1913,7 +1915,7 @@ call FOO##
 
 ;Equivalent to:
 
-EXTRN FOO
+extrn FOO
 call FOO
 ```
 
@@ -2021,7 +2023,7 @@ Starts a conditional assembly block in which the true condition is that the curr
 
 ```
 ifcpu R800
-MULUW HL,BC
+muluw hl,bc
 else
 call MULUW_HL_BC
 endif
@@ -2450,7 +2452,7 @@ FOO::
 
 ;Equivalent to:
 
-PUBLIC FOO
+public FOO
 FOO:
 ```
 
