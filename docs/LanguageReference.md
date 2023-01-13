@@ -700,7 +700,7 @@ ld a,.STROUT  ;No error, really referencing ".STROUT" due to the second .relab
 
 ## Conditional assembly
 
-_Conditional assembly_ is a mechanism that allows to conditionally skip the assembly of blocks of code based on certain conditions. A _conditional assembly block_ has the following format:
+_Conditional assembly_ is a mechanism that allows to conditionally process or skip the assembly of blocks of code based on certain conditions. A _conditional assembly block_ has the following format:
 
 ```
 <IF instruction> [<arguments>]
@@ -758,7 +758,7 @@ A macro needs to first be defined, then expanded. A _macro definition_ consists 
 
 There are two main types of macros:
 
-* _Repeat macros_: the macro expansion starts immediately after the macro definition finishes, and the macro body lines are repeated a number of times based on the exact macro type and the supplied arguments.
+* _Repeat macros_: the macro expansion starts immediately after the macro definition finishes, and the macro body lines are repeated a number of times based on the concrete macro type and the supplied arguments.
 * _Named macros_: the macro definition includes an unique macro name. The macro expansion happens when the macro name appears in the source code as if it was an instruction, possibly with arguments as specified in the macro definition.
 
 
@@ -770,20 +770,20 @@ Example:
 
 ```
 rept 1,2,3
-db 1
-db 2
+defb 1
+defb 2
 endm
 ```
 
 The macro expansion would be:
 
 ```
-db 1
-db 2
-db 1
-db 2
-db 1
-db 2
+defb 1
+defb 2
+defb 1
+defb 2
+defb 1
+defb 2
 ```
 
 
@@ -793,28 +793,26 @@ The _repeat macro with arguments_ macro (named "indefinite repeat" in the MACRO-
 
 Example:
 
-Example:
-
 ```
 irp x,<1,2,3>
-db x
+defb x
 endm
 ```
 
 The macro expansion would be:
 
 ```
-db 1
-db 2
-db 3
+defb 1
+defb 2
+defb 3
 ```
 
 The rules for the arguments are as follows:
 
 * Angle brackets around the arguments list are mandatory.
-* Arguments can be separated with commas or with spaces (spaces around the arguments are stripped of before being used in the expansion).
+* Arguments can be separated with commas or with spaces (spaces around the arguments are stripped off before being used in the expansion).
 * Two consecutive commas, `,,`, generate a repetition with an empty string as the argument.
-* Angle brackets can be used inside the arguments list for arguments that contain commas and spaces, e.g. `<< >,<,>>` defines two arguments, a space and a comma. The `!` character can be used too to use reserved characters and arguments.
+* Nested angle brackets can be used inside the arguments list for arguments that contain commas and spaces, e.g. `<< >,<,>>` defines two arguments, a space and a comma. [The `!` character](#other-special-characters) can be used too to use reserved characters as arguments.
 
 
 ### Repeat macro with characters
@@ -825,7 +823,7 @@ Example equivalent to the one given for ["Repeat macro with arguments"](#repeat-
 
 ```
 irpc x,123
-db x
+defb x
 endm
 ```
 
@@ -843,7 +841,7 @@ The _repeat macro with string_ macro uses the new [`IRPS`](#irps-) opening instr
 
 To define a named macro the `MACRO` opening instruction is used with the following syntax: `<name>[:] MACRO [<placeholder1>[,<placeholder2>[,...]]]`. The macro is expanded once for each instance of `<name>` used in the code, and the placeholders from the macro definition found in the macro body lines are replaced with the actual arguments passed to the macro expansion. The colon following `<name>` in the macro definition is optional ✨ (in MACRO-80 this colon wasn't allowed).
 
-Here goes a simple example. Macro definition:
+Here's a simple example. Macro definition:
 
 ```
 SUM: macro first,second
@@ -865,32 +863,30 @@ ld a,1
 add a,2
 ```
 
-⚠ A new macro definition will replace one that already exists with the same name. Example:
+⚠ A new macro definition will replace one that already exists with the same name. This behavior is compatible with MACRO-80, but in Nestor80 it will emit a warning. Example:
 
 ```
 FOO macro
-db 0
+defb 0
 endm
 
 FOO macro
-db 1
+defb 1
 endm
 
 FOO
 ```
 
-This will expand to `db 1`.
-
-This behavior is compatible with MACRO-80, but in Nestor80 it will emit a warning.
+This will expand to `defb 1`.
 
 
 ### Rules for placeholder replacement
 
-When placeholders are replaced with actual arguments in all macro types (except ["Repeat macro with arguments"](#repeat-macro-with-arguments) which doesn't support placeholders) the following rules apply (a placeholder named `foo` is assumed in the examples):
+When placeholders are replaced with actual arguments in all macro types (except ["Repeat macro with count"](#repeat-macro-with-count) which doesn't support placeholders) the following rules apply (a placeholder named `foo` is assumed in the examples):
 
 * The placeholder search is case-insensitive: instances of `FOO` will be replaced too.
 * Placeholders are not replaced inside comments, e.g. no replacement will happen in the line `db 0 ;foo`.
-* Placeholders aren't replaced when they are surrounded by valid symbol characters, e.g. replacement will happen in `foo+1` but not in `foobar` or in `?foo`.
+* Placeholders aren't replaced when they are surrounded by valid symbol characters, e.g. replacement will happen in `foo+1` but not in `foobar` or in `@foo`.
 * To overcome the above limitation the `&` character can be used before and if needed also after the placeholder name, for example when the actual argument is `X` then `bar&foo` will be replaced with `barX` and `the&foo&bar` will be replaced with `theXbar`.
 * Placeholders aren't replaced inside strings by default, e.g. no replacement will happen in the line `db "foo"`.
 * Again, to overcome the above limitation the `&` character can be used before and if needed also after the placeholdder, e.g. if the actual argument is `FIZZ` then `db "&foo"` will be replaced with `db "FIZZ"`.
@@ -912,7 +908,7 @@ FOO: ;Replaced!
 foobar: ;Mixed with symbol chars? No replacement
 bar&foo: ;Replaced!
 the&foo&bar: ;Replaced!
-db "Oh, the foo! Is this &foo or &foo&bar?"
+defb "Oh, the foo! Is this &foo or &foo&bar?"
 endm
 ```
 
@@ -927,19 +923,19 @@ FIZZ: ;Replaced!
 foobar: ;Mixed with symbol chars? No replacement
 barFIZZ: ;Replaced!
 theFIZZbar: ;Replaced!
-db "Oh, the foo! Is this FIZZ or FIZZbar?"
+defb "Oh, the foo! Is this FIZZ or FIZZbar?"
 ```
 
 ### Other special characters
 
 Additionally to '&' the following characters have a special meaning when used in the context of macro expansions:
 
-* `;;`: when a comment inside a macro definition starts with a double semicolon it won't be included in the macro expansion in listings. Example:
+* `;;`: when a comment inside a macro definition starts with a double semicolon it won't be included in the macro expansion in [listings](#listings). Example:
 
 ```
 THEMACRO macro
-db 1 ;This is a one
-db 2 ;;You won't see this
+defb 1 ;This is a one
+defb 2 ;;You won't see this
 endm
 ```
 
@@ -947,8 +943,8 @@ The macro expansion is listed as:
 
 ```
        THEMACRO
-+      db 1 ;This is a one
-+      db 2 
++      defb 1 ;This is a one
++      defb 2 
        end
 ```
 
@@ -956,9 +952,9 @@ The macro expansion is listed as:
 
 ```
 THEMACRO macro x,y,z
-db "&x"
-db "&y"
-db "&z"
+defb "&x"
+defb "&y"
+defb "&z"
 endm
 
 THEMACRO ! ,!,,!!
@@ -978,7 +974,7 @@ db "!"
 FOO equ 4
 
 THEMACRO macro x
-db x
+defb x
 endm
 
 THEMACRO %FOO+30
@@ -986,12 +982,41 @@ THEMACRO FOO+30
 end
 ```
 
-Generated macro expansion:
+Generated macro expansions:
 
 ```
-db 34
-db FOO+30
+defb 34
+defb FOO+30
 ```
+
+
+### Local symbols
+
+Regular symbols can't be declared inside macros, since the second time that the macro is expanded a "Symbol already defined" error would be thrown for each of these symbols. To solve this problem symbols can be declared as _local_ to the macro with the [`LOCAL`](#local) instruction.
+
+`LOCAL` declares a list of symbols that will be declared inside the macro definition. When found inside the macro expansions these symbols will be replaced with a symbol with the format `..<number>`, where the number is in hexadecimal format and increases by one (across all the macro expansions in the entire program) after each usage; so `..0000`, `..0001` etc.
+
+Example:
+
+```
+NEVEREND macro
+local loop
+loop: jp loop
+endm
+
+NEVEREND
+NEVEREND
+NEVEREND
+```
+
+The generated code will be equivalent to:
+
+```
+..0000: jp ..0000
+..0001: jp ..0001
+..0002: jp ..0002
+```
+
 
 ### Nesting macros
 
@@ -1012,19 +1037,19 @@ X defl 0
 
 rept 10
 X defl X+1
-db X
+defb X
 endm
 ```
 
 ```
 irp X,<1,2,3,4,5,6,7,8,9,10>
-db X
+defb X
 endm
 ```
 
 ```
 irpc X,0123456789
-db X+1
+defb X+1
 endm
 ```
 
@@ -1033,7 +1058,7 @@ x defl 0
 rept 2
   rept 5
     x defl x+1
-    db x
+    defb x
   endm
 endm
 ```
@@ -1043,7 +1068,7 @@ FOO macro N
   X defl 0
   rept N
     X defl X+1
-    db X
+    defb X
   endm
 endm
 
@@ -1080,7 +1105,7 @@ ERR3: defb 'Error 3',0
 
 Nestor80 allows to generate a listing with information about the generated addresses and symbols, displayed together with the source code. A listing is generated if the `--listing-file` argument is supplied to Nestor80.
 
-The listing is a text file that pretty much replicates the format of the listing files generated by Macro-80, with a couple of additions. The listing file is composed of pages that follow one another, with each page having this format:
+The listing is a text file that pretty much replicates the format of the listing files generated by MACRO-80, with a couple of additions. The listing file is composed of pages that follow one another, with each page having this format:
 
 ```
 <form feed character><title> Nestor80 <version> PAGE <page>[-<subpage>]
@@ -1103,7 +1128,7 @@ where:
 
 Page numbers are updated for each new page as follows:
 
-* The main page number is increased (and the subpage number goes back to 0) when a form feed (`\f` character 0Ch in ASCII) is found in the source code, and when a [`MAINPAGE`](#mainpage-) instruction is found.
+* The main page number is increased (and the subpage number goes back to 0) when a form feed (`\f` character, 0Ch in ASCII) is found in the source code, and when a [`MAINPAGE`](#mainpage-) instruction is found.
 * The secondary page number is increased when a page has been completed, and also when the [`PAGE`](#page-subpage--eject) instruction is found.
 
 The default page size is 50 lines, this value can be changed with the [`PAGE`](#page-subpage--eject) instruction.
@@ -1127,7 +1152,7 @@ where:
 * `'`: address in the code segment.
 * `"`: address in the data segment.
 * `!`: address in a COMMON block.
-* `*`: address that is calculated at linking time (e.g. external symbol references).
+* `*`: address that is calculated at linking time (e.g. external symbol references), always shown as zero.
 
 By default the `<bytes>` area will only display four bytes, and any remaining bytes (e.g. for long [`DEFB`](#defb-db-defm) instructions) will appear below in extra lines, without source line. The amount of bytes per line can be configured 🆕 with the Nestor80 argument `--listing-bytes-per-line`.
 
@@ -1142,7 +1167,7 @@ The possible flags are:
 
 After the last page of regular listing a list of local symbols, public symbols, external symbols and named macros is included as well. The main page "number" used for these lists is `S`.
 
-By default 4 symbols will be listed in each listing line, and only the first 16 character of each symbol will be printed (longer symbols will be truncated and will get a `...` at the end) . These values can be configured 🆕 with the Nestor80 arguments `--listing-symbols-per-line` and `--listing-max-symbol-length`, respectively.
+By default 4 symbols will be listed in each listing line, and only the first 16 characters of each symbol will be printed (longer symbols will be truncated and will get a `...` at the end). These values can be configured 🆕 with the Nestor80 arguments `--listing-symbols-per-line` and `--listing-max-symbol-length`, respectively.
 
 By default all symbols and macro names in the symbols list will keep their original casing 🆕, but Nestor80 can be instructed to convert them to uppercase (which is what MACRO-80 does when generating listings) with the  `--listing-uppercase-symbols` argument.
 
@@ -1188,7 +1213,7 @@ This section lists all the assembler instructions supported by Nestor80. Any ins
 
 Some instructions have aliases. In most cases these come inherited from MACRO-80, which in turn implemented them for compatibility with even older assemblers. Except where otherwise stated, the syntax for the aliases is exactly the same as the one for the "canonical" instruction.
 
-Instruction arguments are specified using the standard notation `<name>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example [`IFB`](#ifb).
+Instruction arguments are specified using the standard notation `<argument>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example [`IFB`](#ifb).
 
 
 ### .COMMENT
@@ -1224,7 +1249,7 @@ ld a,34 ;Regular code again
 
 _Syntax:_ `.CPU <cpu name>`
 
-Changes the target CPU for the assembled code. 
+Changes the target CPU for the assembled code. The initial CPU is the Z80 by default, but this can be changed with the Nestor80 argument `--default-cpu`.
 
 Currently the supported CPUs are `Z80` (default) and `R800`. The only difference is that setting the R800 as the target CPU enables the `MULUB` and `MULUW` instructions:
 
@@ -1263,7 +1288,7 @@ Marks the end of a phased code block. See [`.PHASE`](#phase).
 
 _Syntax:_ `.ERROR ["]<text>["]`
 
-Emits an assembly error with the specified text. The text supports expression interpolation.
+Emits an assembly error with the specified text. The text supports [expression interpolation](#expression-interpolation-).
 
 When one or more errors are emitted in pass 1, pass 2 will be skipped. See ["Passes"](#passes), ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
 
@@ -1272,7 +1297,7 @@ When one or more errors are emitted in pass 1, pass 2 will be skipped. See ["Pas
 
 _Syntax:_ `.FATAL ["]<text>["]`
 
-Throws an fatal error with the specified text. The text supports expression interpolation.
+Throws an fatal error with the specified text. The text supports [expression interpolation](#expression-interpolation-).
 
 A fatal error will terminate the assembly process immediately. See also ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
 
@@ -1386,7 +1411,7 @@ The second one is something that doesn't seem to be supported by MACRO-80 anyway
 
 _Syntax:_ `.PRINT ["]<text>["]`
 
-Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The message supports expression interpolation.
+Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The message supports [expression interpolation](#expression-interpolation-).
 
 The text will be printed in both pass 1 and pass 2. Normally you'll want to print the text only in one of the passes, so you should either wrap the `.PRINT` instruction in an [`IF1`](#if1) or [`IF2`](#if2) block, or use the [`.PRINT1`](#print1-) or [`.PRINT2`](#print2-) instruction instead. See ["Passes"](#passes), ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
 
@@ -1411,7 +1436,7 @@ _Syntax:_ `.PRINTX <delimiter><text>[<delimiter>]`
 
 Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The first character of the text is considered a delimiter, and the text is printed until either the delimiter is found again or the end of the line is found (the delimiters themselves are printed too). For example `.PRINTX /Foo` prints `/Foo`, and `.PRINTX /Foo/bar` prints `/Foo/`.
 
-This instruction is provided for compatibility with MACRO-80. New programs should use [`.PRINT`](#print-), [`.PRINT1`](#print1-) or [`.PRINT2`](#print2-) instead, which don't need a delimiter and support expression interpolation and escape sequences in the text.
+This instruction is provided for compatibility with MACRO-80. New programs should use [`.PRINT`](#print-), [`.PRINT1`](#print1-) or [`.PRINT2`](#print2-) instead, which don't need a delimiter and support [expression interpolation](#expression-interpolation-) and escape sequences in the text.
 
 
 ### .RADIX
@@ -1437,14 +1462,14 @@ defb 1010    ;10
 
 _Syntax:_ `.RELAB`
 
-Enables the relative labels feature. See also [`.XRELAB`](#xrelab-).
+Enables the [relative labels](#relative-labels-) feature. See also [`.XRELAB`](#xrelab-).
 
 
 ### .REQUEST ®
 
 _Syntax:_ `.REQUEST <filename>[,<filename>[,...]]`
 
-Defines a list of files in which the linker will search for any globals that remain undefined during the linking process. For compatibility with Link80 filenames must be up to 7 characters long, contain only ASCII letters, and can't contain an extension (`.REL` extension is assumed) nor any drive or directory specification.
+Defines a list of files in which the linker will search for any globals that remain undefined during the linking process. For compatibility with LINK-80 filenames must be up to 7 characters long, contain only ASCII letters, and can't contain an extension (`.REL` extension is assumed) nor any drive or directory specification.
 
 
 ### .SALL
@@ -1495,14 +1520,14 @@ Instructs Nestor80 to toggle the inclusion of conditional blocks that evaluate a
 
 The state that gets toggled is the one that was set by the previous instance of `.TFCOND` (any state change performed with [`.LFCOND`](#lfcond) or [`.SFCOND`](#sfcond) is ignored). The initial state is "on" unless a `--no-listing-false-conditionals` argument is passed to Nestor80.
 
-See also [`.LFCOND`](#lfcond), [`.SFCOND`](#sfcond), "Conditional blocks", ["Listings"](#listings).
+See also [`.LFCOND`](#lfcond), [`.SFCOND`](#sfcond), ["Conditional assembly"](#conditional-assembly), ["Listings"](#listings).
 
 
 ### .WARN 🆕
 
 _Syntax:_ `.WARN ["]<text>["]`
 
-Emits an assembly warning with the specified text. The text supports expression interpolation.
+Emits an assembly warning with the specified text. The text supports [expression interpolation](#expression-interpolation-).
 
 The warning will be emitted twice, once in pass 1 and once in pass2. If that's undesirable you can enclose the instruction in an [`IF1`](#if1) or [`IF2`](#if2) block. See ["Passes"](#passes), ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
 
@@ -1532,14 +1557,14 @@ Instructs Nestor80 to suppress the inclusion in listings of the source code text
 
 _Syntax:_ `.XRELAB`
 
-Disables the relative labels feature. See also [`.RELAB`](#relab-).
+Disables the [relative labels](#relative-labels-) feature. See also [`.RELAB`](#relab-).
 
 
 ### .Z80
 
 _Syntax:_ `.Z80`
 
-Sets the Z80 as the current target CPU. This instruction is provided for compatibility with MACRO-80, new programs should use `.CPU Z80` instead.
+Sets the Z80 as the current target CPU. This instruction is provided for compatibility with MACRO-80, new programs should use [`.CPU Z80`](#cpu-) instead.
 
 
 ### ASEG ®
@@ -1596,7 +1621,7 @@ common /FOO/
 
 _Syntax:_ `CONTM`
 
-This instruction is intended to be used inside macro definitions. In named macro expansions it's equivalent to `.EXITM`, in repeat macros it exits the current repetition immediately and then starts over at the next repetition (if there are more repetitions remaining), unlike `.EXITM` which discards any remaining repetition.
+This instruction is intended to be used inside [macro](#macros) definitions. In named macro expansions it's equivalent to `.EXITM`, in repeat macros it exits the current repetition immediately and then starts over at the next repetition (if there are more repetitions remaining), unlike `.EXITM` which discards any remaining repetition.
 
 Example:
 
@@ -1711,7 +1736,7 @@ When `<value>` is not specified the output depends on the build type:
 * When the build type is relocatable, by default `DEFB <size>` will generate an output equivalent to `ORG $+<size>`; that is, the location counter will be increased by the specified size and the block will be considered by the linker as a "memory gap" (how memory gaps are filled at linking time is undefined).
 * When the build type is relocatable and a `--initialize-defs` argument is supplied to Nestor80, `DEFB <size>` is equivalent to `DEFB <size>,0`.
 
-See also ["Absolute and relocatable code"](#absolute-and-relocatable-code).
+See ["Absolute and relocatable code"](#absolute-and-relocatable-code).
 
 
 ### DEFW (DW)
@@ -1743,7 +1768,7 @@ _Syntax:_ `DEFZ <expression or string>[,<expression or string>[,...]]`
 
 _Aliases:_ `DZ`
 
-This instruction is equivalent to `.DEFB`, but appends the bytes that the current character encoding generates for the character `\0` at the end of the generated sequence of bytes. This is useful to define zero-terminated strings without having to explicitly specify the zero character.
+This instruction is equivalent to [`.DEFB`](#defb-db-defm), but appends the bytes that the current character encoding generates for the character `\0` at the end of the generated sequence of bytes. This is useful to define zero-terminated strings without having to explicitly specify the zero character.
 
 Example:
 
@@ -1755,7 +1780,7 @@ defz "Hello"
 
 defb "Hello\0"
 
-;...and to:
+;...and (since ASCII converts \0 to a single 0 byte) to:
 
 defb "Hello",0
 ```
@@ -1894,7 +1919,7 @@ FOO: equ 30
 defb FOO+4  ;Equivalent to 30+4
 ```
 
-A fixed constant can't be redefined: a second `EQU` with the same name and a different value will throw an error. Use [[`DEFL`](#defl-aset)](#defl-aset) if you want to declare a redefinible constant.
+A fixed constant can't be redefined: a second `EQU` with the same name and a different value will throw an error. Use [`DEFL`](#defl-aset) if you want to declare a redefinible constant.
 
 See ["Named constants"](#named-constants)
 
@@ -2357,31 +2382,7 @@ See ["Strings"](#strings), ["Macros"](#macros).
 
 _Syntax:_ `LOCAL <symbol>[,<symbol>[,...]]`
 
-Used in named macros to declare one or more symbols as local to the macro expansion. When found inside the macro expansions these symbols will be replaced with a label with the format `..<number>`, where the number is in hexadecimal format and increases by one after each usage; so `..0000`, `..0001` etc. Without this mechanism defining labels inside macros wouldn't be supported, since in the second macro expansion "Symbol already defined" errors would be thrown.
-
-Example:
-
-```
-NEVEREND macro
-
-LOCAL loop
-loop: jp loop
-endm
-
-NEVEREND
-NEVEREND
-NEVEREND
-```
-
-The generated code will be equivalent to:
-
-```
-..0000: jp ..0000
-..0001: jp ..0001
-..0002: jp ..0002
-```
-
-See ["Macros"](#macros).
+Used in named macros to declare one or more symbols as local to the macro expansion. See ["Local symbols"](#local-symbols), ["Macros"](#macros).
 
 
 ### MAINPAGE 🆕
@@ -2438,7 +2439,7 @@ org 20h
 FOO:
 ```
 
-If the resulting relocatable file is linked with the data segment starting at address 100h, then the `FOO` label will refer to address 120h.
+If the resulting relocatable file is linked with the data segment starting at address 100h, then the `FOO` label will refer to address 120h in the final binary file generated by the linker.
 
 The above is true when linking one single relocatable file; when linking two or more it's a bit more complicated since `ORG` refer to the starting address of each segment _in each program_. See ["Writing relocatable code"](WritingRelocatableCode.md) for the full details.
 
@@ -2490,20 +2491,20 @@ Example:
 
 ```
 rept 3
-db 1
-db 2
+defb 1
+defb 2
 endm
 ```
 
 Equivalent code assembled:
 
 ```
-db 1
-db 2
-db 1
-db 2
-db 1
-db 2
+defb 1
+defb 2
+defb 1
+defb 2
+defb 1
+defb 2
 ```
 
 See ["Macros"](#macros).
@@ -2513,7 +2514,7 @@ See ["Macros"](#macros).
 
 _Syntax:_ `ROOT <symbol>[,<symbol>[,...]]`
 
-This instruction must appear inside a module. It's used to declare one or more symbols that will be considered as a "root" symbol, that is, not relative to the module; thus when these symbols are referenced they won't be prepended with the module name before being evaluated. Another option to achieve the same effect is to prepend the symbol names with a colon, `:`, then they are referenced. See ["Modules"](#modules-).
+This instruction must appear inside a module. It's used to declare one or more symbols that will be considered as a "root" symbol, that is, not relative to the module; thus when these symbols are referenced they won't be prepended with the module name before being evaluated. Another option to achieve the same effect is to prepend the symbol names with a colon, `:`, when they are referenced. See ["Modules"](#modules-).
 
 
 ### SUBTTL ($TITLE)
