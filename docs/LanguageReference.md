@@ -61,19 +61,19 @@ ret
 CHPUT equ 00A2h
 ```
 
-Usually the fact that the assembly process takes two passes is transparent for the developer, but the `IF1` and `IF2` instructions exist for advanced scenarios in which it's convenient to process different blocks of source code depending on the current pass. This is typically used to prevent the output of duplicated messages during the assembly process with `.PRINT`, `.WARN` or `.ERR`.
+Usually the fact that the assembly process takes two passes is transparent for the developer, but the [`IF1`](#if1) and [`IF2`](#if2) instructions exist for advanced scenarios in which it's convenient to process different blocks of source code depending on the current pass. This is typically used to prevent the output of duplicated messages during the assembly process with [`.PRINT`](#print-), [`.WARN`](#warn-) or `.ERR`.
 
 Here's an advanced example from the source code of [Nextor](https://github.com/Nextor). The following macro will store the value of a given symbol, but if the symbol is undefined by the time the macro is expanded in pass 2, it will be specified as an external symbol reference (with the `##` suffix); the `DEFW 0` in pass 1 is needed to keep the location counter consistent in both passes:
 
 ```
 DEFA MACRO ADDR
  IF1
-  DEFW	0
+  DEFW  0
  ELSE
-  IFDEF	ADDR
-   DEFW	ADDR
+  IFDEF  ADDR
+   DEFW  ADDR
   ELSE
-   DEFW	ADDR##
+   DEFW  ADDR##
   ENDIF
  ENDIF
 ENDM
@@ -81,14 +81,14 @@ ENDM
 
 ⚠ Unlike MACRO-80, Nestor80 will skip pass 2 if errors are found in pass 1  (but not if only warnings are found). Thus during the development process it's possible to find that some assembly errors seemingly "appear from nowhere" after some other errors were fixed (the former being errors found in pass 2 and the later being errors found in pass 1). A fatal error will terminate the assembly process immediately.
 
-The location counter can be temporarily modified to account for code that will be executed at a different address, see `.PHASE`.
+The location counter can be temporarily modified to account for code that will be executed at a different address, see [`.PHASE`](#phase).
 
 
 ### Absolute and relocatable code
 
 Nestor80 can produce both absolute 🆕 and relocatable files.
 
-* An _absolute file_ contains code "ready to use", intended to be loaded and executed at the fixed memory locations indicated by the `ORG` instructions found in code (or begninning at address 0, if no such instructions are provided). Most assemblers produce only absolute files.
+* An _absolute file_ contains code "ready to use", intended to be loaded and executed at the fixed memory locations indicated by the [`ORG`](#org) instructions found in code (or begninning at address 0, if no such instructions are provided). Most assemblers produce only absolute files.
 
 * _Relocatable files_ have [a dedicated format](RelocatableFileFormat.md) and contain relocatable code, that is, "pre-assembled" code in which labels are flagged as being relative to the memory address where the target program will be loaded and symbols may be flagged as _external_, that is, defined in other relocatable file.
 
@@ -96,15 +96,15 @@ Relocatable files can't be executed, instead a linker (typically LINK-80) must b
 
 It's possible to instruct Nestor80 to produce an absolute file or a relocatable file by using the `--build-type` command line argument, but by default Nestor80 will decide the appropriate type automatically. The decision is taken as follows:
 
-> If an `ORG` instruction is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: `CSEG`, `DSEG`, `COMMON`, `DEFB`, `DEFW`, `DEFS`, `DC`, `DEFZ`, `PUBLIC`, `EXTRN`, `.REQUEST`, then the build type will be absolute; otherwise the build type will be relocatable.
+> If an [`ORG`](#org) instruction is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-), [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw), [`DEFS`](#defs-ds), `DC`, [`DEFZ`](#defz-dz-), [`PUBLIC`](#public-entry-global-), [`EXTRN`](#extrn-ext-external-), [`.REQUEST`](#request-), then the build type will be absolute; otherwise the build type will be relocatable.
 
-Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an `ORG` instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
+Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an [`ORG`](#org) instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
 
 💡 If you want to know the exact source line in which Nestor80 selects the build type, run Nestor80 with a verbosity level of at least two (with the `--verbosity` argument).
 
-⚠ If the build type is forced to absolute with `--build-type` but the code contains no `ORG` instructions, an implicit `ORG 0` at the beginning of the code is assumed.
+⚠ If the build type is forced to absolute with `--build-type` but the code contains no [`ORG`](#org) instructions, an implicit `ORG 0` at the beginning of the code is assumed.
 
-Some assembler instructions make sense only in the context of relocatable code, for example `CSEG`, `DSEG`, `PUBLIC` OR `EXTRN`; these instructions will do nothing, and the assembler will throw warnings, if they are found while assembling absolute code. 
+Some assembler instructions make sense only in the context of relocatable code, for example [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`PUBLIC`](#public-entry-global-) OR [`EXTRN`](#extrn-ext-external-); these instructions will do nothing, and the assembler will throw warnings, if they are found while assembling absolute code.
 
 See "Writing relocatable code" for more details about how relocatable code programming works.
 
@@ -127,11 +127,11 @@ A _label_ is a type of symbol that has the value of the location counter at the 
 A label definition must end with either `:` or `::`; the later is used when assembling relocatable code to indicate that the label is public.
 
 An _operator_ is a word that can be either the mnemonic of a CPU instruction (e.g. `LD`) or an assembler instruction. An _assembler instruction_ (called "pseudo-operator"
-in the MACRO-80 manual) is an instruction for the assembler itself, for example `ORG` instructs the assembler to change the value of the current location counter.
+in the MACRO-80 manual) is an instruction for the assembler itself, for example [`ORG`](#org) instructs the assembler to change the value of the current location counter.
 
 ⚠ In this manual the word "instruction" alone will be used to refer to assembler instructions, as opposed to CPU instructions.
 
-The comment, if present, runs until the end of the line and has no effect in the assembly process. Multiline comments are supported by using the `.COMMENT` instruction.
+The comment, if present, runs until the end of the line and has no effect in the assembly process. Multiline comments are supported by using the [`.COMMENT`](#comment) instruction.
 
 Nestor80 supports Z80 and R800 🆕 CPU instructions, being Z80 the default CPU; a `.CPU R800` instruction can be used to enable support for R800 instructions.
 The 8080 CPU is not supported by Nestor80. 🚫
@@ -159,7 +159,7 @@ different but share the first 6 characters (since these will get their names tru
 
 When writing relocatable code, the following suffixes are allowed for symbols:
 
-* A symbol reference can have the `##` suffix to indicate that it's an _external symbol_ (a symbol that is defined in another relocatable file). This is equivalent to using the `EXTRN` instruction:
+* A symbol reference can have the `##` suffix to indicate that it's an _external symbol_ (a symbol that is defined in another relocatable file). This is equivalent to using the [`EXTRN`](#extrn-ext-external-) instruction:
 
 ```
 ld hl,FOO##
@@ -170,7 +170,7 @@ EXTRN FOO
 ld hl,FOO
 ```
 
-* A label can be defined with the `::` suffix (instead of just `:`) to indicate that it's a _public symbol_ (a symbol that can be accessed from another relocatable file). This is equivalent to using the `PUBLIC` instruction:
+* A label can be defined with the `::` suffix (instead of just `:`) to indicate that it's a _public symbol_ (a symbol that can be accessed from another relocatable file). This is equivalent to using the [`PUBLIC`](#public-entry-global-) instruction:
 
 ```
 FOO::
@@ -233,7 +233,7 @@ FOO equ 2     ;"Symbol already exists" error
 
 ### Numeric constants
 
-Numeric constants can be specified in any [radix](https://en.wikipedia.org/wiki/Radix) from 2 to 16. The default radix is 10 but this can be changed with the `.RADIX` instruction. When the radix is 11 or higher the letters A to F (case insensitive) are used to represents the digits after the 9.
+Numeric constants can be specified in any [radix](https://en.wikipedia.org/wiki/Radix) from 2 to 16. The default radix is 10 but this can be changed with the [`.RADIX`](#radix) instruction. When the radix is 11 or higher the letters A to F (case insensitive) are used to represents the digits after the 9.
 
 In order to specify a number in a radix different from the default one the following notations can be used
 (prefixes and suffixes are case-insensitive):
@@ -266,10 +266,10 @@ Notation |  Radix
 A string can be used as equivalent to the numeric constant resulting from encoding it with the current character encoding, with the following rules:
 
 1. The current character encoding must produce at most two bytes for the string (an error will be thrown otherwise).
-2. A string that produces two bytes in the current character encoding is interpreted as a big-endian value in `DEFB` instructions, and as a low-endian value elsewhere.
-3. An empty string produces no output in a `DEFB` statement, and the value zero everywhere else.
+2. A string that produces two bytes in the current character encoding is interpreted as a big-endian value in [`DEFB`](#defb-db-defm) instructions, and as a low-endian value elsewhere.
+3. An empty string produces no output in a [`DEFB`](#defb-db-defm) statement, and the value zero everywhere else.
 
-The second rule exists for consistency with how `DEFB` converts strings into bytes in the general case (strings of any length).
+The second rule exists for consistency with how [`DEFB`](#defb-db-defm) converts strings into bytes in the general case (strings of any length).
 
 The following example listing illustrates how strings are converted to bytes following these rules:
 
@@ -290,11 +290,11 @@ The following example listing illustrates how strings are converted to bytes fol
 Strings are sequences of arbitrary characters enclosed in single quotes, `'`, or double quotes, `"`. Strings are converted to bytes using the current character encoding 🆕 (MACRO-80 didn't have the concept of "character encodings" and simply outputted the string bytes as they were physically stored in the source file).
 
 The _current character encoding_ is the one specified in a `--string-encoding` argument when running Nestor80, and
-can also be changed in code with the `.STRENC` instruction. You can run Nestor80 with the `--list-encodings` argument
+can also be changed in code with the [`.STRENC`](#strenc-) instruction. You can run Nestor80 with the `--list-encodings` argument
 to see a list of available encodings. The default encoding when none is specified is 7 bit ASCII.
 
 Strings that produce two or less bytes once converted to bytes can be used anywhere a numeric value is expected,
-see ["Numeric constants"](#numeric-constants). Strings of any length can be used in the `DEFB` instruction, in this case characters
+see ["Numeric constants"](#numeric-constants). Strings of any length can be used in the [`DEFB`](#defb-db-defm) instruction, in this case characters
 are converted to bytes sequentially in the order in which they appear in the string. 
 
 Single-quoted strings don't accept escape character with the only exception of `''`, which allows escaping the single quote itself. Example:
@@ -338,7 +338,7 @@ An empty string (e.g. `DEFB ''`) produces no output.
 
 #### Strings in messages for the assembler console
 
-The messages to be printed during the assembly process with the `.PRINT`, `.WARN`, `.ERROR` and `.FATAL` instructions can optionally be enclosed in double quotes, `"`. When that's the case these messages support the same escape sequences that the strings used in expressions, once decoded these will be sent "as is" to the console; also `""` can be used to represent an empty string. For example:
+The messages to be printed during the assembly process with the [`.PRINT`](#print-), [`.WARN`](#warn-), [`.ERROR`](#error-) and [`.FATAL`](#fatal-) instructions can optionally be enclosed in double quotes, `"`. When that's the case these messages support the same escape sequences that the strings used in expressions, once decoded these will be sent "as is" to the console; also `""` can be used to represent an empty string. For example:
 
 ```
 .PRINT1 "Hello\nworld"
@@ -355,7 +355,7 @@ world
 Printing "nice" messages
 ```
 
-⚠ Escape sequences are always processed as such in messages enclosed in double quotes for `.PRINT`, `.WARN`, `.ERROR` and `.FATAL` instructions, even if escape sequences for regular strings are disabled with `.STRESC OFF` or by passing the `--no-string-escapes` argument to Nestor80.
+⚠ Escape sequences are always processed as such in messages enclosed in double quotes for [`.PRINT`](#print-), [`.WARN`](#warn-), [`.ERROR`](#error-) and [`.FATAL`](#fatal-) instructions, even if escape sequences for regular strings are disabled with `.STRESC OFF` or by passing the `--no-string-escapes` argument to Nestor80.
 
 
 ### Expressions
@@ -401,7 +401,7 @@ The `NUL` and `TYPE` operators are special:
 
 * `TYPE` will evaluate to a fixed absolute value depending on the type of the argument passed to it:
 
-💡 The `IFB` and `IFNB` instructions can be used alternatively to the `NUL` operator in order to check for empty arguments in macros.
+💡 The [`IFB`](#ifb) and [`IFNB`](#ifnb) instructions can be used alternatively to the `NUL` operator in order to check for empty arguments in macros.
 
 Argument type |  Value
 --------------|-------
@@ -417,7 +417,7 @@ For example `TYPE FOO##` evaluates to 0x80, and `TYPE FOO` evaluates to 0x21 if 
 
 The operator precedence determines how the expression is evaluated: subexpressions involving operators of higher precedence are computed first, and operators with the same precedence are applied in the order in which they appear in the expression. For example, the expression `2+3*4` evaluates to 14 because `*` has higher precedence than `+`. Parenthesis can be used to override the default operator precedence, for example `(2+3)*4` evaluates to 20.
 
-The comparison operators (`GT`, `LT`, `GE`, `LE`, `EQ`, `NE` and equivalents) evaluate to FFFFh if the comparison is true and to zero otherwise. Also they treat the numbers as unsigned integers, this means that an expression like `x lt 0` always evaluates as zero ("false") for any value of `x`. See `IF` for an example of how to test for negative values.
+The comparison operators (`GT`, `LT`, `GE`, `LE`, `EQ`, `NE` and equivalents) evaluate to FFFFh if the comparison is true and to zero otherwise. Also they treat the numbers as unsigned integers, this means that an expression like `x lt 0` always evaluates as zero ("false") for any value of `x`. See [`IF`](#if-ift-cond) for an example of how to test for negative values.
 
 The `HIGH` and `LOW` operators evaluate to the high and low byte of a 16 bit value, respectively; for example `HIGH 1234h` is 12h and `LOW 1234h` is 34h. When applied to relocatable values, the entire 16 bit value is written to the generated relocatable file and the evaluation is performed at linking time; for example if `FOO` is a label defined as address 1234h in the code segment, and the linker is instructed to use address 8511h as the base for the code segment, then `HIGH FOO` will properly evaluate to 97h and `LOW FOO` to 45h in the target program.
 
@@ -426,7 +426,7 @@ When writing relocatable code only a subset of the existing operators can be use
 
 #### Expression interpolation 🆕
 
-The messages to be printed during the assembly process with the `.PRINT`, `.WARN`, `.ERROR` and `.FATAL` instructions support _expression interpolation_, that is, they can include expressions that will be evaluated and the result printed as part of the message.
+The messages to be printed during the assembly process with the [`.PRINT`](#print-), [`.WARN`](#warn-), [`.ERROR`](#error-) and [`.FATAL`](#fatal-) instructions support _expression interpolation_, that is, they can include expressions that will be evaluated and the result printed as part of the message.
 
 To interpolate an expression in an instruction it must be enclosed in `{` and `}`, using the following format:
 
@@ -442,7 +442,7 @@ where:
   * `X` or `H` for hexadecimal with uppercase letters.
   * `x` or `h` for hexadecimal with lowercase letters.
 
-The default radix used if none specified is 10, regardless of any radix set with the `.RADIX` instruction.
+The default radix used if none specified is 10, regardless of any radix set with the [`.RADIX`](#radix) instruction.
 
 * `size` is the minimum number of digits that will be printed. The printed value will be padded to the left with zeros if needed.
 
@@ -458,12 +458,12 @@ will print
 20+11 equals 31, or 1Fh, or 001fh, or 00011111b.
 ```
 
-⚠ All the symbols included in interpolated expressions must be known when the instruction is processed (this implies that the expressions can't contain external symbol references), otherwise an error will be thrown and the messages will be printed with the "offending" expressions unevaluated. Usually you'll want to use `.PRINT2` instead of `.PRINT` or `.PRINT1` to ensure that.
+⚠ All the symbols included in interpolated expressions must be known when the instruction is processed (this implies that the expressions can't contain external symbol references), otherwise an error will be thrown and the messages will be printed with the "offending" expressions unevaluated. Usually you'll want to use [`.PRINT2`](#print2-) instead of [`.PRINT`](#print-) or [`.PRINT1`](#print1-) to ensure that.
 
 
 #### Bare expressions
 
-MACRO-80 allows _bare expressions_ lines, these are lines that have no operand and contain just a list of comma-separated expressions; these lines are treated as `DEFB` instructions. For example the line `1,2,3,4` is equivalent to `DEFB 1,2,3,4`.
+MACRO-80 allows _bare expressions_ lines, these are lines that have no operand and contain just a list of comma-separated expressions; these lines are treated as [`DEFB`](#defb-db-defm) instructions. For example the line `1,2,3,4` is equivalent to `DEFB 1,2,3,4`.
 
 In Nestor80 bare expressions aren't supported by default 🚫, but they will be supported if the `--allow-bare-expressions` command line argument is used. You might need this to assemble old source code, but in general bare expressions shouldn't be used since they can cause confussion (for example if you intend to introduce a named macro expansion and mistype the macro name you'll get a confusing "symbol not found" error).
 
@@ -532,7 +532,7 @@ SOUND.initloop:
 In order to refer to a symbol defined outside the module there are two options:
 
 1. Prepend the symbol name with a colon, `:`
-2. Use the `ROOT` instruction to list the symbols that are to be considered as defined outside the module.
+2. Use the [`ROOT`](#root-) instruction to list the symbols that are to be considered as defined outside the module.
 
 Example:
 
@@ -645,7 +645,7 @@ update.loop:
   ret
 ```
 
-⚠ Relative labels are disabled by default. To enable the feature the `.RELAB` instruction must be used; conversely, the `.XRELAB` instruction disables the feature.
+⚠ Relative labels are disabled by default. To enable the feature the [`.RELAB`](#relab-) instruction must be used; conversely, the [`.XRELAB`](#xrelab-) instruction disables the feature.
 
 Within expressions any symbol whose name starts with a dot will be considered a relative label if the feature is enabled and at least one non-relative label has been declared previously, this can lead to errors when referencing constants:
 
@@ -664,7 +664,7 @@ ld a,.STROUT  ;Error: symbol "FOO.STROUT" not found
 In order to reference a symbol whose name starts with a dot but is not a relative label there are two options:
 
 1. Prepend the symbol name with a colon, `:`
-2. Temporarily disable the relative labels with `.XRELAB`
+2. Temporarily disable the relative labels with [`.XRELAB`](#xrelab-)
 
 Example:
 
@@ -689,8 +689,8 @@ reprint:
 
 The last non-relative symbol is forgotten (and thus symbols starting with a dot go back to being considered regular symbols) when:
 
-1. A module is entered (`MODULE` instruction) or exited (`ENDMOD` instruction).
-2. The feature is enabled with `.RELAB` or disabled with `.XRELAB` (even if it was already enabled or disabled).
+1. A module is entered ([`MODULE`](#module-) instruction) or exited ([`ENDMOD`](#endmod-) instruction).
+2. The feature is enabled with [`.RELAB`](#relab-) or disabled with [`.XRELAB`](#xrelab-) (even if it was already enabled or disabled).
 
 Example:
 
@@ -738,35 +738,35 @@ call MULUW_HL_BC
 endif
 ```
 
-Conditional assembly blocks can be nested, see `IF` for an example.
+Conditional assembly blocks can be nested, see [`IF`](#if-ift-cond) for an example.
 
 The following IF instructions are supported by Nestor80, see the reference of each instruction for the syntax details:
 
 Instruction | Argument(s) | Evaluates to true if...
 ------------|-------------|------------------------
-`IF`        | expression  | Expression evaluates to non-zero
-`IF1`       |             | Assembler is processing pass 1
-`IF2`       |             | Assembler is processing pass 2
-`IFABS` 🆕 |             | Build type is absolute
-`IFB`       | text        | Text is blank (has zero length)
-`IFCPU` 🆕  | CPU name     | CPU name is the current target CPU
-`IFDEF`     | symbol name | Symbol is defined
-`IFDIF`     | text1, text2 | text1 and text2 are different
-`IFDIFI` 🆕 | text1, text2 | text1 and text2 are different,<br/>with case-insensitive comparison
-`IFF`       | expression  | Expression evaluates to zero
-`IFIDN`     | text1, text2 | text1 and text2 are identical
-`IFIDNI` 🆕 | text1, text2 | text1 and text2 are identical,<br/>with case-insensitive comparison
-`IFNB`      | text        | Text is non-blank (has non-zero length)
-`IFNCPU` 🆕  | CPU name     | CPU name is **not** the current target CPU
-`IFNDEF`     | symbol name | Symbol is **not** defined
-`IFREL` 🆕 |             | Build type is relative
+[`IF`](#if-ift-cond)        | expression  | Expression evaluates to non-zero
+[`IF1`](#if1)       |             | Assembler is processing pass 1
+[`IF2`](#if2)       |             | Assembler is processing pass 2
+[`IFABS`](#ifabs-) 🆕 |             | Build type is absolute
+[`IFB`](#ifb)       | text        | Text is blank (has zero length)
+[`IFCPU`](#ifcpu-) 🆕  | CPU name     | CPU name is the current target CPU
+[`IFDEF`](#ifdef)     | symbol name | Symbol is defined
+[`IFDIF`](#ifdif)     | text1, text2 | text1 and text2 are different
+[`IFDIFI`](#ifdifi-) 🆕 | text1, text2 | text1 and text2 are different,<br/>with case-insensitive comparison
+[`IFF`](#iff-ife)       | expression  | Expression evaluates to zero
+[`IFIDN`](#ifidn)     | text1, text2 | text1 and text2 are identical
+[`IFIDNI`](#ifidni-) 🆕 | text1, text2 | text1 and text2 are identical,<br/>with case-insensitive comparison
+[`IFNB`](#ifnb)      | text        | Text is non-blank (has non-zero length)
+[`IFNCPU`](#ifncpu) 🆕  | CPU name     | CPU name is **not** the current target CPU
+[`IFNDEF`](#ifndef)     | symbol name | Symbol is **not** defined
+[`IFREL`](#ifrel--) 🆕 |             | Build type is relative
 
 
 ## Macros
 
 Macros are a powerful mechanism for reusing blocks of code in different parts of the same source file, possibly with changes based on arguments.
 
-A macro needs to first be defined, then expanded. A _macro definition_ consists of an opening instruction (possibly containing arguments), the macro body lines, and a closing `ENDM` instruction. A _macro expansion_ is an actual usage of the macro, where the macro body lines are modified and/or repeated according to the macro definition and the passed arguments.
+A macro needs to first be defined, then expanded. A _macro definition_ consists of an opening instruction (possibly containing arguments), the macro body lines, and a closing [`ENDM`](#endm) instruction. A _macro expansion_ is an actual usage of the macro, where the macro body lines are modified and/or repeated according to the macro definition and the passed arguments.
 
 There are two main types of macros:
 
@@ -776,7 +776,7 @@ There are two main types of macros:
 
 ### Repeat macro with count
 
-The _repeat macro with count_ is the simplest macro type: it just repeats the body lines the number of times that is passed as argument. The opening instruction is `REPT`.
+The _repeat macro with count_ is the simplest macro type: it just repeats the body lines the number of times that is passed as argument. The opening instruction is [`REPT`](#rept).
 
 Example:
 
@@ -801,7 +801,7 @@ db 2
 
 ### Repeat macro with arguments
 
-The _repeat macro with arguments_ macro (named "indefinite repeat" in the MACRO-80 documentation) accepts a placeholder and a list of comma-separated arguments in the opening instruction (`IRP`), and generates one repetition per argument in which the placeholder is replaced by the argument.
+The _repeat macro with arguments_ macro (named "indefinite repeat" in the MACRO-80 documentation) accepts a placeholder and a list of comma-separated arguments in the opening instruction ([`IRP`](#irp)), and generates one repetition per argument in which the placeholder is replaced by the argument.
 
 Example:
 
@@ -831,7 +831,7 @@ The rules for the arguments are as follows:
 
 ### Repeat macro with characters
 
-The _repeat macro with characters_ macro (named "indefinite repeat characters" in the MACRO-80 documentation) accepts a placeholder and a sequence of characters in the opening instruction (`IRPC`), and generates one repetition per character in which the placeholder is replaced by the argument.
+The _repeat macro with characters_ macro (named "indefinite repeat characters" in the MACRO-80 documentation) accepts a placeholder and a sequence of characters in the opening instruction ([`IRPC`](#irpc)), and generates one repetition per character in which the placeholder is replaced by the argument.
 
 Example equivalent to the one given for "Repeat macro with arguments":
 
@@ -846,7 +846,7 @@ The arguments list can be optionally delimited with angle brackets. This is need
 
 ### Repeat macro with string 🆕
 
-The _repeat macro with string_ macro uses the new `IRPS` opening instruction which accepts a placeholder and a string, and generates one repetition per character of the string in which the placeholder is replaced by the argument. This is a more flexible version of "Repeat macro with characters", since there are no restrictions for the printable characters that the string can contain and (to some extent) it accepts escape sequences. For example `IRPS x,"\x41\x42\x43"` would be equivalent to `IRPC x,ABC`.
+The _repeat macro with string_ macro uses the new [`IRPS`](#irps-) opening instruction which accepts a placeholder and a string, and generates one repetition per character of the string in which the placeholder is replaced by the argument. This is a more flexible version of "Repeat macro with characters", since there are no restrictions for the printable characters that the string can contain and (to some extent) it accepts escape sequences. For example `IRPS x,"\x41\x42\x43"` would be equivalent to `IRPC x,ABC`.
 
 ⚠ Not all escape sequences are supported. For example `\r` will insert a literal line break at the point where the placeholder is encountered, and this will cause either errors or the line to not generate any output.
 
@@ -912,7 +912,7 @@ And specifically for named macros:
 * If less arguments are passed to the macro expansion than placeholders were defined in the macro definition, the missing arguments are considered to be empty. For example, if the macro definition is `FOO: MACRO X,Y,Z` and the macro is expanded as `FOO 1,2`, then `X` will get replaced with `1`, `Y` will get replaced with `2`, and `Z` will get replaced with an empty string.
 * If more arguments are passed to the macro expansion than placeholders were defined in the macro definition, the extra arguments will be ignored. For example, if the macro definition is `FOO: MACRO X,Y,Z`, the macro expansion `FOO 1,2,3,4,5` will be equivalent to `FOO 1,2,3`.
 
-💡 The `IFB`, `IFNB`, `IFIDN`, `IFIDNI`, `IFDIF` and `IFDIFI` instructions and the `NUL` operator are useful to check for empty arguments and for exact argument values.
+💡 The [`IFB`](#ifb), [`IFNB`](#ifnb), [`IFIDN`](#ifidn), [`IFIDNI`](#ifidni-), [`IFDIF`](#ifdif) and [`IFDIFI`](#ifdifi-) instructions and the `NUL` operator are useful to check for empty arguments and for exact argument values.
 
 Here's an example that illustrates all the replacement rules. Macro definition:
 
@@ -1107,18 +1107,18 @@ where:
 
 * `<form feed character>` is a `\f` character (0Ch in ASCII).
 * `<version>` is the version number of the Nestor80 program that generated the listing.
-* `<title>` is the last listing title that was set with a `TITLE` instruction, by default it's empty.
-* `<subtitle>` is the last listing title that was set with a `SUBTTL` instruction, by default it's empty.
+* `<title>` is the last listing title that was set with a [`TITLE`](#title) instruction, by default it's empty.
+* `<subtitle>` is the last listing title that was set with a [`SUBTTL`](#subttl-title) instruction, by default it's empty.
 * `<page>` is the current main page number, which starts at 1.
 * `<subpage>` is the current subpage number, which starts at 0 (it's not printed when it's 0).
 * `<listing line>` is the source code line being listed, possibly augmented with flags and an address.
 
 Page numbers are updated for each new page as follows:
 
-* The main page number is increased (and the subpage number goes back to 0) when a form feed (`\f` character 0Ch in ASCII) is found in the source code, and when a `MAINPAGE` instruction is found.
-* The secondary page number is increased when a page has been completed, and also when the `PAGE` instruction is found.
+* The main page number is increased (and the subpage number goes back to 0) when a form feed (`\f` character 0Ch in ASCII) is found in the source code, and when a [`MAINPAGE`](#mainpage-) instruction is found.
+* The secondary page number is increased when a page has been completed, and also when the [`PAGE`](#page-subpage--eject) instruction is found.
 
-The default page size is 50 lines, this value can be changed with the `PAGE` instruction.
+The default page size is 50 lines, this value can be changed with the [`PAGE`](#page-subpage--eject) instruction.
 
 The format of a listing line is:
 
@@ -1141,13 +1141,13 @@ where:
 * `!`: address in a COMMON block.
 * `*`: address that is calculated at linking time (e.g. external symbol references).
 
-By default the `<bytes>` area will only display four bytes, and any remaining bytes (e.g. for long `DEFB` instructions) will appear below in extra lines, without source line. The amount of bytes per line can be configured 🆕 with the Nestor80 argument `--listing-bytes-per-line`.
+By default the `<bytes>` area will only display four bytes, and any remaining bytes (e.g. for long [`DEFB`](#defb-db-defm) instructions) will appear below in extra lines, without source line. The amount of bytes per line can be configured 🆕 with the Nestor80 argument `--listing-bytes-per-line`.
 
 The possible flags are:
 
 * `+` if the line is part of a macro expansion.
 * `C` if the line is part of file included from the main source file.
-* `C<depth>` 🆕 if the line is part of file included from another included file. `<depth>` indicates how many nested `INCLUDE` instructions have been executed.
+* `C<depth>` 🆕 if the line is part of file included from another included file. `<depth>` indicates how many nested [`INCLUDE`](#include-include-maclib-) instructions have been executed.
 
 
 ### Symbols list
@@ -1161,7 +1161,7 @@ By default all symbols and macro names in the symbols list will keep their origi
 
 ### Temporarily stopping the listing
 
-The `.XLIST` instruction will temporarily suspend the listing, that is, source lines following the instruction will not be included in the listing until either the end of the source line is reached or a `.LIST` instruction (which re-enables the listing) is found.
+The [`.XLIST`](#xlist) instruction will temporarily suspend the listing, that is, source lines following the instruction will not be included in the listing until either the end of the source line is reached or a [`.LIST`](#list) instruction (which re-enables the listing) is found.
 
 
 ### Suppressing false conditional blocks in listings
@@ -1169,18 +1169,18 @@ The `.XLIST` instruction will temporarily suspend the listing, that is, source l
 By default conditional blocks that evaluate to false will be included in listings, but this is configurable. The following mechanisms are available:
 
 * The `--no-listing-false-conditionals` Nestor80 argument will set the initial state to "suppress false conditional blocks in the listing".
-* The `.LFCOND` instruction will insruct Nestor80 to include false conditional blocks in listings.
-* The `.SFCOND` instruction will insruct Nestor80 to suppress false conditional blocks from listings.
-* The `.TFCOND` instruction will insruct Nestor80 to toggle (invert) the inclusion or supression of false conditional blocks in listings, **but** based on the initial state or on the state set by the previous `.TFCOND` instruction; previous executions of `.LFCOND` and `.SFCOND` are **not** taken in account.
+* The [`.LFCOND`](#lfcond) instruction will insruct Nestor80 to include false conditional blocks in listings.
+* The [`.SFCOND`](#sfcond) instruction will insruct Nestor80 to suppress false conditional blocks from listings.
+* The [`.TFCOND`](#tfcond) instruction will insruct Nestor80 to toggle (invert) the inclusion or supression of false conditional blocks in listings, **but** based on the initial state or on the state set by the previous [`.TFCOND`](#tfcond) instruction; previous executions of [`.LFCOND`](#lfcond) and [`.SFCOND`](#sfcond) are **not** taken in account.
 
 
 ### Suppressing macro expansions in listings
 
-By default, when Nestor80 is listing a macro expansion it will only include the source lines that generate output (so it won't include comment-only lines or any lines that aren't CPU instructions or `DEFB`, `DEFS` etc lines). The following instructions are available to configure this behavior:
+By default, when Nestor80 is listing a macro expansion it will only include the source lines that generate output (so it won't include comment-only lines or any lines that aren't CPU instructions or [`DEFB`](#defb-db-defm), [`DEFS`](#defs-ds) etc lines). The following instructions are available to configure this behavior:
 
-* `.LALL` instructs Nestor80 to include all macro expansion lines in listings.
-* `.SALL` instructs Nestor80 to not include macro expansions at all in listings.
-* `.XALL` instructs Nestor80 to go back to the default behavior (list only macro expansion lines that generate output).
+* [`.LALL`](#lall) instructs Nestor80 to include all macro expansion lines in listings.
+* [`.SALL`](#sall) instructs Nestor80 to not include macro expansions at all in listings.
+* [`.XALL`](#xall) instructs Nestor80 to go back to the default behavior (list only macro expansion lines that generate output).
 
 
 ### Additional Nestor80 arguments for listings
@@ -1200,7 +1200,7 @@ This section lists all the assembler instructions supported by Nestor80. Any ins
 
 Some instructions have aliases. In most cases these come inherited from MACRO-80, which in turn implemented them for compatibility with even older assemblers. Except where otherwise stated, the syntax for the aliases is exactly the same as the one for the "canonical" instruction.
 
-Instruction arguments are specified using the standard notation `<name>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example `IFB`.
+Instruction arguments are specified using the standard notation `<name>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example [`IFB`](#ifb).
 
 
 ### .COMMENT
@@ -1268,7 +1268,7 @@ In MACRO-80 this instruction enabled the inclusion of cross-reference informatio
 
 _Syntax:_ `.DEPHASE`
 
-Marks the end of a phased code block. See `.PHASE`.
+Marks the end of a phased code block. See [`.PHASE`](#phase).
 
 
 ### .ERROR 🆕
@@ -1293,28 +1293,28 @@ A fatal error will terminate the assembly process immediately. See also "Strings
 
 _Syntax:_ `.LALL`
 
-Instructs Nestor80 to include the complete macro text for expanded macros in listings following the instruction. The default initial condition (also set by `.XALL`) is to include only the source lines that produce any output in the target file (assembler instructions and `DEFB`, `DEFW` etc). See `.XALL`, `.SALL`, "Macros", "Listings".
+Instructs Nestor80 to include the complete macro text for expanded macros in listings following the instruction. The default initial condition (also set by [`.XALL`](#xall)) is to include only the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc). See [`.XALL`](#xall), [`.SALL`](#sall), "Macros", "Listings".
 
 
 ### .LFCOND
 
 _Syntax:_ `.LFCOND`
 
-Instructs Nestor80 to include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. This is the default initial condition unless a `--no-listing-false-conditionals` argument is supplied to Nestor80. See also `.LFCOND`, `.TFCOND`, "Conditional blocks", "Listings".
+Instructs Nestor80 to include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. This is the default initial condition unless a `--no-listing-false-conditionals` argument is supplied to Nestor80. See also [`.LFCOND`](#lfcond), [`.TFCOND`](#tfcond), "Conditional blocks", "Listings".
 
 
 ### .LIST
 
 _Syntax:_ `.LIST`
 
-Instructs Nestor80 to include all the source code text following the instruction. This is the default initial condition when Nestor80 is instructed to generate a listing file with the `--listing-file` argument. See also `.XLIST`, "Listings".
+Instructs Nestor80 to include all the source code text following the instruction. This is the default initial condition when Nestor80 is instructed to generate a listing file with the `--listing-file` argument. See also [`.XLIST`](#xlist), "Listings".
 
 
 ### .PHASE
 
 _Syntax:_ `.PHASE <address>`
 
-Starts a phased code block. A _phased code block_ is a set of instructions that are intended to be run at a different memory address (indicated by the `<address>` argument) than the one dictated by the current location pointer. `.DEPHASE` is used to mark the end of a phased code block.
+Starts a phased code block. A _phased code block_ is a set of instructions that are intended to be run at a different memory address (indicated by the `<address>` argument) than the one dictated by the current location pointer. [`.DEPHASE`](#dephase) is used to mark the end of a phased code block.
 
 For example, assume that you have the following code in ROM starting at address 4000h and you have RAM starting at address 8000h. Your ROM is banked, with the bank number selected via Z80 port 10h. This is the code that you could use to calculate the 1 byte checksum of a given bank, together with the addresses and output generated for reference:
 
@@ -1389,7 +1389,7 @@ Although the starting address of a phased block will normally be an absolute add
 🚫 There are two restrictions for phased blocks that weren't present in MACRO-80:
 
 1. The value of `<address>` must be known by the time the `.PHASE` statement is reached (it can't be an expression containing a symbol that is defined later in code).
-2. Segment change instructions (`ASEG`, `CSEG`, `DSEG`, `COMMON`) aren't allowed inside a phased block.
+2. Segment change instructions ([`ASEG`](#aseg-), [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-)) aren't allowed inside a phased block.
 
 The second one is something that doesn't seem to be supported by MACRO-80 anyway: even though no errors are emitted, the location counter gets an incorrect value after a segment change instruction inside a phased block.
 
@@ -1400,21 +1400,21 @@ _Syntax:_ `.PRINT ["]<text>["]`
 
 Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The message supports expression interpolation.
 
-The text will be printed in both pass 1 and pass 2. Normally you'll want to print the text only in one of the passes, so you should either wrap the `.PRINT` instruction in an `IF1` or `IF2` block, or use the `.PRINT1` or `.PRINT2` instruction instead. See "Passes", "Strings in messages for the assembler console".
+The text will be printed in both pass 1 and pass 2. Normally you'll want to print the text only in one of the passes, so you should either wrap the `.PRINT` instruction in an [`IF1`](#if1) or [`IF2`](#if2) block, or use the [`.PRINT1`](#print1-) or [`.PRINT2`](#print2-) instruction instead. See "Passes", "Strings in messages for the assembler console".
 
 
 ### .PRINT1 🆕
 
 _Syntax:_ `.PRINT1 ["]<text>["]`
 
-Like `.PRINT`, but only prints the text in pass 1. See "Passes".
+Like [`.PRINT`](#print-), but only prints the text in pass 1. See "Passes".
 
 
 ### .PRINT2 🆕
 
 _Syntax:_ `.PRINT1 ["]<text>["]`
 
-Like `.PRINT`, but only prints the text in pass 2. See "Passes".
+Like [`.PRINT`](#print-), but only prints the text in pass 2. See "Passes".
 
 
 ### .PRINTX
@@ -1423,7 +1423,7 @@ _Syntax:_ `.PRINTX <delimiter><text>[<delimiter>]`
 
 Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The first character of the text is considered a delimiter, and the text is printed until either the delimiter is found again or the end of the line is found (the delimiters themselves are printed too). For example `.PRINTX /Foo` prints `/Foo`, and `.PRINTX /Foo/bar` prints `/Foo/`.
 
-This instruction is provided for compatibility with MACRO-80. New programs should use `.PRINT`, `.PRINT1` or `.PRINT2` instead, which don't need a delimiter and support expression interpolation and escape sequences in the text.
+This instruction is provided for compatibility with MACRO-80. New programs should use [`.PRINT`](#print-), [`.PRINT1`](#print1-) or [`.PRINT2`](#print2-) instead, which don't need a delimiter and support expression interpolation and escape sequences in the text.
 
 
 ### .RADIX
@@ -1449,7 +1449,7 @@ db 1010    ;10
 
 _Syntax:_ `.RELAB`
 
-Enables the relative labels feature. See also `.XRELAB`.
+Enables the relative labels feature. See also [`.XRELAB`](#xrelab-).
 
 
 ### .REQUEST ®
@@ -1463,21 +1463,21 @@ Defines a list of files in which the linker will search for any globals that rem
 
 _Syntax:_ `.SALL`
 
-Instructs Nestor80 to not include macro expansions in listings following the instruction. The default initial condition (also set by `.XALL`) is to include only the source lines that produce any output in the target file (assembler instructions and `DEFB`, `DEFW` etc). See `.XALL`, `.LALL`, "Macros", "Listings".
+Instructs Nestor80 to not include macro expansions in listings following the instruction. The default initial condition (also set by [`.XALL`](#xall)) is to include only the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc). See [`.XALL`](#xall), [`.LALL`](#lall), "Macros", "Listings".
 
 
 ### .SFCOND
 
 _Syntax:_ `.SFCOND`
 
-Instructs Nestor80 to **not** include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. See also `.LFCOND`, `.TFCOND`, "Conditional blocks", "Listings".
+Instructs Nestor80 to **not** include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. See also [`.LFCOND`](#lfcond), [`.TFCOND`](#tfcond), "Conditional blocks", "Listings".
 
 
 ### .STRENC 🆕
 
 _Syntax:_ `.STRENC <encoding name>|<encoding page>|default`
 
-Sets the character encoding to be used to transform strings to sequences of bytes, typically for the `DEFB` insruction.
+Sets the character encoding to be used to transform strings to sequences of bytes, typically for the [`DEFB`](#defb-db-defm) insruction.
 
 The encoding name or page must be one of the encodings supported by the system where Nestor80 is running. Running Nestor80 with the `--list-encodings` argument will show a list of the available encodings; each encoding has an unique name and an unique page number and either of the two can be used to identify the encoding.
 
@@ -1505,9 +1505,9 @@ _Syntax:_ `.TFCOND`
 
 Instructs Nestor80 to toggle the inclusion of conditional blocks that evaluate as false in listings, from on to off or the other way around, for all the matching blocks following the instruction. 
 
-The state that gets toggled is the one that was set by the previous instance of `.TFCOND` (any state change performed with `.LFCOND` or `.SFCOND` is ignored). The initial state is "on" unless a `--no-listing-false-conditionals` argument is passed to Nestor80.
+The state that gets toggled is the one that was set by the previous instance of `.TFCOND` (any state change performed with [`.LFCOND`](#lfcond) or [`.SFCOND`](#sfcond) is ignored). The initial state is "on" unless a `--no-listing-false-conditionals` argument is passed to Nestor80.
 
-See also `.LFCOND`, `.SFCOND`, "Conditional blocks", "Listings".
+See also [`.LFCOND`](#lfcond), [`.SFCOND`](#sfcond), "Conditional blocks", "Listings".
 
 
 ### .WARN 🆕
@@ -1516,35 +1516,35 @@ _Syntax:_ `.WARN ["]<text>["]`
 
 Emits an assembly warning with the specified text. The text supports expression interpolation.
 
-The warning will be emitted twice, once in pass 1 and once in pass2. If that's undesirable you can enclose the instruction in an `IF1` or `IF2` block. See "Passes", "Strings in messages for the assembler console".
+The warning will be emitted twice, once in pass 1 and once in pass2. If that's undesirable you can enclose the instruction in an [`IF1`](#if1) or [`IF2`](#if2) block. See "Passes", "Strings in messages for the assembler console".
 
 
 ### .XALL
 
 _Syntax:_ `.XALL`
 
-Instructs Nestor80 to include macro expansions in listings following the instruction, but only including the source lines that produce any output in the target file (assembler instructions and `DEFB`, `DEFW` etc); this is the default state for macro expansions in listings. See `.XALL`, `.LALL`, "Macros", "Listings".
+Instructs Nestor80 to include macro expansions in listings following the instruction, but only including the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc); this is the default state for macro expansions in listings. See [`.SALL`](#sall), [`.LALL`](#lall), "Macros", "Listings".
 
 
 ### .XCREF "🚫"
 
 _Syntax:_ `.XCREF` 
 
-In MACRO-80 this instruction disabled the inclusion of cross-reference information when generating a listing file (which had been enabled with `.CREF`). Nestor80 doesn't implement cross-reference information generation and thus this instruction is a no-op.
+In MACRO-80 this instruction disabled the inclusion of cross-reference information when generating a listing file (which had been enabled with [`.CREF`](#cref-)). Nestor80 doesn't implement cross-reference information generation and thus this instruction is a no-op.
 
 
 ### .XLIST
 
 _Syntax:_ `.XLIST`
 
-Instructs Nestor80 to suppress the inclusion in listings of the source code text that follows the instruction, until either the end of the file (or an `END` instruction) is reached or a `.LIST` instruction is encountered. See also "Listings".
+Instructs Nestor80 to suppress the inclusion in listings of the source code text that follows the instruction, until either the end of the file (or an [`END`](#end) instruction) is reached or a [`.LIST`](#list) instruction is encountered. See also "Listings".
 
 
 ### .XRELAB 🆕
 
 _Syntax:_ `.XRELAB`
 
-Disables the relative labels feature. See also `.RELAB`.
+Disables the relative labels feature. See also [`.RELAB`](#relab-).
 
 
 ### .Z80
@@ -1558,7 +1558,7 @@ Sets the Z80 as the current target CPU. This instruction is provided for compati
 
 _Syntax:_ `ASEG`
 
-Switches to the absolute segment and sets the location counter to the value it had the last time that segment was switched off with `CSEG`, `DSEG` or `COMMON` (or to zero, if it's the first time this instruction is used).
+Switches to the absolute segment and sets the location counter to the value it had the last time that segment was switched off with [`CSEG`](#cseg-), [`DSEG`](#dseg-) or [`COMMON`](#common-) (or to zero, if it's the first time this instruction is used).
 
 Example:
 
@@ -1636,7 +1636,7 @@ db 2
 
 _Syntax:_ `CSEG`
 
-Switches to the code segment and sets the location counter to the value it had the last time that segment was switched off with `CESG`, `DSEG` or `COMMON`. The code segment is switched on with the location counter set to zero at the start of the source code processing.
+Switches to the code segment and sets the location counter to the value it had the last time that segment was switched off with `CESG`, [`DSEG`](#dseg-) or [`COMMON`](#common-). The code segment is switched on with the location counter set to zero at the start of the source code processing.
 
 Example:
 
@@ -1758,7 +1758,7 @@ DEFB "Hello",0
 
 _Syntax:_ `DSEG`
 
-Switches to the data segment and sets the location counter to the value it had the last time that segment was switched off with `CSEG`, `ASEG` or `COMMON` (or to zero, if it's the first time this instruction is used).
+Switches to the data segment and sets the location counter to the value it had the last time that segment was switched off with [`CSEG`](#cseg-), [`ASEG`](#aseg-) or [`COMMON`](#common-) (or to zero, if it's the first time this instruction is used).
 
 Example:
 
@@ -1880,7 +1880,7 @@ ret
 
 _Syntax:_ `EXITM`
 
-This instruction is intended to be used inside macro definitions. It forces the macro expansion to terminate immediately, discarding any remaining repetition (unlike `CONTM` which starts over the next repetition, if any). See "Macros"
+This instruction is intended to be used inside macro definitions. It forces the macro expansion to terminate immediately, discarding any remaining repetition (unlike [`CONTM`](#contm-) which starts over the next repetition, if any). See "Macros"
 
 Example:
 
@@ -1917,7 +1917,7 @@ EXTRN FOO
 call FOO
 ```
 
-See also `PUBLIC`.
+See also [`PUBLIC`](#public-entry-global-).
 
 
 ### IF (IFT, COND)
@@ -1926,7 +1926,7 @@ _Syntax:_ `IF <expression>`
 
 _Aliases:_ `IFT`, `COND`
 
-Starts a conditional assembly block in which the true condition is that `<expression>` evaluates to non-zero. The opposite instruction is `IFF`.
+Starts a conditional assembly block in which the true condition is that `<expression>` evaluates to non-zero. The opposite instruction is [`IFF`](#iff-ife).
 
 This instruction is typically used in macros and in combination with comparison operators. Example:
 
@@ -1981,7 +1981,7 @@ Starts a conditional assembly block in which the true condition is that the asse
 
 _Syntax:_ `IFABS`
 
-Starts a conditional assembly block in which the true condition is that the build type is absolute. The opposite instruction is `IFREL`. See "Absolute and relocatable code", "Conditional assembly".
+Starts a conditional assembly block in which the true condition is that the build type is absolute. The opposite instruction is [`IFREL`](#ifrel--). See "Absolute and relocatable code", "Conditional assembly".
 
 ⚠ If no build type is explicitly selected with the `--build-type` argument, before the build type is automatically selected both `IFABS` and `IFREL` will evaluate to false.
 
@@ -1990,7 +1990,7 @@ Starts a conditional assembly block in which the true condition is that the buil
 
 _Syntax:_ `IFB "<"<text>">"`
 
-Starts a conditional assembly block in which the true condition is that `<text>` is blank (has a zero length, including spaces). `<text>` must be surrounderd by angle brackets. The opposite instruction is `IFNB`.
+Starts a conditional assembly block in which the true condition is that `<text>` is blank (has a zero length, including spaces). `<text>` must be surrounderd by angle brackets. The opposite instruction is [`IFNB`](#ifnb).
 
 `IFB` is typically used in macros in order to detect if a given argument is supplied. Example:
 
@@ -2017,7 +2017,7 @@ See "Conditional assembly", "Macros".
 
 _Syntax:_ `IFCPU <cpu name>`
 
-Starts a conditional assembly block in which the true condition is that the current CPU is the one specified. The opposite instruction is `IFNCPU`. Example:
+Starts a conditional assembly block in which the true condition is that the current CPU is the one specified. The opposite instruction is [`IFNCPU`](#ifncpu). Example:
 
 ```
 ifcpu R800
@@ -2034,7 +2034,7 @@ endif
 
 _Syntax:_ `IFDEF <symbol>`
 
-Starts a conditional assembly block in which the true condition is that `<symbol>` is defined when the instruction is encountered. This may be useful in combination with the `--define-symbols` Nestor80 argument to externally alter how the code is assembled. The opposite instruction is `IFNDEF`.
+Starts a conditional assembly block in which the true condition is that `<symbol>` is defined when the instruction is encountered. This may be useful in combination with the `--define-symbols` Nestor80 argument to externally alter how the code is assembled. The opposite instruction is [`IFNDEF`](#ifndef).
 
 ⚠ Keep in mind that a symbol that gets defined in code is undefined before it's found in pass 1, but it's already defined when pass 2 starts:
 
@@ -2086,7 +2086,7 @@ See "Passes", "Conditional assembly".
 
 _Syntax:_ `IFDIF "<"<text1>">","<"<text2>">"`
 
-This instruction is the opposite of `IFIDN`: the true condition is that `<text1>` is **not** identical to `<text2>`, including any spaces.
+This instruction is the opposite of [`IFIDN`](#ifidn): the true condition is that `<text1>` is **not** identical to `<text2>`, including any spaces.
 
 See "Conditional assembly".
 
@@ -2095,7 +2095,7 @@ See "Conditional assembly".
 
 _Syntax:_ `IFDIFI "<"<text1>">","<"<text2>">"`
 
-This instruction is the opposite of `IFIDNI`: the true condition is that `<text1>` is **not** identical to `<text2>`, including any spaces, with the comparison being done in a case-insensitive way.
+This instruction is the opposite of [`IFIDNI`](#ifidni-): the true condition is that `<text1>` is **not** identical to `<text2>`, including any spaces, with the comparison being done in a case-insensitive way.
 
 See "Conditional assembly".
 
@@ -2106,7 +2106,7 @@ _Syntax:_ `IFF <expression>`
 
 _Aliases:_ `IFE`
 
-This instruction is the opposite of `IF`: the true condition is that `<expression>` evaluates to zero.
+This instruction is the opposite of [`IF`](#if-ift-cond): the true condition is that `<expression>` evaluates to zero.
 
 See "Conditional assembly".
 
@@ -2150,7 +2150,7 @@ See "Conditional assembly".
 
 _Syntax:_ `IFIDNI "<"<text1>">","<"<text2>">"`
 
-This instruction is equivalent to `IFIDN`, except that the comparison of `<text1>` and `<text2>` is done in a case-insensitive way. The opposite instruction is `IFDIFFI`.
+This instruction is equivalent to [`IFIDN`](#ifidn), except that the comparison of `<text1>` and `<text2>` is done in a case-insensitive way. The opposite instruction is `IFDIFI`.
 
 Example:
 
@@ -2185,7 +2185,7 @@ See "Conditional assembly".
 
 _Syntax:_ `IFNB "<"<text>">"`
 
-This instruction is the opposite of `IFB`: the true condition is that `<text>` is **not** blank (it has a non-zero length, including spaces).
+This instruction is the opposite of [`IFB`](#ifb): the true condition is that `<text>` is **not** blank (it has a non-zero length, including spaces).
 
 See "Conditional assembly".
 
@@ -2194,7 +2194,7 @@ See "Conditional assembly".
 
 _Syntax:_ `IFNCPU <cpu name>`
 
-This instruction is the opposite of `IFCPU`: the true condition is that the current CPU is **not** the specified one.
+This instruction is the opposite of [`IFCPU`](#ifcpu-): the true condition is that the current CPU is **not** the specified one.
 
 ⚠ A non-existing CPU name passed as argument will evaluate to true and not throw any error.
 
@@ -2205,7 +2205,7 @@ See "Conditional assembly".
 
 _Syntax:_ `IFNDEF <symbol>`
 
-This instruction is the opposite of `IFDEF`: the true condition is that the symbol is **not** defined when the instruction is encountered.
+This instruction is the opposite of [`IFDEF`](#ifdef): the true condition is that the symbol is **not** defined when the instruction is encountered.
 
 See "Conditional assembly".
 
@@ -2214,7 +2214,7 @@ See "Conditional assembly".
 
 _Syntax:_ `IFREL <symbol>`
 
-This instruction is the opposite of `IFABS`: the true condition is that the build type is relative. See "Absolute and relocatable code", "Conditional assembly".
+This instruction is the opposite of [`IFABS`](#ifabs-): the true condition is that the build type is relative. See "Absolute and relocatable code", "Conditional assembly".
 
 ⚠ If no build type is explicitly selected with the `--build-type` argument, before the build type is automatically selected both `IFABS` and `IFREL` will evaluate to false.
 
@@ -2381,7 +2381,7 @@ _Syntax:_ `NAME('<program name>')`
 
 Specifies the program name, which will be set as such in the generated relocatable file. For compatibility with LINK-80 the program name must be composed of ASCII characters, and only the first six characters will be used.
 
-If no program name is explicitly supplied, the program name is taken from the last `TITLE` instruction used. If neither `NAME` nor `TITLE` instructions are present in the code, the program name is taken from the source code file name.
+If no program name is explicitly supplied, the program name is taken from the last [`TITLE`](#title) instruction used. If neither `NAME` nor `TITLE` instructions are present in the code, the program name is taken from the source code file name.
 
 This instruction has no effect when generating absolute code.
 
@@ -2405,7 +2405,7 @@ db 4,5,6
 
 The contents of the generated output file will be: 4,5,6,0,0,1,2,3.
 
-If the `--org-as-phase` argument is passed to Nestor80 all the `ORG` statements will be treated as `.PHASE` statements, this means that `ORG`s will be taken in account to assign the appropriate values to labels, but not to decide the placement of the output in the output file: all the file contents will be generated sequentially. In the previous example, the generated file output with `--org-as-phase` would be simply 1,2,3,4,5,6.
+If the `--org-as-phase` argument is passed to Nestor80 all the `ORG` statements will be treated as [`.PHASE`](#phase) statements, this means that `ORG`s will be taken in account to assign the appropriate values to labels, but not to decide the placement of the output in the output file: all the file contents will be generated sequentially. In the previous example, the generated file output with `--org-as-phase` would be simply 1,2,3,4,5,6.
 
 When assembling relocatable code any `ORG` statements found inside the absolute segment refer to absolute addresses, but addresses for `ORG` statements found in the code segment, the data segment or a COMMON block are relative to where these segments will end up being assembled in the final program. For example:
 
@@ -2430,7 +2430,7 @@ _Aliases:_ `SUBPAGE`, `$EJECT`
 
 Forces a subpage change when generating a listing. Additionally, if `<new page size>` is supplied this value becomes the new listing page size in text lines. The default page size is 50, the minimum is 10, and there's no maximum ✨ (the maximum was 255 in MACRO-80).
 
-The `SUBPAGE` alias is introduced in Nestor80 because the word "PAGE" doesn't clearly convey the fact that what is changing is the _sub_page number. It's recommended to combine it with the new `MAINPAGE` instruction if both main page changes and sub page changes are required for listings.
+The `SUBPAGE` alias is introduced in Nestor80 because the word "PAGE" doesn't clearly convey the fact that what is changing is the _sub_page number. It's recommended to combine it with the new [`MAINPAGE`](#mainpage-) instruction if both main page changes and sub page changes are required for listings.
 
 See "Listings".
 
@@ -2441,7 +2441,7 @@ _Syntax:_ `PUBLIC <symbol>[,<symbol>[,...]]`
 
 _Aliases:_ `ENTRY`, `GLOBAL`
 
-Defines one or more symbol names as public, that is, they will be exposed to other relocatable programs (that can reference them as external) during the linking process. A label is also considered public if its name is followed by `::` when it's declared; for declaring other symbols (e.g. constants) as public the only option is to use the `PUBLIC` instruction.
+Defines one or more symbol names as public, that is, they will be exposed to other relocatable programs (that can reference them as external) during the linking process. A label is also considered public if its name is followed by `::` when it's declared; for declaring other symbols (e.g. constants) as public the only option is to use the [`PUBLIC`](#public-entry-global-) instruction.
 
 Example:
 
@@ -2454,7 +2454,7 @@ PUBLIC FOO
 FOO:
 ```
 
-See also `EXTRN`.
+See also [`EXTRN`](#extrn-ext-external-).
 
 
 ### REPT
@@ -2499,7 +2499,7 @@ _Syntax:_ `SUBTTL <text>`
 
 _Aliases:_ `$TITLE`
 
-Sets the subtitle to be used in the heading of each page of a listing (as the second line of text, right after the title). There's no limit for the length of `<text>` ✨ (in MACRO-80 the text gets truncated to the first 60 characters). See `TITLE`, "Listings".
+Sets the subtitle to be used in the heading of each page of a listing (as the second line of text, right after the title). There's no limit for the length of `<text>` ✨ (in MACRO-80 the text gets truncated to the first 60 characters). See [`TITLE`](#title), "Listings".
 
 Note: the syntax for the `$TITLE` alias is `$TITLE('<text>')`.
 
@@ -2510,6 +2510,6 @@ _Syntax:_ `TITLE <text>`
 
 Sets the title to be used in the heading of each page of a listing, as the very first line of text (together with the Nestor80 version number).
 
-The argument given to `TITLE` will also be used, after being truncated to 6 characters, as the program name when generating a relocatable file, unless an explicit program name is supplied with `NAME`. If neither a program name nor a listing title are present in the source code, the program name will be composed from the source code file name.
+The argument given to `TITLE` will also be used, after being truncated to 6 characters, as the program name when generating a relocatable file, unless an explicit program name is supplied with [`NAME`](#name-). If neither a program name nor a listing title are present in the source code, the program name will be composed from the source code file name.
 
-See `SUBTTL`, "Listings".
+See [`SUBTTL`](#subttl-title), "Listings".
