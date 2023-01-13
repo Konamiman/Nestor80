@@ -833,7 +833,7 @@ The rules for the arguments are as follows:
 
 The _repeat macro with characters_ macro (named "indefinite repeat characters" in the MACRO-80 documentation) accepts a placeholder and a sequence of characters in the opening instruction ([`IRPC`](#irpc)), and generates one repetition per character in which the placeholder is replaced by the argument.
 
-Example equivalent to the one given for "Repeat macro with arguments":
+Example equivalent to the one given for ["Repeat macro with arguments"](#repeat-macro-with-arguments):
 
 ```
 irpc x,123
@@ -846,7 +846,7 @@ The arguments list can be optionally delimited with angle brackets. This is need
 
 ### Repeat macro with string 🆕
 
-The _repeat macro with string_ macro uses the new [`IRPS`](#irps-) opening instruction which accepts a placeholder and a string, and generates one repetition per character of the string in which the placeholder is replaced by the argument. This is a more flexible version of "Repeat macro with characters", since there are no restrictions for the printable characters that the string can contain and (to some extent) it accepts escape sequences. For example `IRPS x,"\x41\x42\x43"` would be equivalent to `IRPC x,ABC`.
+The _repeat macro with string_ macro uses the new [`IRPS`](#irps-) opening instruction which accepts a placeholder and a string, and generates one repetition per character of the string in which the placeholder is replaced by the argument. This is a more flexible version of ["Repeat macro with characters"](#repeat-macro-with-characters), since there are no restrictions for the printable characters that the string can contain and (to some extent) it accepts escape sequences. For example `IRPS x,"\x41\x42\x43"` would be equivalent to `IRPC x,ABC`.
 
 ⚠ Not all escape sequences are supported. For example `\r` will insert a literal line break at the point where the placeholder is encountered, and this will cause either errors or the line to not generate any output.
 
@@ -898,7 +898,7 @@ This behavior is compatible with MACRO-80, but in Nestor80 it will emit a warnin
 
 ### Rules for placeholder replacement
 
-When placeholders are replaced with actual arguments in all macro types (except "Repeat macro with arguments" which doesn't support placeholders) the following rules apply (a placeholder named `foo` is assumed in the examples):
+When placeholders are replaced with actual arguments in all macro types (except ["Repeat macro with arguments"](#repeat-macro-with-arguments) which doesn't support placeholders) the following rules apply (a placeholder named `foo` is assumed in the examples):
 
 * The placeholder search is case-insensitive: instances of `FOO` will be replaced too.
 * Placeholders are not replaced inside comments, e.g. no replacement will happen in the line `db 0 ;foo`.
@@ -1012,7 +1012,7 @@ Macros can be nested according to the following rules:
 * Repeat macros can be nested inside other repeat macros and inside named macros.
 * 🚫 Named macros can **not** be nested inside other named macros (this is something that MACRO-80 allowed).
 
-See "Additional macro examples" for examples of nested repeat macros.
+See ["Additional macro examples"](#additional-macro-examples) for examples of nested repeat macros.
 
 
 ### Additional macro examples
@@ -1196,7 +1196,7 @@ Additionally to the Nestor80 arguments already mentioned, the following ones are
 
 This section lists all the assembler instructions supported by Nestor80. Any instruction alias is listed together with the "canonical" instruction name.
 
-® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See "Absolute and relocatable code" and "Writing relocatable code".
+® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See ["Absolute and relocatable code"](#absolute-and-relocatable-code) and "Writing relocatable code".
 
 Some instructions have aliases. In most cases these come inherited from MACRO-80, which in turn implemented them for compatibility with even older assemblers. Except where otherwise stated, the syntax for the aliases is exactly the same as the one for the "canonical" instruction.
 
@@ -1277,7 +1277,7 @@ _Syntax:_ `.ERROR ["]<text>["]`
 
 Emits an assembly error with the specified text. The text supports expression interpolation.
 
-When one or more errors are emitted in pass 1, pass 2 will be skipped. See "Passes", "Strings in messages for the assembler console".
+When one or more errors are emitted in pass 1, pass 2 will be skipped. See ["Passes"](#passes), ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
 
 
 ### .FATAL 🆕
@@ -1286,28 +1286,28 @@ _Syntax:_ `.FATAL ["]<text>["]`
 
 Throws an fatal error with the specified text. The text supports expression interpolation.
 
-A fatal error will terminate the assembly process immediately. See also "Strings in messages for the assembler console".
+A fatal error will terminate the assembly process immediately. See also ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
 
 
 ### .LALL
 
 _Syntax:_ `.LALL`
 
-Instructs Nestor80 to include the complete macro text for expanded macros in listings following the instruction. The default initial condition (also set by [`.XALL`](#xall)) is to include only the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc). See [`.XALL`](#xall), [`.SALL`](#sall), "Macros", "Listings".
+Instructs Nestor80 to include the complete macro text for expanded macros in listings following the instruction. The default initial condition (also set by [`.XALL`](#xall)) is to include only the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc). See [`.XALL`](#xall), [`.SALL`](#sall), ["Macros"](#macros), ["Listings"](#listings).
 
 
 ### .LFCOND
 
 _Syntax:_ `.LFCOND`
 
-Instructs Nestor80 to include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. This is the default initial condition unless a `--no-listing-false-conditionals` argument is supplied to Nestor80. See also [`.LFCOND`](#lfcond), [`.TFCOND`](#tfcond), "Conditional blocks", "Listings".
+Instructs Nestor80 to include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. This is the default initial condition unless a `--no-listing-false-conditionals` argument is supplied to Nestor80. See also [`.LFCOND`](#lfcond), [`.TFCOND`](#tfcond), "Conditional blocks", ["Listings"](#listings).
 
 
 ### .LIST
 
 _Syntax:_ `.LIST`
 
-Instructs Nestor80 to include all the source code text following the instruction. This is the default initial condition when Nestor80 is instructed to generate a listing file with the `--listing-file` argument. See also [`.XLIST`](#xlist), "Listings".
+Instructs Nestor80 to include all the source code text following the instruction. This is the default initial condition when Nestor80 is instructed to generate a listing file with the `--listing-file` argument. See also [`.XLIST`](#xlist), ["Listings"](#listings).
 
 
 ### .PHASE
@@ -1400,21 +1400,21 @@ _Syntax:_ `.PRINT ["]<text>["]`
 
 Prints a text to the terminal where the assembler is running (unless the `--silence-assembly-print` argument was passed to Nestor80). The message supports expression interpolation.
 
-The text will be printed in both pass 1 and pass 2. Normally you'll want to print the text only in one of the passes, so you should either wrap the `.PRINT` instruction in an [`IF1`](#if1) or [`IF2`](#if2) block, or use the [`.PRINT1`](#print1-) or [`.PRINT2`](#print2-) instruction instead. See "Passes", "Strings in messages for the assembler console".
+The text will be printed in both pass 1 and pass 2. Normally you'll want to print the text only in one of the passes, so you should either wrap the `.PRINT` instruction in an [`IF1`](#if1) or [`IF2`](#if2) block, or use the [`.PRINT1`](#print1-) or [`.PRINT2`](#print2-) instruction instead. See ["Passes"](#passes), ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
 
 
 ### .PRINT1 🆕
 
 _Syntax:_ `.PRINT1 ["]<text>["]`
 
-Like [`.PRINT`](#print-), but only prints the text in pass 1. See "Passes".
+Like [`.PRINT`](#print-), but only prints the text in pass 1. See ["Passes"](#passes).
 
 
 ### .PRINT2 🆕
 
 _Syntax:_ `.PRINT1 ["]<text>["]`
 
-Like [`.PRINT`](#print-), but only prints the text in pass 2. See "Passes".
+Like [`.PRINT`](#print-), but only prints the text in pass 2. See ["Passes"](#passes).
 
 
 ### .PRINTX
@@ -1463,14 +1463,14 @@ Defines a list of files in which the linker will search for any globals that rem
 
 _Syntax:_ `.SALL`
 
-Instructs Nestor80 to not include macro expansions in listings following the instruction. The default initial condition (also set by [`.XALL`](#xall)) is to include only the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc). See [`.XALL`](#xall), [`.LALL`](#lall), "Macros", "Listings".
+Instructs Nestor80 to not include macro expansions in listings following the instruction. The default initial condition (also set by [`.XALL`](#xall)) is to include only the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc). See [`.XALL`](#xall), [`.LALL`](#lall), ["Macros"](#macros), ["Listings"](#listings).
 
 
 ### .SFCOND
 
 _Syntax:_ `.SFCOND`
 
-Instructs Nestor80 to **not** include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. See also [`.LFCOND`](#lfcond), [`.TFCOND`](#tfcond), "Conditional blocks", "Listings".
+Instructs Nestor80 to **not** include conditional blocks that evaluate as false in listings for all the matching blocks following the instruction. See also [`.LFCOND`](#lfcond), [`.TFCOND`](#tfcond), "Conditional blocks", ["Listings"](#listings).
 
 
 ### .STRENC 🆕
@@ -1485,7 +1485,7 @@ The default encoding is 7 bit ASCII unless a different encoding is specified by 
 
 The encoding name `ASCII` is accepted as an alias for the default 7 bit ASCII encoding (whose "official" name is `US-ASCII`).
 
-See also: "Strings".
+See also: ["Strings"](#strings).
 
 
 ### .STRESC 🆕
@@ -1496,7 +1496,7 @@ Turns on or off the support for escape sequences in strings delimited by double 
 
 Turning off escape sequences may be needed when compiling old source code intended for MACRO-80 in which the backslash character `\` is considered a regular character and not an escape sequence initiator. New programs should leave string escaping turned on and take advantage of the escape sequence support as needed.
 
-See "Strings" for a list of the available escape sequences.
+See ["Strings"](#strings) for a list of the available escape sequences.
 
 
 ### .TFCOND
@@ -1507,7 +1507,7 @@ Instructs Nestor80 to toggle the inclusion of conditional blocks that evaluate a
 
 The state that gets toggled is the one that was set by the previous instance of `.TFCOND` (any state change performed with [`.LFCOND`](#lfcond) or [`.SFCOND`](#sfcond) is ignored). The initial state is "on" unless a `--no-listing-false-conditionals` argument is passed to Nestor80.
 
-See also [`.LFCOND`](#lfcond), [`.SFCOND`](#sfcond), "Conditional blocks", "Listings".
+See also [`.LFCOND`](#lfcond), [`.SFCOND`](#sfcond), "Conditional blocks", ["Listings"](#listings).
 
 
 ### .WARN 🆕
@@ -1516,14 +1516,14 @@ _Syntax:_ `.WARN ["]<text>["]`
 
 Emits an assembly warning with the specified text. The text supports expression interpolation.
 
-The warning will be emitted twice, once in pass 1 and once in pass2. If that's undesirable you can enclose the instruction in an [`IF1`](#if1) or [`IF2`](#if2) block. See "Passes", "Strings in messages for the assembler console".
+The warning will be emitted twice, once in pass 1 and once in pass2. If that's undesirable you can enclose the instruction in an [`IF1`](#if1) or [`IF2`](#if2) block. See ["Passes"](#passes), ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
 
 
 ### .XALL
 
 _Syntax:_ `.XALL`
 
-Instructs Nestor80 to include macro expansions in listings following the instruction, but only including the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc); this is the default state for macro expansions in listings. See [`.SALL`](#sall), [`.LALL`](#lall), "Macros", "Listings".
+Instructs Nestor80 to include macro expansions in listings following the instruction, but only including the source lines that produce any output in the target file (assembler instructions and [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw) etc); this is the default state for macro expansions in listings. See [`.SALL`](#sall), [`.LALL`](#lall), ["Macros"](#macros), ["Listings"](#listings).
 
 
 ### .XCREF "🚫"
@@ -1537,7 +1537,7 @@ In MACRO-80 this instruction disabled the inclusion of cross-reference informati
 
 _Syntax:_ `.XLIST`
 
-Instructs Nestor80 to suppress the inclusion in listings of the source code text that follows the instruction, until either the end of the file (or an [`END`](#end) instruction) is reached or a [`.LIST`](#list) instruction is encountered. See also "Listings".
+Instructs Nestor80 to suppress the inclusion in listings of the source code text that follows the instruction, until either the end of the file (or an [`END`](#end) instruction) is reached or a [`.LIST`](#list) instruction is encountered. See also ["Listings"](#listings).
 
 
 ### .XRELAB 🆕
@@ -1677,7 +1677,7 @@ DEFB 0FF34h,FOO*2,"ABC\r\n"
 ;34h,20h,41h,42h,43h,0Dh,0Ah
 ```
 
-See also: "Expressions", "Strings".
+See also: ["Expressions"](#expressions), ["Strings"](#strings).
 
 
 ### DEFS (DS)
@@ -1704,7 +1704,7 @@ When `<value>` is not specified the output depends on the build type:
 * When the build type is relocatable, by default `DEFB <size>` will generate an output equivalent to `ORG $+<size>`; that is, the location counter will be increased by the specified size and the block will be considered by the linker as a "memory gap" (how memory gaps are filled at linking time is undefined).
 * When the build type is relocatable and a `--initialize-defs` argument is supplied to Nestor80, `DEFB <size>` is equivalent to `DEFB <size>,0`.
 
-See also "Absolute and relocatable code".
+See also ["Absolute and relocatable code"](#absolute-and-relocatable-code).
 
 
 ### DEFW (DW)
@@ -1727,7 +1727,7 @@ DEFW 7,0ABCDh,FOO+34h,"A","BC"
 ;07h,00h,CDh,ABh,34h,12h,41h,00h,43h,42h
 ```
 
-See also: "Expressions", "Strings".
+See also: ["Expressions"](#expressions), ["Strings"](#strings).
 
 
 ### DEFZ (DZ) 🆕
@@ -1784,7 +1784,7 @@ DSEG
 
 _Syntax:_ `ELSE`
 
-Ends the true condition block of a conditional assembly block and starts the false condition block. See "Conditional assembly".
+Ends the true condition block of a conditional assembly block and starts the false condition block. See ["Conditional assembly"](#conditional-assembly).
 
 
 ### END
@@ -1800,21 +1800,21 @@ The optional `<address>` argument is significant only when writing relocatable c
 
 _Syntax:_ `ENDIF`
 
-Ends a conditional assembly block. See "Conditional assembly".
+Ends a conditional assembly block. See ["Conditional assembly"](#conditional-assembly).
 
 
 ### ENDM
 
 _Syntax:_ `ENDM`
 
-Ends a macro definition, and for repeat macros it starts the macro expansion. See "Macros".
+Ends a macro definition, and for repeat macros it starts the macro expansion. See ["Macros"](#macros).
 
 
 ### ENDMOD 🆕
 
 _Syntax:_ `ENDMOD`
 
-Ends the current module. See "Modules".
+Ends the current module. See ["Modules"](#modules-).
 
 
 ### ENDOUT 🆕
@@ -1880,7 +1880,7 @@ ret
 
 _Syntax:_ `EXITM`
 
-This instruction is intended to be used inside macro definitions. It forces the macro expansion to terminate immediately, discarding any remaining repetition (unlike [`CONTM`](#contm-) which starts over the next repetition, if any). See "Macros"
+This instruction is intended to be used inside macro definitions. It forces the macro expansion to terminate immediately, discarding any remaining repetition (unlike [`CONTM`](#contm-) which starts over the next repetition, if any). See ["Macros"](#macros)
 
 Example:
 
@@ -1960,28 +1960,28 @@ This is what gets printed:
 
 ⚠ You may be wondering why the previous example doesn't use `if (x) gt 0` or `if (x) lt 0` for the positive and negative cases. Nestor80 treats all numbers as unsigned integers, and thus `if (x) lt 0` is never true. This behavior is compatible with MACRO-80.
 
-See "Expressions", "Macros", "Conditional assembly".
+See ["Expressions"](#expressions), ["Macros"](#macros), ["Conditional assembly"](#conditional-assembly).
 
 
 ### IF1
 
 _Syntax:_ `IF1`
 
-Starts a conditional assembly block in which the true condition is that the assembler is currently in pass 1. See "Passes", "Conditional assembly".
+Starts a conditional assembly block in which the true condition is that the assembler is currently in pass 1. See ["Passes"](#passes), ["Conditional assembly"](#conditional-assembly).
 
 
 ### IF2
 
 _Syntax:_ `IF2`
 
-Starts a conditional assembly block in which the true condition is that the assembler is currently in pass 2. See "Passes", "Conditional assembly".
+Starts a conditional assembly block in which the true condition is that the assembler is currently in pass 2. See ["Passes"](#passes), ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFABS 🆕
 
 _Syntax:_ `IFABS`
 
-Starts a conditional assembly block in which the true condition is that the build type is absolute. The opposite instruction is [`IFREL`](#ifrel--). See "Absolute and relocatable code", "Conditional assembly".
+Starts a conditional assembly block in which the true condition is that the build type is absolute. The opposite instruction is [`IFREL`](#ifrel--). See ["Absolute and relocatable code"](#absolute-and-relocatable-code), ["Conditional assembly"](#conditional-assembly).
 
 ⚠ If no build type is explicitly selected with the `--build-type` argument, before the build type is automatically selected both `IFABS` and `IFREL` will evaluate to false.
 
@@ -2010,7 +2010,7 @@ endif
 endm
 ```
 
-See "Conditional assembly", "Macros".
+See ["Conditional assembly"](#conditional-assembly), ["Macros"](#macros).
 
 
 ### IFCPU 🆕
@@ -2079,7 +2079,7 @@ After EQU...
 "Foo" is defined in pass 2
 ```
 
-See "Passes", "Conditional assembly".
+See ["Passes"](#passes), ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFDIF
@@ -2088,7 +2088,7 @@ _Syntax:_ `IFDIF "<"<text1>">","<"<text2>">"`
 
 This instruction is the opposite of [`IFIDN`](#ifidn): the true condition is that `<text1>` is **not** identical to `<text2>`, including any spaces.
 
-See "Conditional assembly".
+See ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFDIFI 🆕
@@ -2097,7 +2097,7 @@ _Syntax:_ `IFDIFI "<"<text1>">","<"<text2>">"`
 
 This instruction is the opposite of [`IFIDNI`](#ifidni-): the true condition is that `<text1>` is **not** identical to `<text2>`, including any spaces, with the comparison being done in a case-insensitive way.
 
-See "Conditional assembly".
+See ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFF (IFE)
@@ -2108,7 +2108,7 @@ _Aliases:_ `IFE`
 
 This instruction is the opposite of [`IF`](#if-ift-cond): the true condition is that `<expression>` evaluates to zero.
 
-See "Conditional assembly".
+See ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFIDN
@@ -2143,7 +2143,7 @@ This is what gets printed:
 'foo' is NOT identical to 'FOO'
 ```
 
-See "Conditional assembly".
+See ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFIDNI 🆕
@@ -2178,7 +2178,7 @@ This is what gets printed:
 'foo' is case-insensitive identical to 'FOO'
 ```
 
-See "Conditional assembly".
+See ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFNB
@@ -2187,7 +2187,7 @@ _Syntax:_ `IFNB "<"<text>">"`
 
 This instruction is the opposite of [`IFB`](#ifb): the true condition is that `<text>` is **not** blank (it has a non-zero length, including spaces).
 
-See "Conditional assembly".
+See ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFNCPU
@@ -2198,7 +2198,7 @@ This instruction is the opposite of [`IFCPU`](#ifcpu-): the true condition is th
 
 ⚠ A non-existing CPU name passed as argument will evaluate to true and not throw any error.
 
-See "Conditional assembly".
+See ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFNDEF
@@ -2207,14 +2207,14 @@ _Syntax:_ `IFNDEF <symbol>`
 
 This instruction is the opposite of [`IFDEF`](#ifdef): the true condition is that the symbol is **not** defined when the instruction is encountered.
 
-See "Conditional assembly".
+See ["Conditional assembly"](#conditional-assembly).
 
 
 ### IFREL 🆕 ®
 
 _Syntax:_ `IFREL <symbol>`
 
-This instruction is the opposite of [`IFABS`](#ifabs-): the true condition is that the build type is relative. See "Absolute and relocatable code", "Conditional assembly".
+This instruction is the opposite of [`IFABS`](#ifabs-): the true condition is that the build type is relative. See ["Absolute and relocatable code"](#absolute-and-relocatable-code), ["Conditional assembly"](#conditional-assembly).
 
 ⚠ If no build type is explicitly selected with the `--build-type` argument, before the build type is automatically selected both `IFABS` and `IFREL` will evaluate to false.
 
@@ -2282,7 +2282,7 @@ db 2
 db 3
 ```
 
-See "Macros".
+See ["Macros"](#macros).
 
 
 ### IRPC
@@ -2314,7 +2314,7 @@ db " "
 db "B"
 ```
 
-See "Macros".
+See ["Macros"](#macros).
 
 
 ### IRPS 🆕
@@ -2327,7 +2327,7 @@ Example: `IRPS x,"\x41\x42"` will generate the same code as `IRPC x,AB` (provide
 
 ⚠ Not all escape sequences are supported. For example `\r` will insert a literal line break at the point where the placeholder is encountered, and this will cause either errors or the line to not generate any output.
 
-See "Strings", "Macros".
+See ["Strings"](#strings), ["Macros"](#macros).
 
 
 ### LOCAL
@@ -2358,21 +2358,21 @@ The generated code will be equivalent to:
 ..0002: jp ..0002
 ```
 
-See "Macros".
+See ["Macros"](#macros).
 
 
 ### MAINPAGE 🆕
 
 _Syntax:_ `MAINPAGE`
 
-Forces a main page change when generating a listing, equivalently to when a `\f` character (0Ch in ASCII) is found in the source code. See "Listings".
+Forces a main page change when generating a listing, equivalently to when a `\f` character (0Ch in ASCII) is found in the source code. See ["Listings"](#listings).
 
 
 ### MODULE 🆕
 
 _Syntax:_ `MODULE <name>`
 
-Starts a new module with the specified name. See "Modules".
+Starts a new module with the specified name. See ["Modules"](#modules-).
 
 
 ### NAME ®
@@ -2419,7 +2419,7 @@ If the resulting relocatable file is linked with the data segment starting at ad
 
 The above is true when linking one single relocatable file; when linking two or more it's a bit more complicated since `ORG` refer to the starting address of each segment _in each program_. See "Writing relocatable code" for the full details.
 
-💡 The build type is by default selected automatically based on what instructions are found (or not found) before the first `ORG` instruction in the source code. See "Absolute and relocatable code".
+💡 The build type is by default selected automatically based on what instructions are found (or not found) before the first `ORG` instruction in the source code. See ["Absolute and relocatable code"](#absolute-and-relocatable-code).
 
 
 ### PAGE (SUBPAGE 🆕, $EJECT)
@@ -2432,7 +2432,7 @@ Forces a subpage change when generating a listing. Additionally, if `<new page s
 
 The `SUBPAGE` alias is introduced in Nestor80 because the word "PAGE" doesn't clearly convey the fact that what is changing is the _sub_page number. It's recommended to combine it with the new [`MAINPAGE`](#mainpage-) instruction if both main page changes and sub page changes are required for listings.
 
-See "Listings".
+See ["Listings"](#listings).
 
 
 ### PUBLIC (ENTRY, GLOBAL) ®
@@ -2483,14 +2483,14 @@ db 1
 db 2
 ```
 
-See "Macros".
+See ["Macros"](#macros).
 
 
 ### ROOT 🆕
 
 _Syntax:_ `ROOT <symbol>[,<symbol>[,...]]`
 
-This instruction must appear inside a module. It's used to declare one or more symbols that will be considered as a "root" symbol, that is, not relative to the module; thus when these symbols are referenced they won't be prepended with the module name before being evaluated. Another option to achieve the same effect is to prepend the symbol names with a colon, `:`, then they are referenced. See "Modules".
+This instruction must appear inside a module. It's used to declare one or more symbols that will be considered as a "root" symbol, that is, not relative to the module; thus when these symbols are referenced they won't be prepended with the module name before being evaluated. Another option to achieve the same effect is to prepend the symbol names with a colon, `:`, then they are referenced. See ["Modules"](#modules-).
 
 
 ### SUBTTL ($TITLE)
@@ -2499,7 +2499,7 @@ _Syntax:_ `SUBTTL <text>`
 
 _Aliases:_ `$TITLE`
 
-Sets the subtitle to be used in the heading of each page of a listing (as the second line of text, right after the title). There's no limit for the length of `<text>` ✨ (in MACRO-80 the text gets truncated to the first 60 characters). See [`TITLE`](#title), "Listings".
+Sets the subtitle to be used in the heading of each page of a listing (as the second line of text, right after the title). There's no limit for the length of `<text>` ✨ (in MACRO-80 the text gets truncated to the first 60 characters). See [`TITLE`](#title), ["Listings"](#listings).
 
 Note: the syntax for the `$TITLE` alias is `$TITLE('<text>')`.
 
@@ -2512,4 +2512,4 @@ Sets the title to be used in the heading of each page of a listing, as the very 
 
 The argument given to `TITLE` will also be used, after being truncated to 6 characters, as the program name when generating a relocatable file, unless an explicit program name is supplied with [`NAME`](#name-). If neither a program name nor a listing title are present in the source code, the program name will be composed from the source code file name.
 
-See [`SUBTTL`](#subttl-title), "Listings".
+See [`SUBTTL`](#subttl-title), ["Listings"](#listings).
