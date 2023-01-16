@@ -1,7 +1,7 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Relocatable
 {
     /// <summary>
-    /// Base class for the relocatable items defined by the Link80 relocatable file format.
+    /// Base class for the relocatable items defined by the LINK-80 relocatable file format.
     /// </summary>
     public abstract class RelocatableOutputPart
     {

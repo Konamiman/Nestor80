@@ -55,7 +55,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         /// <summary>
         /// If the symbol is declared as public its effective name (the name that will be used to refer to the symbol
         /// in the resulting relocatable file) is the original name truncated to 6 characters.
-        /// This is a limitation of the Link80 relocatable file format.
+        /// This is a limitation of the LINK-80 relocatable file format.
         /// </summary>
         public string EffectiveName { get; private set; }
 

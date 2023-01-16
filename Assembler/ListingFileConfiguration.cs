@@ -42,7 +42,7 @@
 
         /// <summary>
         /// Whether the symbol names in the symbols list should be kept as they are in the source
-        /// or should be uppercased as Macro80 does when generating symbol listins.
+        /// or should be uppercased as MACRO-80 does when generating symbol listins.
         /// </summary>
         public bool UppercaseSymbolNames { get; set; } = false;
 

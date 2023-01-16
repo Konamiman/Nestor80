@@ -1,7 +1,7 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Relocatable
 {
     /// <summary>
-    /// Represents a relocatable value as defined by the Link80 relocatable file format.
+    /// Represents a relocatable value as defined by the LINK-80 relocatable file format.
     /// </summary>
     public class RelocatableValue : RelocatableOutputPart
     {

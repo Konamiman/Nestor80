@@ -65,7 +65,7 @@ namespace Konamiman.Nestor80.N80
             -abe, --allow-bare-expressions
                 Treat a line containing one or more bare expressions as a DB line
                 (e.g. the line 'FOO: 1,2,3,4' will be equivalent to 'FOO: db 1,2,3,4').
-                You may need this when compiling old code intended for Macro80, but
+                You may need this when compiling old code intended for MACRO-80, but
                 using bare expressions is otherwise not recommended because it masks
                 mistyped instructions as "symbol not found" errors.
 
@@ -232,7 +232,7 @@ namespace Konamiman.Nestor80.N80
 
             -lus, --listing-uppercase-symbols
                 Uppercase the symbol names when printing them in the listing file
-                (mimics the behavior of Macro80).
+                (mimics the behavior of MACRO-80).
 
             -lx, --listing-file-extension [.]<extension>
                 The extension for the generated listing file. This value is used only when the
@@ -334,7 +334,7 @@ namespace Konamiman.Nestor80.N80
 
                 Escape sequences can also be turned on and off by using the .STRESC ON/OFF
                 instruction directly in code. You may want to disallow escape sequences
-                when compiling old sources that were intended to be assembled with Macro80.
+                when compiling old sources that were intended to be assembled with MACRO-80.
 
             -oap, --org-as-phase
                 Treat ORG statements as .PHASE statements. This argument has effect only
@@ -434,7 +434,7 @@ namespace Konamiman.Nestor80.N80
 
                 Escape sequences can also be turned on and off by using the .STRESC ON/OFF
                 instruction directly in code. You may want to disallow escape sequences
-                when compiling old sources that were intended to be assembled with Macro80.
+                when compiling old sources that were intended to be assembled with MACRO-80.
 
             -vb, --verbosity <level>
                 Selects the verbosity of the status messages shown during the assembly process.

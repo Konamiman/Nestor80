@@ -1535,7 +1535,7 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         /**
-         * Additional restrictions compared to Macro80:
+         * Additional restrictions compared to MACRO-80:
          * 
          * - Address must be known when the instruction is reached
          * - Area changes and ORGs are not allowed inside a .PHASE block

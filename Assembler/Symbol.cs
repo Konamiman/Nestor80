@@ -17,7 +17,7 @@ namespace Konamiman.Nestor80.Assembler
         /// <summary>
         /// If the symbol is declared as public its effective name (the name that will be used to refer to the symbol
         /// in the resulting relocatable file) is the original name truncated to 6 characters.
-        /// This is a limitation of the Link80 relocatable file format.
+        /// This is a limitation of the LINK-80 relocatable file format.
         /// </summary>
         public string EffectiveName { get; set; }
 
@@ -29,6 +29,10 @@ namespace Konamiman.Nestor80.Assembler
 
         public ushort Value { get; set; }
 
+        /// <summary>
+        /// Name of the COMMON block the symbol belongs to, if the symbol
+        /// belongs to a COMMON block.
+        /// </summary>
         public string CommonName { get; set; }
 
         public override string ToString() => $"{Name} = {ValueArea} {Value:X4}, {Type}, {CommonName}";

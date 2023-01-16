@@ -136,7 +136,7 @@ namespace Konamiman.Nestor80.Assembler
         static List<string> referencedExternals;
 
         /// <summary>
-        /// Generate a Link80 compatible relative file from an <see cref="AssemblyResult"/>.
+        /// Generate a LINK-80 compatible relative file from an <see cref="AssemblyResult"/>.
         /// </summary>
         /// <param name="assemblyResult">Assembly result ro use for the file generation.</param>
         /// <param name="outputStream">The stream to write the result to.</param>
@@ -204,16 +204,16 @@ namespace Konamiman.Nestor80.Assembler
                     }
                 }
                 else if(line is ChangeAreaLine cal) {
-                    //For compatibility with Macro80 (and apparently taken in account by Link80):
+                    //For compatibility with MACRO-80 (and apparently taken in account by LINK-80):
                     //When ASEG is followed by ORG, generate only one "set location counter" item;
                     //e.g. "ASEG - org 100h" generates just "set location to 100h" instead of
                     //"set location to 0 - set location to 100h" as is the case of CSEG and DSEG.
-                    //Failure to do so can lead to Link80 failing with "Intersecting Data area"!
+                    //Failure to do so can lead to LINK-80 failing with "Intersecting Data area"!
                     changedToAseg = cal.NewLocationArea is AddressType.ASEG;
                     if(!changedToAseg) {
                         if(cal.NewLocationArea is AddressType.COMMON) {
                             //Setting currentCommonBlockName to the full block name (as specified in code)
-                            //instead of the effective name is on purpose for compatibility with Macro80,
+                            //instead of the effective name is on purpose for compatibility with MACRO-80,
                             //so consecutive blocks "ABCDEFXXX" and "ABCDEFZZZ" will generate two
                             //"select common block ABCDEF" link items even though only one would be needed.
                             if(cal.CommonBlockName != currentCommonBlockName) { 

@@ -1,7 +1,7 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Relocatable
 {
     /// <summary>
-    /// Types of "link items" as defined by the Link80 relocatable file format.
+    /// Types of "link items" as defined by the LINK-80 relocatable file format.
     /// </summary>
     public enum LinkItemType : byte
     {

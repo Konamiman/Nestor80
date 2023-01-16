@@ -533,7 +533,7 @@ namespace Konamiman.Nestor80.Assembler
             // since pseudo-ops and cpu instructions are valid constant names too
             // (but only if no label is defined in the line)
             //
-            // Interesting edge case (compatible with Macro80):
+            // Interesting edge case (compatible with MACRO-80):
             //
             // TITLE EQU 1      ---> defines constant "TITLE" with value 1
             // FOO: TITLE EQU 1 ---> sets the program title as "EQU 1"
@@ -783,7 +783,7 @@ namespace Konamiman.Nestor80.Assembler
 
         /// <summary>
         /// Converts an expression into a collection of objects representing link items that can be later used
-        /// when generating a Link80 compatible relocatable file. This processing is needed when the expression
+        /// when generating a LINK-80 compatible relocatable file. This processing is needed when the expression
         /// contains external symbol references or relocatable values that are to be stored as a byte
         /// (these expressions can't be evaluated at assembly time and need to be evaluated at linking time).
         /// </summary>

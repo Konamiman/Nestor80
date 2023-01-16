@@ -1,7 +1,7 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Relocatable
 {
     /// <summary>
-    /// Represents a group of "link items" as defined by the Link80 relocatable file format.
+    /// Represents a group of "link items" as defined by the LINK-80 relocatable file format.
     /// </summary>
     public class LinkItemsGroup : RelocatableOutputPart
     {

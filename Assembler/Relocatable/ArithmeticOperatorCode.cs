@@ -1,7 +1,7 @@
 ﻿namespace Konamiman.Nestor80.Assembler.Relocatable
 {
     /// <summary>
-    /// Codes for the "arithmetic operator" extension link item as supported by Link80.
+    /// Codes for the "arithmetic operator" extension link item as supported by LINK-80.
     /// </summary>
     public enum ArithmeticOperatorCode
     {

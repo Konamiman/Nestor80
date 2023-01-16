@@ -392,7 +392,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         /// <summary>
         /// Extract an arguments list for the MACRO and IRP statement.
         /// 
-        /// The code is complex to account for the extraction rules (compatible with Macro80):
+        /// The code is complex to account for the extraction rules (compatible with MACRO-80):
         /// - Arguments are delimited by comma or space, spaces around are trimmed out.
         /// - An empty item causes a single repetition with nul (empty) argument.
         /// - "!" causes the next char to be taken literally(so even if comma or space it's part of the argument)

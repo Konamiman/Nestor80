@@ -16,10 +16,10 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts
         public abstract bool IsUnary { get; }
 
         /// <summary>
-        /// The "Arithmetic operator" extended link item as defined by the Link80 relocatable
+        /// The "Arithmetic operator" extended link item as defined by the LINK-80 relocatable
         /// file format admits only a subset of the existing operators.
         /// Those will have this property redefined so that it returns the proper operator code
-        /// as expected by Link80.
+        /// as expected by LINK-80.
         /// </summary>
         public virtual byte? ExtendedLinkItemType => null;
 
