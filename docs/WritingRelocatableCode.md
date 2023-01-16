@@ -322,7 +322,7 @@ When linked with `L80 /d:100,COMMONS,COMMONS/N/E` this will generate a `COMMONS.
 
 ## Combining programs into libraries
 
-The LIB-80 tool can be used to combine multiple relocatable files into one single library files, which can then be used with LINK-80 instead of the individual relocatable files.
+The LIB-80 tool can be used to combine multiple relocatable files into one single library file, which can then be used with LINK-80 instead of the individual relocatable files.
 
 For example, assume that you have a collection of mathematical routines, each in its own file like `SUM.REL`, `MULT.REL` and `DIV.REL`. You may use them with LINK-80 like this:
 
