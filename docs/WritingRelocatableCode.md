@@ -318,3 +318,29 @@ db 4,5,6
 ```
 
 When linked with `L80 /d:100,COMMONS,COMMONS/N/E` this will generate a `COMMONS.COM` file that contains the byte sequence 1,2,3,4,5,6,7,8,9.
+
+
+## Combining programs into libraries
+
+The LIB-80 tool can be used to combine multiple relocatable files into one single library files, which can then be used with LINK-80 instead of the individual relocatable files.
+
+For example, assume that you have a collection of mathematical routines, each in its own file like `SUM.REL`, `MULT.REL` and `DIV.REL`. You may use them with LINK-80 like this:
+
+```
+L80 PROG,SUM,MULT,DIV,PROG/N/E
+```
+
+Instead, you can use LIB-80 to combine the routines into a single `MATH.REL` library like this:
+
+```
+LIB80 MATH=SUM,MULT,DIV/E
+```
+
+...and then use it directly in LINK-80:
+
+```
+L80 PROG,MATH,PROG/N/E
+```
+
+⚠ You may think that LINK-80 will only take the required programs from the library, as it happens when using libraries in other languages like C; for example if `PROG` only uses the `MULT` routine then the contents of `SUM.REL` and `DIV.REL` wouldn't be included in the generated `PROG.COM`. Unfortunately that's not the case: the whole `MATH.REL` will be included in the final program in all cases. LINK-80 doesn't actually know which of the relocatable files it processes is "main program" as opposed to "code libraries", thus it treats all the files equally and this implies including the complete contents of all the processed files in the output.
+
