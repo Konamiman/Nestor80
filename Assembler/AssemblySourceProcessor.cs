@@ -647,7 +647,7 @@ namespace Konamiman.Nestor80.Assembler
                 if(processedLine is ExternalDeclarationLine or PublicDeclarationLine) {
                     SetBuildType(BuildType.Relocatable);
                 }
-                else if(processedLine is ChangeAreaLine cal && cal.NewLocationArea != AddressType.ASEG) {
+                else if(processedLine is ChangeAreaLine cal) {
                     SetBuildType(BuildType.Relocatable);
                 }
                 else if(processedLine is ChangeOriginLine col) {

@@ -98,7 +98,7 @@ Relocatable files can't be executed, instead a linker (typically LINK-80) must b
 
 It's possible to instruct Nestor80 to produce an absolute file or a relocatable file by using the `--build-type` command line argument, but by default Nestor80 will decide the appropriate type automatically. The decision is taken as follows:
 
-> If an [`ORG`](#org) instruction is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-), [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw), [`DEFS`](#defs-ds), `DC`, [`DEFZ`](#defz-dz-), [`PUBLIC`](#public-entry-global-), [`EXTRN`](#extrn-ext-external-), [`.REQUEST`](#request-), then the build type will be absolute; otherwise the build type will be relocatable.
+> If an [`ORG`](#org) instruction is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: [`ASEG`](#cseg-), [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-), [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw), [`DEFS`](#defs-ds), `DC`, [`DEFZ`](#defz-dz-), [`PUBLIC`](#public-entry-global-), [`EXTRN`](#extrn-ext-external-), [`.REQUEST`](#request-), then the build type will be absolute; otherwise the build type will be relocatable.
 
 Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an [`ORG`](#org) instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
 
