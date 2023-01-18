@@ -41,6 +41,12 @@
         public int BytesPerRow { get; set; } = 4;
 
         /// <summary>
+        /// Maximum number of bytes that will be included in the listing for one single instruction,
+        /// when the bytes list gets truncated a "..." will be placed after the last byte listed.
+        /// </summary>
+        public int MaxBytesPerInstruction { get; set; } = 128;
+
+        /// <summary>
         /// Whether the symbol names in the symbols list should be kept as they are in the source
         /// or should be uppercased as MACRO-80 does when generating symbol listins.
         /// </summary>

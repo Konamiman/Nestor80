@@ -127,7 +127,7 @@ namespace Konamiman.Nestor80.N80
             -co, --color-output
                 Display assembly process messages and errors in color (default).
 
-            -cpu, --default-cpu
+            -cpu, --default-cpu <cpu>
                 Set the target CPU of the source code (default is Z80).
                 The target CPU can also be changed in code with the .CPU instruction.
 
@@ -135,7 +135,7 @@ namespace Konamiman.Nestor80.N80
                 Read arguments from the .N80 file in the directory of the input file (default).
                 This argument is ignored when found inside an arguments file (.N80 or any other).
 
-            -do, --do-aoutput
+            -do, --do-output
                 Generate an output file (this is the default behavior).
                 This argument is the opposite of --no-output.
             
@@ -197,13 +197,13 @@ namespace Konamiman.Nestor80.N80
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
-            -lbpl, --listing-bytes-per-line
+            -lbpl, --listing-bytes-per-line <count>
                 How many bytes to print in one single line of text for instructions that generate
                 an arbitrary number of bytes (typically DB or DW) when generating the listing file;
                 for instructions that generate more bytes multiple lines of text will be generated.
-                Default is 4.
+                Allowed values are 2 to 256, the default value is 4.
 
-            -le, --listing-file-encoding
+            -le, --listing-file-encoding <encoding>
                 Text encoding for the generated listing file, it can be an encoding name
                 or a codepage number Run N80 with the --list-encodings argument to get 
                 a list of available encodings. Default is UTF-8.
@@ -221,14 +221,23 @@ namespace Konamiman.Nestor80.N80
                 Include the generted symbols and macro names when generating the listing file
                 (this is the default).
 
-            -lmsl, --listing-max-symbol-length
+            -lmbi, --listing-max-bytes-per-instruction <count>
+                The maximum number of bytes to print for instructions that generate an arbitrary
+                number of bytes (typically DB or DW) when generating the listing file;
+                for instructions that generate more bytes, the excess bytes will be left out
+                of the listing, and "..." will be added after the last listed byte.
+                Allowed values are 1 to 65535, the default value is 128.
+
+            -lmsl, --listing-max-symbol-length <length>
                 The maximum length that will be printed for each symbol name when generating
                 the symbols list of the listing file; longer symbol names will be truncated
-                to this length and get "..." appended at the end". Default is 16.
+                to this length and get "..." appended at the end". Allowed values are 4 to 256,
+                the default value is 16.
 
-            -lspl, --listing-symbols-per-line
+            -lspl, --listing-symbols-per-line <count>
                 The number of symbols that will be included in one single line of text
-                when generating the symbols list of the listing file. Default is 4.
+                when generating the symbols list of the listing file. Allowed values are 1 to 256,
+                the default value is 4.
 
             -lus, --listing-uppercase-symbols
                 Uppercase the symbol names when printing them in the listing file
@@ -394,7 +403,7 @@ namespace Konamiman.Nestor80.N80
             -sb, --show-banner
                 Display the program title and copyright notice banner (default).
 
-            -se, --string-encoding
+            -se, --string-encoding <encoding>
                 Default text encoding to be used to convert the strings found in the source code
                 to sequences of bytes, it can be an encoding name or a codepage number.
                 Run N80 with the --list-encodings argument to get a list of available encodings.

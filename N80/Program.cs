@@ -500,6 +500,7 @@ namespace Konamiman.Nestor80.N80
             listingConfig.ListCode = true;
             listingConfig.ListSymbols = true;
             listingConfig.BytesPerRow = 4;
+            listingConfig.MaxBytesPerInstruction = 128;
             listingConfig.SymbolsPerRow = 4;
             listingConfig.UppercaseSymbolNames = false;
         }
@@ -665,7 +666,7 @@ namespace Konamiman.Nestor80.N80
                 if(arg is "-no" or "--no-output") {
                     generateOutputFile = false;
                 }
-                else if(arg is "-do" or "--do-aoutput") {
+                else if(arg is "-do" or "--do-output") {
                     generateOutputFile = true;
                 }
                 else if(arg is "-ie" or "--input-encoding") {
@@ -1056,6 +1057,19 @@ namespace Konamiman.Nestor80.N80
 
                     if(int.TryParse(args[i + 1], out int bytesPerLine)) {
                         listingConfig.BytesPerRow = Math.Clamp(bytesPerLine, 2, 256);
+                    }
+                    else {
+                        return $"The {arg} argument needs to be followed by a number";
+                    }
+                    i++;
+                }
+                else if(arg is "-lmbi" or "--listing-max-bytes-per-instruction") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by a number";
+                    }
+
+                    if(int.TryParse(args[i + 1], out int maxBytesPerInstruction)) {
+                        listingConfig.MaxBytesPerInstruction = Math.Clamp(maxBytesPerInstruction, 1, 65536);
                     }
                     else {
                         return $"The {arg} argument needs to be followed by a number";

@@ -62,6 +62,8 @@ namespace Konamiman.Nestor80.Assembler
 
         static bool printingSymbols;
         static bool listingActive;
+        static bool instructionBytesTruncated;
+        static ushort truncatedBytesLength;
 
         /// <summary>
         /// Generate a MACRO-80-style listing file.
@@ -199,7 +201,15 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 if(ipo.OutputBytes.Length > 0) {
                     currentOutputProducerLine = ipo;
-                    totalOutputBytesRemaining = ipo.OutputBytes.Length;
+                    if(ipo.OutputBytes.Length > config.MaxBytesPerInstruction) {
+                        totalOutputBytesRemaining = config.MaxBytesPerInstruction + 1;
+                        instructionBytesTruncated = true;
+                        truncatedBytesLength = (ushort)(ipo.OutputBytes.Length - config.MaxBytesPerInstruction);
+                    }
+                    else {
+                        totalOutputBytesRemaining = ipo.OutputBytes.Length;
+                        instructionBytesTruncated = false;
+                    }
                     nextRelocatableIndex = 0;
                     outputIndex = 0;
                     ProcessCurrentOutputLine();
@@ -331,7 +341,14 @@ namespace Konamiman.Nestor80.Assembler
             PrintLineAddress(true);
 
             while(bytesRemainingInRow > 0) {
-                if(nextRelocatableIndex < currentOutputProducerLine.RelocatableParts.Length && currentOutputProducerLine.RelocatableParts[nextRelocatableIndex].Index == outputIndex) {
+                if(instructionBytesTruncated && totalOutputBytesRemaining == 1) {
+                    sb.Append("...");
+                    bytesRemainingInRow = 0;
+                    totalOutputBytesRemaining = 0;
+                    printedChars += 3;
+                    IncreaseLocationCounter(truncatedBytesLength);
+                }
+                else if(nextRelocatableIndex < currentOutputProducerLine.RelocatableParts.Length && currentOutputProducerLine.RelocatableParts[nextRelocatableIndex].Index == outputIndex) {
                     var relocatable = currentOutputProducerLine.RelocatableParts[nextRelocatableIndex];
                     var relocatableSize = relocatable.IsByte ? 1 : 2;
                     if(relocatableSize > bytesRemainingInRow) {

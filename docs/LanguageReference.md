@@ -1158,6 +1158,8 @@ where:
 
 By default the `<bytes>` area will only display four bytes, and any remaining bytes (e.g. for long [`DEFB`](#defb-db-defm) or [`INCBIN`](#incbin-) instructions) will appear below in extra lines, without source line. The amount of bytes per line can be configured 🆕 with the Nestor80 argument `--listing-bytes-per-line`.
 
+By default a total of up to 128 bytes will be displayed for one single instruction in the `<bytes>` area; if an instruction generates more bytes, the excess bytes will be left out of the listing and "..." will be added after the last printed byte. This limit can be configured 🆕 with the Nestor80 argument `--listing-max-bytes-per-instruction`.
+
 The possible flags are:
 
 * `+` if the line is part of a macro expansion.
