@@ -180,6 +180,9 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         }
 
         private ushort currentDephasedLocationPointer;
+
+        public ushort CurrentDephasedLocationPointer => currentDephasedLocationPointer;
+
         public ushort CurrentLocationPointer
         {
             get => CurrentPhasedLocationPointer.GetValueOrDefault(currentDephasedLocationPointer);

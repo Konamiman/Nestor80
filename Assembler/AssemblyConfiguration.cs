@@ -40,6 +40,12 @@ namespace Konamiman.Nestor80.Assembler
         public Func<string, Stream> GetStreamForInclude { get; init; } = _ => null;
 
         /// <summary>
+        /// Callback to use for INCBIN instructions, the parameter is the name of
+        /// the file requested and the return value is a stream to read source code from.
+        /// </summary>
+        public Func<string, Stream> GetStreamForIncbin { get; init; } = _ => null;
+
+        /// <summary>
         /// List of predefined symbols as pairs of name-value, they will be registerd
         /// as if they were defined with DEFL.
         /// </summary>

@@ -340,7 +340,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void CompleteInstructionLine(CpuInstructionLine line)
         {
-            state.IncreaseLocationPointer(line.OutputBytes.Length);
+            IncreaseLocationPointer(line.OutputBytes.Length);
             line.Cpu = currentCpu;
             line.NewLocationArea = state.CurrentLocationArea;
             line.NewLocationCounter = state.CurrentLocationPointer;

@@ -377,13 +377,13 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(includeDirectories.Count > 0) {
-                info += "\r\nExtra directories for INCLUDE:\r\n";
+                info += "\r\nExtra directories for INCLUDE and INCBIN:\r\n";
                 foreach(var id in includeDirectories) {
                     info += "  " + id + "\r\n";
                 }
             }
             else {
-                info += "\r\nNo extra directories for INCLUDE\r\n";
+                info += "\r\nNo extra directories for INCLUDE and INCBIN\r\n";
             }
 
             if(symbolDefinitions.Count > 0) {
@@ -1143,7 +1143,8 @@ namespace Konamiman.Nestor80.N80
                 OutputStringEncoding = stringEncoding,
                 AllowEscapesInStrings = stringEscapes,
                 BuildType = buildType,
-                GetStreamForInclude = GetStreamForInclude,
+                GetStreamForInclude = name => GetStreamForInclude(name, false),
+                GetStreamForIncbin = name => GetStreamForInclude(name, true),
                 PredefinedSymbols = symbolDefinitions.ToArray(),
                 MaxErrors = maxErrors,
                 CpuName = defaultCpu,
@@ -1449,7 +1450,7 @@ namespace Konamiman.Nestor80.N80
         static readonly Stack<string> PreviousCurrentFileDirectories = new();
 
         /// <summary>
-        /// Callback passed to <see cref="AssemblySourceProcessor"/> to resolve INCLUDE instructions.
+        /// Callback passed to <see cref="AssemblySourceProcessor"/> to resolve INCLUDE and INCBIN instructions.
         /// 
         /// Relative files are searched in this order: current directory, the directory of the currently
         /// INCLUDEd file (or the input file if none), extra include directories in the order
@@ -1458,14 +1459,17 @@ namespace Konamiman.Nestor80.N80
         /// <see cref="PreviousCurrentFileDirectories"/> is a stack used to keep track of the directories 
         /// for the nested INCLUDEd files.
         /// </summary>
-        /// <param name="includeFilePath">The argument of the INCLUDE instruction.</param>
+        /// <param name="includeFilePath">The argument of the INCLUDE/INCBIN instruction.</param>
+        /// <param name="isIncbin">True for INCBIN instruction, false for INCLUDE instruction.</param>
         /// <returns>An open stream for the INCLUDEd file, or null if file is not found.</returns>
-        private static Stream GetStreamForInclude(string includeFilePath)
+        private static Stream GetStreamForInclude(string includeFilePath, bool isIncbin)
         {
-            static Stream Process(string filePath)
+            Stream Process(string filePath)
             {
-                PreviousCurrentFileDirectories.Push(currentFileDirectory);
-                currentFileDirectory = Path.GetDirectoryName(filePath);
+                if(!isIncbin) {
+                    PreviousCurrentFileDirectories.Push(currentFileDirectory);
+                    currentFileDirectory = Path.GetDirectoryName(filePath);
+                }
                 return File.OpenRead(filePath);
             }
 

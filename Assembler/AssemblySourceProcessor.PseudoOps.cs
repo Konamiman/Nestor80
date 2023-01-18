@@ -3,6 +3,7 @@ using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
 using Konamiman.Nestor80.Assembler.Infrastructure;
 using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.ProcessedLineTypes;
 using Konamiman.Nestor80.Assembler.Relocatable;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -260,6 +261,9 @@ namespace Konamiman.Nestor80.Assembler
             // IFT: Alias for IF
             { "IFT", ProcessIfTrueLine },
 
+            // INCBIN <file>: Binary file include
+            { "INCBIN", ProcessIncbinLine },
+
             // IRP <dummy>,<arg[,arg[,...]]>: Start indefinite repeat macro expansion
             //                                (< and > for args are literal)
             { "IRP", ProcessIrpLine },
@@ -399,7 +403,7 @@ namespace Konamiman.Nestor80.Assembler
                 outputBytes.AddRange(Expression.ZeroCharBytes);
             }
 
-            state.IncreaseLocationPointer(outputBytes.Count);
+            IncreaseLocationPointer(outputBytes.Count);
 
             line.OutputBytes = outputBytes.ToArray();
             line.RelocatableParts = relocatables.ToArray();
@@ -447,7 +451,7 @@ namespace Konamiman.Nestor80.Assembler
                     walker.DiscardRemaining();
                 }
 
-            state.IncreaseLocationPointer(length);
+            IncreaseLocationPointer(length);
             line.NewLocationArea = state.CurrentLocationArea;
             line.NewLocationCounter = state.CurrentLocationPointer;
             line.Size = length;
@@ -487,7 +491,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
             if(outputBytes is not null) {
-                state.IncreaseLocationPointer(outputBytes.Length);
+                IncreaseLocationPointer(outputBytes.Length);
             }
 
             line.OutputBytes = outputBytes ?? Array.Empty<byte>();
@@ -1496,7 +1500,15 @@ namespace Konamiman.Nestor80.Assembler
             return EndifLine.Instance;
         }
 
-        static (Stream, ProcessedSourceLine) ProcessIncludeLine(string opcode, SourceLineWalker walker)
+        static readonly byte[] incbinBuffer = new byte[ushort.MaxValue + 1];
+
+        static ProcessedSourceLine ProcessIncbinLine(string opcode, SourceLineWalker walker)
+        {
+            var result = ProcessIncludeLine(opcode, walker, true);
+            return result.Item2;
+        }
+
+        static (Stream, ProcessedSourceLine) ProcessIncludeLine(string opcode, SourceLineWalker walker, bool isIncbin = false)
         {
             if(walker.AtEndOfLine) {
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires a file path as argument");
@@ -1531,7 +1543,23 @@ namespace Konamiman.Nestor80.Assembler
             catch(ArgumentException) {
             }
 
-            return (stream, new IncludeLine() { FileName = fileName, FullPath = path });
+            if(isIncbin) {
+                var byteCount = stream.Read(incbinBuffer, 0, incbinBuffer.Length);
+                
+                IncreaseLocationPointer(byteCount);
+                
+                var line = new IncbinLine {
+                    OutputBytes = incbinBuffer.Take(byteCount).ToArray(), 
+                    FileName = fileName,
+                    FullPath = path,
+                    NewLocationArea = state.CurrentLocationArea,
+                    NewLocationCounter = state.CurrentLocationPointer
+                };
+                return (null, line);
+            }
+            else {
+                return (stream, new IncludeLine() { FileName = fileName, FullPath = path });
+            }
         }
 
         /**

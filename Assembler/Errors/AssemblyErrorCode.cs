@@ -26,6 +26,7 @@
         TruncatedRequestFilename,
         MissingDelimiterInMacroArgsList,
         DuplicatedMacro,
+        LocationPointerOverflow,
         UserWarning,
         LastWarning = UserWarning,
 

@@ -149,8 +149,8 @@ namespace Konamiman.Nestor80.N80
                 Example: -ds symbol1,symbol2=1234,symbol3=ABCDh
 
             -id, --include-directory <directory path>
-                By default relative paths referenced in INCLUDE instructions will be
-                considered to be relative to the current directory or to the directory
+                By default relative paths referenced in INCLUDE and INCBIN instructions will
+                be considered to be relative to the current directory or to the directory
                 of the file currently being processed. This argument allows to
                 specify an extra directory where INCLUDEd files will be searched for;
                 use the argument multiple times to add more than one directory.
@@ -448,8 +448,8 @@ namespace Konamiman.Nestor80.N80
                    and warnings that were already printed in pass 1 will be printed in pass 2
                    again (except when they are inside an IF1 block or similar).
                 3: All the command line arguments from all the sources, all the directories
-                   for INCLUDE, all the predefined symbols, the entire configuration resulting
-                   from applying all the arguments.
+                   for INCLUDE and INCBIN, all the predefined symbols, the entire configuration
+                   resulting from applying all the arguments.
             
                 To silence other types of output see: --silence-warnings, --no-show-banner,
                 --silence-assembly-print, --no-show-assembly-duration.

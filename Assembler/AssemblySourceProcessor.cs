@@ -998,6 +998,25 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
+        static ushort oldPointer, oldPhasedPointer;
+        private static void IncreaseLocationPointer(int amount)
+        {
+            oldPointer = state.CurrentDephasedLocationPointer;
+            if(state.IsCurrentlyPhased) {
+                oldPhasedPointer = state.CurrentPhasedLocationPointer.Value;
+            }
+
+            state.IncreaseLocationPointer(amount);
+
+            if(state.CurrentDephasedLocationPointer < oldPointer) {
+                AddError(AssemblyErrorCode.LocationPointerOverflow, $"{(state.IsCurrentlyPhased ? "Main (not PHASEd) l" : "L")}ocation pointer overflowed beyond FFFFh and went back to 0");
+            }
+
+            if(state.IsCurrentlyPhased && state.CurrentPhasedLocationPointer < oldPhasedPointer) {
+                AddError(AssemblyErrorCode.LocationPointerOverflow, $"PHASEd location pointer overflowed beyond FFFFh and went back to 0");
+            }
+        }
+
         /// <summary>
         /// Register a new assembly error. Most of the work is done by <see cref="AssemblyState.AddError(AssemblyErrorCode, string, bool)"/>,
         /// but here we fire the appropriate event and check if we have reached the maximum errors count.
