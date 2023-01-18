@@ -2275,7 +2275,7 @@ _Syntax:_ `INCBIN <file path>`
 
 Allows to include the raw contents of an arbitrary file in the output, as if the file contents had been defined with [`DEFB`](#defb-db-defm). For example if you create an `ABC.BIN` file whose content is just the text `ABC`, and assuming it's saved with ASCII encoding, then `INCBIN ABC.BIN` is equivalent to `DEFB "ABC"`. At most 65536 bytes will be read from the file.
 
-The rules for resolving relative file paths are the same as for [`INCLUDE`](#include-include-maclib-).
+The rules for specifying file paths with spaces and double quotes and for resolving relative file paths are the same as for [`INCLUDE`](#include-include-maclib-).
 
 ⚠ You can't use `INCBIN` to generate files larger than 64KBytes. If the location counter goes beyond FFFFh because of a file included with `INCBIN`, then it'll go back to 0 and a warning will be generated, exactly the same as with `DEFB` or any other instruction that advances the location counter.
 
@@ -2292,6 +2292,15 @@ The file include mechanism in Nestor80 implements two important enhancement comp
 
 1. `<file path>` accepts full and relative path specifications (with directory and drive -if supported by the operating system where Nestor80 is running- specifications), not just plain file names.
 2. Nested file inclusions (the included file can have in turn `INCLUDE` instructions) are supported up to 34 depth levels.
+
+If `<file path>` contains spaces it must be enclosed in double quotes, `"`. If the file contains both spaces and double quotes, enclose the file name in `"` as described, then escape the double quotes that are part of the path by doubling them, `""`. Examples:
+
+```
+include file.asm
+include "file with spaces.asm"
+include FileWith"Quotes".asm
+include "file with spaces and ""quotes"".asm"
+```
 
 When `<file path>` is a relative path the file is searched for by considering the path relative to the following locations, in the specified order:
 
