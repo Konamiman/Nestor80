@@ -39,6 +39,9 @@ namespace Konamiman.Nestor80.N80
 
         const int DEFAULT_MAX_ERRORS = 34;
 
+        const int MAX_INCBIN_SIZE_DOW = 1024 * 1024;
+        const int MAX_INCBIN_SIZE_MEMMAP = 64 * 1024;
+
         static string inputFilePath = null;
         static string inputFileDirectory = null;
         static string inputFileName = null;
@@ -49,7 +52,7 @@ namespace Konamiman.Nestor80.N80
         static bool colorPrint;
         static bool showBanner;
         static readonly List<string> includeDirectories = new();
-        static bool orgAsPhase;
+        static bool directOutputWrite;
         static readonly List<(string, ushort)> symbolDefinitions = new();
         static int maxErrors;
         static AssemblyErrorCode[] skippedWarnings;
@@ -394,7 +397,7 @@ namespace Konamiman.Nestor80.N80
             info += $"\r\nInput file encoding: {inputFileEncoding.WebName}\r\n";
             info += $"Color output: {YesOrNo(colorPrint)}\r\n";
             info += $"Show program banner: {YesOrNo(showBanner)}\r\n";
-            info += $"ORG as PHASE: {YesOrNo(orgAsPhase)}\r\n";
+            info += $"Direct output write: {YesOrNo(directOutputWrite)}\r\n";
             info += $"Max errors: {(maxErrors == 0 ? "infinite" : maxErrors.ToString())}\r\n";
             if(skippedWarnings.Length > 0) {
                 var silencedWarningsString = skippedWarnings.Length == (int)AssemblyErrorCode.LastWarning ? "all" : string.Join(", ", skippedWarnings.Select(w => (int)w).ToArray());
@@ -472,7 +475,7 @@ namespace Konamiman.Nestor80.N80
             colorPrint = true;
             showBanner = true;
             includeDirectories.Clear();
-            orgAsPhase = false;
+            directOutputWrite = false;
             symbolDefinitions.Clear();
             maxErrors = DEFAULT_MAX_ERRORS;
             skippedWarnings = Array.Empty<AssemblyErrorCode>();
@@ -729,12 +732,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-cid" or "--clear-include-directories") {
                     includeDirectories.Clear();
                 }
-                else if(arg is "-oap" or "--org-as-phase") {
-                    orgAsPhase = true;
+                else if(arg is "-dow" or "--direct-output-write") {
+                    directOutputWrite = true;
                     buildType = BuildType.Absolute;
                 }
-                else if(arg is "-noap" or "--no-org-as-phase") {
-                    orgAsPhase = false;
+                else if(arg is "-ndow" or "--no-direct-output-write") {
+                    directOutputWrite = false;
                 }
                 else if(arg is "-ds" or "--define-symbols") {
                     if(i == args.Length - 1 || args[i + 1][0] == '-') {
@@ -918,7 +921,7 @@ namespace Konamiman.Nestor80.N80
                     i++;
                     outputFileExtension = args[i];
                 }
-                else if(arg is "-nofe" or "--no-output-file-extension") {
+                else if(arg is "-nfe" or "--no-output-file-extension") {
                     outputFileExtension = null;
                 }
                 else if(arg is "-abe" or "--allow-bare-expressions") {
@@ -973,7 +976,7 @@ namespace Konamiman.Nestor80.N80
                         i++;
                     }
                 }
-                else if(arg is "-nol" or "--no-listing-file") {
+                else if(arg is "-nl" or "--no-listing-file") {
                     mustGenerateListingFile = false;
                     listingFileName = null;
                 }
@@ -1003,7 +1006,7 @@ namespace Konamiman.Nestor80.N80
                     i++;
                     listingFileExtension = args[i];
                 }
-                else if(arg is "-nolx" or "--no-listing-file-extension") {
+                else if(arg is "-nlx" or "--no-listing-file-extension") {
                     listingFileExtension = null;
                 }
                 else if(arg is "-lspl" or "--listing-symbols-per-line") {
@@ -1163,7 +1166,8 @@ namespace Konamiman.Nestor80.N80
                 MaxErrors = maxErrors,
                 CpuName = defaultCpu,
                 AllowBareExpressions = allowBareExpressions,
-                AllowRelativeLabels = allowRelativeLabels
+                AllowRelativeLabels = allowRelativeLabels,
+                MaxIncbinFileSize = (buildType is BuildType.Absolute && directOutputWrite) ? MAX_INCBIN_SIZE_DOW : MAX_INCBIN_SIZE_MEMMAP
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();
@@ -1227,7 +1231,7 @@ namespace Konamiman.Nestor80.N80
                     writtenBytes =
                         result.BuildType is BuildType.Relocatable ?
                         OutputGenerator.GenerateRelocatable(result, outputStream, initDefs) :
-                        OutputGenerator.GenerateAbsolute(result, outputStream, orgAsPhase);
+                        OutputGenerator.GenerateAbsolute(result, outputStream, directOutputWrite);
                 }
                 catch(Exception ex) {
                     PrintFatal($"Can't write to output file ({outputFilePath}): {ex.Message}");

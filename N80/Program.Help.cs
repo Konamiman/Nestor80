@@ -118,7 +118,7 @@ namespace Konamiman.Nestor80.N80
                 of the following instructions: ASEG, CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DZ,
                 PUBLIC, EXTRN, .REQUEST; otherwise the build type will be set as relocatable.
 
-                The --org-as-phase argument will also set the build type to absolute.
+                The --direct-output-write argument will also set the build type to absolute.
 
             -cid, --clear-include-directories
                 Clear the list of the extra directories where relative INCLUDEd files
@@ -139,6 +139,34 @@ namespace Konamiman.Nestor80.N80
                 Generate an output file (this is the default behavior).
                 This argument is the opposite of --no-output.
             
+            -dow, --direct-output-write
+                This argument has effect only when the build type is absolute
+                (and in fact, it sets the build type to absolute by itself).
+            
+                Nestor80 has two strategies to generate the output file when the build type is absolute:
+            
+                - Memory map: Create a 64K memory map and fill it with the output bytes according to the
+                  ORG instructions found; then dump the filled memory between the minimum and the maximum 
+                  memory addresses used, with a maximum of 64KBytes.
+                - Direct output file write: Just write the output sequentially to the output file,
+                  which doesn't have a maximum length. A side effect is that ORG instructions are treated
+                  as equivalent to .PHASE.
+            
+                "Memory map" is the default strategy, this argument will cause Nestor80 to switch to the 
+                "Direct output file write" strategy.
+            
+                Example:
+            
+                org 100
+                db 1,2,3,4
+                org 110
+                db 5,6,7,8
+                org 102
+                db 9,10
+            
+                Output using memory map: 1,2,9,10,0,0,0,0,0,0,5,6,7,8
+                Output using direct file write: 1,2,3,4,5,6,7,8,9,10
+
             -ds, --define-symbols <symbol>[=<value>][,<symbol>[=<value>][,...]]
                 Predefine symbols for the assembled program.
                 Values can be decimal numbers, or hexadecimal numbers with a 'h' suffix.
@@ -271,6 +299,10 @@ namespace Konamiman.Nestor80.N80
                 Don't read arguments from the .N80 file in the directory of the input file.
                 This argument is ignored when found inside an arguments file (.N80 or any other).
 
+            -ndow, --no-direct-output-write
+                Use the "memory map" strategy, instead of rge "direct output file write" strategy,
+                for generating the output file (this is the default behavior). See --direct-output-write.
+
             -nds, --no-define-symbols
                 Forget all symbols that had been predefined with --define-symbols.
 
@@ -279,11 +311,19 @@ namespace Konamiman.Nestor80.N80
                 This argument is ignored when found inside N80_ARGS or an arguments file
                 (.N80 or any other).
 
+            -nfe, --no-output-file-extension
+                Forget any previous --output-file-extension argument supplied and use the default
+                extension for the output file name (if the output file name is automatically selected,
+                see --output-file-extension).
+            
             -nids, --no-initialize-defs
                 This argument has effect only when the build type is relocatable. It will cause areas
                 defined with "DEFS <size>" statements to not be initialized (the DEFS instruction
                 will be treated as equivalent to "ORG $+<size>"). This is the default behavior.
 
+            -nl, --no-listing-file
+                Don't generate a listing file (default).
+            
             -nlfc, --no-listing-false-conditionals
                 Don't include conditional block that evaluate to false when generating the listing
                 file. This can also be controlled in the source code by using the .TFCOND, .LFCOND
@@ -299,25 +339,14 @@ namespace Konamiman.Nestor80.N80
                 Don't uppercase the symbol names when printing them in the listing file
                 (keep the original casing from the source code). This is the default.
 
-            -no, --no-output
-                Process the input file but don't generate the output file (the <output file> argument,
-                if specified, is ignored). This argument is the opposite of --do-output.
-            
-            -noap, --no-org-as-phase
-                Don't treat ORG statements as .PHASE statements (default).
-
-            -nofe, --no-output-file-extension
-                Forget any previous --output-file-extension argument supplied and use the default
-                extension for the output file name (if the output file name is automatically selected,
-                see --output-file-extension).
-
-            -nol, --no-listing-file
-                Don't generate a listing file (default).
-
-            -nolx, --no-listing-file-extension
+            -nlx, --no-listing-file-extension
                 Forget any previous --listing-file-extension argument supplied and use the default
                 extension for the listing file name (if the listing file name is automatically selected,
                 see --listing-file-extension).
+
+            -no, --no-output
+                Process the input file but don't generate the output file (the <output file> argument,
+                if specified, is ignored). This argument is the opposite of --do-output.
 
             -nsb, --no-show-banner
                 Don't display the program title and copyright notice banner.
@@ -344,25 +373,6 @@ namespace Konamiman.Nestor80.N80
                 Escape sequences can also be turned on and off by using the .STRESC ON/OFF
                 instruction directly in code. You may want to disallow escape sequences
                 when compiling old sources that were intended to be assembled with MACRO-80.
-
-            -oap, --org-as-phase
-                Treat ORG statements as .PHASE statements. This argument has effect only
-                when the build type is absolute (and in fact, it sets the build type
-                to absolute by itself).
-
-                The effect of this argument is that all the generated output will be written
-                consecutively to the output file, regardless of location in memory.
-                Example:
-
-                org 100
-                db 1,2,3,4
-                org 110
-                db 5,6,7,8
-                org 102
-                db 9,10
-
-                Output without this argument: 1,2,9,10,0,0,0,0,0,0,5,6,7,8
-                Output with this argument: 1,2,3,4,5,6,7,8,9,10
 
             -ofc, --output-file-case upper|lower|orig
                 Whether the casing of the output file name will be converted to lower case,

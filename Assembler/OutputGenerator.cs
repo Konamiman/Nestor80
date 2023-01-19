@@ -12,13 +12,20 @@ namespace Konamiman.Nestor80.Assembler
     {
         /// <summary>
         /// Generate an absolute binary file from an <see cref="AssemblyResult"/>.
+        /// 
+        /// How to output is composed depends on the directFileWrite parameter:
+        /// 
+        /// - True: Just write the output sequentially to the output file, which doesn't have a maximum length.
+        /// - False: Create a 64K memory map and fill it with the output bytes according to the ORG statements found;
+        ///          then dump the filled memory between the minimum and the maximum memory addresses used,
+        ///          with a maximum of 64 KBytes.
         /// </summary>
         /// <param name="assemblyResult">Assembly result ro use for the file generation.</param>
         /// <param name="outputStream">The stream to write the result to.</param>
-        /// <param name="orgAsPhase">If true, treat ORG statements as equivalent to PHASE statements.</param>
+        /// <param name="directFileWrite">If true, treat ORG statements as equivalent to PHASE statements and don't limit the output size to 64KBytes.</param>
         /// <returns>How many bytes have been written to the stream.</returns>
         /// <exception cref="ArgumentException"></exception>
-        public static int GenerateAbsolute(AssemblyResult assemblyResult, Stream outputStream, bool orgAsPhase = false)
+        public static int GenerateAbsolute(AssemblyResult assemblyResult, Stream outputStream, bool directFileWrite = false)
         {
             var memory = new byte[65536];
             var firstAddress = 0;
@@ -30,10 +37,12 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var lines = FlattenLinesList(assemblyResult.ProcessedLines);
-            var addressDecidingLine = lines.FirstOrDefault(l => l is ChangeOriginLine or IProducesOutput);
-            if(addressDecidingLine is ChangeOriginLine first_chol) {
-                firstAddress = first_chol.NewLocationCounter;
-                currentAddress = firstAddress;
+            if(!directFileWrite) {
+                var addressDecidingLine = lines.FirstOrDefault(l => l is ChangeOriginLine or IProducesOutput);
+                if(addressDecidingLine is ChangeOriginLine first_chol) {
+                    firstAddress = first_chol.NewLocationCounter;
+                    currentAddress = firstAddress;
+                }
             }
 
             //We do a deferred location counter update to prevent an ORG at the end of the file
@@ -41,7 +50,7 @@ namespace Konamiman.Nestor80.Assembler
             int newLocationCounter = -1;
 
             foreach(var line in lines) {
-                if(newLocationCounter != -1 && line is IProducesOutput or DefineSpaceLine) {
+                if(!directFileWrite && newLocationCounter != -1 && line is IProducesOutput or DefineSpaceLine) {
                     firstAddress = Math.Min(firstAddress, newLocationCounter);
                     lastAddressPlusOne = Math.Max(lastAddressPlusOne, newLocationCounter);
                     currentAddress = newLocationCounter;
@@ -49,13 +58,17 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(line is ChangeOriginLine chol) {
-                    if(!orgAsPhase) {
+                    if(!directFileWrite) {
                         newLocationCounter = chol.NewLocationCounter;
                     }
                 }
                 else if(line is IProducesOutput ipo) {
                     var length = ipo.OutputBytes.Length;
-                    if(currentAddress + length <= 65536) {
+                    if(directFileWrite) {
+                        outputStream.Write(ipo.OutputBytes);
+                        lastAddressPlusOne += length;
+                    }
+                    else if(currentAddress + length <= 65536) {
                         Array.Copy(ipo.OutputBytes, 0, memory, currentAddress, ipo.OutputBytes.Length);
                         currentAddress += length;
                     }
@@ -72,7 +85,12 @@ namespace Konamiman.Nestor80.Assembler
                 else if(line is DefineSpaceLine ds) {
                     var outputByte = ds.Value ?? 0;
                     var length = ds.Size;
-                    if(currentAddress + length <= 65536) {
+                    if(directFileWrite) {
+                        var bytes = Enumerable.Repeat(outputByte, length).ToArray();
+                        outputStream.Write(bytes);
+                        lastAddressPlusOne += length;
+                    }
+                    else if(currentAddress + length <= 65536) {
                         Array.Fill(memory, outputByte, currentAddress, length);
                         currentAddress += length;
                     }
@@ -101,7 +119,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var outputSize = lastAddressPlusOne-firstAddress;
-            if(outputSize > 0) {
+            if(!directFileWrite && outputSize > 0) {
                 outputStream.Write(memory, firstAddress, outputSize);
             }
 

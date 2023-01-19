@@ -1500,7 +1500,7 @@ namespace Konamiman.Nestor80.Assembler
             return EndifLine.Instance;
         }
 
-        static readonly byte[] incbinBuffer = new byte[ushort.MaxValue + 1];
+        static byte[] incbinBuffer;
 
         static ProcessedSourceLine ProcessIncbinLine(string opcode, SourceLineWalker walker)
         {

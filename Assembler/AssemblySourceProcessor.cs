@@ -171,6 +171,8 @@ namespace Konamiman.Nestor80.Assembler
                 Expression.ModularizeSymbolName = name => state.Modularize(name);
                 Expression.AllowEscapesInStrings = configuration.AllowEscapesInStrings;
 
+                incbinBuffer = new byte[configuration.MaxIncbinFileSize];
+
                 DoPass();
                 if(!state.HasErrors) {
                     state.SwitchToPass2(buildType);

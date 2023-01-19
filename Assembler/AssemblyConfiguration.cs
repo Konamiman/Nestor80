@@ -69,5 +69,10 @@ namespace Konamiman.Nestor80.Assembler
         /// to the last non-relative label).
         /// </summary>
         public bool AllowRelativeLabels { get; init; } = false;
+
+        /// <summary>
+        /// Maximum amount of content that will be read from files included with the INCBIN instruction.
+        /// </summary>
+        public int MaxIncbinFileSize { get; init; } = 65536;
     }
 }
