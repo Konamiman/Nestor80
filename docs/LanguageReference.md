@@ -2300,7 +2300,7 @@ This instruction is the opposite of [`IFABS`](#ifabs-): the true condition is th
 
 _Syntax:_ `INCBIN <file path>`
 
-Allows to include the raw contents of an arbitrary file in the output, as if the file contents had been defined with [`DEFB`](#defb-db-defm). For example if you create an `ABC.BIN` file whose content is just the text `ABC`, and assuming it's saved with ASCII encoding, then `INCBIN ABC.BIN` is equivalent to `DEFB "ABC"`.
+Allows to include the raw contents of an arbitrary file in the output, as if the file contents had been defined with [`DEFB`](#defb-db-defm). For example if you create an `ABC.BIN` file whose content is just the text `ABC`, and assuming it's saved with ASCII encoding, then `INCBIN ABC.BIN` is equivalent to `DEFB 41h,42h,43h`.
 
 At most 64KBytes will be read from the file when assembling relocatable code and when assembling absolute code with the "memory map" strategy, and at most 1MByte when assembling absolute code with the "direct output file write" strategy. See ["Absolute output strategies"](#absolute-output-strategies).
 
