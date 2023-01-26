@@ -10,7 +10,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "-";
 
-        public override byte? ExtendedLinkItemType => 7;
+        public override byte ExtendedLinkItemType => 7;
 
         protected override Address OperateCore(Address value1, Address value2)
         {

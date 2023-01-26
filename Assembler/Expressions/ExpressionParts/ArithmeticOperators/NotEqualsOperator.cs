@@ -10,6 +10,8 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "NE";
 
+        public override byte ExtendedLinkItemType => 19;
+
         protected override Address OperateCore(Address value1, Address value2)
         {
             // Both addresses must be in the same mode

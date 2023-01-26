@@ -7,6 +7,11 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts
     /// </summary>
     internal abstract class ArithmeticOperator : IExpressionPart
     {
+        /// <summary>
+        /// The smallest operator code defined by the extended relocatable file format.
+        /// </summary>
+        public static int SmallestExtendedOperatorCode = 16;
+
         protected ArithmeticOperator() { }
 
         public abstract int Precedence { get; }
@@ -16,14 +21,9 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts
         public abstract bool IsUnary { get; }
 
         /// <summary>
-        /// The "Arithmetic operator" extended link item as defined by the LINK-80 relocatable
-        /// file format admits only a subset of the existing operators.
-        /// Those will have this property redefined so that it returns the proper operator code
-        /// as expected by LINK-80.
+        /// The "Arithmetic operator" extended link item as defined by the LINK-80 relocatable file format.
         /// </summary>
-        public virtual byte? ExtendedLinkItemType => null;
-
-        public bool AllowedForRelocatableSymbols => ExtendedLinkItemType != null;
+        public abstract byte ExtendedLinkItemType { get; }
 
         protected static Address AbsoluteZero => new Address(AddressType.ASEG, 0);
 

@@ -10,6 +10,9 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "u+";
 
+        //Not actually used
+        public override byte ExtendedLinkItemType => 255;
+
         protected override Address OperateCore(Address value1, Address value2)
         {
             return value1;

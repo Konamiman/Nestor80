@@ -74,6 +74,7 @@ namespace Konamiman.Nestor80.N80
         static Encoding listingFileEncoding;
         static bool mustGenerateListingFile;
         static string listingFileExtension;
+        static bool link80compatibility;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -414,6 +415,9 @@ namespace Konamiman.Nestor80.N80
             info += $"Expand DEFS instructions: {YesOrNo(initDefs)}\r\n";
             info += $"Show source in error messages: {YesOrNo(sourceInErrorMessage)}\r\n";
             info += $"Allow relative labels: {YesOrNo(allowRelativeLabels)}\r\n";
+            if(buildType != BuildType.Absolute) {
+                info += $"LINK-80 compatibility: {YesOrNo(link80compatibility)}\r\n";
+            }
 
             if(mustProcessOutputFileName) {
                 var outputExtension =
@@ -497,6 +501,7 @@ namespace Konamiman.Nestor80.N80
             listingFileEncoding = Encoding.UTF8;
             mustGenerateListingFile = false;
             listingFileExtension = null;
+            link80compatibility = false;
 
             listingConfig.MaxSymbolLength = 16;
             listingConfig.ListFalseConditionals = true;
@@ -1085,6 +1090,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nlus" or "--no-listing-uppercase-symbols") {
                     listingConfig.UppercaseSymbolNames = false;
                 }
+                else if(arg is "-l8c" or "--link-80-compatibility") {
+                    link80compatibility = true;
+                }
+                else if(arg is "-nl8c" or "--no-link-80-compatibility") {
+                    link80compatibility = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -1167,7 +1178,8 @@ namespace Konamiman.Nestor80.N80
                 CpuName = defaultCpu,
                 AllowBareExpressions = allowBareExpressions,
                 AllowRelativeLabels = allowRelativeLabels,
-                MaxIncbinFileSize = (buildType is BuildType.Absolute && directOutputWrite) ? MAX_INCBIN_SIZE_DOW : MAX_INCBIN_SIZE_MEMMAP
+                MaxIncbinFileSize = (buildType is BuildType.Absolute && directOutputWrite) ? MAX_INCBIN_SIZE_DOW : MAX_INCBIN_SIZE_MEMMAP,
+                Link80Compatibility = link80compatibility
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();
@@ -1222,7 +1234,7 @@ namespace Konamiman.Nestor80.N80
                 if(result.ProgramName is null) {
                     var inputFileNameNoExt = Path.GetFileNameWithoutExtension(inputFileName).ToUpper();
                     result.ProgramName =
-                        inputFileNameNoExt.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
+                        link80compatibility && inputFileNameNoExt.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
                         inputFileNameNoExt[..AssemblySourceProcessor.MaxEffectiveExternalNameLength] :
                         inputFileNameNoExt;
                 }
@@ -1230,7 +1242,7 @@ namespace Konamiman.Nestor80.N80
                 try {
                     writtenBytes =
                         result.BuildType is BuildType.Relocatable ?
-                        OutputGenerator.GenerateRelocatable(result, outputStream, initDefs) :
+                        OutputGenerator.GenerateRelocatable(result, outputStream, initDefs, !link80compatibility) :
                         OutputGenerator.GenerateAbsolute(result, outputStream, directOutputWrite);
                 }
                 catch(Exception ex) {

@@ -15,11 +15,7 @@
         /// <param name="bufferToWriteTo"></param>
         public BitStreamWriter(List<byte> bufferToWriteTo)
         {
-            if (bufferToWriteTo == null)
-            {
-                throw new ArgumentNullException("bufferToWriteTo");
-            }
-            _targetBuffer = bufferToWriteTo;
+            _targetBuffer = bufferToWriteTo ?? throw new ArgumentNullException(nameof(bufferToWriteTo));
         }
 
         /// <summary>
@@ -31,7 +27,7 @@
         {
             // validate that a subset of the bits in a single byte are being written
             if (countOfBits <= 0 || countOfBits > Native.BitsPerInt)
-                throw new ArgumentOutOfRangeException("countOfBits");
+                throw new ArgumentOutOfRangeException(nameof(countOfBits));
 
 
             // calculate the number of full bytes
@@ -70,7 +66,7 @@
         {
             // validate that a subset of the bits in a single byte are being written
             if (countOfBits <= 0 || countOfBits > Native.BitsPerInt)
-                throw new ArgumentOutOfRangeException("countOfBits");
+                throw new ArgumentOutOfRangeException(nameof(countOfBits));
 
             // calculate the number of full bytes
             //   Example: 10 bits would require 1 full byte
@@ -99,7 +95,7 @@
         {
             // validate that a subset of the bits in a single byte are being written
             if (countOfBits <= 0 || countOfBits > Native.BitsPerByte)
-                throw new ArgumentOutOfRangeException("countOfBits");
+                throw new ArgumentOutOfRangeException(nameof(countOfBits));
 
             byte buffer;
             // if there is remaining bits in the last byte in the stream
@@ -145,6 +141,12 @@
         public void ForceByteBoundary()
         {
             if (_remaining > 0) Write(0, _remaining);
+        }
+
+        public void WriteDirect(byte[] bytes)
+        {
+            ForceByteBoundary();
+            _targetBuffer.AddRange(bytes);
         }
 
         // the buffer that the bits are written into

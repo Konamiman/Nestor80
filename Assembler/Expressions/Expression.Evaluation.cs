@@ -228,8 +228,8 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     
                     if(uop is not UnaryPlusOperator && !poppedAddress.IsAbsolute && isByte) {
-                        if(uop.ExtendedLinkItemType is null) {
-                            Throw($"Operator {uop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte", AssemblyErrorCode.InvalidForRelocatable);
+                        if(Link80Compatibility && uop.ExtendedLinkItemType > ArithmeticOperator.SmallestExtendedOperatorCode) {
+                            Throw($"Operator {uop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte in LINK-80 compatibility mode", AssemblyErrorCode.InvalidForRelocatable);
                             return null;
                         }
                         HasRelocatableToStoreAsByte = true;
@@ -257,8 +257,8 @@ namespace Konamiman.Nestor80.Assembler
                     }
 
                     if((!poppedAddress1.IsAbsolute || !poppedAddress2.IsAbsolute) && isByte) {
-                        if(bop.ExtendedLinkItemType is null) {
-                            Throw($"Operator {bop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte", AssemblyErrorCode.InvalidForRelocatable);
+                        if(Link80Compatibility && bop.ExtendedLinkItemType > ArithmeticOperator.SmallestExtendedOperatorCode) {
+                            Throw($"Operator {bop} is not allowed in expressions involving relocatable addresses that evaluate to a single byte in LINK-80 compatibility mode", AssemblyErrorCode.InvalidForRelocatable);
                             return null;
                         }
 

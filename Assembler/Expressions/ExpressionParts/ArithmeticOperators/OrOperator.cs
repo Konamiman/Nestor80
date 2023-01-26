@@ -10,6 +10,8 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "OR";
 
+        public override byte ExtendedLinkItemType => 25;
+
         protected override Address OperateCore(Address value1, Address value2)
         {
             // At least one of the operands must be Absolute

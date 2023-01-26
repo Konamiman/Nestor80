@@ -33,6 +33,8 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
             SymbolBytes = symbolBytes;
         }
 
+        public static bool Link80Compatibility { get; set; } = false;
+
         public static LinkItem ForAddressReference(AddressType addressType, ushort addressValue)
         {
             var symbolBytes = new byte[4];
@@ -46,14 +48,15 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
 
         public static LinkItem ForExternalReference(string symbol)
         {
-            if (symbol.Length > 6)
+            if (symbol.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength  && Link80Compatibility)
             {
                 throw new InvalidOperationException($"{nameof(LinkItem)}.{nameof(ForExternalReference)}: {symbol} is longer than 6 characters");
             }
 
-            var symbolBytes = new byte[symbol.Length + 1];
+            var symbolLengthInBytes = (Link80Compatibility ? Encoding.ASCII : Encoding.UTF8).GetByteCount(symbol);
+            var symbolBytes = new byte[symbolLengthInBytes + 1];
             symbolBytes[0] = (byte)ExtensionLinkItemType.ReferenceExternal;
-            Encoding.ASCII.GetBytes(symbol.ToCharArray(), 0, symbol.Length, symbolBytes, 1);
+            (Link80Compatibility ? Encoding.ASCII : Encoding.UTF8).GetBytes(symbol.ToCharArray(), 0, symbol.Length, symbolBytes, 1);
 
             return new LinkItem(LinkItemType.ExtensionLinkItem, symbolBytes);
         }
@@ -103,7 +106,7 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
 
         public bool IsPlusOrMinus => ArithmeticOperator is ArithmeticOperatorCode.Plus or ArithmeticOperatorCode.Minus;
 
-        public string GetSymbolName() => Encoding.ASCII.GetString(SymbolBytes.Skip(1).ToArray());
+        public string GetSymbolName() => (Link80Compatibility ? Encoding.ASCII : Encoding.UTF8).GetString(SymbolBytes.Skip(1).ToArray());
 
         public (AddressType, ushort) GetReferencedAddress() => ((AddressType)SymbolBytes[1], (ushort)(SymbolBytes[2] | SymbolBytes[3] << 8));
 
@@ -142,7 +145,7 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
                 }
                 if (HasSymbolBytes)
                 {
-                    s += $", {Encoding.ASCII.GetString(SymbolBytes)}";
+                    s += $", {Encoding.UTF8.GetString(SymbolBytes)}";
                 }
             }
 

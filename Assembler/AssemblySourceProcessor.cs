@@ -40,6 +40,7 @@ namespace Konamiman.Nestor80.Assembler
         private static int errorsGenerated = 0;
         private static string programName = null;
         private static bool programNameInstructionFound = false;
+        private static bool link80Compatibility;
 
         private static readonly string[] z80RegisterNames = new[] {
             "A", "B", "C", "D", "E", "F", "H", "L", "I", "R",
@@ -76,13 +77,20 @@ namespace Konamiman.Nestor80.Assembler
 
         private static CpuType currentCpu;
 
-        private static readonly Regex labelRegex = new("^[\\w$@?._][\\w$@?._0-9]*:{0,2}$", RegxOp);
-        private static readonly Regex externalSymbolRegex = new("^[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*$", RegxOp);
-        private static readonly Regex ProgramNameRegex = new(@"^\('(?<name>[a-zA-Z_$@?.][a-zA-Z_$@?.0-9]*)'\)", RegxOp);
+        private static readonly Regex labelRegex = new("^([^\\d\\W]|[$@?._])[\\w$@?._]*:{0,2}$", RegxOp);
+
+        private static Regex externalSymbolRegex;
+        private static readonly Regex externalSymbolRegex_full = new("^([^\\d\\W]|[$@?._])[\\w$@?._]*$", RegxOp);
+        private static readonly Regex externalSymbolRegex_link80 = new("^[A-Z_$@?.][A-Z_$@?.0-9]*$", RegxOp);
+
+        private static Regex programNameRegex;
+        private static readonly Regex programNameRegex_full = new(@"^\('(?<name>([^\d\W]|[$@?._])[\w$@?._]*)'\)", RegxOp);
+        private static readonly Regex programNameRegex_link80 = new(@"^\('(?<name>[A-Z_$@?.][A-Z_$@?.0-9]*)'\)", RegxOp);
+
         private static readonly Regex LegacySubtitleRegex = new(@"^\('(?<name>[^']*)'\)", RegxOp);
         private static readonly Regex printStringExpressionRegex = new(@"(?<=\{)[^}]*(?=\})", RegxOp);
         private static readonly Regex commonBlockNameRegex = new(@"^/[ \t]*/|/[A-Z$@?._][A-Z$@?._0-9]*/$", RegxOp);
-
+        
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
         private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "ASET" };
@@ -156,6 +164,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 ProcessPredefinedsymbols(configuration.PredefinedSymbols);
                 maxErrors = configuration.MaxErrors;
+                link80Compatibility = configuration.Link80Compatibility;
 
                 SetCurrentCpu(configuration.CpuName);
                 buildType = configuration.BuildType;
@@ -170,6 +179,12 @@ namespace Konamiman.Nestor80.Assembler
                 Expression.GetSymbol = GetSymbolForExpression;
                 Expression.ModularizeSymbolName = name => state.Modularize(name);
                 Expression.AllowEscapesInStrings = configuration.AllowEscapesInStrings;
+                Expression.Link80Compatibility = link80Compatibility;
+                SymbolInfo.Link80Compatibility = link80Compatibility;
+                LinkItem.Link80Compatibility = link80Compatibility;
+
+                externalSymbolRegex = link80Compatibility ? externalSymbolRegex_link80 : externalSymbolRegex_full;
+                programNameRegex = link80Compatibility ? programNameRegex_link80 : programNameRegex_full;
 
                 incbinBuffer = new byte[configuration.MaxIncbinFileSize];
 
@@ -226,15 +241,17 @@ namespace Konamiman.Nestor80.Assembler
                 AddError(AssemblyErrorCode.SameEffectivePublic, $"Public symbols {names} actually refer to the same one: {dupe.First().EffectiveName}", withLineNumber: false);
             }
 
-            var duplicateCommonBlocks = state
-                .GetCommonBlockSizes()
-                .Where(x => x.Key.Length > MaxEffectiveExternalNameLength)
-                .GroupBy(n => n.Key[..MaxEffectiveExternalNameLength])
-                .Where(n => n.Count() > 1)
-                .ToArray();
-            foreach(var dupe in duplicateCommonBlocks) {
-                var names = string.Join(", ", dupe.Select(d => d.Key).ToArray());
-                AddError(AssemblyErrorCode.SameEffectiveCommon, $"Common block names {names} actually refer to the same one: {dupe.First().Key[..MaxEffectiveExternalNameLength]}", withLineNumber: false);
+            if(configuration.Link80Compatibility) {
+                var duplicateCommonBlocks = state
+                    .GetCommonBlockSizes()
+                    .Where(x => x.Key.Length > MaxEffectiveExternalNameLength)
+                    .GroupBy(n => n.Key[..MaxEffectiveExternalNameLength])
+                    .Where(n => n.Count() > 1)
+                    .ToArray();
+                foreach(var dupe in duplicateCommonBlocks) {
+                    var names = string.Join(", ", dupe.Select(d => d.Key).ToArray());
+                    AddError(AssemblyErrorCode.SameEffectiveCommon, $"Common block names {names} actually refer to the same one: {dupe.First().Key[..MaxEffectiveExternalNameLength]}", withLineNumber: false);
+                }
             }
 
             if(buildType == BuildType.Automatic)
@@ -265,7 +282,7 @@ namespace Konamiman.Nestor80.Assembler
                 EndAddressArea = state.EndAddress is null ? AddressType.ASEG : state.EndAddress.Type,
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
                 BuildType = buildType,
-                MaxRelocatableSymbolLength = MaxEffectiveExternalNameLength,
+                MaxRelocatableSymbolLength = configuration.Link80Compatibility ? MaxEffectiveExternalNameLength : int.MaxValue,
                 MacroNames = state.NamedMacros.Keys.ToArray()
             };
         }
@@ -815,8 +832,8 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else if(part is ArithmeticOperator op) {
                     if(op is not UnaryPlusOperator) {
-                        if(op.ExtendedLinkItemType is null) {
-                            AddError(AssemblyErrorCode.InvalidForRelocatable, $"Operator {op} is not allowed in expressions involving external references");
+                        if(link80Compatibility && op.ExtendedLinkItemType > ArithmeticOperator.SmallestExtendedOperatorCode) {
+                            AddError(AssemblyErrorCode.InvalidForRelocatable, $"Operator {op} is not allowed in expressions involving external references in LINK-80 compatibility mode");
                             return null;
                         }
                         items.Add(LinkItem.ForArithmeticOperator((ArithmeticOperatorCode)op.ExtendedLinkItemType));

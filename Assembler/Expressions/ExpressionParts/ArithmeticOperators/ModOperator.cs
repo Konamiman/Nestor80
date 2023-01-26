@@ -10,7 +10,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "MOD";
 
-        public override byte? ExtendedLinkItemType => 11;
+        public override byte ExtendedLinkItemType => 11;
 
         protected override Address OperateCore(Address value1, Address value2)
         {
