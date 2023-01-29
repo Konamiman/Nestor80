@@ -22,7 +22,7 @@ jobs:
     - name: Build
       working-directory: ./N80
       env:
-        IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') ? 'true' : '' }}
+        IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || '' }}
       run: |
         ./build.sh
         if [ -n "$IS_RELEASE" ]; then
