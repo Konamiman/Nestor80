@@ -6,7 +6,8 @@
 # Or build only the publish profile supplied as argument (e.g: build.sh SelfContained__win_x64)
 # The built programs are placed in <N80 project root>/Release.
 
-source functions.sh
+# using sh, source command does not exist
+. ./functions.sh
 
 publish() {
 	dotnet publish ../Nestor80.sln /p:PublishProfile=$1 /p:DebugType=None -c Release

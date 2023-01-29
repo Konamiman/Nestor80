@@ -5,7 +5,8 @@
 # Generate ZIP files for all the variants inside the <project root>/Release/zips directory.
 # You need to run build.sh first in order to actually have something to zip!
 
-source functions.sh
+# using sh, source command does not exist
+. ./functions.sh
 
 set -e
 
