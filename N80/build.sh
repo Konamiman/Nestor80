@@ -6,22 +6,10 @@
 # Or build only the publish profile supplied as argument (e.g: build.sh SelfContained__win_x64)
 # The built programs are placed in <N80 project root>/Release.
 
-output() {
-  TPUTARGS=""
-  if [ -n "$GITHUB_ACTIONS" ]; then
-    TPUTARGS="-T xterm-256color"
-  fi
-	echo "$(tput ${TPUTARGS} setaf "$1")$2$(tput ${TPUTARGS} sgr0)"
-}
+source functions.sh
 
 publish() {
 	dotnet publish ../Nestor80.sln /p:PublishProfile=$1 /p:DebugType=None -c Release
-}
-
-banner() {
-	echo
-	output 6 "----- $1 -----"
-	echo
 }
 
 set -e
