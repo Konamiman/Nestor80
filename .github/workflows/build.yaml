@@ -6,6 +6,7 @@ on:
     - github-actions
     - master
     tags:
+    - 'v**'
   pull_request:
     paths-ignore:
     - 'docs/**'
