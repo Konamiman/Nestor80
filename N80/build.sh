@@ -6,18 +6,11 @@
 # Or build only the publish profile supplied as argument (e.g: build.sh SelfContained__win_x64)
 # The built programs are placed in <N80 project root>/Release.
 
-output() {
-	echo "$(tput setaf "$1")$2$(tput sgr0)"
-}
+# using sh, source command does not exist
+. ./functions.sh
 
 publish() {
 	dotnet publish ../Nestor80.sln /p:PublishProfile=$1 /p:DebugType=None -c Release
-}
-
-banner() {
-	echo
-	output 6 "----- $1 -----"
-	echo
 }
 
 set -e
