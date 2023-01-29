@@ -7,7 +7,11 @@
 # The built programs are placed in <N80 project root>/Release.
 
 output() {
-	echo "$(tput setaf "$1")$2$(tput sgr0)"
+  TPUTARGS=""
+  if [ -n "$GITHUB_ACTIONS" ]; then
+    TPUTARGS="-T xterm-256color"
+  fi
+	echo "$(tput ${TPUTARGS} setaf "$1")$2$(tput ${TPUTARGS} sgr0)"
 }
 
 publish() {
