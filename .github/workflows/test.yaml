@@ -19,4 +19,5 @@ jobs:
       with:
         dotnet-version: '6.0.x'
     - name: Build
-      run: ./N80/build.sh
+      working-directory: ./N80
+      run: ./build.sh
