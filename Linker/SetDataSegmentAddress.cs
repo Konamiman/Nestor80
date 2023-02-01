@@ -1,6 +1,6 @@
 ﻿namespace Konamiman.Nestor80.Linker;
 
-internal class SetDataSegmentAddress : ILinkingSequenceItem
+public class SetDataSegmentAddress : ILinkingSequenceItem
 {
-    public int Address { get; set; }
+    public ushort Address { get; set; }
 }
