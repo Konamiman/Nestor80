@@ -29,5 +29,12 @@
             CodeSegmentRange = new AddressRange(CodeSegmentStart, CodeSegmentEnd, Assembler.AddressType.CSEG);
             DataSegmentRange = new AddressRange(DataSegmentStart, DataSegmentEnd, Assembler.AddressType.DSEG);
         }
+
+        public ushort MaxSegmentEnd => Math.Max(CodeSegmentEnd, DataSegmentEnd);
+
+        public override string ToString()
+        {
+            return $"{ProgramName} - CSEG: {CodeSegmentStart:X4}h - {CodeSegmentEnd:X4}h; DSEG: {DataSegmentStart:X4}h - {DataSegmentEnd:X4}h";
+        }
     }
 }

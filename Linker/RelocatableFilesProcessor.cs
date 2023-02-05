@@ -38,6 +38,7 @@ namespace Konamiman.Nestor80.Linker
         private static bool codeSegmentAddressSpecified;
         private static bool dataSegmentAddressSpecified;
         private static byte[] resultingMemory;
+        private static SegmentsSequencingMode segmentsSequencingMode;
 
         public static event EventHandler<string> FileProcessingStart;
 
@@ -61,7 +62,7 @@ namespace Konamiman.Nestor80.Linker
             DoLinking();
 
             if(startAddress <= endAddress) {
-                outputStream.Write(resultingMemory.Skip(startAddress - 1).Take(endAddress - startAddress - 1).ToArray());
+                outputStream.Write(resultingMemory.Skip(startAddress).Take(endAddress - startAddress + 1).ToArray());
             }
 
             var areas = new List<AddressRange> {
@@ -91,27 +92,31 @@ namespace Konamiman.Nestor80.Linker
         {
             codeSegmentAddressFromInput = null;
             dataSegmentAddressFromInput = null;
+            segmentsSequencingMode = SegmentsSequencingMode.DataBeforeCode;
 
             foreach(var linkItem in linkItems) {
                 if(linkItem is SetCodeSegmentAddress scsa) {
                     codeSegmentAddressFromInput = scsa.Address;
-                    //TODO: Move the following
-                    /*
-                    minimumCodeSegmentStart = Math.Min(minimumCodeSegmentStart, scsa.Address);
-                    currentProgramCodeSegmentStart = scsa.Address;
-                    startAddress = Math.Min(startAddress, currentProgramCodeSegmentStart);
-                    startAddress = Math.Min(startAddress, currentProgramDataSegmentStart);
-                    */
                 }
                 else if(linkItem is SetDataSegmentAddress sdsa) {
                     dataSegmentAddressFromInput = sdsa.Address;
-                    //TODO: Move the following
-                    /*
-                    minimumDataSegmentStart = Math.Min(minimumCodeSegmentStart, sdsa.Address);
-                    currentProgramDataSegmentStart = sdsa.Address;
-                    startAddress = Math.Min(startAddress, currentProgramCodeSegmentStart);
-                    startAddress = Math.Min(startAddress, currentProgramDataSegmentStart);
-                    */
+                    segmentsSequencingMode = SegmentsSequencingMode.CombineSameSegment;
+                }
+                else if(linkItem is SetCodeBeforeDataMode) {
+                    if(segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment) {
+                        warnings.Add("Can't set \"code before data\" mode after an explicit address for the data segment has been specified");
+                    }
+                    else {
+                        segmentsSequencingMode = SegmentsSequencingMode.CodeBeforeData;
+                    }
+                }
+                else if(linkItem is SetDataBeforeCodeMode) {
+                    if(segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment) {
+                        warnings.Add("Can't set \"data before code\" mode after an explicit address for the data segment has been specified");
+                    }
+                    else {
+                        segmentsSequencingMode = SegmentsSequencingMode.DataBeforeCode;
+                    }
                 }
                 else if(linkItem is RelocatableFileReference rfr) {
                     var stream = OpenFile(rfr.FullName);
@@ -158,44 +163,36 @@ namespace Konamiman.Nestor80.Linker
 
             var previousProgram = programInfos.LastOrDefault();
 
-            if(codeSegmentAddressFromInput is null && dataSegmentAddressFromInput is null) {
-                // Neither code nor data segment addresses specified:
-                // - Data segment starts at the default address
-                //   (0103h, or after the code segment of the previous program)
-                // - Code segment starts right after the end of data segment
-                currentProgramDataSegmentStart = (ushort)(
-                    previousProgram is null ?
-                    0x103 : previousProgram.DataSegmentEnd + 1
-                    );
-                currentProgramCodeSegmentStart = (ushort)(currentProgramDataSegmentStart + dataSize);
-                if(currentProgramCodeSegmentStart < currentProgramDataSegmentStart) {
-                    warnings.Add($"{currentProgramName}: data segment set to start at {currentProgramDataSegmentStart:X4}h, code segment set to start after data segment but will actually start at {currentProgramCodeSegmentStart:X4}h, ");
-                }
-            }
-            else if(codeSegmentAddressFromInput is null) {
-                // Only data segment address specified:
-                // - Data segment starts at the specified data segment start address
-                // - Code segment starts at the default address
-                //   (0103h, or after the code segment of the previous program)
-                currentProgramCodeSegmentStart = (ushort)(
-                    previousProgram is null ?
-                    0x103 : previousProgram.CodeSegmentEnd + 1
-                    );
-                currentProgramDataSegmentStart = dataSegmentAddressFromInput.Value;
-            }
-            else if(dataSegmentAddressFromInput is null) {
-                // Only code segment address specified:
-                // - Data segment starts at the specified code segment start address
-                //   (weird, but that's how LINK-80 behaves)
-                // - Code segment starts right after the end of data segment
-                currentProgramDataSegmentStart = codeSegmentAddressFromInput.Value;
-                currentProgramCodeSegmentStart = (ushort)(currentProgramDataSegmentStart + dataSize);
-                if(currentProgramDataSegmentStart > currentProgramCodeSegmentStart) {
-                    warnings.Add($"{currentProgramName}: data segment set to start at {currentProgramDataSegmentStart:X4}h, code segment set to start before data segment but will actually start at {currentProgramCodeSegmentStart:X4}h, ");
-                }
+            if(segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment) {
+                currentProgramCodeSegmentStart =
+                    codeSegmentAddressFromInput ?? (ushort)((previousProgram?.CodeSegmentEnd ?? 0x102) + 1);
+
+                // The "CombineSameSegment" mode is entered only after an explicit data segment address is supplied.
+                // Thus, either it was supplied right before this program (and thus dataSegmentAddressFromInput
+                // is not null), or it was supplied before one of the previous programs
+                // (and thus previousProgram is not null).
+
+                currentProgramDataSegmentStart =
+                    dataSegmentAddressFromInput ?? (ushort)(previousProgram.DataSegmentEnd + 1);
             }
 
-            //TODO: Check intersections with previous programs
+            // The other two modes can't be (re-)entered once an address is specified for the data segment,
+            // thus we can safely ignore dataSegmentAddressFromInput for these.
+
+            else if(segmentsSequencingMode is SegmentsSequencingMode.CodeBeforeData) {
+                currentProgramCodeSegmentStart =
+                    codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? 0x102) + 1);
+
+                currentProgramDataSegmentStart = (ushort)(currentProgramCodeSegmentStart + programSize);
+            }
+            else if(segmentsSequencingMode is SegmentsSequencingMode.DataBeforeCode) {
+                // Not a bug: in this mode the data segment really starts at the address
+                // specified for the code segment. This is also how LINK-80 works.
+                currentProgramDataSegmentStart =
+                    codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? 0x102) + 1);
+
+                currentProgramCodeSegmentStart = (ushort)(currentProgramDataSegmentStart + programSize);
+            }
 
             currentProgramCodeSegmentEnd = programSize == 0 ? currentProgramCodeSegmentStart : (ushort)(currentProgramCodeSegmentStart + programSize - 1);
             currentProgramDataSegmentEnd = dataSize == 0 ? currentProgramDataSegmentStart : (ushort)(currentProgramDataSegmentStart + dataSize - 1);
@@ -208,10 +205,24 @@ namespace Konamiman.Nestor80.Linker
             currentAddressType = AddressType.CSEG;
             currentProgramAddress = currentProgramCodeSegmentStart;
 
+            var oldCurrentProgramAddress = currentProgramAddress;
             foreach(var fileItem in programItems) {
-                var oldCurrentProgramAddress = currentProgramAddress;
+                if(oldCurrentProgramAddress > currentProgramAddress) {
+                    warnings.Add($"When processing {currentAddressType} of program '{currentProgramName}': program counter overflowed from FFFFh to 0");
+                    startAddress = 0;
+                    endAddress = 65535;
+                }
+                oldCurrentProgramAddress = currentProgramAddress;
+
                 if(fileItem is RawBytes rawBytes) {
-                    Array.Copy(rawBytes.Bytes, 0, resultingMemory, currentProgramAddress, rawBytes.Bytes.Length);
+                    var excessBytes = currentProgramAddress + rawBytes.Bytes.Length - 65536;
+                    if(excessBytes > 0) {
+                        Array.Copy(rawBytes.Bytes, 0, resultingMemory, currentProgramAddress, rawBytes.Bytes.Length-excessBytes);
+                        Array.Copy(rawBytes.Bytes, rawBytes.Bytes.Length-excessBytes, resultingMemory, 0, excessBytes);
+                    }
+                    else {
+                        Array.Copy(rawBytes.Bytes, 0, resultingMemory, currentProgramAddress, rawBytes.Bytes.Length);
+                    }
                     currentProgramAddress += (ushort)rawBytes.Bytes.Length;
                     continue;
                 }
@@ -232,6 +243,7 @@ namespace Konamiman.Nestor80.Linker
                     currentProgramAddress =(ushort)(
                         currentAddressType is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value : currentProgramDataSegmentStart + linkItem.Address.Value
                     );
+                    oldCurrentProgramAddress = currentProgramAddress;
                 }
                 else if(linkItem.Type is LinkItemType.DefineEntryPoint) {
                     var effectiveAddress = linkItem.Address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value : currentProgramDataSegmentStart + linkItem.Address.Value;
@@ -248,16 +260,45 @@ namespace Konamiman.Nestor80.Linker
                 //TODO: check wrap (old program address > current program address) whenever address is increased
             }
 
-            var progInfo = new ProgramInfo() {
+            if(oldCurrentProgramAddress > currentProgramAddress) {
+                warnings.Add($"When processing {currentAddressType} of program '{currentProgramName}': program counter overflowed from FFFFh to 0");
+                startAddress = 0;
+                endAddress = 65535;
+            }
+
+            var currentProgramInfo = new ProgramInfo() {
                 CodeSegmentStart = currentProgramCodeSegmentStart,
                 CodeSegmentEnd = currentProgramCodeSegmentEnd,
                 DataSegmentStart = currentProgramDataSegmentStart,
                 DataSegmentEnd = currentProgramDataSegmentEnd,
                 ProgramName = currentProgramName
-                //TODO: Commno blocks, public symbols, absolute segment
+                //TODO: Common blocks, public symbols, absolute segment
             };
-            progInfo.RebuildRanges();
-            programInfos.Add(progInfo);
+            currentProgramInfo.RebuildRanges();
+
+            foreach(var programInfo in programInfos) {
+                var intersection = AddressRange.Intersection(currentProgramInfo.CodeSegmentRange, programInfo.CodeSegmentRange);
+                if(intersection is not null) {
+                    errors.Add($"Code segment of programs '{currentProgramInfo.ProgramName}' and '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                }
+
+                intersection = AddressRange.Intersection(currentProgramInfo.DataSegmentRange, programInfo.DataSegmentRange);
+                if(intersection is not null) {
+                    errors.Add($"Data segment of programs '{currentProgramInfo.ProgramName}' and '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                }
+
+                intersection = AddressRange.Intersection(currentProgramInfo.CodeSegmentRange, programInfo.DataSegmentRange);
+                if(intersection is not null) {
+                    errors.Add($"Code segment of program '{currentProgramInfo.ProgramName}' and data segment of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                }
+
+                intersection = AddressRange.Intersection(currentProgramInfo.DataSegmentRange, programInfo.CodeSegmentRange);
+                if(intersection is not null) {
+                    errors.Add($"Data segment of program '{currentProgramInfo.ProgramName}' and code segment of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                }
+            }
+
+            programInfos.Add(currentProgramInfo);
         }
 
         private static void CleanupAfterProcessingProgram()
