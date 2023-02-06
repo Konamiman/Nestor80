@@ -39,8 +39,12 @@ namespace Konamiman.Nestor80.Linker
         private static bool dataSegmentAddressSpecified;
         private static byte[] resultingMemory;
         private static SegmentsSequencingMode segmentsSequencingMode;
+        private static List<ExternalReference> externalsPendingResolution = new();
 
-        public static event EventHandler<string> FileProcessingStart;
+        // Keys are symbol names, values are lists of program names
+        private static Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
+
+        public static event EventHandler<RelocatableFileReference> FileProcessingStart;
 
         public static LinkingResult Link(LinkingConfiguration configuration, Stream outputStream)
         {
@@ -87,6 +91,7 @@ namespace Konamiman.Nestor80.Linker
         private static RelocatableFileReference currentFile;
         private static ushort? codeSegmentAddressFromInput;
         private static ushort? dataSegmentAddressFromInput;
+        private static HashSet<string> currentProgramSymbols = new(StringComparer.OrdinalIgnoreCase);
 
         private static void DoLinking()
         {
@@ -125,11 +130,36 @@ namespace Konamiman.Nestor80.Linker
                         return;
                     }
                     currentFile = rfr;
+                    FileProcessingStart?.Invoke(null, rfr);
                     ProcessFile(stream);
                 }
                 else {
                     throw new Exception($"Unexpected type of linking sequence item found in {nameof(DoLinking)}: {linkItem.GetType().Name}");
                 }
+            }
+
+            foreach(var externalPendingResolution in externalsPendingResolution) {
+                if(!symbols.ContainsKey(externalPendingResolution.SymbolName)) {
+                    errors.Add($"Can't resolve symbol '{externalPendingResolution.SymbolName}' referenced as external in program {externalPendingResolution.ProgramName}");
+                    continue;
+                }
+
+                ushort address = externalPendingResolution.ChainStartAddress;
+                var externalValue = symbols[externalPendingResolution.SymbolName];
+                while(true) {
+                    var linkedAddress = (ushort)(resultingMemory[address] + ((resultingMemory[address + 1]) << 8));
+                    resultingMemory[address] = (byte)(externalValue & 0xFF);
+                    resultingMemory[address+1] = (byte)(externalValue >> 8);
+                    if(linkedAddress == 0) {
+                        break;
+                    }
+                    address = linkedAddress;
+                }
+            }
+
+            foreach(var symbolName in duplicatePublicSymbols.Keys) {
+                var programNames = string.Join(", ", duplicatePublicSymbols[symbolName]);
+                errors.Add($"Symbol '{symbolName}' is defined in multiple programs: {programNames}");
             }
         }
 
@@ -152,6 +182,8 @@ namespace Konamiman.Nestor80.Linker
 
         private static void ProcessProgram(IRelocatableFilePart[] programItems)
         {
+            currentProgramSymbols.Clear();
+
             var programNameItem = programItems.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.ProgramName);
             currentProgramName = (programNameItem as LinkItem)?.Symbol ?? currentFile.DisplayName;
 
@@ -191,7 +223,7 @@ namespace Konamiman.Nestor80.Linker
                 currentProgramDataSegmentStart =
                     codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? 0x102) + 1);
 
-                currentProgramCodeSegmentStart = (ushort)(currentProgramDataSegmentStart + programSize);
+                currentProgramCodeSegmentStart = (ushort)(currentProgramDataSegmentStart + dataSize);
             }
 
             currentProgramCodeSegmentEnd = programSize == 0 ? currentProgramCodeSegmentStart : (ushort)(currentProgramCodeSegmentStart + programSize - 1);
@@ -240,15 +272,52 @@ namespace Konamiman.Nestor80.Linker
 
                 if(linkItem.Type is LinkItemType.SetLocationCounter) {
                     currentAddressType = linkItem.Address.Type;
-                    currentProgramAddress =(ushort)(
-                        currentAddressType is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value : currentProgramDataSegmentStart + linkItem.Address.Value
+                    currentProgramAddress = (ushort)(
+                        currentAddressType is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value :
+                        currentAddressType is AddressType.DSEG ? currentProgramDataSegmentStart + linkItem.Address.Value :
+                        linkItem.Address.Value
                     );
                     oldCurrentProgramAddress = currentProgramAddress;
                 }
                 else if(linkItem.Type is LinkItemType.DefineEntryPoint) {
+                    if(currentProgramSymbols.Contains(linkItem.Symbol)) {
+                        continue;
+                    }
+
                     var effectiveAddress = linkItem.Address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value : currentProgramDataSegmentStart + linkItem.Address.Value;
-                    //TODO: Handle duplicates
-                    symbols[linkItem.Symbol] = (ushort)effectiveAddress;
+
+                    var isDuplicate = false;
+
+                    if(duplicatePublicSymbols.ContainsKey(linkItem.Symbol)) {
+                        duplicatePublicSymbols[linkItem.Symbol].Add(currentProgramName);
+                        isDuplicate = true;
+                    }
+                    else {
+                        foreach(var program in programInfos) {
+                            if(program.PublicSymbols.Contains(linkItem.Symbol, StringComparer.OrdinalIgnoreCase)) {
+                                if(!duplicatePublicSymbols.ContainsKey(linkItem.Symbol)) {
+                                    duplicatePublicSymbols.Add(linkItem.Symbol, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+                                }
+                                duplicatePublicSymbols[linkItem.Symbol].Add(program.ProgramName);
+                                duplicatePublicSymbols[linkItem.Symbol].Add(currentProgramName);
+                                isDuplicate = true;
+                            }
+                        }
+                    }
+
+                    if(!isDuplicate) {
+                        symbols[linkItem.Symbol] = (ushort)effectiveAddress;
+                    }
+
+                    currentProgramSymbols.Add(linkItem.Symbol);
+
+                }
+                else if(linkItem.Type is LinkItemType.ChainExternal) {
+                    var chainStartAddress = (
+                        linkItem.Address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart :
+                        linkItem.Address.Type is AddressType.DSEG ? currentProgramDataSegmentStart :
+                        0) + linkItem.Address.Value;
+                    externalsPendingResolution.Add(new() { SymbolName = linkItem.Symbol, ProgramName = currentProgramName, ChainStartAddress = (ushort)chainStartAddress });
                 }
                 else if(linkItem.Type is LinkItemType.ProgramName or LinkItemType.EntrySymbol or LinkItemType.ProgramAreaSize or LinkItemType.DataAreaSize) {
                     continue;
@@ -256,8 +325,6 @@ namespace Konamiman.Nestor80.Linker
                 else {
                     throw new NotImplementedException();
                 }
-
-                //TODO: check wrap (old program address > current program address) whenever address is increased
             }
 
             if(oldCurrentProgramAddress > currentProgramAddress) {
@@ -271,8 +338,9 @@ namespace Konamiman.Nestor80.Linker
                 CodeSegmentEnd = currentProgramCodeSegmentEnd,
                 DataSegmentStart = currentProgramDataSegmentStart,
                 DataSegmentEnd = currentProgramDataSegmentEnd,
-                ProgramName = currentProgramName
-                //TODO: Common blocks, public symbols, absolute segment
+                ProgramName = currentProgramName,
+                PublicSymbols = currentProgramSymbols.ToArray()
+                //TODO: Common blocks, absolute segment
             };
             currentProgramInfo.RebuildRanges();
 
