@@ -20,17 +20,29 @@
 
         public string[] PublicSymbols { get; set; }
 
+        public AddressRange AbsoluteSegmentRange { get; set; }
+
         public AddressRange CodeSegmentRange { get; set; }
 
         public AddressRange DataSegmentRange { get; set; }
 
+        public bool HasCode { get; set; }
+
+        public bool HasData { get; set; }
+
+        public bool HasAbsolute { get; set; }
+
         public void RebuildRanges()
         {
-            CodeSegmentRange = new AddressRange(CodeSegmentStart, CodeSegmentEnd, Assembler.AddressType.CSEG);
-            DataSegmentRange = new AddressRange(DataSegmentStart, DataSegmentEnd, Assembler.AddressType.DSEG);
+            CodeSegmentRange = HasCode ? new AddressRange(CodeSegmentStart, CodeSegmentEnd, Assembler.AddressType.CSEG) : null;
+            DataSegmentRange = HasData ? new AddressRange(DataSegmentStart, DataSegmentEnd, Assembler.AddressType.DSEG) : null;
+            AbsoluteSegmentRange = HasAbsolute ? new AddressRange(AbsoluteSegmentStart, AbsoluteSegmentEnd, Assembler.AddressType.ASEG) : null;
         }
 
-        public ushort MaxSegmentEnd => Math.Max(CodeSegmentEnd, DataSegmentEnd);
+        public ushort MaxSegmentEnd => 
+            HasAbsolute ? 
+            Math.Max(Math.Max(CodeSegmentEnd, DataSegmentEnd), AbsoluteSegmentEnd) :
+            Math.Max(CodeSegmentEnd, DataSegmentEnd);
 
         public override string ToString()
         {

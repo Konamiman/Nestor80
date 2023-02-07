@@ -180,9 +180,15 @@ namespace Konamiman.Nestor80.Linker
             }
         }
 
+        private static bool currentProgramHasAbsoluteSegment;
+
         private static void ProcessProgram(IRelocatableFilePart[] programItems)
         {
             currentProgramSymbols.Clear();
+            currentProgramHasAbsoluteSegment = false;
+
+            currentProgramAbsoluteSegmentStart = 0xFFFF;
+            currentProgramAbsoluteSegmentEnd = 0;
 
             var programNameItem = programItems.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.ProgramName);
             currentProgramName = (programNameItem as LinkItem)?.Symbol ?? currentFile.DisplayName;
@@ -225,14 +231,21 @@ namespace Konamiman.Nestor80.Linker
 
                 currentProgramCodeSegmentStart = (ushort)(currentProgramDataSegmentStart + dataSize);
             }
+            else {
+                throw new Exception($"Unexpected segments sequencing mode: {segmentsSequencingMode}");
+            }
 
             currentProgramCodeSegmentEnd = programSize == 0 ? currentProgramCodeSegmentStart : (ushort)(currentProgramCodeSegmentStart + programSize - 1);
             currentProgramDataSegmentEnd = dataSize == 0 ? currentProgramDataSegmentStart : (ushort)(currentProgramDataSegmentStart + dataSize - 1);
 
-            startAddress = Math.Min(startAddress, currentProgramCodeSegmentStart);
-            startAddress = Math.Min(startAddress, currentProgramDataSegmentStart);
-            endAddress = Math.Max(endAddress, currentProgramCodeSegmentEnd);
-            endAddress = Math.Max(endAddress, currentProgramDataSegmentEnd);
+            if(programSize > 0) {
+                startAddress = Math.Min(startAddress, currentProgramCodeSegmentStart);
+                endAddress = Math.Max(endAddress, currentProgramCodeSegmentEnd);
+            }
+            if(dataSize > 0) {
+                startAddress = Math.Min(startAddress, currentProgramDataSegmentStart);
+                endAddress = Math.Max(endAddress, currentProgramDataSegmentEnd);
+            }
 
             currentAddressType = AddressType.CSEG;
             currentProgramAddress = currentProgramCodeSegmentStart;
@@ -251,17 +264,21 @@ namespace Konamiman.Nestor80.Linker
                     if(excessBytes > 0) {
                         Array.Copy(rawBytes.Bytes, 0, resultingMemory, currentProgramAddress, rawBytes.Bytes.Length-excessBytes);
                         Array.Copy(rawBytes.Bytes, rawBytes.Bytes.Length-excessBytes, resultingMemory, 0, excessBytes);
+                        currentProgramAddress = (ushort)excessBytes;
                     }
                     else {
                         Array.Copy(rawBytes.Bytes, 0, resultingMemory, currentProgramAddress, rawBytes.Bytes.Length);
+                        currentProgramAddress += (ushort)rawBytes.Bytes.Length;
                     }
-                    currentProgramAddress += (ushort)rawBytes.Bytes.Length;
+                    MaybeAdjustAbsoluteSegmentEnd();
+
                     continue;
                 }
                 else if(fileItem is RelocatableAddress relAdd) {
                     var effectiveAddress = relAdd.Type is AddressType.CSEG ? currentProgramCodeSegmentStart + relAdd.Value : currentProgramDataSegmentStart + relAdd.Value;
                     resultingMemory[currentProgramAddress++] = (byte)(effectiveAddress & 0xFF);
                     resultingMemory[currentProgramAddress++] = (byte)(effectiveAddress >> 8);
+                    MaybeAdjustAbsoluteSegmentEnd();
                     continue;
                 }
                 else if(fileItem is not LinkItem) {
@@ -277,6 +294,14 @@ namespace Konamiman.Nestor80.Linker
                         currentAddressType is AddressType.DSEG ? currentProgramDataSegmentStart + linkItem.Address.Value :
                         linkItem.Address.Value
                     );
+
+                    if(currentAddressType is AddressType.ASEG) {
+                        currentProgramHasAbsoluteSegment = true;
+                        currentProgramAbsoluteSegmentStart = Math.Min(currentProgramAbsoluteSegmentStart, currentProgramAddress);
+                        startAddress = Math.Min(startAddress, currentProgramAbsoluteSegmentStart);
+                    }
+                    MaybeAdjustAbsoluteSegmentEnd();
+
                     oldCurrentProgramAddress = currentProgramAddress;
                 }
                 else if(linkItem.Type is LinkItemType.DefineEntryPoint) {
@@ -333,40 +358,66 @@ namespace Konamiman.Nestor80.Linker
                 endAddress = 65535;
             }
 
+            if(currentProgramHasAbsoluteSegment) {
+                endAddress = Math.Max(endAddress, currentProgramAbsoluteSegmentEnd);
+            }
+
             var currentProgramInfo = new ProgramInfo() {
                 CodeSegmentStart = currentProgramCodeSegmentStart,
                 CodeSegmentEnd = currentProgramCodeSegmentEnd,
                 DataSegmentStart = currentProgramDataSegmentStart,
                 DataSegmentEnd = currentProgramDataSegmentEnd,
+                AbsoluteSegmentStart = currentProgramAbsoluteSegmentStart,
+                AbsoluteSegmentEnd = currentProgramAbsoluteSegmentEnd,
                 ProgramName = currentProgramName,
-                PublicSymbols = currentProgramSymbols.ToArray()
-                //TODO: Common blocks, absolute segment
+                PublicSymbols = currentProgramSymbols.ToArray(),
+                HasCode = programSize > 0,
+                HasData = dataSize > 0,
+                HasAbsolute = currentProgramHasAbsoluteSegment
+                //TODO: Common blocks
             };
             currentProgramInfo.RebuildRanges();
 
             foreach(var programInfo in programInfos) {
-                var intersection = AddressRange.Intersection(currentProgramInfo.CodeSegmentRange, programInfo.CodeSegmentRange);
-                if(intersection is not null) {
-                    errors.Add($"Code segment of programs '{currentProgramInfo.ProgramName}' and '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                AddressRange intersection;
+
+                if(currentProgramInfo.HasCode && programInfo.HasCode) {
+                    intersection = AddressRange.Intersection(currentProgramInfo.CodeSegmentRange, programInfo.CodeSegmentRange);
+                    if(intersection is not null) {
+                        errors.Add($"Code segment of programs '{currentProgramInfo.ProgramName}' and '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                    }
                 }
 
-                intersection = AddressRange.Intersection(currentProgramInfo.DataSegmentRange, programInfo.DataSegmentRange);
-                if(intersection is not null) {
-                    errors.Add($"Data segment of programs '{currentProgramInfo.ProgramName}' and '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                if(currentProgramInfo.HasData && programInfo.HasData) {
+                    intersection = AddressRange.Intersection(currentProgramInfo.DataSegmentRange, programInfo.DataSegmentRange);
+                    if(intersection is not null) {
+                        errors.Add($"Data segment of programs '{currentProgramInfo.ProgramName}' and '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                    }
                 }
 
-                intersection = AddressRange.Intersection(currentProgramInfo.CodeSegmentRange, programInfo.DataSegmentRange);
-                if(intersection is not null) {
-                    errors.Add($"Code segment of program '{currentProgramInfo.ProgramName}' and data segment of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                if(currentProgramInfo.HasCode && programInfo.HasData) {
+                    intersection = AddressRange.Intersection(currentProgramInfo.CodeSegmentRange, programInfo.DataSegmentRange);
+                    if(intersection is not null) {
+                        errors.Add($"Code segment of program '{currentProgramInfo.ProgramName}' and data segment of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                    }
                 }
 
-                intersection = AddressRange.Intersection(currentProgramInfo.DataSegmentRange, programInfo.CodeSegmentRange);
-                if(intersection is not null) {
-                    errors.Add($"Data segment of program '{currentProgramInfo.ProgramName}' and code segment of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                if(currentProgramInfo.HasData && programInfo.HasCode) {
+                    intersection = AddressRange.Intersection(currentProgramInfo.DataSegmentRange, programInfo.CodeSegmentRange);
+                    if(intersection is not null) {
+                        errors.Add($"Data segment of program '{currentProgramInfo.ProgramName}' and code segment of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                    }
                 }
             }
 
             programInfos.Add(currentProgramInfo);
+        }
+
+        private static void MaybeAdjustAbsoluteSegmentEnd()
+        {
+            if(currentAddressType is AddressType.ASEG) {
+                currentProgramAbsoluteSegmentEnd = Math.Max((ushort)(currentProgramAddress-1), currentProgramAbsoluteSegmentEnd);
+            }
         }
 
         private static void CleanupAfterProcessingProgram()
