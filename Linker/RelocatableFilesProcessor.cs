@@ -46,6 +46,10 @@ namespace Konamiman.Nestor80.Linker
 
         public static event EventHandler<RelocatableFileReference> FileProcessingStart;
 
+        private static AddressType[] addressTypes = new[] {
+            AddressType.CSEG, AddressType.DSEG, AddressType.ASEG
+        };
+
         public static LinkingResult Link(LinkingConfiguration configuration, Stream outputStream)
         {
             commonBlocks.Clear();
@@ -92,12 +96,14 @@ namespace Konamiman.Nestor80.Linker
         private static ushort? codeSegmentAddressFromInput;
         private static ushort? dataSegmentAddressFromInput;
         private static HashSet<string> currentProgramSymbols = new(StringComparer.OrdinalIgnoreCase);
+        private static Dictionary<ushort, ushort> offsetsForExternals = new();
 
         private static void DoLinking()
         {
             codeSegmentAddressFromInput = null;
             dataSegmentAddressFromInput = null;
             segmentsSequencingMode = SegmentsSequencingMode.DataBeforeCode;
+            offsetsForExternals.Clear();
 
             foreach(var linkItem in linkItems) {
                 if(linkItem is SetCodeSegmentAddress scsa) {
@@ -148,8 +154,11 @@ namespace Konamiman.Nestor80.Linker
                 var externalValue = symbols[externalPendingResolution.SymbolName];
                 while(true) {
                     var linkedAddress = (ushort)(resultingMemory[address] + ((resultingMemory[address + 1]) << 8));
-                    resultingMemory[address] = (byte)(externalValue & 0xFF);
-                    resultingMemory[address+1] = (byte)(externalValue >> 8);
+                    var effectiveValue = 
+                        offsetsForExternals.ContainsKey(address) ?
+                        externalValue + offsetsForExternals[address] : externalValue;
+                    resultingMemory[address] = (byte)(effectiveValue & 0xFF);
+                    resultingMemory[address+1] = (byte)(effectiveValue >> 8);
                     if(linkedAddress == 0) {
                         break;
                     }
@@ -199,7 +208,7 @@ namespace Konamiman.Nestor80.Linker
             var dataSizeItem = programItems.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.DataAreaSize);
             ushort dataSize = (dataSizeItem as LinkItem)?.Address.Value ?? 0;
 
-            var previousProgram = programInfos.LastOrDefault();
+            var previousProgram = programInfos.LastOrDefault(pi => pi.HasContent);
 
             if(segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment) {
                 currentProgramCodeSegmentStart =
@@ -344,7 +353,18 @@ namespace Konamiman.Nestor80.Linker
                         0) + linkItem.Address.Value;
                     externalsPendingResolution.Add(new() { SymbolName = linkItem.Symbol, ProgramName = currentProgramName, ChainStartAddress = (ushort)chainStartAddress });
                 }
+                else if(linkItem.Type is LinkItemType.ExternalPlusOffset) {
+                    offsetsForExternals.Add(currentProgramAddress, linkItem.Address.Value);
+                }
+                else if(linkItem.Type is LinkItemType.ExternalMinusOffset) {
+                    errors.Add($"Unsupported link item type found in program {currentProgramName}: 'External minus offset'");
+                }
+                else if(linkItem.Type is LinkItemType.ChainAddress) {
+                    errors.Add($"Unsupported link item type found in program {currentProgramName}: 'Chain address'");
+                }
                 else if(linkItem.Type is LinkItemType.ProgramName or LinkItemType.EntrySymbol or LinkItemType.ProgramAreaSize or LinkItemType.DataAreaSize) {
+                    // We have no use for EntrySymbol.
+                    // As for the others, we've already dealt with them.
                     continue;
                 }
                 else {
@@ -381,31 +401,15 @@ namespace Konamiman.Nestor80.Linker
             foreach(var programInfo in programInfos) {
                 AddressRange intersection;
 
-                if(currentProgramInfo.HasCode && programInfo.HasCode) {
-                    intersection = AddressRange.Intersection(currentProgramInfo.CodeSegmentRange, programInfo.CodeSegmentRange);
-                    if(intersection is not null) {
-                        errors.Add($"Code segment of programs '{currentProgramInfo.ProgramName}' and '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
-                    }
-                }
-
-                if(currentProgramInfo.HasData && programInfo.HasData) {
-                    intersection = AddressRange.Intersection(currentProgramInfo.DataSegmentRange, programInfo.DataSegmentRange);
-                    if(intersection is not null) {
-                        errors.Add($"Data segment of programs '{currentProgramInfo.ProgramName}' and '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
-                    }
-                }
-
-                if(currentProgramInfo.HasCode && programInfo.HasData) {
-                    intersection = AddressRange.Intersection(currentProgramInfo.CodeSegmentRange, programInfo.DataSegmentRange);
-                    if(intersection is not null) {
-                        errors.Add($"Code segment of program '{currentProgramInfo.ProgramName}' and data segment of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
-                    }
-                }
-
-                if(currentProgramInfo.HasData && programInfo.HasCode) {
-                    intersection = AddressRange.Intersection(currentProgramInfo.DataSegmentRange, programInfo.CodeSegmentRange);
-                    if(intersection is not null) {
-                        errors.Add($"Data segment of program '{currentProgramInfo.ProgramName}' and code segment of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                foreach(var addressType1 in addressTypes) {
+                    foreach(var addressType2 in addressTypes) {
+                        if(!currentProgramInfo.Has(addressType1) || !programInfo.Has(addressType2)) {
+                            continue;
+                        }
+                        intersection = AddressRange.Intersection(currentProgramInfo.RangeOf(addressType1), programInfo.RangeOf(addressType2));
+                        if(intersection != null) {
+                            errors.Add($"{addressType1} of program '{currentProgramInfo.ProgramName}' and {addressType2} of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                        }
                     }
                 }
             }

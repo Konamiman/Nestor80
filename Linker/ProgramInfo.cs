@@ -1,4 +1,6 @@
-﻿namespace Konamiman.Nestor80.Linker
+﻿using Konamiman.Nestor80.Assembler;
+
+namespace Konamiman.Nestor80.Linker
 {
     internal class ProgramInfo
     {
@@ -26,11 +28,29 @@
 
         public AddressRange DataSegmentRange { get; set; }
 
+        public AddressRange RangeOf(AddressType type) =>
+            type switch {
+                AddressType.ASEG => AbsoluteSegmentRange,
+                AddressType.CSEG => CodeSegmentRange,
+                AddressType.DSEG => DataSegmentRange,
+                _ => throw new InvalidOperationException($"{nameof(ProgramInfo)}.{nameof(RangeOf)}: unexcpected type: {type}")
+            };
+
         public bool HasCode { get; set; }
 
         public bool HasData { get; set; }
 
         public bool HasAbsolute { get; set; }
+
+        public bool HasContent => HasCode || HasData || HasAbsolute;
+
+        public bool Has(AddressType type) =>
+            type switch {
+                AddressType.ASEG => HasAbsolute,
+                AddressType.CSEG => HasCode,
+                AddressType.DSEG => HasData,
+                _ => throw new InvalidOperationException($"{nameof(ProgramInfo)}.{nameof(Has)}: unexcpected type: {type}")
+            };
 
         public void RebuildRanges()
         {
