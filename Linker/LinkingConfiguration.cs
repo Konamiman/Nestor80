@@ -10,5 +10,7 @@ public class LinkingConfiguration
 
     public Func<string, Stream> OpenFile = _ => null;
 
+    public Func<string, string> GetFullNameOfRequestedLibraryFile = _ => _;
+
     public ILinkingSequenceItem[] LinkingSequenceItems { get; set; }
 }

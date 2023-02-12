@@ -27,6 +27,7 @@ namespace Konamiman.Nestor80.Linker
         private static ILinkingSequenceItem[] linkItems;
         private static byte fillByte;
         private static Func<string, Stream> OpenFile;
+        private static Func<string, string> GetFullNameOfRequestedLibraryFile;
         private static readonly Dictionary<string, Tuple<ushort, ushort>> commonBlocks = new();
         private static readonly List<string> errors = new();
         private static readonly List<string> warnings = new();
@@ -39,7 +40,8 @@ namespace Konamiman.Nestor80.Linker
         private static bool dataSegmentAddressSpecified;
         private static byte[] resultingMemory;
         private static SegmentsSequencingMode segmentsSequencingMode;
-        private static List<ExternalReference> externalsPendingResolution = new();
+        private static readonly List<ExternalReference> externalsPendingResolution = new();
+        private static readonly List<RequestedLibFile> requestedLibFiles = new();
 
         // Keys are symbol names, values are lists of program names
         private static Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
@@ -57,6 +59,8 @@ namespace Konamiman.Nestor80.Linker
             warnings.Clear();
             symbols.Clear();
             programInfos.Clear();
+            externalsPendingResolution.Clear();
+            requestedLibFiles.Clear();
 
             RelocatableFilesProcessor.outputStream = outputStream ?? throw new ArgumentNullException(nameof(outputStream));
             startAddress = configuration.StartAddress;
@@ -64,6 +68,7 @@ namespace Konamiman.Nestor80.Linker
             linkItems = configuration.LinkingSequenceItems;
             fillByte = configuration.FillingByte;
             OpenFile  = configuration.OpenFile;
+            GetFullNameOfRequestedLibraryFile = configuration.GetFullNameOfRequestedLibraryFile;
             currentProgramContents = null;
             resultingMemory = Enumerable.Repeat(configuration.FillingByte, 65536).ToArray();
 
@@ -137,11 +142,45 @@ namespace Konamiman.Nestor80.Linker
                     }
                     currentFile = rfr;
                     FileProcessingStart?.Invoke(null, rfr);
-                    ProcessFile(stream);
+                    var parsedFileItems = RelocatableFileParser.Parse(stream);
+                    ProcessFile(parsedFileItems);
                 }
                 else {
                     throw new Exception($"Unexpected type of linking sequence item found in {nameof(DoLinking)}: {linkItem.GetType().Name}");
                 }
+            }
+
+            var unknownExternals = externalsPendingResolution
+                .Where(e => !symbols.ContainsKey(e.SymbolName))
+                .Select(e => e.SymbolName);
+
+            var externalsInRequestedLibraries = requestedLibFiles
+                .SelectMany(lf => lf.Contents)
+                .Where(i => i is LinkItem li && li.Type is LinkItemType.ChainExternal)
+                .Select(i => ((LinkItem)i).Symbol);
+
+            var allExternalsToSearchInLibraries =
+                unknownExternals
+                .Concat(externalsInRequestedLibraries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            foreach(var external in allExternalsToSearchInLibraries) {
+                bool foundMatchingLibrary = false;
+                foreach(var libraryFile in requestedLibFiles) {
+                    if(foundMatchingLibrary) {
+                        break;
+                    }
+
+                    if(libraryFile.PublicSymbols.Contains(external, StringComparer.OrdinalIgnoreCase)) {
+                        libraryFile.MustLoad = true;
+                        foundMatchingLibrary = true;
+                    }
+                }
+            }
+
+            foreach(var libraryFile in requestedLibFiles.Where(f => f.MustLoad)) {
+               ProcessFile(libraryFile.Contents);
             }
 
             foreach(var externalPendingResolution in externalsPendingResolution) {
@@ -150,20 +189,7 @@ namespace Konamiman.Nestor80.Linker
                     continue;
                 }
 
-                ushort address = externalPendingResolution.ChainStartAddress;
-                var externalValue = symbols[externalPendingResolution.SymbolName];
-                while(true) {
-                    var linkedAddress = (ushort)(resultingMemory[address] + ((resultingMemory[address + 1]) << 8));
-                    var effectiveValue = 
-                        offsetsForExternals.ContainsKey(address) ?
-                        externalValue + offsetsForExternals[address] : externalValue;
-                    resultingMemory[address] = (byte)(effectiveValue & 0xFF);
-                    resultingMemory[address+1] = (byte)(effectiveValue >> 8);
-                    if(linkedAddress == 0) {
-                        break;
-                    }
-                    address = linkedAddress;
-                }
+                ResolveExternalChain(externalPendingResolution);
             }
 
             foreach(var symbolName in duplicatePublicSymbols.Keys) {
@@ -172,10 +198,26 @@ namespace Konamiman.Nestor80.Linker
             }
         }
 
-        private static void ProcessFile(Stream stream)
+        private static void ResolveExternalChain(ExternalReference externalPendingResolution)
         {
-            var parsedFileItems = RelocatableFileParser.Parse(stream);
+            ushort address = externalPendingResolution.ChainStartAddress;
+            var externalValue = symbols[externalPendingResolution.SymbolName];
+            while(true) {
+                var linkedAddress = (ushort)(resultingMemory[address] + ((resultingMemory[address + 1]) << 8));
+                var effectiveValue =
+                    offsetsForExternals.ContainsKey(address) ?
+                    externalValue + offsetsForExternals[address] : externalValue;
+                resultingMemory[address] = (byte)(effectiveValue & 0xFF);
+                resultingMemory[address + 1] = (byte)(effectiveValue >> 8);
+                if(linkedAddress == 0) {
+                    break;
+                }
+                address = linkedAddress;
+            }
+        }
 
+        private static void ProcessFile(IRelocatableFilePart[] parsedFileItems)
+        {
             while(true) {
                 var programItems = parsedFileItems.TakeWhile(item => item is not LinkItem || ((LinkItem)item).Type is not LinkItemType.EndProgram and not LinkItemType.EndFile).ToArray();
                 
@@ -318,7 +360,10 @@ namespace Konamiman.Nestor80.Linker
                         continue;
                     }
 
-                    var effectiveAddress = linkItem.Address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value : currentProgramDataSegmentStart + linkItem.Address.Value;
+                    var effectiveAddress =
+                        linkItem.Address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value :
+                        linkItem.Address.Type is AddressType.DSEG ? currentProgramDataSegmentStart + linkItem.Address.Value :
+                        linkItem.Address.Value;
 
                     var isDuplicate = false;
 
@@ -352,6 +397,36 @@ namespace Konamiman.Nestor80.Linker
                         linkItem.Address.Type is AddressType.DSEG ? currentProgramDataSegmentStart :
                         0) + linkItem.Address.Value;
                     externalsPendingResolution.Add(new() { SymbolName = linkItem.Symbol, ProgramName = currentProgramName, ChainStartAddress = (ushort)chainStartAddress });
+                }
+                else if(linkItem.Type is LinkItemType.RequestLibrarySearch) {
+                    var fileName = linkItem.Symbol;
+                    if(requestedLibFiles.Any(f => f.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase))) {
+                        continue;
+                    };
+
+                    var fullName = GetFullNameOfRequestedLibraryFile(fileName);
+
+                    var rfr = new RelocatableFileReference() { DisplayName = fileName, FullName = fullName };
+                    FileProcessingStart?.Invoke(null, rfr);
+
+                    var stream = OpenFile(fullName);
+                    if(stream == null) {
+                        warnings.Add($"Could not open .REQUEST file {fullName} for processing");
+                        continue;
+                    }
+
+                    var parsedFileItems = RelocatableFileParser.Parse(stream);
+                    var publicSymbols = parsedFileItems
+                        .Where(i => i is LinkItem li && li.Type is LinkItemType.EntrySymbol)
+                        .Select(i => ((LinkItem)i).Symbol)
+                        .ToArray();
+
+                    if(publicSymbols.Length == 0) {
+                        warnings.Add($"Requested library file {fileName} doesn't define any public symbol so it won't be used");
+                    }
+                    else {
+                        requestedLibFiles.Add(new() { Name = fileName, Contents = parsedFileItems, PublicSymbols = publicSymbols, MustLoad = false });
+                    }
                 }
                 else if(linkItem.Type is LinkItemType.ExternalPlusOffset) {
                     offsetsForExternals.Add(currentProgramAddress, linkItem.Address.Value);

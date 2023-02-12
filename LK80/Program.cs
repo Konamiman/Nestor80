@@ -17,15 +17,17 @@ namespace Konamiman.Nestor80.N80
                         return null;
                     }
                 },
+                GetFullNameOfRequestedLibraryFile = fileName => 
+                    Path.Combine(@"c:\users\Nesto\Nestor80", fileName) + (Path.HasExtension(fileName) ? "" : ".REL"),
                 LinkingSequenceItems = new ILinkingSequenceItem[] {
                     //new SetCodeSegmentAddress() {Address = 0},
                     //new SetCodeBeforeDataMode(),
-                    new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\empty.rel", DisplayName = "empty.rel"},
+                    //new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\empty.rel", DisplayName = "empty.rel"},
                     new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\simple.rel", DisplayName = "simple.rel"},
                     //new SetDataBeforeCodeMode(),
-                    new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\empty.rel", DisplayName = "empty.rel"},
+                    //new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\empty.rel", DisplayName = "empty.rel"},
                     new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\simple2.rel", DisplayName = "simple2.rel"},
-                    new SetCodeSegmentAddress() {Address = 0x103},
+                    //new SetCodeSegmentAddress() {Address = 0x103},
                     //new SetDataSegmentAddress() {Address = 0x230},
                     new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\simple3.rel", DisplayName = "simple3.rel"},
                     //new SetCodeSegmentAddress() {Address = 0xFFF5},
