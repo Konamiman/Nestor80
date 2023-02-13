@@ -42,6 +42,7 @@ namespace Konamiman.Nestor80.Linker
         private static SegmentsSequencingMode segmentsSequencingMode;
         private static readonly List<ExternalReference> externalsPendingResolution = new();
         private static readonly List<RequestedLibFile> requestedLibFiles = new();
+        private static readonly List<Expression> expressionsPendingEvaluation = new();
 
         // Keys are symbol names, values are lists of program names
         private static Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
@@ -61,6 +62,7 @@ namespace Konamiman.Nestor80.Linker
             programInfos.Clear();
             externalsPendingResolution.Clear();
             requestedLibFiles.Clear();
+            expressionsPendingEvaluation.Clear();
 
             RelocatableFilesProcessor.outputStream = outputStream ?? throw new ArgumentNullException(nameof(outputStream));
             startAddress = configuration.StartAddress;
@@ -192,6 +194,21 @@ namespace Konamiman.Nestor80.Linker
                 ResolveExternalChain(externalPendingResolution);
             }
 
+            Expression.Symbols = symbols;
+
+            foreach(var expression in expressionsPendingEvaluation) {
+                try {
+                    var value = expression.Evaluate();
+                    resultingMemory[expression.TargetAddress] = (byte)(value & 0xFF);
+                    if(!expression.StoreAsByte) {
+                        resultingMemory[expression.TargetAddress + 1] = (byte)(value >> 8);
+                    }
+                }
+                catch(ExpressionEvaluationException ex) {
+                    errors.Add(ex.Message);
+                }
+            }
+
             foreach(var symbolName in duplicatePublicSymbols.Keys) {
                 var programNames = string.Join(", ", duplicatePublicSymbols[symbolName]);
                 errors.Add($"Symbol '{symbolName}' is defined in multiple programs: {programNames}");
@@ -302,13 +319,15 @@ namespace Konamiman.Nestor80.Linker
             currentProgramAddress = currentProgramCodeSegmentStart;
 
             var oldCurrentProgramAddress = currentProgramAddress;
-            foreach(var fileItem in programItems) {
+            for(int fileItemIndex = 0; fileItemIndex < programItems.Length; fileItemIndex++) {
                 if(oldCurrentProgramAddress > currentProgramAddress) {
                     warnings.Add($"When processing {currentAddressType} of program '{currentProgramName}': program counter overflowed from FFFFh to 0");
                     startAddress = 0;
                     endAddress = 65535;
                 }
                 oldCurrentProgramAddress = currentProgramAddress;
+
+                var fileItem = programItems[fileItemIndex];
 
                 if(fileItem is RawBytes rawBytes) {
                     var excessBytes = currentProgramAddress + rawBytes.Bytes.Length - 65536;
@@ -432,10 +451,27 @@ namespace Konamiman.Nestor80.Linker
                     offsetsForExternals.Add(currentProgramAddress, linkItem.Address.Value);
                 }
                 else if(linkItem.Type is LinkItemType.ExternalMinusOffset) {
-                    errors.Add($"Unsupported link item type found in program {currentProgramName}: 'External minus offset'");
+                    offsetsForExternals.Add(currentProgramAddress, (ushort)-linkItem.Address.Value);
                 }
                 else if(linkItem.Type is LinkItemType.ChainAddress) {
                     errors.Add($"Unsupported link item type found in program {currentProgramName}: 'Chain address'");
+                }
+                else if(linkItem.Type is LinkItemType.ExtensionLinkItem) {
+                    var expressionItems = programItems
+                        .Skip(fileItemIndex)
+                        .TakeWhile(i => i is LinkItem li && ((LinkItem)i).Type is LinkItemType.ExtensionLinkItem)
+                        .Cast<LinkItem>()
+                        .ToArray();
+
+                    var expression = new Expression(expressionItems, currentProgramAddress, currentProgramName, currentProgramCodeSegmentStart, currentProgramDataSegmentStart);
+                    expressionsPendingEvaluation.Add(expression);
+
+                    if(!expression.StoreAsByte && !expression.StoreAsWord) {
+                        warnings.Add($"In program {currentProgramName}: found an expression that is neither marked as 'store as byte' nor as 'store as word', will store as word");
+                    }
+
+                    // -1 because it will be incremented in the next step of the for loop
+                    fileItemIndex += expressionItems.Length - 1;
                 }
                 else if(linkItem.Type is LinkItemType.ProgramName or LinkItemType.EntrySymbol or LinkItemType.ProgramAreaSize or LinkItemType.DataAreaSize) {
                     // We have no use for EntrySymbol.

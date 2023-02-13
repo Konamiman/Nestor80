@@ -7,6 +7,9 @@
     {
         StoreAsByte = 1,
         StoreAsWord = 2,
+
+        First = 3,
+
         High = 3,
         Low = 4,
         Not = 5,
@@ -28,6 +31,8 @@
         GreaterThanOrEqual = 23,
         And = 24,
         Or = 25,
-        Xor = 26
+        Xor = 26,
+
+        Last = 26
     }
 }
