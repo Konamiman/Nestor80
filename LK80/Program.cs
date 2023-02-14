@@ -20,6 +20,7 @@ namespace Konamiman.Nestor80.N80
                 GetFullNameOfRequestedLibraryFile = fileName => 
                     Path.Combine(@"c:\users\Nesto\Nestor80", fileName) + (Path.HasExtension(fileName) ? "" : ".REL"),
                 LinkingSequenceItems = new ILinkingSequenceItem[] {
+                    /*
                     //new SetCodeSegmentAddress() {Address = 0},
                     //new SetCodeBeforeDataMode(),
                     //new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\empty.rel", DisplayName = "empty.rel"},
@@ -32,6 +33,10 @@ namespace Konamiman.Nestor80.N80
                     new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\simple3.rel", DisplayName = "simple3.rel"},
                     //new SetCodeSegmentAddress() {Address = 0xFFF5},
                     new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\simple4.rel", DisplayName = "simple4.rel"},
+                    */
+                    new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\simple5.rel", DisplayName = "simple5.rel"},
+                    new RelocatableFileReference() {FullName=@"c:\users\nesto\Nestor80\simple6.rel", DisplayName = "simple6.rel"}
+
                 },
                 StartAddress = 0x100,
                 //EndAddress = 0x200

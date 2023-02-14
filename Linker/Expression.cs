@@ -1,5 +1,7 @@
-﻿using Konamiman.Nestor80.Assembler.Relocatable;
+﻿using Konamiman.Nestor80.Assembler;
+using Konamiman.Nestor80.Assembler.Relocatable;
 using Konamiman.Nestor80.Linker.Parsing;
+using System.Net.Sockets;
 
 namespace Konamiman.Nestor80.Linker
 {
@@ -20,11 +22,11 @@ namespace Konamiman.Nestor80.Linker
                 var operatorCode = (ArithmeticOperatorCode)lastItem.SymbolBytes[0];
                 if(operatorCode is ArithmeticOperatorCode.StoreAsByte) {
                     StoreAsByte = true;
-                    items = items.Take(items.Length - 1).ToArray();
+                    this.items = items.Take(items.Length - 1).ToArray();
                 }
                 else if(operatorCode is ArithmeticOperatorCode.StoreAsWord) {
                     StoreAsWord = true;
-                    items = items.Take(items.Length - 1).ToArray();
+                    this.items = items.Take(items.Length - 1).ToArray();
                 }
             }
         }
@@ -55,31 +57,102 @@ namespace Konamiman.Nestor80.Linker
                 var type = item.ExtendedType;
 
                 if(type is ExtensionLinkItemType.Address) {
-                    var address =
-                        (item.Address.Type is Assembler.AddressType.CSEG ? CodeSegmentStart :
-                        item.Address.Type is Assembler.AddressType.DSEG ? DataSegmentStart :
-                        0) + item.Address.Value;
+                    var addressType = (AddressType)item.SymbolBytes[0];
+                    var address = (ushort)
+                        (addressType is AddressType.CSEG ? CodeSegmentStart :
+                        addressType is AddressType.DSEG ? DataSegmentStart :
+                        0);
+
+                    address += (ushort)(item.SymbolBytes[1] + (item.SymbolBytes[2] << 8));
 
                     stack.Push(address);
+                    continue;
                 }
                 else if(type is ExtensionLinkItemType.ReferenceExternal) {
                     if(!Symbols.ContainsKey(item.Symbol)) {
-                        Throw($"Can't resolve external symbol reference: {item.Symbol}");
+                        Throw($"can't resolve external symbol reference: {item.Symbol}");
                     }
 
                     var symbolValue = Symbols[item.Symbol];
                     stack.Push(symbolValue);
+                    continue;
                 }
                 else if(type is not ExtensionLinkItemType.ArithmeticOperator) {
-                    Throw($"Unexpected link item extended type found: {type}");
+                    Throw($"unexpected link item extended type found: {type}");
                 }
 
                 var operatorCode = (ArithmeticOperatorCode)item.SymbolBytes[0];
                 if(operatorCode < ArithmeticOperatorCode.First || operatorCode > ArithmeticOperatorCode.Last) {
-                    //WIP
+                    Throw($"unexpected arithmetic operator code found: {operatorCode}");
                 }
 
-                //WIP
+                if(operatorCode >= ArithmeticOperatorCode.High && operatorCode <= ArithmeticOperatorCode.UnaryMinus) {
+                    if(stack.Count == 0) {
+                        ThrowUnexpected($"found an unary operator ({operatorCode}) but the stack is empty");
+                    }
+
+                    var popped = stack.Pop();
+                    if(popped is not ushort) {
+                        ThrowUnexpected($"found an unexpected value ({popped}) when expecting a number");
+                    }
+
+                    var unaryOperand = (ushort)popped;
+
+                    unchecked {
+                        var unaryOperationResult = operatorCode switch {
+                            ArithmeticOperatorCode.High => (ushort)(unaryOperand >> 8),
+                            ArithmeticOperatorCode.Low => (ushort)(unaryOperand & 0xFF),
+                            ArithmeticOperatorCode.Not => (ushort)(~unaryOperand),
+                            _ => (ushort)-unaryOperand //Unary minus is the only option left
+                        };
+                        stack.Push(unaryOperationResult);
+                    }
+
+                    continue;
+                }
+
+                if(stack.Count < 2) {
+                    ThrowUnexpected($"found a binary operator ({operatorCode}) but the stack has {stack.Count} items");
+                }
+
+                var popped1 = stack.Pop();
+                if(popped1 is not ushort) {
+                    ThrowUnexpected($"found an unexpected value ({popped1}) when expecting a number");
+                }
+                var popped2 = stack.Pop();
+                if(popped2 is not ushort) {
+                    ThrowUnexpected($"found an unexpected value ({popped2}) when expecting a number");
+                }
+
+                var operand1 = (ushort)popped1;
+                var operand2 = (ushort)popped2;
+
+                if(operatorCode is ArithmeticOperatorCode.Divide && operand2 == 0) {
+                    Throw("Division by zero");
+                }
+
+                unchecked {
+                    var binaryOperationResult = operatorCode switch {
+                        ArithmeticOperatorCode.Minus => (ushort)(operand1 - operand2),
+                        ArithmeticOperatorCode.Plus => (ushort)(operand1 + operand2),
+                        ArithmeticOperatorCode.Multiply => (ushort)(operand1 * operand2),
+                        ArithmeticOperatorCode.Divide => (ushort)(operand1 / operand2),
+                        ArithmeticOperatorCode.Mod => (ushort)(operand1 % operand2),
+                        ArithmeticOperatorCode.ShiftRight => (ushort)(operand1 >> operand2),
+                        ArithmeticOperatorCode.ShiftLeft => (ushort)(operand1 << operand2),
+                        ArithmeticOperatorCode.Equals => (ushort)(operand1 == operand2 ? 0xFFFF : 0),
+                        ArithmeticOperatorCode.NotEquals => (ushort)(operand1 == operand2 ? 0 : 0xFFFF),
+                        ArithmeticOperatorCode.LessThan => (ushort)(operand1 < operand2 ? 0xFFFF : 0),
+                        ArithmeticOperatorCode.LessThanOrEqual => (ushort)(operand1 <= operand2 ? 0xFFFF : 0),
+                        ArithmeticOperatorCode.GreaterThan => (ushort)(operand1 > operand2 ? 0xFFFF : 0),
+                        ArithmeticOperatorCode.GreaterThanOrEqual => (ushort)(operand1 >= operand2 ? 0xFFFF : 0),
+                        ArithmeticOperatorCode.And => (ushort)(operand1 & operand2),
+                        ArithmeticOperatorCode.Or => (ushort)(operand1 | operand2),
+                        _ => (ushort)(operand1 ^ operand2), //Xor is the only option left
+                    };
+
+                    stack.Push(binaryOperationResult);
+                }
             }
 
             if(stack.Count != 1) {
@@ -96,12 +169,12 @@ namespace Konamiman.Nestor80.Linker
         }
 
         private void Throw(string message) {
-            throw new ExpressionEvaluationException($"In program {ProgramName}: {message}");
+            throw new ExpressionEvaluationException($"In program {ProgramName}: evaluating expression: {message}");
         }
 
         private void ThrowUnexpected(string message)
         {
-            throw new Exception($"{nameof(Expression)}.{nameof(Evaluate)}: {message}");
+            throw new Exception($"In program {ProgramName}: {nameof(Expression)}.{nameof(Evaluate)}: {message}");
         }
     }
 }

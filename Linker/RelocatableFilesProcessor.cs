@@ -187,7 +187,7 @@ namespace Konamiman.Nestor80.Linker
 
             foreach(var externalPendingResolution in externalsPendingResolution) {
                 if(!symbols.ContainsKey(externalPendingResolution.SymbolName)) {
-                    errors.Add($"Can't resolve symbol '{externalPendingResolution.SymbolName}' referenced as external in program {externalPendingResolution.ProgramName}");
+                    errors.Add($"In program {externalPendingResolution.ProgramName}: can't resolve external symbol reference: {externalPendingResolution.SymbolName}");
                     continue;
                 }
 
