@@ -94,8 +94,7 @@ namespace Konamiman.Nestor80.Linker
                 EndAddress = endAddress,
                 Errors = errors.ToArray(),
                 Warnings = warnings.ToArray(),
-                Symbols = symbols.ToDictionary(x => x.Key, x => x.Value),
-                Areas = areas.ToArray()
+                ProgramsData = programInfos.Select(pi => pi.ToProgramData(symbols)).ToArray()
             };
         }
 

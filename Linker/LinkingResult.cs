@@ -8,9 +8,7 @@ namespace Konamiman.Nestor80.Linker
 
         public string[] Errors { get; set; }
 
-        public Dictionary<string, ushort> Symbols { get; set; }
-
-        public AddressRange[] Areas { get; set; }
+        public ProgramData[] ProgramsData { get; set; }
 
         public ushort StartAddress { get; set; }
 

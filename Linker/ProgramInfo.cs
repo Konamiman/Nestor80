@@ -64,6 +64,19 @@ namespace Konamiman.Nestor80.Linker
             Math.Max(Math.Max(CodeSegmentEnd, DataSegmentEnd), AbsoluteSegmentEnd) :
             Math.Max(CodeSegmentEnd, DataSegmentEnd);
 
+        public ProgramData ToProgramData(Dictionary<string, ushort> allKnownSymbols)
+        {
+            return new ProgramData() {
+                CodeSegmentStart = CodeSegmentStart,
+                CodeSegmentSize = (ushort)(HasCode ? CodeSegmentEnd - CodeSegmentStart + 1 : 0),
+                DataSegmentStart = DataSegmentStart,
+                DataSegmentSize = (ushort)(HasData ? DataSegmentEnd - DataSegmentStart + 1 : 0),
+                AbsoluteSegmentStart = AbsoluteSegmentStart,
+                AbsoluteSegmentSize = (ushort)(HasAbsolute ? AbsoluteSegmentEnd - AbsoluteSegmentStart + 1 : 0),
+                PublicSymbols = new(allKnownSymbols.Where(s => PublicSymbols.Contains(s.Key)))
+            };
+        }
+
         public override string ToString()
         {
             return $"{ProgramName} - CSEG: {CodeSegmentStart:X4}h - {CodeSegmentEnd:X4}h; DSEG: {DataSegmentStart:X4}h - {DataSegmentEnd:X4}h";
