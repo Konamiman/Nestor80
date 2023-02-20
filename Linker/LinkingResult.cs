@@ -13,5 +13,7 @@ namespace Konamiman.Nestor80.Linker
         public ushort StartAddress { get; set; }
 
         public ushort EndAddress { get; set; }
+
+        public bool MaxErrorsReached { get; set; }
     }
 }

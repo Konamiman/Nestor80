@@ -2,6 +2,8 @@
 
 public class LinkingConfiguration
 {
+    public const int DEFAULT_MAX_ERRORS = 34;
+
     public ushort StartAddress { get; set; } = 0xFFFF;
 
     public ushort EndAddress { get; set; } = 0;
@@ -13,4 +15,6 @@ public class LinkingConfiguration
     public Func<string, string> GetFullNameOfRequestedLibraryFile = _ => _;
 
     public ILinkingSequenceItem[] LinkingSequenceItems { get; set; }
+
+    public int MaxErrors { get; set; } = DEFAULT_MAX_ERRORS;
 }

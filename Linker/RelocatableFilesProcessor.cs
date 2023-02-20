@@ -43,6 +43,8 @@ namespace Konamiman.Nestor80.Linker
         private static readonly List<ExternalReference> externalsPendingResolution = new();
         private static readonly List<RequestedLibFile> requestedLibFiles = new();
         private static readonly List<Expression> expressionsPendingEvaluation = new();
+        private static int maxErrors;
+        private static int generatedErrors;
 
         // Keys are symbol names, values are lists of program names
         private static Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
@@ -72,11 +74,20 @@ namespace Konamiman.Nestor80.Linker
             linkItems = configuration.LinkingSequenceItems;
             fillByte = configuration.FillingByte;
             OpenFile  = configuration.OpenFile;
+            maxErrors = configuration.MaxErrors;
             GetFullNameOfRequestedLibraryFile = configuration.GetFullNameOfRequestedLibraryFile;
             currentProgramContents = null;
             resultingMemory = Enumerable.Repeat(configuration.FillingByte, 65536).ToArray();
+            generatedErrors = 0;
 
-            DoLinking();
+            var maxErrorsReached = false;
+            try {
+                DoLinking();
+            }
+            catch(MaxErrorsReachedException) {
+                maxErrorsReached = true;
+                AddError("Maximum errors count reached, process aborted", false);
+            }
 
             if(startAddress <= endAddress) {
                 outputStream.Write(resultingMemory.Skip(startAddress).Take(endAddress - startAddress + 1).ToArray());
@@ -96,7 +107,8 @@ namespace Konamiman.Nestor80.Linker
                 EndAddress = endAddress,
                 Errors = errors.ToArray(),
                 Warnings = warnings.ToArray(),
-                ProgramsData = programInfos.Select(pi => pi.ToProgramData(symbols)).ToArray()
+                ProgramsData = programInfos.Select(pi => pi.ToProgramData(symbols)).ToArray(),
+                MaxErrorsReached = maxErrorsReached
             };
         }
 
@@ -542,9 +554,18 @@ namespace Konamiman.Nestor80.Linker
             dataSegmentAddressFromInput = null;
         }
 
-        private static void AddError(string message) { 
+        private static void AddError(string message, bool checkMaxErrors = true) { 
             errors.Add(message);
             LinkError?.Invoke(null, message);
+
+            if(maxErrors == 0 || !checkMaxErrors) {
+                return;
+            }
+
+            generatedErrors++;
+            if(generatedErrors >= maxErrors) {
+                throw new MaxErrorsReachedException();
+            }
         }
 
         private static void AddWarning(string message)
@@ -552,5 +573,7 @@ namespace Konamiman.Nestor80.Linker
             warnings.Add(message);
             LinkWarning?.Invoke(null, message);
         }
+
+        class MaxErrorsReachedException : Exception { }
     }
 }

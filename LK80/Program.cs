@@ -17,8 +17,6 @@ namespace Konamiman.Nestor80.LK80
         const int ERR_LINKING_ERROR = 5;
         const int ERR_LINKING_FATAL = 6;
 
-        const int DEFAULT_MAX_ERRORS = 34;
-
         const int OF_CASE_ORIGINAL = 0;
         const int OF_CASE_LOWER = 1;
         const int OF_CASE_UPPER = 2;
@@ -163,7 +161,8 @@ namespace Konamiman.Nestor80.LK80
                 FillingByte = fillByte,
                 LinkingSequenceItems = linkingSequence.ToArray(),
                 GetFullNameOfRequestedLibraryFile = GetFullNameOfRequestedLibraryFile,
-                OpenFile = OpenFile
+                OpenFile = OpenFile,
+                MaxErrors = maxErrors
             };
 
             Stream outputStream;
@@ -239,11 +238,6 @@ namespace Konamiman.Nestor80.LK80
 
         private static void RelocatableFilesProcessor_LinkError(object sender, string e)
         {
-            if(errorsCount > maxErrors) {
-                return;
-            }
-
-            errorsCount++;
             PrintError(e);
         }
 
@@ -544,7 +538,7 @@ namespace Konamiman.Nestor80.LK80
             startAddress = 0xFFFF;
             endAddress = 0;
             suppressWarnings = false;
-            maxErrors = ushort.MaxValue;
+            maxErrors = LinkingConfiguration.DEFAULT_MAX_ERRORS;
             workingDir = null;
             libraryDir = null;
             outputFileCase = OF_CASE_ORIGINAL;
