@@ -111,33 +111,154 @@ namespace Konamiman.Nestor80.LK80
                 file.DisplayName = Path.GetFileName(file.FullName);
             }
 
-            //TODO: Check if outputFileName is actually a directory
-
-            if(outputFileName is not null) {
-                outputFilePath = Path.Combine(workingDir, outputFileName);
-            }
-            else if(filesToProcess.Any()) {
-                outputFilePath = ChangeCase(Path.GetFileName(filesToProcess.First().FullName));
-                if(!Path.HasExtension(outputFileName)) {
-                    var extension = outputFileExtension ?? ChangeCase(hexformat ? "HEX" : "BIN");
-                    outputFilePath = Path.ChangeExtension(outputFilePath, extension);
-                }
-                outputFilePath = Path.Combine(workingDir, outputFilePath);
-            }
-
             PrintArgumentsAndFiles();
 
             if(!filesToProcess.Any()) {
                 PrintProgress("No files to process.", 1);
+                PrintProgress("No output generated.", 1);
                 return ERR_SUCCESS;
             }
 
-            //WIP
+            var firstFilePath = filesToProcess.First().FullName;
+            if(outputFileName is null) {
+                var firstFileName = Path.GetFileNameWithoutExtension(firstFilePath);
+                var extension = outputFileExtension ?? ChangeCase(hexformat ? "HEX" : "BIN");
+                firstFileName = Path.ChangeExtension(firstFileName, extension);
 
-            PrintProgress("Success!", 1);
-            PrintProgress($"Output file: {outputFilePath}", 1);
+                outputFilePath = Path.Combine(workingDir, Path.GetDirectoryName(firstFilePath) ?? "", firstFileName);
+            }
+            else {
+                outputFilePath = Path.Combine(workingDir, outputFileName);
+            }
 
-            return ERR_SUCCESS;
+            if(Directory.Exists(outputFilePath)) {
+                outputFileName = ChangeCase(Path.GetFileName(firstFilePath));
+                if(!Path.HasExtension(outputFileName)) {
+                    var extension = outputFileExtension ?? ChangeCase(hexformat ? "HEX" : "BIN");
+                    outputFileName = Path.ChangeExtension(outputFileName, extension);
+                }
+                outputFilePath = Path.Combine(outputFilePath, outputFileName);
+            }
+
+            outputFilePath = Path.GetFullPath(outputFilePath);
+
+            if(outputFilePath == firstFilePath) {
+                PrintError($"Automatically generated output file path is the same as the first input file: {outputFilePath}. Please supply an output file path with --output-file.");
+                return ERR_BAD_ARGUMENTS;
+            }
+
+            if(verbosityLevel >= 1) {
+                RelocatableFilesProcessor.FileProcessingStart += RelocatableFilesProcessor_FileProcessingStart;
+            }
+
+            if(!suppressWarnings) {
+                RelocatableFilesProcessor.LinkWarning += RelocatableFilesProcessor_LinkWarning;
+            }
+
+            RelocatableFilesProcessor.LinkError += RelocatableFilesProcessor_LinkError;
+
+            var config = new LinkingConfiguration() {
+                StartAddress = startAddress,
+                EndAddress = endAddress,
+                FillingByte = fillByte,
+                LinkingSequenceItems = linkingSequence.ToArray(),
+                GetFullNameOfRequestedLibraryFile = GetFullNameOfRequestedLibraryFile,
+                OpenFile = OpenFile
+            };
+
+            Stream outputStream;
+            try {
+                outputStream = File.Create(outputFilePath);
+            }
+            catch(Exception ex) {
+                PrintError($"Can't create output file {outputFilePath}: {ex.Message}");
+                return ERR_CANT_CREATE_OUTPUT_FILE;
+            }
+
+            LinkingResult linkingResult = null;
+            try {
+                linkingResult = RelocatableFilesProcessor.Link(config, outputStream);
+            }
+            catch(CantOpenFileException ex) {
+                PrintError($"Can't open file {ex.FilePath}: {ex.Message}");
+                return ERR_CANT_OPEN_INPUT_FILE;
+            }
+            catch(Exception ex) {
+                PrintFatal($"Unexpected error: {ex.Message}");
+
+#if DEBUG
+                ErrorWriteLine(ex.StackTrace.ToString());
+#endif
+                return ERR_LINKING_FATAL;
+            }
+
+            try {
+                outputStream.Close();
+            }
+            catch {
+            }
+
+            WriteLine();
+            if(linkingResult.Errors.Length == 0) {
+                PrintProgress("Success!", 1);
+                PrintProgress($"Output file: {outputFilePath}", 1);
+                return ERR_SUCCESS;
+            }
+            else {
+                File.Delete(outputFilePath);
+                PrintProgress("Not output file generated", 1);
+                return ERR_LINKING_ERROR;
+            }
+        }
+
+        private static string GetFullNameOfRequestedLibraryFile(string file)
+        {
+            var fullName = Path.Combine(libraryDir, file);
+            fullName = Path.GetFullPath(fullName);
+            if(!Path.HasExtension(fullName)) {
+                fullName = Path.ChangeExtension(fullName, ".REL");
+            }
+            return fullName;
+        }
+
+        private static Stream OpenFile(string file)
+        {
+            if(!File.Exists(file)) {
+                throw new CantOpenFileException(file, "File not found");
+            }
+
+            try {
+                return File.OpenRead(file);
+            }
+            catch(Exception ex) {
+                throw new CantOpenFileException(file, ex.Message);
+            }
+        }
+
+        static int errorsCount = 0;
+
+        private static void RelocatableFilesProcessor_LinkError(object sender, string e)
+        {
+            if(errorsCount > maxErrors) {
+                return;
+            }
+
+            errorsCount++;
+            PrintError(e);
+        }
+
+        private static void RelocatableFilesProcessor_LinkWarning(object sender, string e)
+        {
+            PrintWarning(e);
+        }
+
+        private static void RelocatableFilesProcessor_FileProcessingStart(object sender, RelocatableFileReference e)
+        {
+            if(errorsPrintedForCurrentProgram) {
+                WriteLine();
+            }
+            errorsPrintedForCurrentProgram = false;
+            PrintLinkingProgress($"Processing file: {(verbosityLevel < 3 ? e.DisplayName : e.FullName)}");
         }
 
         private static string ChangeCase(string filename) =>
@@ -442,8 +563,6 @@ namespace Konamiman.Nestor80.LK80
         /// <returns>The actual program arguments to use.</returns>
         private static string[] MaybeMergeArgsWithEnv(string[] commandLineArgs)
         {
-            string[] fileArgs = null;
-
             if(!commandLineArgs.Any(a => a is "-nea" or "--no-env-args")) {
                 var envVariable = Environment.GetEnvironmentVariable("LK80_ARGS");
                 if(envVariable is not null) {
@@ -515,8 +634,15 @@ namespace Konamiman.Nestor80.LK80
             return what ? "YES" : "NO";
         }
 
+        static bool errorsPrintedForCurrentProgram;
+
         private static void PrintWarning(string text)
         {
+            text = $"WARNING: {text}";
+
+            ErrorWriteLine();
+            errorsPrintedForCurrentProgram = true;
+
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.BackgroundColor = defaultBackgroundColor;
@@ -530,6 +656,11 @@ namespace Konamiman.Nestor80.LK80
 
         private static void PrintError(string text)
         {
+            text = $"ERROR: {text}";
+
+            ErrorWriteLine();
+            errorsPrintedForCurrentProgram = true;
+
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.BackgroundColor = defaultBackgroundColor;
@@ -543,6 +674,9 @@ namespace Konamiman.Nestor80.LK80
 
         private static void PrintFatal(string text)
         {
+            ErrorWriteLine();
+            errorsPrintedForCurrentProgram = true;
+
             if(colorPrint) {
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.BackgroundColor = ConsoleColor.Red;
@@ -554,6 +688,19 @@ namespace Konamiman.Nestor80.LK80
                 ErrorWriteLine(text);
             }
             ErrorWriteLine();
+        }
+
+        private static void PrintLinkingProgress(string text)
+        {
+            if(colorPrint) {
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.BackgroundColor = defaultBackgroundColor;
+                WriteLine(text);
+                Console.ForegroundColor = defaultForegroundColor;
+            }
+            else {
+                WriteLine(text);
+            }
         }
 
         /// <summary>
@@ -675,6 +822,16 @@ namespace Konamiman.Nestor80.LK80
             var stream = File.OpenRead(args[0]);
             var parsed = RelocatableFileParser.Parse(stream);
             return 0;
+        }
+
+        class CantOpenFileException : Exception
+        {
+            public CantOpenFileException(string filePath, string message) : base(message)
+            {
+                this.FilePath = filePath;
+            }
+
+            public string FilePath { get; }
         }
     }
 }

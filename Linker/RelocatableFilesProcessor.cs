@@ -48,6 +48,8 @@ namespace Konamiman.Nestor80.Linker
         private static Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
 
         public static event EventHandler<RelocatableFileReference> FileProcessingStart;
+        public static event EventHandler<string> LinkError;
+        public static event EventHandler<string> LinkWarning;
 
         private static AddressType[] addressTypes = new[] {
             AddressType.CSEG, AddressType.DSEG, AddressType.ASEG
@@ -121,7 +123,7 @@ namespace Konamiman.Nestor80.Linker
                 }
                 else if(linkItem is SetCodeBeforeDataMode) {
                     if(segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment) {
-                        warnings.Add("Can't set \"code before data\" mode after an explicit address for the data segment has been specified");
+                        AddWarning("Can't set \"code before data\" mode after an explicit address for the data segment has been specified");
                     }
                     else {
                         segmentsSequencingMode = SegmentsSequencingMode.CodeBeforeData;
@@ -129,7 +131,7 @@ namespace Konamiman.Nestor80.Linker
                 }
                 else if(linkItem is SetDataBeforeCodeMode) {
                     if(segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment) {
-                        warnings.Add("Can't set \"data before code\" mode after an explicit address for the data segment has been specified");
+                        AddWarning("Can't set \"data before code\" mode after an explicit address for the data segment has been specified");
                     }
                     else {
                         segmentsSequencingMode = SegmentsSequencingMode.DataBeforeCode;
@@ -138,7 +140,7 @@ namespace Konamiman.Nestor80.Linker
                 else if(linkItem is RelocatableFileReference rfr) {
                     var stream = OpenFile(rfr.FullName);
                     if(stream == null) {
-                        errors.Add($"Could not open file {rfr.FullName} for processing");
+                        AddError($"Could not open file {rfr.FullName} for processing");
                         return;
                     }
                     currentFile = rfr;
@@ -186,7 +188,7 @@ namespace Konamiman.Nestor80.Linker
 
             foreach(var externalPendingResolution in externalsPendingResolution) {
                 if(!symbols.ContainsKey(externalPendingResolution.SymbolName)) {
-                    errors.Add($"In program {externalPendingResolution.ProgramName}: can't resolve external symbol reference: {externalPendingResolution.SymbolName}");
+                    AddError($"In program {externalPendingResolution.ProgramName}: can't resolve external symbol reference: {externalPendingResolution.SymbolName}");
                     continue;
                 }
 
@@ -204,13 +206,13 @@ namespace Konamiman.Nestor80.Linker
                     }
                 }
                 catch(ExpressionEvaluationException ex) {
-                    errors.Add(ex.Message);
+                    AddError(ex.Message);
                 }
             }
 
             foreach(var symbolName in duplicatePublicSymbols.Keys) {
                 var programNames = string.Join(", ", duplicatePublicSymbols[symbolName]);
-                errors.Add($"Symbol '{symbolName}' is defined in multiple programs: {programNames}");
+                AddError($"Symbol '{symbolName}' is defined in multiple programs: {programNames}");
             }
         }
 
@@ -320,7 +322,7 @@ namespace Konamiman.Nestor80.Linker
             var oldCurrentProgramAddress = currentProgramAddress;
             for(int fileItemIndex = 0; fileItemIndex < programItems.Length; fileItemIndex++) {
                 if(oldCurrentProgramAddress > currentProgramAddress) {
-                    warnings.Add($"When processing {currentAddressType} of program '{currentProgramName}': program counter overflowed from FFFFh to 0");
+                    AddWarning($"When processing {currentAddressType} of program '{currentProgramName}': program counter overflowed from FFFFh to 0");
                     startAddress = 0;
                     endAddress = 65535;
                 }
@@ -429,7 +431,7 @@ namespace Konamiman.Nestor80.Linker
 
                     var stream = OpenFile(fullName);
                     if(stream == null) {
-                        warnings.Add($"Could not open .REQUEST file {fullName} for processing");
+                        AddWarning($"Could not open .REQUEST file {fullName} for processing");
                         continue;
                     }
 
@@ -440,7 +442,7 @@ namespace Konamiman.Nestor80.Linker
                         .ToArray();
 
                     if(publicSymbols.Length == 0) {
-                        warnings.Add($"Requested library file {fileName} doesn't define any public symbol so it won't be used");
+                        AddWarning($"Requested library file {fileName} doesn't define any public symbol so it won't be used");
                     }
                     else {
                         requestedLibFiles.Add(new() { Name = fileName, Contents = parsedFileItems, PublicSymbols = publicSymbols, MustLoad = false });
@@ -453,7 +455,7 @@ namespace Konamiman.Nestor80.Linker
                     offsetsForExternals.Add(currentProgramAddress, (ushort)-linkItem.Address.Value);
                 }
                 else if(linkItem.Type is LinkItemType.ChainAddress) {
-                    errors.Add($"Unsupported link item type found in program {currentProgramName}: 'Chain address'");
+                    AddError($"Unsupported link item type found in program {currentProgramName}: 'Chain address'");
                 }
                 else if(linkItem.Type is LinkItemType.ExtensionLinkItem) {
                     var expressionItems = programItems
@@ -466,7 +468,7 @@ namespace Konamiman.Nestor80.Linker
                     expressionsPendingEvaluation.Add(expression);
 
                     if(!expression.StoreAsByte && !expression.StoreAsWord) {
-                        warnings.Add($"In program {currentProgramName}: found an expression that is neither marked as 'store as byte' nor as 'store as word', will store as word");
+                        AddWarning($"In program {currentProgramName}: found an expression that is neither marked as 'store as byte' nor as 'store as word', will store as word");
                     }
 
                     // -1 because it will be incremented in the next step of the for loop
@@ -483,7 +485,7 @@ namespace Konamiman.Nestor80.Linker
             }
 
             if(oldCurrentProgramAddress > currentProgramAddress) {
-                warnings.Add($"When processing {currentAddressType} of program '{currentProgramName}': program counter overflowed from FFFFh to 0");
+                AddWarning($"When processing {currentAddressType} of program '{currentProgramName}': program counter overflowed from FFFFh to 0");
                 startAddress = 0;
                 endAddress = 65535;
             }
@@ -518,7 +520,7 @@ namespace Konamiman.Nestor80.Linker
                         }
                         intersection = AddressRange.Intersection(currentProgramInfo.RangeOf(addressType1), programInfo.RangeOf(addressType2));
                         if(intersection != null) {
-                            errors.Add($"{addressType1} of program '{currentProgramInfo.ProgramName}' and {addressType2} of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
+                            AddError($"{addressType1} of program '{currentProgramInfo.ProgramName}' and {addressType2} of program '{programInfo.ProgramName}' intersect at addresses {intersection.Start:X4}h to {intersection.End:X4}h");
                         }
                     }
                 }
@@ -538,6 +540,17 @@ namespace Konamiman.Nestor80.Linker
         {
             codeSegmentAddressFromInput = null;
             dataSegmentAddressFromInput = null;
+        }
+
+        private static void AddError(string message) { 
+            errors.Add(message);
+            LinkError?.Invoke(null, message);
+        }
+
+        private static void AddWarning(string message)
+        {
+            warnings.Add(message);
+            LinkWarning?.Invoke(null, message);
         }
     }
 }
