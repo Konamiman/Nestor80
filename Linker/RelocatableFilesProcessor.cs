@@ -8,12 +8,6 @@ namespace Konamiman.Nestor80.Linker
     {
         private static ushort startAddress;
         private static ushort endAddress;
-        private static ushort minimumCodeSegmentStart;
-        private static ushort maximumCodeSegmentEnd;
-        private static ushort minimumDataSegmentStart;
-        private static ushort maximumDataSegmentEnd;
-        private static ushort absoluteSegmentStart;
-        private static ushort absoluteSegmentEnd;
         private static AddressType currentAddressType;
         private static ushort currentProgramAddress;
         private static ushort currentProgramCodeSegmentStart;
@@ -22,8 +16,8 @@ namespace Konamiman.Nestor80.Linker
         private static ushort currentProgramCodeSegmentEnd;
         private static ushort currentProgramDataSegmentEnd;
         private static ushort currentProgramAbsoluteSegmentEnd;
-        private static Dictionary<string, ushort> currentProgramCommonBlocksStart;
-        private static Dictionary<string, ushort> currentProgramCommonBlocksSizes;
+        private static readonly Dictionary<string, ushort> currentProgramCommonBlocksStart;
+        private static readonly Dictionary<string, ushort> currentProgramCommonBlocksSizes;
         private static ILinkingSequenceItem[] linkItems;
         private static byte fillByte;
         private static Func<string, Stream> OpenFile;
@@ -34,10 +28,7 @@ namespace Konamiman.Nestor80.Linker
         private static readonly Dictionary<string, ushort> symbols = new();
         private static Stream outputStream;
         private static string currentProgramName;
-        private static byte[] currentProgramContents;
-        private static List<ProgramInfo> programInfos = new();
-        private static bool codeSegmentAddressSpecified;
-        private static bool dataSegmentAddressSpecified;
+        private static readonly List<ProgramInfo> programInfos = new();
         private static byte[] resultingMemory;
         private static SegmentsSequencingMode segmentsSequencingMode;
         private static readonly List<ExternalReference> externalsPendingResolution = new();
@@ -47,13 +38,13 @@ namespace Konamiman.Nestor80.Linker
         private static int generatedErrors;
 
         // Keys are symbol names, values are lists of program names
-        private static Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
 
         public static event EventHandler<RelocatableFileReference> FileProcessingStart;
         public static event EventHandler<string> LinkError;
         public static event EventHandler<string> LinkWarning;
 
-        private static AddressType[] addressTypes = new[] {
+        private static readonly AddressType[] addressTypes = new[] {
             AddressType.CSEG, AddressType.DSEG, AddressType.ASEG
         };
 
@@ -76,7 +67,6 @@ namespace Konamiman.Nestor80.Linker
             OpenFile  = configuration.OpenFile;
             maxErrors = configuration.MaxErrors;
             GetFullNameOfRequestedLibraryFile = configuration.GetFullNameOfRequestedLibraryFile;
-            currentProgramContents = null;
             resultingMemory = Enumerable.Repeat(configuration.FillingByte, 65536).ToArray();
             generatedErrors = 0;
 
@@ -93,15 +83,6 @@ namespace Konamiman.Nestor80.Linker
                 outputStream.Write(resultingMemory.Skip(startAddress).Take(endAddress - startAddress + 1).ToArray());
             }
 
-            var areas = new List<AddressRange> {
-                new AddressRange(minimumCodeSegmentStart, maximumCodeSegmentEnd, AddressType.CSEG),
-                new AddressRange(minimumDataSegmentStart, maximumDataSegmentEnd, AddressType.DSEG),
-                new AddressRange(absoluteSegmentStart, absoluteSegmentEnd, AddressType.ASEG)
-            };
-            foreach(var commonBlock in commonBlocks) {
-                areas.Add(new AddressRange(commonBlock.Value.Item1, commonBlock.Value.Item2, AddressType.COMMON, commonBlock.Key));
-            }
-
             return new LinkingResult() {
                 StartAddress = startAddress,
                 EndAddress = endAddress,
@@ -115,8 +96,8 @@ namespace Konamiman.Nestor80.Linker
         private static RelocatableFileReference currentFile;
         private static ushort? codeSegmentAddressFromInput;
         private static ushort? dataSegmentAddressFromInput;
-        private static HashSet<string> currentProgramSymbols = new(StringComparer.OrdinalIgnoreCase);
-        private static Dictionary<ushort, ushort> offsetsForExternals = new();
+        private static readonly HashSet<string> currentProgramSymbols = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<ushort, ushort> offsetsForExternals = new();
 
         private static void DoLinking()
         {

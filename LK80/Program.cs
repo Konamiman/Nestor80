@@ -234,8 +234,6 @@ namespace Konamiman.Nestor80.LK80
             }
         }
 
-        static int errorsCount = 0;
-
         private static void RelocatableFilesProcessor_LinkError(object sender, string e)
         {
             PrintError(e);
