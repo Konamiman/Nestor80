@@ -73,7 +73,8 @@ namespace Konamiman.Nestor80.Linker
                 DataSegmentSize = (ushort)(HasData ? DataSegmentEnd - DataSegmentStart + 1 : 0),
                 AbsoluteSegmentStart = AbsoluteSegmentStart,
                 AbsoluteSegmentSize = (ushort)(HasAbsolute ? AbsoluteSegmentEnd - AbsoluteSegmentStart + 1 : 0),
-                PublicSymbols = new(allKnownSymbols.Where(s => PublicSymbols.Contains(s.Key)))
+                PublicSymbols = new(allKnownSymbols.Where(s => PublicSymbols.Contains(s.Key))),
+                ProgramName = ProgramName
             };
         }
 

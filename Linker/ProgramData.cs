@@ -17,5 +17,7 @@
         public ushort AbsoluteSegmentSize { get; set; }
 
         public Dictionary<string, ushort> PublicSymbols { get; set; }
+
+        public bool HasContent => CodeSegmentSize > 0 || DataSegmentSize > 0 || AbsoluteSegmentSize > 0;
     }
 }

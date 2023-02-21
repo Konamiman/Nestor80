@@ -113,7 +113,7 @@ namespace Konamiman.Nestor80.LK80
 
             if(!filesToProcess.Any()) {
                 PrintProgress("No files to process.", 1);
-                PrintProgress("No output generated.", 1);
+                PrintProgress("No output file generated.", 1);
                 return ERR_SUCCESS;
             }
 
@@ -201,12 +201,54 @@ namespace Konamiman.Nestor80.LK80
             if(linkingResult.Errors.Length == 0) {
                 PrintProgress("Success!", 1);
                 PrintProgress($"Output file: {outputFilePath}", 1);
-                return ERR_SUCCESS;
             }
             else {
                 File.Delete(outputFilePath);
-                PrintProgress("Not output file generated", 1);
+                PrintProgress("No output file generated.", 1);
                 return ERR_LINKING_ERROR;
+            }
+
+            if(verbosityLevel >= 3) {
+                PrintProgress("");
+                if(linkingResult.ProgramsData.Any(p => p.HasContent)) {
+                    PrintProgress($"Result addresses: {linkingResult.StartAddress:X4}h to {linkingResult.EndAddress:X4} ({linkingResult.EndAddress - linkingResult.StartAddress + 1} bytes)");
+                }
+                foreach(var program in linkingResult.ProgramsData) {
+                    PrintProgramDetails(program);
+                }
+            }
+
+            return ERR_SUCCESS;
+        }
+
+        private static void PrintProgramDetails(ProgramData program)
+        {
+            PrintProgress("");
+            PrintProgress($"Program: {program.ProgramName}");
+
+            if(!program.HasContent) {
+                PrintProgress("  Empty program.");
+                return;
+            }
+
+            if(program.CodeSegmentSize > 0) {
+                PrintProgress($"  Code segment: {program.CodeSegmentStart:X4}h to {program.CodeSegmentStart + program.CodeSegmentSize - 1:X4}h ({program.CodeSegmentSize} bytes)");
+            }
+            if(program.DataSegmentSize > 0) {
+                PrintProgress($"  Data segment: {program.DataSegmentStart:X4}h to {program.DataSegmentStart + program.DataSegmentSize - 1:X4}h ({program.DataSegmentSize} bytes)");
+            }
+            if(program.AbsoluteSegmentSize > 0) {
+                PrintProgress($"  Absolute segment: {program.AbsoluteSegmentStart:X4}h to {program.AbsoluteSegmentStart + program.AbsoluteSegmentSize - 1:X4}h ({program.AbsoluteSegmentSize} bytes)");
+            }
+
+            if(program.PublicSymbols.Count == 0) {
+                PrintProgress("  No public symbols.");
+                return;
+            }
+
+            PrintProgress($"  {program.PublicSymbols.Count} public symbols:");
+            foreach(var symbol in program.PublicSymbols.OrderBy(s => s.Key)) {
+                PrintProgress($"    {symbol.Key} = {symbol.Value:X4}h");
             }
         }
 
@@ -570,7 +612,7 @@ namespace Konamiman.Nestor80.LK80
 
         private static void PrintArgumentsAndFiles()
         {
-            if(verbosityLevel < 3) {
+            if(verbosityLevel < 2) {
                 return;
             }
 
@@ -618,7 +660,7 @@ namespace Konamiman.Nestor80.LK80
                 }
             }
 
-            PrintProgress(info, 3);
+            PrintProgress(info);
         }
 
         private static string YesOrNo(bool what)
@@ -710,7 +752,7 @@ namespace Konamiman.Nestor80.LK80
             }
         }
 
-        private static void PrintProgress(string text, int requiredVerbosity)
+        private static void PrintProgress(string text, int requiredVerbosity = 0)
         {
             if(verbosityLevel < requiredVerbosity) {
                 return;
