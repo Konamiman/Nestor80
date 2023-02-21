@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.Relocatable;
 using Konamiman.Nestor80.Linker.Parsing;
+using System.Text;
 
 namespace Konamiman.Nestor80.Linker
 {
@@ -36,6 +37,7 @@ namespace Konamiman.Nestor80.Linker
         private static readonly List<Expression> expressionsPendingEvaluation = new();
         private static int maxErrors;
         private static int generatedErrors;
+        private static bool hexFormat;
 
         // Keys are symbol names, values are lists of program names
         private static readonly Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
@@ -66,6 +68,7 @@ namespace Konamiman.Nestor80.Linker
             fillByte = configuration.FillingByte;
             OpenFile  = configuration.OpenFile;
             maxErrors = configuration.MaxErrors;
+            hexFormat = configuration.OutputHexFormat;
             GetFullNameOfRequestedLibraryFile = configuration.GetFullNameOfRequestedLibraryFile;
             resultingMemory = Enumerable.Repeat(configuration.FillingByte, 65536).ToArray();
             generatedErrors = 0;
@@ -79,8 +82,8 @@ namespace Konamiman.Nestor80.Linker
                 AddError("Maximum errors count reached, process aborted", false);
             }
 
-            if(startAddress <= endAddress) {
-                outputStream.Write(resultingMemory.Skip(startAddress).Take(endAddress - startAddress + 1).ToArray());
+            if(errors.Count == 0) {
+                WriteOutput();
             }
 
             return new LinkingResult() {
@@ -91,6 +94,34 @@ namespace Konamiman.Nestor80.Linker
                 ProgramsData = programInfos.Select(pi => pi.ToProgramData(symbols)).ToArray(),
                 MaxErrorsReached = maxErrorsReached
             };
+        }
+
+        private static void WriteOutput()
+        {
+            if(!hexFormat) {
+                outputStream.Write(resultingMemory.Skip(startAddress).Take(endAddress - startAddress + 1).ToArray());
+                outputStream.Close();
+                return;
+            }
+
+            var writer = new StreamWriter(outputStream, Encoding.ASCII);
+            var address = startAddress;
+            var remaining = endAddress - startAddress + 1;
+            while(remaining > 0) {
+                var lineLength = Math.Min(remaining, 32);
+                writer.Write($":{lineLength:X2}{address:X4}00");
+                byte sum = (byte)(lineLength + (address & 0xFF) + (address >> 8));
+                for(var i=0; i<lineLength; i++) {
+                    var value = resultingMemory[address + i];
+                    writer.Write($"{value:X2}");
+                    sum += value;
+                }
+                var checksum = (byte)-sum;
+                writer.Write($"{checksum:X2}\r\n");
+                address += (ushort)lineLength;
+                remaining -= lineLength;
+            }
+            writer.Close();
         }
 
         private static RelocatableFileReference currentFile;

@@ -17,4 +17,6 @@ public class LinkingConfiguration
     public ILinkingSequenceItem[] LinkingSequenceItems { get; set; }
 
     public int MaxErrors { get; set; } = DEFAULT_MAX_ERRORS;
+
+    public bool OutputHexFormat { get; set; }
 }

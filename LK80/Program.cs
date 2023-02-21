@@ -32,7 +32,7 @@ namespace Konamiman.Nestor80.LK80
         static string libraryDir;
         static int outputFileCase;
         static string outputFileExtension;
-        static bool hexformat;
+        static bool hexFormat;
         static string outputFileName;
         static int verbosityLevel;
         static readonly List<ILinkingSequenceItem> linkingSequence = new();
@@ -120,7 +120,7 @@ namespace Konamiman.Nestor80.LK80
             var firstFilePath = filesToProcess.First().FullName;
             if(outputFileName is null) {
                 var firstFileName = Path.GetFileNameWithoutExtension(firstFilePath);
-                var extension = outputFileExtension ?? ChangeCase(hexformat ? "HEX" : "BIN");
+                var extension = outputFileExtension ?? ChangeCase(hexFormat ? "HEX" : "BIN");
                 firstFileName = Path.ChangeExtension(firstFileName, extension);
 
                 outputFilePath = Path.Combine(workingDir, Path.GetDirectoryName(firstFilePath) ?? "", firstFileName);
@@ -132,7 +132,7 @@ namespace Konamiman.Nestor80.LK80
             if(Directory.Exists(outputFilePath)) {
                 outputFileName = ChangeCase(Path.GetFileName(firstFilePath));
                 if(!Path.HasExtension(outputFileName)) {
-                    var extension = outputFileExtension ?? ChangeCase(hexformat ? "HEX" : "BIN");
+                    var extension = outputFileExtension ?? ChangeCase(hexFormat ? "HEX" : "BIN");
                     outputFileName = Path.ChangeExtension(outputFileName, extension);
                 }
                 outputFilePath = Path.Combine(outputFilePath, outputFileName);
@@ -162,7 +162,8 @@ namespace Konamiman.Nestor80.LK80
                 LinkingSequenceItems = linkingSequence.ToArray(),
                 GetFullNameOfRequestedLibraryFile = GetFullNameOfRequestedLibraryFile,
                 OpenFile = OpenFile,
-                MaxErrors = maxErrors
+                MaxErrors = maxErrors,
+                OutputHexFormat = hexFormat
             };
 
             Stream outputStream;
@@ -246,7 +247,7 @@ namespace Konamiman.Nestor80.LK80
                 return;
             }
 
-            PrintProgress($"  {program.PublicSymbols.Count} public symbols:");
+            PrintProgress($"  {program.PublicSymbols.Count} public symbol{(program.PublicSymbols.Count == 1 ? "" : "s")}:");
             foreach(var symbol in program.PublicSymbols.OrderBy(s => s.Key)) {
                 PrintProgress($"    {symbol.Key} = {symbol.Value:X4}h");
             }
@@ -331,7 +332,7 @@ namespace Konamiman.Nestor80.LK80
                     }
                     else {
                         i++;
-                        startAddress = (byte)ParseNumericArg(arg, args[i], false, out error);
+                        startAddress = (ushort)ParseNumericArg(arg, args[i], false, out error);
                         if(error is not null) return error;
                     }
                 }
@@ -341,7 +342,7 @@ namespace Konamiman.Nestor80.LK80
                     }
                     else {
                         i++;
-                        endAddress = (byte)ParseNumericArg(arg, args[i], false, out error);
+                        endAddress = (ushort)ParseNumericArg(arg, args[i], false, out error);
                         if(error is not null) return error;
                     }
                 }
@@ -413,10 +414,10 @@ namespace Konamiman.Nestor80.LK80
                     i++;
                     var outputFormat = args[i];
                     if(outputFormat == "bin") {
-                        hexformat = false;
+                        hexFormat = false;
                     }
                     else if(outputFormat == "hex") {
-                        hexformat = true;
+                        hexFormat = true;
                     }
                     else {
                         return $"The {arg} argument needs to be followed by 'bin' or 'hex'";
@@ -583,7 +584,7 @@ namespace Konamiman.Nestor80.LK80
             libraryDir = null;
             outputFileCase = OF_CASE_ORIGINAL;
             outputFileExtension = null;
-            hexformat = false;
+            hexFormat = false;
             outputFileName = null;
             verbosityLevel = 1;
             linkingSequence.Clear();
@@ -644,7 +645,7 @@ namespace Konamiman.Nestor80.LK80
             if(startAddress is not 0xFFFF) {
                 info += $"End address: {endAddress:X4}h\r\n";
             }
-            info += $"Output format: {(hexformat ? "HEX" : "BIN")}\r\n";
+            info += $"Output format: {(hexFormat ? "HEX" : "BIN")}\r\n";
 
             if(linkingSequence.Any()) {
                 info += "\r\nLinking sequence:\r\n\r\n";
