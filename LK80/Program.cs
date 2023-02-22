@@ -1,10 +1,8 @@
 ﻿using Konamiman.Nestor80.Linker;
 using Konamiman.Nestor80.Linker.Parsing;
-using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.LK80
 {
@@ -44,6 +42,7 @@ namespace Konamiman.Nestor80.LK80
         static bool generateListingFile;
         static string listingFilePath;
         static int listingFormat;
+        static readonly List<Regex> listingRegexes = new();
 
         static string[] commandLineArgs;
         static string[] envArgs = null;
@@ -271,6 +270,15 @@ namespace Konamiman.Nestor80.LK80
                 }
                 writer.Close();
                 return;
+            }
+
+            if(listingRegexes.Any()) {
+                var matchingSymbols = new List<KeyValuePair<string, ushort>>();
+                foreach(var regex in listingRegexes) {
+                    var matchingSymbolsForRegex = symbols.Where(s => regex.IsMatch(s.Key));
+                    matchingSymbols.AddRange(matchingSymbolsForRegex);
+                }
+                symbols = matchingSymbols.DistinctBy(s => s.Key).ToArray();
             }
 
             if(listingFormat == LISTING_JSON) {
@@ -603,6 +611,19 @@ namespace Konamiman.Nestor80.LK80
                         return $"The {arg} argument needs to be followed by 'l80', 'json' or 'equs'";
                     }
                 }
+                else if(arg is "-lr" or "--listing-regex") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed bya regular expression";
+                    }
+                    i++;
+                    try {
+                        var regex = new Regex(args[i], RegexOptions.IgnoreCase);
+                        listingRegexes.Add(regex);
+                    }
+                    catch {
+                        return $"{args[i]} is not a valid regular expression";
+                    }
+                }
                 else if(arg is "-rc" or "--reset-config") {
                     ResetConfig();
                 }
@@ -703,6 +724,7 @@ namespace Konamiman.Nestor80.LK80
             generateListingFile = false;
             listingFilePath = null;
             listingFormat = LISTING_L80;
+            listingRegexes.Clear();
         }
 
         /// <summary>
@@ -765,6 +787,12 @@ namespace Konamiman.Nestor80.LK80
             if(generateListingFile) {
                 var format = listingFormat == LISTING_JSON ? "JSON" : listingFormat == LISTING_EQUS ? "EQUS" : "LINK-80";
                 info += $"Listing file format: {format}\r\n";
+                if(listingRegexes.Any()) {
+                    info += "Symbol filter regexes for listing file:\r\n";
+                    foreach(var regex in listingRegexes) {
+                        info += $"  {regex}\r\n";
+                    }
+                }
             }
 
             if(linkingSequence.Any()) {
