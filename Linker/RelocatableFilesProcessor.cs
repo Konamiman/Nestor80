@@ -26,7 +26,7 @@ namespace Konamiman.Nestor80.Linker
         private static readonly Dictionary<string, Tuple<ushort, ushort>> commonBlocks = new();
         private static readonly List<string> errors = new();
         private static readonly List<string> warnings = new();
-        private static readonly Dictionary<string, ushort> symbols = new();
+        private static readonly Dictionary<string, ushort> symbols = new(StringComparer.OrdinalIgnoreCase);
         private static Stream outputStream;
         private static string currentProgramName;
         private static readonly List<ProgramInfo> programInfos = new();
@@ -354,7 +354,11 @@ namespace Konamiman.Nestor80.Linker
 
                 var fileItem = programItems[fileItemIndex];
 
-                if(fileItem is RawBytes rawBytes) {
+                if(fileItem is ExtendedRelocatableFileHeader) {
+                    //It's an extended relocatable file: good to know, but nothing special to do
+                    continue;
+                }
+                else if(fileItem is RawBytes rawBytes) {
                     var excessBytes = currentProgramAddress + rawBytes.Bytes.Length - 65536;
                     if(excessBytes > 0) {
                         Array.Copy(rawBytes.Bytes, 0, resultingMemory, currentProgramAddress, rawBytes.Bytes.Length-excessBytes);

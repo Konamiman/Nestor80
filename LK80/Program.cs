@@ -1,5 +1,6 @@
 ﻿using Konamiman.Nestor80.Linker;
 using Konamiman.Nestor80.Linker.Parsing;
+using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -21,6 +22,10 @@ namespace Konamiman.Nestor80.LK80
         const int OF_CASE_LOWER = 1;
         const int OF_CASE_UPPER = 2;
 
+        const int LISTING_L80 = 0;
+        const int LISTING_JSON = 1;
+        const int LISTING_EQUS = 2;
+
         static bool colorPrint;
         static bool showBanner;
         static byte fillByte;
@@ -36,6 +41,9 @@ namespace Konamiman.Nestor80.LK80
         static string outputFileName;
         static int verbosityLevel;
         static readonly List<ILinkingSequenceItem> linkingSequence = new();
+        static bool generateListingFile;
+        static string listingFilePath;
+        static int listingFormat;
 
         static string[] commandLineArgs;
         static string[] envArgs = null;
@@ -192,12 +200,6 @@ namespace Konamiman.Nestor80.LK80
                 return ERR_LINKING_FATAL;
             }
 
-            try {
-                outputStream.Close();
-            }
-            catch {
-            }
-
             WriteLine();
             if(linkingResult.Errors.Length == 0) {
                 PrintProgress("Success!", 1);
@@ -219,7 +221,87 @@ namespace Konamiman.Nestor80.LK80
                 }
             }
 
+            if(!generateListingFile) {
+                return ERR_SUCCESS;
+            }
+
+            if(listingFilePath is null) {
+                var firstFileName = Path.GetFileNameWithoutExtension(firstFilePath);
+                firstFileName = Path.ChangeExtension(firstFileName, ChangeCase("SYM"));
+
+                listingFilePath = Path.Combine(workingDir, Path.GetDirectoryName(firstFilePath) ?? "", firstFileName);
+            }
+            else {
+                listingFilePath = Path.Combine(workingDir, listingFilePath);
+            }
+
+            if(Directory.Exists(listingFilePath)) {
+                var listingFileName = ChangeCase(Path.GetFileName(firstFilePath));
+                listingFileName = Path.ChangeExtension(listingFileName, ChangeCase("SYM"));
+                listingFilePath = Path.Combine(listingFilePath, listingFileName);
+            }
+
+            listingFilePath = Path.GetFullPath(listingFilePath);
+            WriteLine("");
+
+            try {
+                GenerateListingFile(linkingResult);
+            }
+            catch(Exception ex) {
+                PrintError($"Error generating listing file {listingFilePath}: {ex.Message}");
+#if DEBUG
+                ErrorWriteLine(ex.StackTrace.ToString());
+#endif
+                return ERR_CANT_CREATE_LISTING_FILE;
+            }
+
+            PrintProgress($"Listing file generated: {listingFilePath}", 1);
+
             return ERR_SUCCESS;
+        }
+
+        private static void GenerateListingFile(LinkingResult linkingResult)
+        {
+            var writer = new StreamWriter(File.Create(listingFilePath), Encoding.UTF8);
+
+            var symbols = linkingResult.ProgramsData.SelectMany(p => p.PublicSymbols).OrderBy(s => s.Key).ToArray();
+            if(symbols.Length == 0) {
+                if(listingFormat == LISTING_JSON) {
+                    writer.Write("{\"symbols\":{}}");
+                }
+                writer.Close();
+                return;
+            }
+
+            if(listingFormat == LISTING_JSON) {
+                writer.Write($"{{\"symbols\":{{\"{symbols[0].Key}\":{symbols[0].Value}");
+                for(int i=1; i<symbols.Length; i++) {
+                    writer.Write($",\"{symbols[i].Key}\":{symbols[i].Value}");
+                }
+                writer.Write("}}");
+            }
+            else if(listingFormat == LISTING_EQUS) {
+                foreach(var symbol in symbols) {
+                    var value = $"{symbol.Value:X4}";
+                    if(!char.IsDigit(value[0])) {
+                        value = $"0{value}";
+                    }
+                    writer.Write($"{symbol.Key} EQU {value}h\r\n");
+                }
+            }
+            else {
+                var column = 0;
+                foreach(var symbol in symbols) {
+                    writer.Write($"{symbol.Key} {symbol.Value:X4}\t");
+                    column++;
+                    if(column == 4) {
+                        writer.Write("\r\n");
+                        column = 0;
+                    }
+                }
+            }
+
+            writer.Close();
         }
 
         private static void PrintProgramDetails(ProgramData program)
@@ -491,6 +573,36 @@ namespace Konamiman.Nestor80.LK80
                 else if(arg is "-dbc" or "--data-before-code") {
                     linkingSequence.Add(new SetDataBeforeCodeMode());
                 }
+                else if(arg is "-l" or "--listing") {
+                    generateListingFile = true;
+                    if(i != args.Length - 1 && args[i + 1][0] != '-') {
+                        i++;
+                        listingFilePath = args[i];
+                    }
+                }
+                else if(arg is "-nl" or "--no-listing") {
+                    generateListingFile = false;
+                }
+                else if(arg is "-lf" or "--listing-format") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by 'l80', 'json' or 'equs'";
+                    }
+
+                    i++;
+                    var format = args[i];
+                    if(format == "l80") {
+                        listingFormat = LISTING_L80;
+                    }
+                    else if(format == "json") {
+                        listingFormat = LISTING_JSON;
+                    }
+                    else if(format == "equs") {
+                        listingFormat = LISTING_EQUS;
+                    }
+                    else {
+                        return $"The {arg} argument needs to be followed by 'l80', 'json' or 'equs'";
+                    }
+                }
                 else if(arg is "-rc" or "--reset-config") {
                     ResetConfig();
                 }
@@ -588,6 +700,9 @@ namespace Konamiman.Nestor80.LK80
             outputFileName = null;
             verbosityLevel = 1;
             linkingSequence.Clear();
+            generateListingFile = false;
+            listingFilePath = null;
+            listingFormat = LISTING_L80;
         }
 
         /// <summary>
@@ -646,6 +761,11 @@ namespace Konamiman.Nestor80.LK80
                 info += $"End address: {endAddress:X4}h\r\n";
             }
             info += $"Output format: {(hexFormat ? "HEX" : "BIN")}\r\n";
+            info += $"Generate listing file: {YesOrNo(generateListingFile)}\r\n";
+            if(generateListingFile) {
+                var format = listingFormat == LISTING_JSON ? "JSON" : listingFormat == LISTING_EQUS ? "EQUS" : "LINK-80";
+                info += $"Listing file format: {format}\r\n";
+            }
 
             if(linkingSequence.Any()) {
                 info += "\r\nLinking sequence:\r\n\r\n";
