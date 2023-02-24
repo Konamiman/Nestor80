@@ -532,7 +532,7 @@ namespace Konamiman.Nestor80.LK80
                     }
                     verbosityLevel = Math.Clamp(verbosityLevel, 0, 3);
                 }
-                else if(arg is "-af" or "--args-file") {
+                else if(arg is "-af" or "--arguments-file") {
                     if(fromFile) {
                         return $"{arg} argument can't be used from inside an arguments file";
                     }
