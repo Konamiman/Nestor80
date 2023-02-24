@@ -1,4 +1,6 @@
-﻿namespace Konamiman.Nestor80.LK80
+﻿using Konamiman.Nestor80.Linker;
+
+namespace Konamiman.Nestor80.LK80
 {
     internal partial class Program
     {
@@ -108,8 +110,21 @@
             the --start address and the first program, and/or the last program and --end, if needed)
             in the resulting binary file. Default is 0.
         
+        -ld, --library-dir <path>
+            The directory to search for for libraries requested with the .REQUEST instruction.
+            By default it's the same as --working-dir (which itself defaults to the current
+            directory).
+
+        -me, --max-errors <count>
+            Stop the linking process after reaching the specified number of errors
+            (not including warnings, and the process will still stop on the first fatal error).
+            0 means "infinite". Default: {LinkingConfiguration.DEFAULT_MAX_ERRORS}.
+
         -nco, --no-color-output
             Don't display linking process messages and errors in color.
+
+        -nsw, --no-suppress-warnings
+            Display linking process warnings (default).
 
         -s, --start <address>
             The start address of the generated binary program. This value will only be used if it's
@@ -129,6 +144,13 @@
                 file.BIN starts with the contents of file.rel, linked at address 1000h
                 (the start address is ignored).
         
+        -sw, --suppress-warnings
+            Don't display linking process warnings.
+
+        -w, --working-dir <path>
+            The working directory. All non-absolute file specifications will be considered
+            relative to this directory (this includes also libraries requested with .REQUEST,
+            unless --library-dir is specified). The default value is the current directory.
 
 
         Full documentation (and donation links, wink wink):
