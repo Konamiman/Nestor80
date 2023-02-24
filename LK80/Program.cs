@@ -436,10 +436,10 @@ namespace Konamiman.Nestor80.LK80
                         if(error is not null) return error;
                     }
                 }
-                else if(arg is "-sw" or "--suppress-warnings") {
+                else if(arg is "-sw" or "--silence-warnings") {
                     suppressWarnings = true;
                 }
-                else if(arg is "-nsw" or "--no-suppress-warnings") {
+                else if(arg is "-nsw" or "--no-silence-warnings") {
                     suppressWarnings = false;
                 }
                 else if(arg is "-me" or "--max-errors") {
@@ -581,17 +581,17 @@ namespace Konamiman.Nestor80.LK80
                 else if(arg is "-dbc" or "--data-before-code") {
                     linkingSequence.Add(new SetDataBeforeCodeMode());
                 }
-                else if(arg is "-l" or "--listing") {
+                else if(arg is "-y" or "--symbols-file") {
                     generateListingFile = true;
                     if(i != args.Length - 1 && args[i + 1][0] != '-') {
                         i++;
                         listingFilePath = args[i];
                     }
                 }
-                else if(arg is "-nl" or "--no-listing") {
+                else if(arg is "-ny" or "--no-symbols-file") {
                     generateListingFile = false;
                 }
-                else if(arg is "-lf" or "--listing-format") {
+                else if(arg is "-yf" or "--symbols-file-format") {
                     if(i == args.Length - 1 || args[i + 1][0] == '-') {
                         return $"The {arg} argument needs to be followed by 'l80', 'json' or 'equs'";
                     }
@@ -611,7 +611,7 @@ namespace Konamiman.Nestor80.LK80
                         return $"The {arg} argument needs to be followed by 'l80', 'json' or 'equs'";
                     }
                 }
-                else if(arg is "-lr" or "--listing-regex") {
+                else if(arg is "-yr" or "--symbols-file-regex") {
                     if(i == args.Length - 1 || args[i + 1][0] == '-') {
                         return $"The {arg} argument needs to be followed bya regular expression";
                     }
@@ -627,7 +627,7 @@ namespace Konamiman.Nestor80.LK80
                 else if(arg is "-rc" or "--reset-config") {
                     ResetConfig();
                 }
-                else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner" or "-nea" or "--no-env-args" or "-nfa" or "--no-file-args") {
+                else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner" or "-nea" or "--no-env-args") {
                     //already handled
                 }
                 else if(arg is "-v" or "--version" or "-h" or "--help" or "--list-encodings") {

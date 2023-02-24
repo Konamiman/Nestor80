@@ -19,7 +19,7 @@ namespace Konamiman.Nestor80.LK80
         /// <summary>
         /// Full help text, displayed when the program is run with the -h or --help argument.
         /// </summary>
-        static readonly string extendedHelpText = $"""
+        static readonly string extendedHelpText = $$$"""
 
         Arguments can be specified as follows (and are combined in that order):
         
@@ -40,6 +40,9 @@ namespace Konamiman.Nestor80.LK80
         - Configuration flags: these are used to configure the linking process as a whole.
           Except where otherwise stated, these are intended to appear only once in the
           arguments list; if they appear more than once, only the last one will be applied.
+
+        All the configuration flags are optional. The minimum set of link sequence items
+        required is one single relocatable file path.
 
         Numeric argument values can be decimal numbers or hexadecimal numbers followed by "h".
 
@@ -62,7 +65,7 @@ namespace Konamiman.Nestor80.LK80
             Otherwise, the entire file (data and then code, or the opposite) will be linked 
             after the last linked file (unless a different address is supplied beforehand
             with --code). It may be a bit confusing but indeed, the entire file is linked 
-            at the address specified by --code even in "data before code" mode.
+            starting at the address specified by --code even in "data before code" mode.
 
         -dbc, --data-before-code
             Switches the linking process to "data before code" mode: any relocatable file 
@@ -96,6 +99,19 @@ namespace Konamiman.Nestor80.LK80
 
         CONFIGURATION FLAGS
 
+        -af, --arguments-file <file path>
+            Read additional arguments from the specified file. The arguments are
+            processed immediately. Recursivity is not supported (additional
+            --arguments-file arguments aren't allowed inside an arguments file).
+            A non-absolute path will be considered relative to the current directory.
+        
+            Arguments inside the file can be all in one single line or
+            spread across multiple lines. Lines starting with ; or #
+            (not counting leading spaces) will be ignored.
+        
+            This option can't be undone (there's not "--no-arguments-file" argument),
+            but if necessary you can use --reset-config to start over.
+
         -co, --color-output
             Display linking process messages and errors in color (default).
 
@@ -108,23 +124,69 @@ namespace Konamiman.Nestor80.LK80
         -f, --fill <value>
             The byte value that will be used to fill the gaps between linked programs (and between
             the --start address and the first program, and/or the last program and --end, if needed)
-            in the resulting binary file. Default is 0.
+            in the generated file. Default is 0.
         
         -ld, --library-dir <path>
             The directory to search for for libraries requested with the .REQUEST instruction.
             By default it's the same as --working-dir (which itself defaults to the current
-            directory).
+            directory). Non-absolute paths are relative to the current directory.
 
         -me, --max-errors <count>
             Stop the linking process after reaching the specified number of errors
             (not including warnings, and the process will still stop on the first fatal error).
-            0 means "infinite". Default: {LinkingConfiguration.DEFAULT_MAX_ERRORS}.
+            0 means "infinite". Default: {{{LinkingConfiguration.DEFAULT_MAX_ERRORS}}}.
 
         -nco, --no-color-output
             Don't display linking process messages and errors in color.
 
-        -nsw, --no-suppress-warnings
+        -nea, --no-env-args
+            Don't read arguments from the LK80_ARGS environment variable.
+            This argument is ignored when found inside LK80_ARGS or an arguments file.
+
+        -nsb, --no-show-banner
+            Don't display the program title and copyright notice banner.
+
+        -nsw, --no-silence-warnings
             Display linking process warnings (default).
+
+        -ny, --no-symbols-file
+            Don't generate a symbols list file. This is the default.
+
+        -o, --output-file
+            Path and name of the generated file. By default it's a file with the name of the
+            first processed relocatable file, with extension .BIN if the output format is
+            binary or .HEX if the output format is Intel HEX, generated in the working directory.
+
+        -of, --output-format bin|hex
+            Format of the generated file, 'bin' for binary (default) or 'hex' for Intel HEX.
+
+        -ofc, --output-file-case upper|lower|orig
+            Whether the casing of the generated file name will be converted to lower case,
+            converted to upper case, or kept as the first processed file name (this is the default).
+            This argument is used only when the name of the output file is chosen as 
+            the same name of the first processed file (because no output file path is specified,
+            or because the specified path is a directory).
+        
+            The default .BIN or .HEX extension added to the output file name is affected by
+            this argument, but an extension explicitly supplied with --output-file-extension
+            is not. Example:
+        
+            LK80 FILE.REL --output-file-case lower --> generates file.bin
+            LK80 FILE.REL --output-file-case lower --output-file-extension COM --> generates file.COM
+        
+            This settings affects the casing of the generated symbols file too
+            if a --symbols-file argument is supplied.
+
+        -ofe, --output-file-extension [.]<extension>
+            The extension for the generated file. This value is used only when the
+            name of the output file is chosen as the same name of the first processed file
+            (because no output file path is specified, or because the specified path
+            is a directory). Default is .BIN when the output file format is binary and .HEX
+            when the output file format is Intel HEX.
+
+        -rc, --reset-config
+            Resets all the linking configuration back to default values and empties the list of
+            link items (in other words: ignores all the previous arguments and starts over).
 
         -s, --start <address>
             The start address of the generated binary program. This value will only be used if it's
@@ -144,14 +206,68 @@ namespace Konamiman.Nestor80.LK80
                 file.BIN starts with the contents of file.rel, linked at address 1000h
                 (the start address is ignored).
         
-        -sw, --suppress-warnings
+        -sb, --show-banner
+            Display the program title and copyright notice banner (default).
+
+        -sw, --silence-warnings
             Don't display linking process warnings.
 
-        -w, --working-dir <path>
-            The working directory. All non-absolute file specifications will be considered
-            relative to this directory (this includes also libraries requested with .REQUEST,
-            unless --library-dir is specified). The default value is the current directory.
+        -vb, --verbosity <level>
+            Selects the verbosity of the status messages shown during the linking process.
+            The information shown for each level is as follows (each level includes the
+            information from all the previous levels):
+        
+            0: Nothing.
+            1: Relocatable file names as they are processed, generated file path (default).
+            2: All the command line arguments from all the sources, the entire configuration
+               resulting from applying all the arguments, all the link sequence items
+               with full file paths.
+            3: Information about all the processed files (program name, segments start addresses,
+               public symbols with their addresses).
+        
+            To silence other types of output see: --silence-warnings, --no-show-banner.
 
+        -w, --working-dir <path>
+            The working directory. All non-absolute path specifications will be considered
+            relative to this directory (this includes also libraries requested with .REQUEST,
+            unless --library-dir is specified), with the exception of the values for
+            --arguments-file and --library-dir. The default value is the current directory.
+
+        -y, --symbols-file [<path>]
+            Generate a symbols list file. If <path> is omitted, a file with the name of the
+            first processed relocatable file and extension .SYM is created in the working
+            directory.
+
+        -yf, --symbols-file-format l80|json|equs
+            Format for the symbols file, one of:
+
+            l80: Four columns per line, each being <symbol name><space><value in hex><tab>.
+                 This is the format of symbols files generated by LINK-80, and is the default.
+
+            json: A json file: {"symbols":{"name":1234,"name2":5678}}
+
+            equs: A source file containing all the symbols as EQU statements.
+
+            The encoding of the generated symbols files is UTF-8.
+
+        -yr, --symbols-file-regex <regex>
+            Limit the symbols to be included in the generated symbols file to only those that
+            match the supplied regular expression. This argument can be specified multiple times,
+            the regular expressions will be combined as "OR" so that symbols matching at least
+            one of the expressions will be included in the symbols file.
+
+            Example: --symbols-file-regex ^\$ --symbols-file-regex [0-9]$
+                     will match symbols that either start with "$" or end with a digit.
+
+        Linkstor80 exit codes are:
+        
+            0: Success
+            1: Invalid arguments
+            2: Error opening or reading one of the files to link
+            3: Error creating or writing to the output file
+            4: Error creating or writing to the symbols file
+            5: Linking errors were thrown
+            6: Fatal error
 
         Full documentation (and donation links, wink wink):
         https://github.com/Konamiman/Nestor80
