@@ -77,6 +77,11 @@ namespace Konamiman.Nestor80.LK80
             commandLineArgs = args;
             args = MaybeMergeArgsWithEnv(args);
             SetShowBannerFlag(args);
+            var workingDirError = SetWorkingDir(args);
+            if(workingDirError != null) {
+                ErrorWriteLine(workingDirError);
+                return ERR_BAD_ARGUMENTS;
+            }
 
             if(showBanner) WriteLine(bannerText);
 
@@ -87,25 +92,13 @@ namespace Konamiman.Nestor80.LK80
             }
 
             try {
-                workingDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), workingDir ?? ""));
-            }
-            catch(Exception ex) {
-                ErrorWriteLine($"Error when resolving working directory: {ex.Message}");
-                return ERR_BAD_ARGUMENTS;
-            }
-            if(!Directory.Exists(workingDir)) {
-                ErrorWriteLine($"Error when resolving working directory: '{workingDir}' doesn't exist or is not a directory");
-                return ERR_BAD_ARGUMENTS;
-            }
-
-            try {
                 libraryDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), libraryDir ?? workingDir ?? ""));
             }
             catch(Exception ex) {
                 ErrorWriteLine($"Error when resolving libraries directory': {ex.Message}");
                 return ERR_BAD_ARGUMENTS;
             }
-            if(!Directory.Exists(workingDir)) {
+            if(!Directory.Exists(libraryDir)) {
                 ErrorWriteLine($"Error when resolving libraries directory: '{workingDir}' doesn't exist or is not a directory");
                 return ERR_BAD_ARGUMENTS;
             }
@@ -205,7 +198,8 @@ namespace Konamiman.Nestor80.LK80
                 PrintProgress($"Output file: {outputFilePath}", 1);
             }
             else {
-                File.Delete(outputFilePath);
+                try { outputStream.Close(); } catch { }
+                try { File.Delete(outputFilePath); } catch { }
                 PrintProgress("No output file generated.", 1);
                 return ERR_LINKING_ERROR;
             }
@@ -453,13 +447,12 @@ namespace Konamiman.Nestor80.LK80
                     }
                 }
                 else if(arg is "-w" or "--working-dir") {
-                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
-                        return $"The {arg} argument needs to be followed by a value";
+                    if(fromFile) {
+                        return $"The {arg} argument isn't allowed inside an arguments file";
                     }
-                    else {
-                        i++;
-                        workingDir = args[i];
-                    }
+                    //Otherwise, already handled
+                    i++;
+                    continue;
                 }
                 else if(arg is "-ld" or "--library-dir") {
                     if(i == args.Length - 1 || args[i + 1][0] == '-') {
@@ -532,7 +525,7 @@ namespace Konamiman.Nestor80.LK80
                     }
                     verbosityLevel = Math.Clamp(verbosityLevel, 0, 3);
                 }
-                else if(arg is "-af" or "--arguments-file") {
+                else if(arg is "-af" or "--args-file") {
                     if(fromFile) {
                         return $"{arg} argument can't be used from inside an arguments file";
                     }
@@ -652,13 +645,13 @@ namespace Konamiman.Nestor80.LK80
         /// <returns>An error message, or null if no error.</returns>
         private static string ProcessArgsFromFile(string fileName)
         {
-            var filePath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, fileName));
+            var filePath = Path.GetFullPath(Path.Combine(workingDir, fileName));
 
             if(!File.Exists(filePath)) {
                 return "File not found";
             }
 
-            var fileLines = File.ReadLines(filePath).Select(l => l.Trim()).Where(l => l[0] is not ';' and not '#').ToArray();
+            var fileLines = File.ReadLines(filePath).Select(l => l.Trim()).Where(l => l != "" && l[0] is not ';' and not '#').ToArray();
             var fileArgsString = string.Join(' ', fileLines);
             var fileArgs = SplitWithEscapedSpaces(fileArgsString);
 
@@ -713,7 +706,6 @@ namespace Konamiman.Nestor80.LK80
             endAddress = 0;
             suppressWarnings = false;
             maxErrors = LinkingConfiguration.DEFAULT_MAX_ERRORS;
-            workingDir = null;
             libraryDir = null;
             outputFileCase = OF_CASE_ORIGINAL;
             outputFileExtension = null;
@@ -725,6 +717,8 @@ namespace Konamiman.Nestor80.LK80
             listingFilePath = null;
             listingFormat = LISTING_L80;
             listingRegexes.Clear();
+
+            //workingDir excluded on purpose, since it has special handling
         }
 
         /// <summary>
@@ -735,16 +729,16 @@ namespace Konamiman.Nestor80.LK80
         /// <returns>The actual program arguments to use.</returns>
         private static string[] MaybeMergeArgsWithEnv(string[] commandLineArgs)
         {
-            if(!commandLineArgs.Any(a => a is "-nea" or "--no-env-args")) {
-                var envVariable = Environment.GetEnvironmentVariable("LK80_ARGS");
-                if(envVariable is not null) {
-                    envArgs = SplitWithEscapedSpaces(envVariable);
-                }
-                else {
-                    envArgs = Array.Empty<string>();
-                }
+            if(commandLineArgs.Any(a => a is "-nea" or "--no-env-args")) {
+                return commandLineArgs;
             }
 
+            var envVariable = Environment.GetEnvironmentVariable("LK80_ARGS");
+            if(envVariable is null) {
+                return commandLineArgs;
+            }
+                
+            envArgs = SplitWithEscapedSpaces(envVariable);
             return envArgs.Concat(commandLineArgs).ToArray();
         }
 
@@ -925,6 +919,24 @@ namespace Konamiman.Nestor80.LK80
             var indexOfLastShowBanner = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-sb" or "--show-banner")?.index ?? -1;
             var indexOfLastNoShowBanner = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-nsb" or "--no-show-banner")?.index ?? -1;
             showBanner = indexOfLastNoShowBanner == -1 || indexOfLastShowBanner > indexOfLastNoShowBanner;
+        }
+
+        private static string SetWorkingDir(string[] args)
+        {
+            var indexOfLastWorkingDir = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-w" or "--working-dir")?.index ?? -1;
+            if(indexOfLastWorkingDir == args.Length-1) {
+                return $"The {args[indexOfLastWorkingDir]} argument needs to be followed by a directory specification";
+            }
+
+            var indexOfLastResetConfig = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-rc" or "--reset-config")?.index ?? -1;
+
+            workingDir = indexOfLastResetConfig == -1 || (indexOfLastWorkingDir != -1 && indexOfLastWorkingDir > indexOfLastResetConfig) ? args[indexOfLastWorkingDir + 1] : "";
+            workingDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), workingDir));
+            if(!Directory.Exists(workingDir)) {
+                return $"Error when resolving working directory: '{workingDir}' doesn't exist or is not a directory";
+            }
+
+            return null;
         }
 
         static bool blankLinePrinted = false;

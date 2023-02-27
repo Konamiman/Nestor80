@@ -25,7 +25,7 @@ namespace Konamiman.Nestor80.LK80
         
         - A LK80_ARGS environment variable (can be disabled with --no-env-args).
         - The command line.
-        - Argument files (with --argument-file).
+        - Argument files (with --args-file).
         
         If you need to include a space as part of an argument (e.g. a directory name) 
         in LK80_ARGS or in an arguments file, escape it with a backslash (so "\ "
@@ -53,7 +53,7 @@ namespace Konamiman.Nestor80.LK80
             Any argument that doesn't start with "-" (and is not the value of another
             argument) is assumed to be the path for the next relocatable file to be processed.
             If the path isn't absolute then it's considered to be relative to the working
-            directory (the one specified with a --working-directory argument if present,
+            directory (the one specified with a --working-dir argument if present,
             or the current directory otherwise).
 
             If the current linking mode is "separate code and data" then the code segment 
@@ -99,17 +99,17 @@ namespace Konamiman.Nestor80.LK80
 
         CONFIGURATION FLAGS
 
-        -af, --arguments-file <file path>
+        -af, --args-file <file path>
             Read additional arguments from the specified file. The arguments are
             processed immediately. Recursivity is not supported (additional
-            --arguments-file arguments aren't allowed inside an arguments file).
+            --args-file arguments aren't allowed inside an arguments file).
             A non-absolute path will be considered relative to the current directory.
         
             Arguments inside the file can be all in one single line or
             spread across multiple lines. Lines starting with ; or #
             (not counting leading spaces) will be ignored.
         
-            This option can't be undone (there's not "--no-arguments-file" argument),
+            This option can't be undone (there's not "--no-args-file" argument),
             but if necessary you can use --reset-config to start over.
 
         -co, --color-output
@@ -145,6 +145,7 @@ namespace Konamiman.Nestor80.LK80
 
         -nsb, --no-show-banner
             Don't display the program title and copyright notice banner.
+            This argument is ignored when found inside an arguments file.
 
         -nsw, --no-silence-warnings
             Display linking process warnings (default).
@@ -208,6 +209,7 @@ namespace Konamiman.Nestor80.LK80
         
         -sb, --show-banner
             Display the program title and copyright notice banner (default).
+            This argument is ignored when found inside an arguments file.
 
         -sw, --silence-warnings
             Don't display linking process warnings.
@@ -230,8 +232,7 @@ namespace Konamiman.Nestor80.LK80
         -w, --working-dir <path>
             The working directory. All non-absolute path specifications will be considered
             relative to this directory (this includes also libraries requested with .REQUEST,
-            unless --library-dir is specified), with the exception of the values for
-            --arguments-file and --library-dir. The default value is the current directory.
+            unless --library-dir is specified). The default value is the current directory.
 
         -y, --symbols-file [<path>]
             Generate a symbols list file. If <path> is omitted, a file with the name of the
