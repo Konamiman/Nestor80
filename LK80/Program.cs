@@ -416,7 +416,7 @@ namespace Konamiman.Nestor80.LK80
                     }
                     else {
                         i++;
-                        startAddress = (ushort)ParseNumericArg(arg, args[i], false, out error);
+                        startAddress = ParseNumericArg(arg, args[i], false, out error);
                         if(error is not null) return error;
                     }
                 }
@@ -426,7 +426,7 @@ namespace Konamiman.Nestor80.LK80
                     }
                     else {
                         i++;
-                        endAddress = (ushort)ParseNumericArg(arg, args[i], false, out error);
+                        endAddress = ParseNumericArg(arg, args[i], false, out error);
                         if(error is not null) return error;
                     }
                 }
@@ -552,7 +552,7 @@ namespace Konamiman.Nestor80.LK80
                     }
                     else {
                         i++;
-                        var address = (byte)ParseNumericArg(arg, args[i], false, out error);
+                        var address = ParseNumericArg(arg, args[i], false, out error);
                         if(error is not null) return error;
                         linkingSequence.Add(new SetCodeSegmentAddress() { Address = address });
                     }
@@ -563,7 +563,7 @@ namespace Konamiman.Nestor80.LK80
                     }
                     else {
                         i++;
-                        var address = (byte)ParseNumericArg(arg, args[i], false, out error);
+                        var address = ParseNumericArg(arg, args[i], false, out error);
                         if(error is not null) return error;
                         linkingSequence.Add(new SetDataSegmentAddress() { Address = address });
                     }
