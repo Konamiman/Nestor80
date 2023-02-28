@@ -105,7 +105,7 @@ namespace Konamiman.Nestor80.LK80
 
             var filesToProcess = linkingSequence.OfType<RelocatableFileReference>();
             foreach(var file in filesToProcess) {
-                file.FullName = Path.Combine(workingDir, file.FullName);
+                file.FullName = Path.GetFullPath(Path.Combine(workingDir, file.FullName));
                 file.DisplayName = Path.GetFileName(file.FullName);
             }
 
@@ -181,10 +181,14 @@ namespace Konamiman.Nestor80.LK80
             }
             catch(CantOpenFileException ex) {
                 PrintError($"Can't open file {ex.FilePath}: {ex.Message}");
+                try { outputStream.Close(); } catch { }
+                try { File.Delete(outputFilePath); } catch { }
                 return ERR_CANT_OPEN_INPUT_FILE;
             }
             catch(Exception ex) {
                 PrintFatal($"Unexpected error: {ex.Message}");
+                try { outputStream.Close(); } catch { }
+                try { File.Delete(outputFilePath); } catch { }
 
 #if DEBUG
                 ErrorWriteLine(ex.StackTrace.ToString());
