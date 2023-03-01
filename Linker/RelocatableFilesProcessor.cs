@@ -244,7 +244,8 @@ namespace Konamiman.Nestor80.Linker
         {
             ushort address = externalPendingResolution.ChainStartAddress;
             var externalValue = symbols[externalPendingResolution.SymbolName];
-            while(true) {
+            var iterations = 0;
+            while(iterations < 32768) {
                 var linkedAddress = (ushort)(resultingMemory[address] + ((resultingMemory[address + 1]) << 8));
                 var effectiveValue =
                     offsetsForExternals.ContainsKey(address) ?
@@ -255,6 +256,12 @@ namespace Konamiman.Nestor80.Linker
                     break;
                 }
                 address = linkedAddress;
+                iterations++;
+            }
+
+            //The absolute maximum length of a 2 byte items chain for a 64K program is 32K
+            if(iterations >= 32768) {
+                throw new Exception($"Infinite loop when resolving external symbol chain, program: {externalPendingResolution.ProgramName}, symbol: {externalPendingResolution.SymbolName}");
             }
         }
 
@@ -440,6 +447,13 @@ namespace Konamiman.Nestor80.Linker
 
                 }
                 else if(linkItem.Type is LinkItemType.ChainExternal) {
+                    if(linkItem.Address.Type is AddressType.ASEG && linkItem.Address.Value is 0) {
+                        //External references that are only used in expressions
+                        //generate a "Chain external" link item with absolute address 0
+                        //that must be ignored.
+                        continue;
+                    }
+
                     var chainStartAddress = (
                         linkItem.Address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart :
                         linkItem.Address.Type is AddressType.DSEG ? currentProgramDataSegmentStart :
@@ -566,8 +580,13 @@ namespace Konamiman.Nestor80.Linker
 
         private static void CleanupAfterProcessingProgram()
         {
-            codeSegmentAddressFromInput = null;
-            dataSegmentAddressFromInput = null;
+            if(programInfos.Last().HasCode) {
+                codeSegmentAddressFromInput = null;
+            }
+
+            if(programInfos.Last().HasData) {
+                dataSegmentAddressFromInput = null;
+            }
         }
 
         private static void AddError(string message, bool checkMaxErrors = true) { 

@@ -124,8 +124,9 @@ namespace Konamiman.Nestor80.Linker
                     ThrowUnexpected($"found an unexpected value ({popped2}) when expecting a number");
                 }
 
-                var operand1 = (ushort)popped1;
-                var operand2 = (ushort)popped2;
+                //Operands are extracted from the stack in reverse order of operation
+                var operand2 = (ushort)popped1;
+                var operand1 = (ushort)popped2;
 
                 if(operatorCode is ArithmeticOperatorCode.Divide && operand2 == 0) {
                     Throw("Division by zero");
