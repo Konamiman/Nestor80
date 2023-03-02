@@ -23,6 +23,7 @@ namespace Konamiman.Nestor80.LK80
         const int LISTING_L80 = 0;
         const int LISTING_JSON = 1;
         const int LISTING_EQUS = 2;
+        const int LISTING_PEQUS = 3;
 
         static bool colorPrint;
         static bool showBanner;
@@ -286,13 +287,19 @@ namespace Konamiman.Nestor80.LK80
                 }
                 writer.Write("}}");
             }
-            else if(listingFormat == LISTING_EQUS) {
+            else if(listingFormat is LISTING_EQUS or LISTING_PEQUS) {
                 foreach(var symbol in symbols) {
                     var value = $"{symbol.Value:X4}";
                     if(!char.IsDigit(value[0])) {
                         value = $"0{value}";
                     }
                     writer.Write($"{symbol.Key} EQU {value}h\r\n");
+                }
+                if(listingFormat is LISTING_PEQUS && symbols.Any()) {
+                    writer.Write("\r\n");
+                    foreach(var symbol in symbols) {
+                        writer.Write($"public {symbol.Key}\r\n");
+                    }
                 }
             }
             else {
@@ -604,8 +611,11 @@ namespace Konamiman.Nestor80.LK80
                     else if(format == "equs") {
                         listingFormat = LISTING_EQUS;
                     }
+                    else if(format == "pequs") {
+                        listingFormat = LISTING_PEQUS;
+                    }
                     else {
-                        return $"The {arg} argument needs to be followed by 'l80', 'json' or 'equs'";
+                        return $"The {arg} argument needs to be followed by 'l80', 'json', 'equs' or 'pequs'";
                     }
                 }
                 else if(arg is "-yr" or "--symbols-file-regex") {
@@ -783,7 +793,11 @@ namespace Konamiman.Nestor80.LK80
             info += $"Output format: {(hexFormat ? "HEX" : "BIN")}\r\n";
             info += $"Generate listing file: {YesOrNo(generateListingFile)}\r\n";
             if(generateListingFile) {
-                var format = listingFormat == LISTING_JSON ? "JSON" : listingFormat == LISTING_EQUS ? "EQUS" : "LINK-80";
+                var format =
+                    listingFormat == LISTING_JSON ? "JSON" :
+                    listingFormat == LISTING_EQUS ? "EQUS" :
+                    listingFormat == LISTING_PEQUS ? "public EQUS" :
+                    "LINK-80";
                 info += $"Listing file format: {format}\r\n";
                 if(listingRegexes.Any()) {
                     info += "Symbol filter regexes for listing file:\r\n";
@@ -934,7 +948,13 @@ namespace Konamiman.Nestor80.LK80
 
             var indexOfLastResetConfig = args.Select((arg, index) => new { arg, index }).LastOrDefault(x => x.arg is "-rc" or "--reset-config")?.index ?? -1;
 
-            workingDir = indexOfLastResetConfig == -1 || (indexOfLastWorkingDir != -1 && indexOfLastWorkingDir > indexOfLastResetConfig) ? args[indexOfLastWorkingDir + 1] : "";
+            if(indexOfLastResetConfig == -1) {
+                workingDir = indexOfLastWorkingDir == -1 ? "" : args[indexOfLastWorkingDir + 1];
+            }
+            else {
+                workingDir = (indexOfLastWorkingDir != -1 && indexOfLastWorkingDir > indexOfLastResetConfig) ? args[indexOfLastWorkingDir + 1] : "";
+            }
+            
             workingDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), workingDir));
             if(!Directory.Exists(workingDir)) {
                 return $"Error when resolving working directory: '{workingDir}' doesn't exist or is not a directory";

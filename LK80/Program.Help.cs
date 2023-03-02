@@ -239,7 +239,7 @@ namespace Konamiman.Nestor80.LK80
             first processed relocatable file and extension .SYM is created in the working
             directory.
 
-        -yf, --symbols-file-format l80|json|equs
+        -yf, --symbols-file-format l80|json|equs|pequs
             Format for the symbols file, one of:
 
             l80: Four columns per line, each being <symbol name><space><value in hex><tab>.
@@ -248,6 +248,8 @@ namespace Konamiman.Nestor80.LK80
             json: A json file: {"symbols":{"name":1234,"name2":5678}}
 
             equs: A source file containing all the symbols as EQU statements.
+
+            pequs: Same as 'equs', but additionally, all symbols will be declared as public.
 
             The encoding of the generated symbols files is UTF-8.
 
