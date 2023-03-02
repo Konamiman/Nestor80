@@ -739,6 +739,10 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(referencedSymbols.Any(s => s.IsExternal)) {
+                    if(expressionPendingEvaluation.ArgumentType is CpuInstrArgType.OffsetFromCurrentLocation) {
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: the expression can't contain external references");
+                        continue;
+                    }
                     hasExternalReferences = true;
                 }
                 else {
