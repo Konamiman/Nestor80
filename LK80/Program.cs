@@ -21,9 +21,10 @@ namespace Konamiman.Nestor80.LK80
         const int OF_CASE_UPPER = 2;
 
         const int LISTING_L80 = 0;
-        const int LISTING_JSON = 1;
-        const int LISTING_EQUS = 2;
-        const int LISTING_PEQUS = 3;
+        const int LISTING_L80_A = 1;
+        const int LISTING_JSON = 2;
+        const int LISTING_EQUS = 3;
+        const int LISTING_PEQUS = 4;
 
         static bool colorPrint;
         static bool showBanner;
@@ -303,6 +304,9 @@ namespace Konamiman.Nestor80.LK80
                 }
             }
             else {
+                if(listingFormat is LISTING_L80) {
+                    symbols = symbols.OrderBy(s => s.Value).ToArray();
+                }
                 var column = 0;
                 foreach(var symbol in symbols) {
                     writer.Write($"{symbol.Value:X4} {symbol.Key}\t");
@@ -597,13 +601,16 @@ namespace Konamiman.Nestor80.LK80
                 }
                 else if(arg is "-yf" or "--symbols-file-format") {
                     if(i == args.Length - 1 || args[i + 1][0] == '-') {
-                        return $"The {arg} argument needs to be followed by 'l80', 'json' or 'equs'";
+                        return $"The {arg} argument needs to be followed by 'l80', 'l80a', 'json', 'equs' or 'pequs'";
                     }
 
                     i++;
                     var format = args[i];
                     if(format == "l80") {
                         listingFormat = LISTING_L80;
+                    }
+                    else if(format == "l80a") {
+                        listingFormat = LISTING_L80_A;
                     }
                     else if(format == "json") {
                         listingFormat = LISTING_JSON;
@@ -615,7 +622,7 @@ namespace Konamiman.Nestor80.LK80
                         listingFormat = LISTING_PEQUS;
                     }
                     else {
-                        return $"The {arg} argument needs to be followed by 'l80', 'json', 'equs' or 'pequs'";
+                        return $"The {arg} argument needs to be followed by 'l80', 'l80a', 'json', 'equs' or 'pequs'";
                     }
                 }
                 else if(arg is "-yr" or "--symbols-file-regex") {
@@ -797,6 +804,7 @@ namespace Konamiman.Nestor80.LK80
                     listingFormat == LISTING_JSON ? "JSON" :
                     listingFormat == LISTING_EQUS ? "EQUS" :
                     listingFormat == LISTING_PEQUS ? "public EQUS" :
+                    listingFormat == LISTING_L80_A ? "LINK-80 (alhpabetical order)" :
                     "LINK-80";
                 info += $"Listing file format: {format}\r\n";
                 if(listingRegexes.Any()) {
