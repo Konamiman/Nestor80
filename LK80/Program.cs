@@ -305,7 +305,7 @@ namespace Konamiman.Nestor80.LK80
             else {
                 var column = 0;
                 foreach(var symbol in symbols) {
-                    writer.Write($"{symbol.Key} {symbol.Value:X4}\t");
+                    writer.Write($"{symbol.Value:X4} {symbol.Key}\t");
                     column++;
                     if(column == 4) {
                         writer.Write("\r\n");
