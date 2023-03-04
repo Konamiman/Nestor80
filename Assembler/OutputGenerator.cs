@@ -188,7 +188,8 @@ namespace Konamiman.Nestor80.Assembler
                 .Select(s => new {
                     Name = EffectiveNameOf(s.Name),
                     s.ValueArea,
-                    s.Value})
+                    s.Value,
+                    s.CommonName})
                 .ToArray();
 
             if(extendedFormat) {
@@ -287,6 +288,11 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             foreach(var symbol in publicSymbols) {
+                if(symbol.ValueArea is AddressType.COMMON && symbol.CommonName != currentCommonBlockName) {
+                    WriteLinkItem(LinkItemType.SelectCommonBlock, symbol.CommonName);
+                    currentCommonBlockName = symbol.CommonName;
+                    locationCounters[AddressType.COMMON] = 0;
+                }
                 WriteLinkItem(LinkItemType.DefineEntryPoint, symbol.ValueArea, symbol.Value, symbol.Name);
             }
 
