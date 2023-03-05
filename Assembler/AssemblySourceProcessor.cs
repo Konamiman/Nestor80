@@ -795,7 +795,8 @@ namespace Konamiman.Nestor80.Assembler
                             Index = expressionPendingEvaluation.LocationInOutput, 
                             IsByte = expressionPendingEvaluation.IsByte,
                             Type = expressionValue.Type, 
-                            Value = expressionValue.Value
+                            Value = expressionValue.Value,
+                            CommonName = expressionValue.CommonBlockName
                         });
                     }
                 }

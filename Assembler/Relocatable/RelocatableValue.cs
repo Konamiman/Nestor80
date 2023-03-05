@@ -9,6 +9,8 @@
 
         public ushort Value { get; set; }
 
-        public override string ToString() => $"{base.ToString()}, {Type} {Value:X4}";
+        public string CommonName { get; set; }
+
+        public override string ToString() => $"{base.ToString()}, {Type} {Value:X4} {CommonName}";
     }
 }

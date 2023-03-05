@@ -38,11 +38,6 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
 
         public bool SameModeAs(Address address2)
         {
-            if (Type == AddressType.COMMON && address2.Type == AddressType.COMMON)
-            {
-                return CommonBlockName == address2.CommonBlockName;
-            }
-
             return Type == address2.Type;
         }
 

@@ -23,10 +23,11 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
             }
 
             var type = value1.IsAbsolute ? value2.Type : value1.Type;
+            var commonName = value1.IsAbsolute ? value2.CommonBlockName : value1.CommonBlockName;
 
             unchecked
             {
-                return new Address(type, (ushort)(value1.Value * value2.Value));
+                return new Address(type, (ushort)(value1.Value * value2.Value), commonName);
             }
         }
     }

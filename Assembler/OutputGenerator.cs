@@ -156,6 +156,7 @@ namespace Konamiman.Nestor80.Assembler
         static List<string> referencedExternals;
         static bool extendedFormat;
         static Encoding encoding;
+        static string currentCommonBlockName;
 
         /// <summary>
         /// Generate a LINK-80 compatible relative file from an <see cref="AssemblyResult"/>.
@@ -174,7 +175,7 @@ namespace Konamiman.Nestor80.Assembler
             referencedExternals = new List<string>();
             ushort endAddress = 0;
             bool changedToAseg = false;
-            string currentCommonBlockName = null;
+            currentCommonBlockName = null;
             currentLocationArea = AddressType.CSEG;
             locationCounters = new Dictionary<AddressType, ushort>() {
                 { AddressType.CSEG, 0 },
@@ -291,7 +292,6 @@ namespace Konamiman.Nestor80.Assembler
                 if(symbol.ValueArea is AddressType.COMMON && symbol.CommonName != currentCommonBlockName) {
                     WriteLinkItem(LinkItemType.SelectCommonBlock, symbol.CommonName);
                     currentCommonBlockName = symbol.CommonName;
-                    locationCounters[AddressType.COMMON] = 0;
                 }
                 WriteLinkItem(LinkItemType.DefineEntryPoint, symbol.ValueArea, symbol.Value, symbol.Name);
             }
@@ -346,6 +346,10 @@ namespace Konamiman.Nestor80.Assembler
                         locationCounters[currentLocationArea]++;
                     }
                     else {
+                        if(rad.Type is AddressType.COMMON && rad.CommonName != currentCommonBlockName) {
+                            WriteLinkItem(LinkItemType.SelectCommonBlock, rad.CommonName);
+                            currentCommonBlockName = rad.CommonName;
+                        }
                         WriteAddress(rad.Type, rad.Value);
                         locationCounters[currentLocationArea] += 2;
                     }
@@ -413,10 +417,7 @@ namespace Konamiman.Nestor80.Assembler
                     WriteExtensionLinkItem(ExtensionLinkItemType.Address, item.SymbolBytes[1], item.SymbolBytes[2], item.SymbolBytes[3]);
                 }
                 else {
-                    var op = item.ArithmeticOperator;
-                    if(op is null) {
-                        throw new Exception($"Unexpected type of link item found in group: {item}");
-                    }
+                    var op = item.ArithmeticOperator ?? throw new Exception($"Unexpected type of link item found in group: {item}");
                     WriteExtensionLinkItem(ExtensionLinkItemType.ArithmeticOperator, (byte)op);
                 }
             }

@@ -384,7 +384,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else {
                         AddZero();
-                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value });
+                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value, CommonName = value.CommonBlockName });
                         if(!isByte) index++;
                     }
                 }
