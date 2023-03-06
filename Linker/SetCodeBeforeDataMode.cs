@@ -1,6 +1,5 @@
-﻿namespace Konamiman.Nestor80.Linker
+﻿namespace Konamiman.Nestor80.Linker;
+
+public class SetCodeBeforeDataMode : ILinkingSequenceItem
 {
-    public class SetCodeBeforeDataMode : ILinkingSequenceItem
-    {
-    }
 }

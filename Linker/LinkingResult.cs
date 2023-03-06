@@ -1,21 +1,18 @@
-﻿using Konamiman.Nestor80.Linker.Parsing;
+﻿namespace Konamiman.Nestor80.Linker;
 
-namespace Konamiman.Nestor80.Linker
+public class LinkingResult
 {
-    public class LinkingResult
-    {
-        public string[] Warnings { get; set; }
+    public string[] Warnings { get; set; }
 
-        public string[] Errors { get; set; }
+    public string[] Errors { get; set; }
 
-        public ProgramData[] ProgramsData { get; set; }
+    public ProgramData[] ProgramsData { get; set; }
 
-        public ushort StartAddress { get; set; }
+    public ushort StartAddress { get; set; }
 
-        public ushort EndAddress { get; set; }
+    public ushort EndAddress { get; set; }
 
-        public bool MaxErrorsReached { get; set; }
+    public bool MaxErrorsReached { get; set; }
 
-        public CommonBlock[] CommonBlocks { get; set; }
-    }
+    public CommonBlock[] CommonBlocks { get; set; }
 }

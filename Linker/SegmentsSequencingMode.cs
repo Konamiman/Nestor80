@@ -1,10 +1,9 @@
-﻿namespace Konamiman.Nestor80.Linker
+﻿namespace Konamiman.Nestor80.Linker;
+
+internal enum SegmentsSequencingMode
 {
-    internal enum SegmentsSequencingMode
-    {
-        None,
-        DataBeforeCode,
-        CodeBeforeData,
-        CombineSameSegment
-    }
+    None,
+    DataBeforeCode,
+    CodeBeforeData,
+    CombineSameSegment
 }
