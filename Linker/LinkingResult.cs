@@ -15,5 +15,7 @@ namespace Konamiman.Nestor80.Linker
         public ushort EndAddress { get; set; }
 
         public bool MaxErrorsReached { get; set; }
+
+        public CommonBlock[] CommonBlocks { get; set; }
     }
 }

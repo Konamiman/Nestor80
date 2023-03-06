@@ -14,11 +14,15 @@ namespace Konamiman.Nestor80.Linker
 
         public ushort DataSegmentEnd { get; set; }
 
+        public ushort CommonSegmentStart { get; set; }
+
+        public ushort CommonSegmentEnd { get; set; }
+
         public ushort AbsoluteSegmentStart { get; set; }
 
         public ushort AbsoluteSegmentEnd { get; set; }
 
-        public Dictionary<string, Tuple<ushort, ushort>> CommonBlocks { get; set; }
+        public CommonBlock[] CommonBlocks { get; set; }
 
         public string[] PublicSymbols { get; set; }
 
@@ -28,11 +32,14 @@ namespace Konamiman.Nestor80.Linker
 
         public AddressRange DataSegmentRange { get; set; }
 
+        public AddressRange CommonSegmentRange { get; set; }
+
         public AddressRange RangeOf(AddressType type) =>
             type switch {
                 AddressType.ASEG => AbsoluteSegmentRange,
                 AddressType.CSEG => CodeSegmentRange,
                 AddressType.DSEG => DataSegmentRange,
+                AddressType.COMMON => CommonSegmentRange,
                 _ => throw new InvalidOperationException($"{nameof(ProgramInfo)}.{nameof(RangeOf)}: unexcpected type: {type}")
             };
 
@@ -42,13 +49,16 @@ namespace Konamiman.Nestor80.Linker
 
         public bool HasAbsolute { get; set; }
 
-        public bool HasContent => HasCode || HasData || HasAbsolute;
+        public bool HasCommons { get; set; }
+
+        public bool HasContent => HasCode || HasData || HasAbsolute || HasCommons;
 
         public bool Has(AddressType type) =>
             type switch {
                 AddressType.ASEG => HasAbsolute,
                 AddressType.CSEG => HasCode,
                 AddressType.DSEG => HasData,
+                AddressType.COMMON => HasCommons,
                 _ => throw new InvalidOperationException($"{nameof(ProgramInfo)}.{nameof(Has)}: unexcpected type: {type}")
             };
 
@@ -56,6 +66,7 @@ namespace Konamiman.Nestor80.Linker
         {
             CodeSegmentRange = HasCode ? new AddressRange(CodeSegmentStart, CodeSegmentEnd, Assembler.AddressType.CSEG) : null;
             DataSegmentRange = HasData ? new AddressRange(DataSegmentStart, DataSegmentEnd, Assembler.AddressType.DSEG) : null;
+            CommonSegmentRange = HasCommons ? new AddressRange(CommonSegmentStart, CommonSegmentEnd, Assembler.AddressType.COMMON) : null;
             AbsoluteSegmentRange = HasAbsolute ? new AddressRange(AbsoluteSegmentStart, AbsoluteSegmentEnd, Assembler.AddressType.ASEG) : null;
         }
 

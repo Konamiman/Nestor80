@@ -17,13 +17,13 @@ namespace Konamiman.Nestor80.Linker
         private static ushort currentProgramCodeSegmentEnd;
         private static ushort currentProgramDataSegmentEnd;
         private static ushort currentProgramAbsoluteSegmentEnd;
-        private static readonly Dictionary<string, ushort> currentProgramCommonBlocksStart;
-        private static readonly Dictionary<string, ushort> currentProgramCommonBlocksSizes;
+        private static ushort currentProgramCommonSegmentStart;
+        private static string currentProgramCommonBlockName;
         private static ILinkingSequenceItem[] linkItems;
         private static byte fillByte;
         private static Func<string, Stream> OpenFile;
         private static Func<string, string> GetFullNameOfRequestedLibraryFile;
-        private static readonly Dictionary<string, Tuple<ushort, ushort>> commonBlocks = new();
+        private static readonly Dictionary<string, CommonBlock> commonBlocks = new(StringComparer.OrdinalIgnoreCase);
         private static readonly List<string> errors = new();
         private static readonly List<string> warnings = new();
         private static readonly Dictionary<string, ushort> symbols = new(StringComparer.OrdinalIgnoreCase);
@@ -47,7 +47,7 @@ namespace Konamiman.Nestor80.Linker
         public static event EventHandler<string> LinkWarning;
 
         private static readonly AddressType[] addressTypes = new[] {
-            AddressType.CSEG, AddressType.DSEG, AddressType.ASEG
+            AddressType.CSEG, AddressType.DSEG, AddressType.COMMON, AddressType.ASEG
         };
 
         public static LinkingResult Link(LinkingConfiguration configuration, Stream outputStream)
@@ -92,6 +92,7 @@ namespace Konamiman.Nestor80.Linker
                 Errors = errors.ToArray(),
                 Warnings = warnings.ToArray(),
                 ProgramsData = programInfos.Select(pi => pi.ToProgramData(symbols)).ToArray(),
+                CommonBlocks = commonBlocks.Values.ToArray(),
                 MaxErrorsReached = maxErrorsReached
             };
         }
@@ -290,6 +291,8 @@ namespace Konamiman.Nestor80.Linker
             currentProgramAbsoluteSegmentStart = 0xFFFF;
             currentProgramAbsoluteSegmentEnd = 0;
 
+            currentProgramCommonBlockName = null;
+
             var programNameItem = programItems.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.ProgramName);
             currentProgramName = (programNameItem as LinkItem)?.Symbol ?? currentFile.DisplayName;
 
@@ -298,6 +301,24 @@ namespace Konamiman.Nestor80.Linker
 
             var dataSizeItem = programItems.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.DataAreaSize);
             ushort dataSize = (dataSizeItem as LinkItem)?.Address.Value ?? 0;
+
+            var programCommonBlocks = programItems.Where(x => x is LinkItem li && li.Type is LinkItemType.DefineCommonSize).Cast<LinkItem>();
+            ushort commonsSize = 0;
+            var commonBlocksAddedInThisProgram = new List<CommonBlock>();
+            foreach(var commonBlock in programCommonBlocks) {
+                var blockSize = commonBlock.Address.Value;
+                if(commonBlocks.ContainsKey(commonBlock.Symbol)) {
+                    if(commonBlocks[commonBlock.Symbol].Size < blockSize) {
+                        errors.Add($"Common block '{commonBlock.Symbol}' is defined with a size of {blockSize}, but it had been defined previously with a size of {commonBlocks[commonBlock.Symbol].Size}");
+                    }
+                }
+                else {
+                    var block = new CommonBlock() { Name = commonBlock.Symbol, StartAddress = commonsSize, Size = commonBlock.Address.Value, DefinedInProgram = currentProgramName }; //Real start address will be set later
+                    commonBlocksAddedInThisProgram.Add(block);
+                    commonBlocks.Add(block.Name, block);
+                    commonsSize += commonBlock.Address.Value;
+                }
+            }
 
             var previousProgram = programInfos.LastOrDefault(pi => pi.HasContent);
 
@@ -310,8 +331,9 @@ namespace Konamiman.Nestor80.Linker
                 // is not null), or it was supplied before one of the previous programs
                 // (and thus previousProgram is not null).
 
-                currentProgramDataSegmentStart =
+                currentProgramCommonSegmentStart =
                     dataSegmentAddressFromInput ?? (ushort)(previousProgram.DataSegmentEnd + 1);
+                currentProgramDataSegmentStart = (ushort)(currentProgramCommonSegmentStart + commonsSize);
             }
 
             // The other two modes can't be (re-)entered once an address is specified for the data segment,
@@ -321,18 +343,24 @@ namespace Konamiman.Nestor80.Linker
                 currentProgramCodeSegmentStart =
                     codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? 0x102) + 1);
 
-                currentProgramDataSegmentStart = (ushort)(currentProgramCodeSegmentStart + programSize);
+                currentProgramCommonSegmentStart = (ushort)(currentProgramCodeSegmentStart + programSize);
+                currentProgramDataSegmentStart = (ushort)(currentProgramCommonSegmentStart + commonsSize);
             }
             else if(segmentsSequencingMode is SegmentsSequencingMode.DataBeforeCode) {
                 // Not a bug: in this mode the data segment really starts at the address
                 // specified for the code segment. This is also how LINK-80 works.
-                currentProgramDataSegmentStart =
+                currentProgramCommonSegmentStart =
                     codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? 0x102) + 1);
+                currentProgramDataSegmentStart = (ushort)(currentProgramCommonSegmentStart + commonsSize);
 
                 currentProgramCodeSegmentStart = (ushort)(currentProgramDataSegmentStart + dataSize);
             }
             else {
                 throw new Exception($"Unexpected segments sequencing mode: {segmentsSequencingMode}");
+            }
+
+            foreach(var block in commonBlocksAddedInThisProgram) {
+                block.StartAddress += currentProgramCommonSegmentStart;
             }
 
             currentProgramCodeSegmentEnd = programSize == 0 ? currentProgramCodeSegmentStart : (ushort)(currentProgramCodeSegmentStart + programSize - 1);
@@ -342,8 +370,8 @@ namespace Konamiman.Nestor80.Linker
                 startAddress = Math.Min(startAddress, currentProgramCodeSegmentStart);
                 endAddress = Math.Max(endAddress, currentProgramCodeSegmentEnd);
             }
-            if(dataSize > 0) {
-                startAddress = Math.Min(startAddress, currentProgramDataSegmentStart);
+            if(dataSize > 0 || commonsSize > 0) {
+                startAddress = Math.Min(startAddress, currentProgramCommonSegmentStart);
                 endAddress = Math.Max(endAddress, currentProgramDataSegmentEnd);
             }
 
@@ -362,7 +390,7 @@ namespace Konamiman.Nestor80.Linker
                 var fileItem = programItems[fileItemIndex];
 
                 if(fileItem is ExtendedRelocatableFileHeader) {
-                    //It's an extended relocatable file: good to know, but nothing special to do
+                    //It's an extended relocatable file: good to know, but nothing special to do about it
                     continue;
                 }
                 else if(fileItem is RawBytes rawBytes) {
@@ -381,7 +409,7 @@ namespace Konamiman.Nestor80.Linker
                     continue;
                 }
                 else if(fileItem is RelocatableAddress relAdd) {
-                    var effectiveAddress = relAdd.Type is AddressType.CSEG ? currentProgramCodeSegmentStart + relAdd.Value : currentProgramDataSegmentStart + relAdd.Value;
+                    var effectiveAddress = EffectiveAddressOf(relAdd);
                     resultingMemory[currentProgramAddress++] = (byte)(effectiveAddress & 0xFF);
                     resultingMemory[currentProgramAddress++] = (byte)(effectiveAddress >> 8);
                     MaybeAdjustAbsoluteSegmentEnd();
@@ -395,11 +423,7 @@ namespace Konamiman.Nestor80.Linker
 
                 if(linkItem.Type is LinkItemType.SetLocationCounter) {
                     currentAddressType = linkItem.Address.Type;
-                    currentProgramAddress = (ushort)(
-                        currentAddressType is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value :
-                        currentAddressType is AddressType.DSEG ? currentProgramDataSegmentStart + linkItem.Address.Value :
-                        linkItem.Address.Value
-                    );
+                    currentProgramAddress = EffectiveAddressOf(linkItem.Address);
 
                     if(currentAddressType is AddressType.ASEG) {
                         currentProgramHasAbsoluteSegment = true;
@@ -415,10 +439,7 @@ namespace Konamiman.Nestor80.Linker
                         continue;
                     }
 
-                    var effectiveAddress =
-                        linkItem.Address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart + linkItem.Address.Value :
-                        linkItem.Address.Type is AddressType.DSEG ? currentProgramDataSegmentStart + linkItem.Address.Value :
-                        linkItem.Address.Value;
+                    var effectiveAddress = EffectiveAddressOf(linkItem.Address);
 
                     var isDuplicate = false;
 
@@ -454,10 +475,7 @@ namespace Konamiman.Nestor80.Linker
                         continue;
                     }
 
-                    var chainStartAddress = (
-                        linkItem.Address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart :
-                        linkItem.Address.Type is AddressType.DSEG ? currentProgramDataSegmentStart :
-                        0) + linkItem.Address.Value;
+                    var chainStartAddress = EffectiveAddressOf(linkItem.Address);
                     externalsPendingResolution.Add(new() { SymbolName = linkItem.Symbol, ProgramName = currentProgramName, ChainStartAddress = (ushort)chainStartAddress });
                 }
                 else if(linkItem.Type is LinkItemType.RequestLibrarySearch) {
@@ -499,6 +517,14 @@ namespace Konamiman.Nestor80.Linker
                 else if(linkItem.Type is LinkItemType.ChainAddress) {
                     AddError($"Unsupported link item type found in program {currentProgramName}: 'Chain address'");
                 }
+                else if(linkItem.Type is LinkItemType.SelectCommonBlock) {
+                    var blockName = linkItem.Symbol;
+                    if(!commonBlocks.ContainsKey(blockName)) {
+                        throw new Exception($"Common block '{blockName}' selected without having been defined");
+                    }
+                    currentProgramCommonBlockName = blockName;
+                    //currentProgramAddress = commonBlocks[blockName].StartAddress;
+                }
                 else if(linkItem.Type is LinkItemType.ExtensionLinkItem) {
                     var expressionItems = programItems
                         .Skip(fileItemIndex)
@@ -516,7 +542,11 @@ namespace Konamiman.Nestor80.Linker
                     // -1 because it will be incremented in the next step of the for loop
                     fileItemIndex += expressionItems.Length - 1;
                 }
-                else if(linkItem.Type is LinkItemType.ProgramName or LinkItemType.EntrySymbol or LinkItemType.ProgramAreaSize or LinkItemType.DataAreaSize) {
+                else if(linkItem.Type is LinkItemType.ProgramName 
+                    or LinkItemType.EntrySymbol 
+                    or LinkItemType.ProgramAreaSize 
+                    or LinkItemType.DataAreaSize
+                    or LinkItemType.DefineCommonSize) {
                     // We have no use for EntrySymbol.
                     // As for the others, we've already dealt with them.
                     continue;
@@ -541,14 +571,17 @@ namespace Konamiman.Nestor80.Linker
                 CodeSegmentEnd = currentProgramCodeSegmentEnd,
                 DataSegmentStart = currentProgramDataSegmentStart,
                 DataSegmentEnd = currentProgramDataSegmentEnd,
+                CommonSegmentStart = currentProgramCommonSegmentStart,
+                CommonSegmentEnd = (ushort)(currentProgramCommonSegmentStart + commonsSize - 1),
                 AbsoluteSegmentStart = currentProgramAbsoluteSegmentStart,
                 AbsoluteSegmentEnd = currentProgramAbsoluteSegmentEnd,
                 ProgramName = currentProgramName,
                 PublicSymbols = currentProgramSymbols.ToArray(),
                 HasCode = programSize > 0,
                 HasData = dataSize > 0,
-                HasAbsolute = currentProgramHasAbsoluteSegment
-                //TODO: Common blocks
+                HasCommons = commonsSize > 0,
+                HasAbsolute = currentProgramHasAbsoluteSegment,
+                CommonBlocks = commonBlocksAddedInThisProgram.ToArray()
             };
             currentProgramInfo.RebuildRanges();
 
@@ -569,6 +602,16 @@ namespace Konamiman.Nestor80.Linker
             }
 
             programInfos.Add(currentProgramInfo);
+        }
+
+        private static ushort EffectiveAddressOf(RelocatableAddress address)
+        {
+            return (ushort)(
+                address.Type is AddressType.CSEG ? currentProgramCodeSegmentStart + address.Value :
+                address.Type is AddressType.DSEG ? currentProgramDataSegmentStart + address.Value :
+                address.Type is AddressType.COMMON ? commonBlocks[currentProgramCommonBlockName].StartAddress + address.Value :
+                address.Value
+            );
         }
 
         private static void MaybeAdjustAbsoluteSegmentEnd()

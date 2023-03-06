@@ -133,10 +133,8 @@ namespace Konamiman.Nestor80.LK80
 
             if(Directory.Exists(outputFilePath)) {
                 outputFileName = ChangeCase(Path.GetFileName(firstFilePath));
-                if(!Path.HasExtension(outputFileName)) {
-                    var extension = outputFileExtension ?? ChangeCase(hexFormat ? "HEX" : "BIN");
-                    outputFileName = Path.ChangeExtension(outputFileName, extension);
-                }
+                var extension = outputFileExtension ?? ChangeCase(hexFormat ? "HEX" : "BIN");
+                outputFileName = Path.ChangeExtension(outputFileName, extension);
                 outputFilePath = Path.Combine(outputFilePath, outputFileName);
             }
 
@@ -217,6 +215,15 @@ namespace Konamiman.Nestor80.LK80
                 }
                 foreach(var program in linkingResult.ProgramsData) {
                     PrintProgramDetails(program);
+                }
+
+                if(linkingResult.CommonBlocks.Any()) {
+                    PrintProgress("");
+                    PrintProgress("Common blocks:");
+                    PrintProgress("");
+                    foreach(var commonBlock in linkingResult.CommonBlocks) {
+                        PrintProgress($"  {commonBlock.Name}: {commonBlock.StartAddress:X4}h, {commonBlock.Size} bytes, defined in {commonBlock.DefinedInProgram}");
+                    }
                 }
             }
 
