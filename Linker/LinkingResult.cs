@@ -1,5 +1,8 @@
 ﻿namespace Konamiman.Nestor80.Linker;
 
+/// <summary>
+/// Contains information about the result of a linking process.
+/// </summary>
 public class LinkingResult
 {
     public string[] Warnings { get; set; }

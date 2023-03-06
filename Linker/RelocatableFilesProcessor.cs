@@ -5,6 +5,11 @@ using System.Text;
 
 namespace Konamiman.Nestor80.Linker;
 
+/// <summary>
+/// This class provides a <see cref="RelocatableFilesProcessor.Link(Konamiman.Nestor80.Linker.LinkingConfiguration, Stream)"/> method
+/// that processes one or more relocatable files and produces an absolute binary or Intel HEX file.
+/// A few events allow to monitor the linking process.
+/// </summary>
 public static class RelocatableFilesProcessor
 {
     private static ushort startAddress;
@@ -42,14 +47,32 @@ public static class RelocatableFilesProcessor
     // Keys are symbol names, values are lists of program names
     private static readonly Dictionary<string, HashSet<string>> duplicatePublicSymbols = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Event fired when the processing of a relocatable file starts.
+    /// </summary>
     public static event EventHandler<RelocatableFileReference> FileProcessingStart;
+
+    /// <summary>
+    /// Event fired when a linking error is generated.
+    /// </summary>
     public static event EventHandler<string> LinkError;
+
+    /// <summary>
+    /// Event fired when a linking warning is generated.
+    /// </summary>
     public static event EventHandler<string> LinkWarning;
 
     private static readonly AddressType[] addressTypes = new[] {
         AddressType.CSEG, AddressType.DSEG, AddressType.COMMON, AddressType.ASEG
     };
 
+    /// <summary>
+    /// Processes one or more relocatable files and produces an absolute binary file.
+    /// </summary>
+    /// <param name="configuration">A configuration object that defines the linking process to perform.</param>
+    /// <param name="outputStream">The stream where the resulting binary or Intel HEX file will be written.</param>
+    /// <returns>The result from the linking process, including any errors generated.</returns>
+    /// <exception cref="ArgumentNullException"></exception>
     public static LinkingResult Link(LinkingConfiguration configuration, Stream outputStream)
     {
         commonBlocks.Clear();
@@ -62,7 +85,7 @@ public static class RelocatableFilesProcessor
         expressionsPendingEvaluation.Clear();
 
         RelocatableFilesProcessor.outputStream = outputStream ?? throw new ArgumentNullException(nameof(outputStream));
-        startAddress = configuration.StartAddress;
+        startAddress = (configuration ?? throw new ArgumentNullException(nameof(configuration))).StartAddress;
         endAddress = configuration.EndAddress;
         linkItems = configuration.LinkingSequenceItems;
         fillByte = configuration.FillingByte;

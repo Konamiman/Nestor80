@@ -1,5 +1,8 @@
 ﻿namespace Konamiman.Nestor80.Linker.Parsing;
 
+/// <summary>
+/// Represents the extended relocatable file header.
+/// </summary>
 public class ExtendedRelocatableFileHeader : IRelocatableFilePart
 {
 	private ExtendedRelocatableFileHeader()

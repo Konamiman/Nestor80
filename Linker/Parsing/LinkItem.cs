@@ -2,6 +2,9 @@
 
 namespace Konamiman.Nestor80.Linker.Parsing;
 
+/// <summary>
+/// Represents a link item as defined by the relocatable file format.
+/// </summary>
 public class LinkItem : IRelocatableFilePart
 {
     public LinkItemType Type { get; set; }

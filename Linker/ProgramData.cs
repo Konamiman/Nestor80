@@ -1,5 +1,9 @@
 ﻿namespace Konamiman.Nestor80.Linker;
 
+/// <summary>
+/// Contains information about a program processed during the linking process, 
+/// including the resulting absolute addresses of its code and data segments.
+/// </summary>
 public class ProgramData
 {
     public string ProgramName { get; set; }

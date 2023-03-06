@@ -17,6 +17,11 @@ public class RelocatableFileParser
 
     private static bool extendedFormat;
 
+    /// <summary>
+    /// Parses a relocatable file and returns the items it's composed of.
+    /// </summary>
+    /// <param name="inputStream">The stream to read the relocatablle file from.</param>
+    /// <returns>An array with the items that compose the relocatable file, in the order in which they are found in the file.</returns>
     public static IRelocatableFilePart[] Parse(Stream inputStream)
     {
         var ms = new MemoryStream();
