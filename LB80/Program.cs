@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿using Konamiman.Nestor80.Assembler.Relocatable;
+using Konamiman.Nestor80.Linker.Parsing;
+using System.Linq;
+using System.Reflection;
 
 namespace Konamiman.Nestor80.LB80;
 
@@ -382,7 +385,82 @@ internal partial class Program
             return ERR_CANT_OPEN_FILE;
         }
 
-        WriteLine("Viewing file!"); //WIP
+        Stream stream;
+        try {
+            stream = File.OpenRead(libraryFilePath);
+        }
+        catch(Exception ex) {
+            PrintError($"Error opening library file: {ex.Message}");
+            return ERR_CANT_OPEN_FILE;
+        }
+
+        if(verbosityLevel > 0) {
+            PrintStatus($"Contents of library file {Path.GetFileName(libraryFilePath)}:");
+        }
+
+        var parts = RelocatableFileParser.Parse(stream);
+        var programs = GetPrograms(parts);
+
+        if(programs.Length == 0) {
+            WriteLine("");
+            WriteLine("The file contains no programs.");
+            return ERR_SUCCESS;
+        }
+
+        foreach(var (programName, programParts) in programs) {
+            WriteLine("");
+            WriteLine($"Program: {programName}");
+
+            var codeSegmentSizePart = programParts.FirstOrDefault(p => (p as LinkItem)?.Type is LinkItemType.ProgramAreaSize) as LinkItem;
+            if(codeSegmentSizePart != null && codeSegmentSizePart.Address.Value != 0) {
+                WriteLine($"  Code segment: {FormatSize(codeSegmentSizePart.Address.Value)}");
+            }
+
+            var dataSegmentSizePart = programParts.FirstOrDefault(p => (p as LinkItem)?.Type is LinkItemType.DataAreaSize) as LinkItem;
+            if(dataSegmentSizePart != null && dataSegmentSizePart.Address.Value != 0) {
+                WriteLine($"  Data segment: {FormatSize(dataSegmentSizePart.Address.Value)}");
+            }
+
+            var commonBlocks = programParts.Where(p => (p as LinkItem)?.Type is LinkItemType.DefineCommonSize).Cast<LinkItem>().ToArray();
+            if(commonBlocks.Length > 0) {
+                WriteLine("");
+                WriteLine("  Common blocks:");
+                foreach(var block in commonBlocks) {
+                    WriteLine($"    {(string.IsNullOrWhiteSpace(block.Symbol) ? "(no name)" : block.Symbol)}: {FormatSize(block.Address.Value)}");
+                }
+            }
+
+            //WIP
+        }
+
         return ERR_SUCCESS;
     }
+
+    private static string FormatSize(ushort size) => $"{size} ({size:X4}h) bytes";
+
+    private static (string, IRelocatableFilePart[])[] GetPrograms(IRelocatableFilePart[] parts)
+    {
+        var result = new List<(string, IRelocatableFilePart[])>();
+
+        while(parts.Length > 0 && !IsEndOfFile(parts[0])) {
+            var programParts = parts.TakeWhile(p => !IsEndOfProgramOrFile(p)).ToArray();
+            var programNamePart = parts.FirstOrDefault(p => (p as LinkItem)?.Type is LinkItemType.ProgramName) as LinkItem;
+            var programName = programNamePart?.Symbol ?? "";
+
+            result.Add((programName, programParts));
+
+            parts = parts.Skip(programParts.Length).ToArray();
+            if(parts.Length > 1 ) {
+                parts = parts.Skip(1).ToArray();
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    private static bool IsEndOfFile(IRelocatableFilePart part) =>
+        (part as LinkItem)?.Type is LinkItemType.EndFile;
+
+    private static bool IsEndOfProgramOrFile(IRelocatableFilePart part) =>
+        (part as LinkItem)?.Type is LinkItemType.EndProgram or LinkItemType.EndFile;
 }
