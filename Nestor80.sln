@@ -28,9 +28,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "img", "img", "{5162D8DA-471
 		docs\img\HelloRunning.png = docs\img\HelloRunning.png
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Linker", "Linker\Linker.csproj", "{26EF3CD0-7789-44FA-ABA9-1A92361E28D5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Linker", "Linker\Linker.csproj", "{26EF3CD0-7789-44FA-ABA9-1A92361E28D5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LK80", "LK80\LK80.csproj", "{0B4848A6-CACE-473C-B5EA-8127DC4A8621}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LK80", "LK80\LK80.csproj", "{0B4848A6-CACE-473C-B5EA-8127DC4A8621}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LB80", "LB80\LB80.csproj", "{40090AE2-7F1F-4D9B-A8B5-9BB959B84950}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -58,6 +60,10 @@ Global
 		{0B4848A6-CACE-473C-B5EA-8127DC4A8621}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0B4848A6-CACE-473C-B5EA-8127DC4A8621}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0B4848A6-CACE-473C-B5EA-8127DC4A8621}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40090AE2-7F1F-4D9B-A8B5-9BB959B84950}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40090AE2-7F1F-4D9B-A8B5-9BB959B84950}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40090AE2-7F1F-4D9B-A8B5-9BB959B84950}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40090AE2-7F1F-4D9B-A8B5-9BB959B84950}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
