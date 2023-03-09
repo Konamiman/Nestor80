@@ -609,7 +609,7 @@ namespace Konamiman.Nestor80.Assembler
                 throw new InvalidOperationException("The maximum supported size of symbol fields is " + uint.MaxValue.ToString());
             }
 
-            if(symbolBytes.Length > 7 || (symbolBytes[0] == 0xFF && symbolBytes.Length > 1)) {
+            if(symbolBytes.Length > 7 || (symbolBytes.Length > 1 && symbolBytes[0] == 0xFF)) {
                 var legacyContents = symbolBytes.Length switch {
                     < 0x100 => new byte[] { 0xFF, (byte)symbolBytes.Length },
                     < 0x10000 => new byte[] { 0xFF, (byte)(symbolBytes.Length & 0xFF), (byte)(symbolBytes.Length >> 8) },

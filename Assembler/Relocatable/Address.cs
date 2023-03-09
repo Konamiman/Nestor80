@@ -9,15 +9,6 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
 
         public Address(AddressType type, ushort value, string commonBlockName = null)
         {
-            if (type == AddressType.COMMON && commonBlockName == null)
-            {
-                throw new ArgumentException("A common address must have a common block name");
-            }
-            if (type != AddressType.COMMON && commonBlockName != null)
-            {
-                throw new ArgumentException("A non-common address can't have a common block name");
-            }
-
             Type = type;
             Value = value;
             CommonBlockName = commonBlockName;
