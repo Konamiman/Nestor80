@@ -1,6 +1,7 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.Relocatable;
 using Konamiman.Nestor80.Linker.Parsing;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 
@@ -12,7 +13,8 @@ internal partial class Program
     const int ERR_BAD_ARGUMENTS = 1;
     const int ERR_CANT_OPEN_FILE = 2;
     const int ERR_CANT_CREATE_FILE = 3;
-    const int ERR_FATAL = 6;
+    const int ERR_DUPLICATES = 4;
+    const int ERR_FATAL = 5;
 
     const int CMD_INVALID = -1;
     const int CMD_CREATE = 0;
@@ -31,6 +33,7 @@ internal partial class Program
     static string[] envArgs;
     static string commandString;
     static string libraryFilePath;
+    static bool allowDuplicates;
 
     static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
     static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -120,6 +123,7 @@ internal partial class Program
             var result = command switch {
                 CMD_VIEW => ViewFile(),
                 CMD_DUMP => DumpFile(),
+                CMD_CREATE => CreateFile(remainingArgs),
                 //WIP
                 _ => throw new Exception($"Unexpected command code: {command}")
             };
@@ -144,6 +148,7 @@ internal partial class Program
         colorPrint = true;
         showBanner = true;
         verbosityLevel = 1;
+        allowDuplicates = false;
         //workingDir excluded on purpose, since it has special handling
     }
 
@@ -164,6 +169,12 @@ internal partial class Program
                 i++;
                 argsCount += 2;
                 continue;
+            }
+            else if(arg is "-ad" or "--allow-duplicates") {
+                allowDuplicates = true;
+            }
+            else if(arg is "-nad" or "--no-allow-duplicates") {
+                allowDuplicates = false;
             }
             else if(arg is "-vb" or "--verbosity") {
                 if(i == args.Length - 1 || args[i + 1][0] == '-') {
@@ -389,18 +400,21 @@ internal partial class Program
 
     static Stream libraryStream;
 
-    static int OpenLibraryFile()
+    static int OpenLibraryFile(string fileName = null)
     {
-        if(!File.Exists(libraryFilePath)) {
-            PrintError($"File not found: {libraryFilePath}");
+        var isLibraryFile = fileName == null;
+        fileName ??= libraryFilePath;
+
+        if(!File.Exists(fileName)) {
+            PrintError(isLibraryFile ? "Library file not found" : $"File not found: {fileName}");
             return ERR_CANT_OPEN_FILE;
         }
 
         try {
-            libraryStream = File.OpenRead(libraryFilePath);
+            libraryStream = File.OpenRead(fileName);
         }
         catch(Exception ex) {
-            PrintError($"Error opening library file: {ex.Message}");
+            PrintError(isLibraryFile ? $"Error opening library file: {ex.Message}" : $"Error opening {fileName}: {ex.Message}");
             return ERR_CANT_OPEN_FILE;
         }
 
@@ -506,7 +520,74 @@ internal partial class Program
         return ERR_SUCCESS;
     }
 
-        private static string FormatSize(ushort size) => $"{size} ({size:X4}h) bytes";
+    private static int CreateFile(string[] args)
+    {
+        if(args.Length == 0) {
+            PrintError("At least one relocatable file path is needed.");
+            return ERR_BAD_ARGUMENTS;
+        }
+
+        var result = new List<byte>();
+        var allProgramNames = new List<string>();
+        var allProgramBytes = new List<byte>();
+
+        foreach(var fileName in args) {
+            var filePath = Path.GetFullPath(Path.Combine(workingDir, fileName));
+            if(verbosityLevel > 1) {
+                PrintStatus($"Reading relocatable file: {filePath}");
+            }
+            var openFileError = OpenLibraryFile(filePath);
+            if(openFileError != ERR_SUCCESS) {
+                return openFileError;
+            }
+
+            var ms = new MemoryStream();
+            libraryStream.CopyTo(ms);
+            libraryStream.Close();
+            ms.Seek(0, SeekOrigin.Begin);
+            var fileParts = RelocatableFileParser.Parse(ms);
+
+            var programNames = GetPrograms(fileParts).Select(p => p.Item1).ToArray();
+            allProgramNames.AddRange(programNames);
+
+            var programBytes = ms.ToArray();
+            if(programBytes[^1] == 0x9E) {
+                //Remove "end of file" link item
+                programBytes = programBytes.Take(programBytes.Length - 1).ToArray();
+            }
+            allProgramBytes.AddRange(programBytes);
+        }
+        
+        if(!allowDuplicates) {
+            var firstDuplicate = allProgramNames.GroupBy(n => n, StringComparer.OrdinalIgnoreCase).Where(p => p.Count() > 0).FirstOrDefault();
+            if(firstDuplicate != null) {
+                PrintError($"There are {firstDuplicate.Count()} programs named '{firstDuplicate.Key}' amongst the processed files (use --allow-duplicates if that's intentional)");
+                return ERR_DUPLICATES;
+            }
+        }
+
+        allProgramBytes.Add(0x9E); //Add "end of file" link item
+
+        try {
+            File.WriteAllBytes(libraryFilePath, allProgramBytes.ToArray());
+        }
+        catch(Exception ex) {
+            PrintError($"Error creating library file: {ex.Message}");
+            return ERR_CANT_CREATE_FILE;
+        }
+
+        if(verbosityLevel > 1) {
+            PrintStatus("");
+        }
+
+        if(verbosityLevel > 0) {
+            PrintStatus($"Library file created: {libraryFilePath}");
+        }
+
+        return ERR_SUCCESS;
+    }
+
+    private static string FormatSize(ushort size) => $"{size} ({size:X4}h) bytes";
 
     private static (string, IRelocatableFilePart[])[] GetPrograms(IRelocatableFilePart[] parts)
     {
