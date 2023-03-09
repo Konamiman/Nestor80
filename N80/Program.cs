@@ -1247,7 +1247,11 @@ namespace Konamiman.Nestor80.N80
                 }
                 catch(Exception ex) {
                     PrintFatal($"Can't write to output file ({outputFilePath}): {ex.Message}");
+#if DEBUG
+                    throw;
+#else
                     return ERR_CANT_CREATE_OUTPUT_FILE;
+#endif
                 }
 
                 outputStream.Close();
@@ -1264,11 +1268,11 @@ namespace Konamiman.Nestor80.N80
                 }
                 catch(Exception ex) {
                     PrintFatal($"Can't create listing file{(listingFilePath is null ? "" : $" ({listingFilePath})")}: {ex.Message}");
-                    #if DEBUG
+#if DEBUG
                     throw;
-                    #else
+#else
                     return ERR_CANT_CREATE_LISTING_FILE;
-                    #endif
+#endif
                 }
             }
 

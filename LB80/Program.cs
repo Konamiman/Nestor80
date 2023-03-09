@@ -119,6 +119,7 @@ internal partial class Program
         try {
             var result = command switch {
                 CMD_VIEW => ViewFile(),
+                CMD_DUMP => DumpFile(),
                 //WIP
                 _ => throw new Exception($"Unexpected command code: {command}")
             };
@@ -386,20 +387,31 @@ internal partial class Program
         return version;
     }
 
-    private static int ViewFile()
+    static Stream libraryStream;
+
+    static int OpenLibraryFile()
     {
         if(!File.Exists(libraryFilePath)) {
             PrintError($"File not found: {libraryFilePath}");
             return ERR_CANT_OPEN_FILE;
         }
 
-        Stream stream;
         try {
-            stream = File.OpenRead(libraryFilePath);
+            libraryStream = File.OpenRead(libraryFilePath);
         }
         catch(Exception ex) {
             PrintError($"Error opening library file: {ex.Message}");
             return ERR_CANT_OPEN_FILE;
+        }
+
+        return ERR_SUCCESS;
+    }
+
+    private static int ViewFile()
+    {
+        var errorCode = OpenLibraryFile();
+        if(errorCode != ERR_SUCCESS) {
+            return errorCode;
         }
 
         if(verbosityLevel > 0) {
@@ -407,7 +419,7 @@ internal partial class Program
             WriteLine("");
         }
 
-        var parts = RelocatableFileParser.Parse(stream);
+        var parts = RelocatableFileParser.Parse(libraryStream);
         var programs = GetPrograms(parts);
 
         if(programs.Length == 0) {
@@ -475,7 +487,26 @@ internal partial class Program
         return ERR_SUCCESS;
     }
 
-    private static string FormatSize(ushort size) => $"{size} ({size:X4}h) bytes";
+    private static int DumpFile()
+    {
+        var errorCode = OpenLibraryFile();
+        if(errorCode != ERR_SUCCESS) {
+            return errorCode;
+        }
+
+        if(verbosityLevel > 0) {
+            PrintStatus($"Full contents of library file {Path.GetFileName(Path.GetFullPath(libraryFilePath))}:");
+            WriteLine("");
+        }
+
+        var ms = new MemoryStream();
+        libraryStream.CopyTo(ms);
+        RelFileDumper.DumpFile(ms.ToArray());
+
+        return ERR_SUCCESS;
+    }
+
+        private static string FormatSize(ushort size) => $"{size} ({size:X4}h) bytes";
 
     private static (string, IRelocatableFilePart[])[] GetPrograms(IRelocatableFilePart[] parts)
     {
