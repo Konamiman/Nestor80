@@ -1,4 +1,5 @@
-﻿using Konamiman.Nestor80.Assembler.Relocatable;
+﻿using Konamiman.Nestor80.Assembler;
+using Konamiman.Nestor80.Assembler.Relocatable;
 using Konamiman.Nestor80.Linker.Parsing;
 using System.Linq;
 using System.Reflection;
@@ -33,6 +34,13 @@ internal partial class Program
 
     static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
     static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
+
+    static readonly Dictionary<AddressType, string> addressSuffixes = new() {
+        { AddressType.CSEG, "'" },
+        { AddressType.DSEG, "\"" },
+        { AddressType.ASEG, " " },
+        { AddressType.COMMON, "!" },
+    };
 
     static int Main(string[] args)
     {
@@ -294,7 +302,7 @@ internal partial class Program
             Console.WriteLine(text);
         }
 
-        blankLinePrinted = text == "" || text.EndsWith("\r\n");
+        blankLinePrinted = text == ""; // || text.EndsWith("\r\n");
     }
 
     /// <summary>
@@ -395,18 +403,19 @@ internal partial class Program
         }
 
         if(verbosityLevel > 0) {
-            PrintStatus($"Contents of library file {Path.GetFileName(libraryFilePath)}:");
+            PrintStatus($"Contents of library file {Path.GetFileName(Path.GetFullPath(libraryFilePath))}:");
+            WriteLine("");
         }
 
         var parts = RelocatableFileParser.Parse(stream);
         var programs = GetPrograms(parts);
 
         if(programs.Length == 0) {
-            WriteLine("");
             WriteLine("The file contains no programs.");
             return ERR_SUCCESS;
         }
 
+        blankLinePrinted = true;
         foreach(var (programName, programParts) in programs) {
             WriteLine("");
             WriteLine($"Program: {programName}");
@@ -423,14 +432,44 @@ internal partial class Program
 
             var commonBlocks = programParts.Where(p => (p as LinkItem)?.Type is LinkItemType.DefineCommonSize).Cast<LinkItem>().ToArray();
             if(commonBlocks.Length > 0) {
-                WriteLine("");
+                Console.WriteLine();
                 WriteLine("  Common blocks:");
                 foreach(var block in commonBlocks) {
                     WriteLine($"    {(string.IsNullOrWhiteSpace(block.Symbol) ? "(no name)" : block.Symbol)}: {FormatSize(block.Address.Value)}");
                 }
             }
 
-            //WIP
+            var publicSymbols = programParts.Where(p => (p as LinkItem)?.Type is LinkItemType.DefineEntryPoint).Cast<LinkItem>().OrderBy(p => p.Symbol).ToArray();
+            if(publicSymbols.Length > 0) {
+                Console.WriteLine();
+                Console.Write("  Public symbols:");
+                var column = 0;
+                foreach(var symbol in publicSymbols) {
+                    if(column == 0) {
+                        Console.WriteLine();
+                        Console.Write("    ");
+                    }
+                    Console.Write($"{symbol.Address.Value:X4}{addressSuffixes[symbol.Address.Type]} {symbol.Symbol}\t");
+                    column = (column+1) % 4; 
+                }
+                Console.WriteLine();
+            }
+
+            var externalReferences = programParts.Where(p => (p as LinkItem)?.Type is LinkItemType.ChainExternal).Cast<LinkItem>().OrderBy(p => p.Symbol).ToArray();
+            if(externalReferences.Length > 0) {
+                Console.WriteLine();
+                Console.Write("  External references:");
+                var column = 0;
+                foreach(var symbol in externalReferences) {
+                    if(column == 0) {
+                        Console.WriteLine();
+                        Console.Write("    ");
+                    }
+                    Console.Write($"{symbol.Symbol}\t");
+                    column = (column + 1) % 4;
+                }
+                Console.WriteLine();
+            }
         }
 
         return ERR_SUCCESS;
