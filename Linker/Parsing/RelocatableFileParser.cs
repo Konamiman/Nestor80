@@ -19,6 +19,8 @@ public class RelocatableFileParser
 
     private static bool extendedFormat;
 
+    public static byte[] LastParsedProgramBytes { get; private set; } = null;
+
     /// <summary>
     /// Parses a relocatable file and returns the items it's composed of.
     /// </summary>
@@ -82,6 +84,7 @@ public class RelocatableFileParser
             result.Add(linkItem);
 
             if(linkItem.Type == LinkItemType.EndFile) {
+                LastParsedProgramBytes = bsr.GetAccummulatedBytes();
                 break;
             }
         }

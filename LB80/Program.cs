@@ -543,16 +543,12 @@ internal partial class Program
                 return openFileError;
             }
 
-            var ms = new MemoryStream();
-            libraryStream.CopyTo(ms);
-            libraryStream.Close();
-            ms.Seek(0, SeekOrigin.Begin);
-            var fileParts = RelocatableFileParser.Parse(ms);
+            var fileParts = RelocatableFileParser.Parse(libraryStream);
 
             var programNames = GetPrograms(fileParts).Select(p => p.Item1).ToArray();
             allProgramNames.AddRange(programNames);
 
-            var programBytes = ms.ToArray();
+            var programBytes = RelocatableFileParser.LastParsedProgramBytes;
             if(programBytes[^1] == 0x9E) {
                 //Remove "end of file" link item
                 programBytes = programBytes.Take(programBytes.Length - 1).ToArray();

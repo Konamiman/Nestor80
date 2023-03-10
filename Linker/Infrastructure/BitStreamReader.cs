@@ -207,6 +207,13 @@ public class BitStreamReader
         _byteArrayIndex += length;
     }
 
+    public byte[] GetAccummulatedBytes()
+    {
+        var bytes = _byteArray.Skip(accummulationStartIndex).Take(_byteArrayIndex-accummulationStartIndex).ToArray();
+        accummulationStartIndex = _byteArrayIndex;
+        return bytes;
+    }
+
     // reference to the source byte buffer to read from
     private readonly byte[] _byteArray = null;
 
@@ -223,4 +230,6 @@ public class BitStreamReader
 
     // the number of bits (partial byte) left to read in the overlapped byte field
     private int _cbitsInPartialByte = 0;
+
+    private int accummulationStartIndex = 0;
 }

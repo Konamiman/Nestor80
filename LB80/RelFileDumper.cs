@@ -96,6 +96,7 @@ namespace Konamiman.Nestor80.LB80
                 if(beginningOfProgram) {
                     if(bsr.PeekBytes(1)[0] == 0x9E) {
                         //"End of file" item
+                        Console.WriteLine(linkItemTypes[LINK_ITEM_FILE_END]);
                         break;
                     }
 
