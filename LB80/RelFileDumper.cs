@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Linker.Infrastructure;
+using Konamiman.Nestor80.Linker.Parsing;
 using System.Text;
 
 namespace Konamiman.Nestor80.LB80
@@ -22,6 +23,8 @@ namespace Konamiman.Nestor80.LB80
         };
 
         static private bool extendedFormat = false;
+
+        private static List<IRelocatableFilePart> extendedHeaderItems = new();
 
         static private string[] linkItemTypes = {
             "Entry symbol",
@@ -82,22 +85,37 @@ namespace Konamiman.Nestor80.LB80
         {
             fileContents = fileBytes;
             cummulatedAbsoluteBytes.Clear();
+            extendedHeaderItems.Clear();
             extendedFormat = false;
-
-            if(fileContents.Length > extendedFileFormatHeader.Length && Enumerable.SequenceEqual(fileContents.Take(extendedFileFormatHeader.Length), extendedFileFormatHeader)) {
-                Console.WriteLine("--- Extended relocatable file format header ---");
-                Console.WriteLine();
-                fileContents = fileContents.Skip(extendedFileFormatHeader.Length).ToArray();
-                extendedFormat = true;
-            }
-            else {
-                extendedFormat = false;
-            }
+            var beginningOfProgram = true;
 
             var bsr = new BitStreamReader(fileContents);
             cummulatedAbsoluteBytes.Clear();
 
             while(!bsr.EndOfStream) {
+                if(beginningOfProgram) {
+                    if(bsr.PeekBytes(1)[0] == 0x9E) {
+                        //"End of file" item
+                        break;
+                    }
+
+                    Console.WriteLine("--- Beginning of progam ---");
+                    Console.WriteLine();
+
+                    var maybeHeader = bsr.PeekBytes(extendedFileFormatHeader.Length);
+                    if(Enumerable.SequenceEqual(maybeHeader, extendedFileFormatHeader)) {
+                        Console.WriteLine("Extended relocatable file format header");
+                        Console.WriteLine();
+                        bsr.DiscardBytes(extendedFileFormatHeader.Length);
+                        extendedFormat = true;
+                    }
+                    else {
+                        extendedFormat = false;
+                    }
+
+                    beginningOfProgram = false;
+                }
+
                 var nextItemIsRelocatable = bsr.ReadBit();
                 if(!nextItemIsRelocatable) {
                     var nextAbsoluteByte = bsr.ReadByte(8);
@@ -142,7 +160,11 @@ namespace Konamiman.Nestor80.LB80
                 }
 
                 if(linkItemType == LINK_ITEM_PROGRAM_END) {
+                    beginningOfProgram = true;
                     bsr.ForceByteBoundary();
+                    if(!bsr.EndOfStream) {
+                        Console.WriteLine();
+                    }
                 }
 
                 Console.WriteLine();

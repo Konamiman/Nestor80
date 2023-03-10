@@ -236,8 +236,6 @@ internal partial class Program
     {
         text = $"ERROR: {text}";
 
-        ErrorWriteLine();
-
         if(colorPrint) {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.BackgroundColor = defaultBackgroundColor;
@@ -446,6 +444,10 @@ internal partial class Program
             WriteLine("");
             WriteLine($"Program: {programName}");
 
+            if(programParts.Any(p => p is ExtendedRelocatableFileHeader)) {
+                WriteLine("  Extended relocatable file format");
+            }
+
             var codeSegmentSizePart = programParts.FirstOrDefault(p => (p as LinkItem)?.Type is LinkItemType.ProgramAreaSize) as LinkItem;
             if(codeSegmentSizePart != null && codeSegmentSizePart.Address.Value != 0) {
                 WriteLine($"  Code segment: {FormatSize(codeSegmentSizePart.Address.Value)}");
@@ -559,7 +561,7 @@ internal partial class Program
         }
         
         if(!allowDuplicates) {
-            var firstDuplicate = allProgramNames.GroupBy(n => n, StringComparer.OrdinalIgnoreCase).Where(p => p.Count() > 0).FirstOrDefault();
+            var firstDuplicate = allProgramNames.GroupBy(n => n, StringComparer.OrdinalIgnoreCase).Where(p => p.Count() > 1).FirstOrDefault();
             if(firstDuplicate != null) {
                 PrintError($"There are {firstDuplicate.Count()} programs named '{firstDuplicate.Key}' amongst the processed files (use --allow-duplicates if that's intentional)");
                 return ERR_DUPLICATES;

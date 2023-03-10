@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -27,6 +27,7 @@
     <Compile Include="..\Linker\Parsing\RawBytes.cs" Link="Infrastructure\RawBytes.cs" />
     <Compile Include="..\Linker\Parsing\RelocatableAddress.cs" Link="Infrastructure\RelocatableAddress.cs" />
     <Compile Include="..\Linker\Parsing\RelocatableFileParser.cs" Link="Infrastructure\RelocatableFileParser.cs" />
+    <Compile Include="..\Linker\Infrastructure\BitStreamReader.cs" Link="Infrastructure\BitStreamReader.cs" />
   </ItemGroup>
 
 </Project>

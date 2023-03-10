@@ -7,6 +7,8 @@ namespace Konamiman.Nestor80.Linker.Parsing;
 
 public class RelocatableFileParser
 {
+    static readonly byte[] extendedFileFormatHeader = { 0x85, 0xD3, 0x13, 0x92, 0xD4, 0xD5, 0x13, 0xD4, 0xA5, 0x00, 0x00, 0x13, 0x8F, 0xFF, 0xF0, 0x9E };
+
     private static readonly List<byte> rawBytes = new();
 
     private static BitStreamReader bsr;
@@ -27,20 +29,30 @@ public class RelocatableFileParser
         var ms = new MemoryStream();
         inputStream.CopyTo(ms);
         input = ms.ToArray();
+        var beginningOfProgram = true;
 
         rawBytes.Clear();
         result.Clear();
 
         extendedFormat = false;
-        if(input.Length > ExtendedRelocatableFileHeader.Bytes.Length && Enumerable.SequenceEqual(input.Take(ExtendedRelocatableFileHeader.Bytes.Length), ExtendedRelocatableFileHeader.Bytes)) {
-            result.Add(ExtendedRelocatableFileHeader.Instance);
-            input = input.Skip(ExtendedRelocatableFileHeader.Bytes.Length).ToArray();
-            extendedFormat = true;
-        }
 
         bsr = new BitStreamReader(input);
 
         while(!bsr.EndOfStream) {
+            if(beginningOfProgram) {
+                var maybeHeader = bsr.PeekBytes(extendedFileFormatHeader.Length);
+                if(Enumerable.SequenceEqual(maybeHeader, extendedFileFormatHeader)) {
+                    result.Add(ExtendedRelocatableFileHeader.Instance);
+                    bsr.DiscardBytes(extendedFileFormatHeader.Length);
+                    extendedFormat = true;
+                }
+                else {
+                    extendedFormat = false;
+                }
+
+                beginningOfProgram = false;
+            }
+
             var nextItemIsRelocatable = bsr.ReadBit();
             if(!nextItemIsRelocatable) {
                 var nextAbsoluteByte = bsr.ReadByte(8);
@@ -61,12 +73,15 @@ public class RelocatableFileParser
             }
 
             var linkItem = ExtractLinkItem();
-            result.Add(linkItem);
-
             if(linkItem.Type == LinkItemType.EndProgram) {
                 bsr.ForceByteBoundary();
+                extendedFormat = false;
+                beginningOfProgram = true;
             }
-            else if(linkItem.Type == LinkItemType.EndFile) {
+
+            result.Add(linkItem);
+
+            if(linkItem.Type == LinkItemType.EndFile) {
                 break;
             }
         }
@@ -101,7 +116,7 @@ public class RelocatableFileParser
                 symbolBytes[i] = bsr.ReadByte(8);
             }
 
-            if(symbolBytes[0] == 0xFF && extendedFormat && symbolLength > 1) {
+            if(symbolLength > 1 && extendedFormat && symbolBytes[0] == 0xFF) {
                 int extendedSymbolLength = symbolLength switch {
                     2 => symbolBytes[1],
                     3 => symbolBytes[1] + symbolBytes[2] << 8,

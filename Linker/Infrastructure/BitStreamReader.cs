@@ -187,6 +187,26 @@ public class BitStreamReader
         return result;
     }
 
+    public byte[] PeekBytes(int length)
+    {
+        if(_cbitsInPartialByte != 0) {
+            throw new InvalidOperationException($"{nameof(BitStreamReader)}.{nameof(PeekBytes)}: not at a byte boundary ({_cbitsInPartialByte} bits left from last byte)");
+        }
+
+        length = Math.Min(length, _byteArray.Length - _byteArrayIndex);
+        return _byteArray.Skip(_byteArrayIndex).Take(length).ToArray();
+    }
+
+    public void DiscardBytes(int length)
+    {
+        if(_cbitsInPartialByte != 0) {
+            throw new InvalidOperationException($"{nameof(BitStreamReader)}.{nameof(DiscardBytes)}: not at a byte boundary ({_cbitsInPartialByte} bits left from last byte)");
+        }
+
+        length = Math.Min(length, _byteArray.Length - _byteArrayIndex);
+        _byteArrayIndex += length;
+    }
+
     // reference to the source byte buffer to read from
     private readonly byte[] _byteArray = null;
 
