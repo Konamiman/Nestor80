@@ -231,7 +231,7 @@ public static class RelocatableFilesProcessor
         }
 
         foreach(var libraryFile in requestedLibFiles.Where(f => f.MustLoad)) {
-           ProcessFile(libraryFile.Contents);
+           ProcessProgram(null, libraryFile.Contents);
         }
 
         foreach(var externalPendingResolution in externalsPendingResolution) {
@@ -289,24 +289,17 @@ public static class RelocatableFilesProcessor
         }
     }
 
-    private static void ProcessFile(IRelocatableFilePart[] parsedFileItems)
+    private static void ProcessFile(ParsedProgram[] parsedPrograms)
     {
-        while(true) {
-            var programItems = parsedFileItems.TakeWhile(item => item is not LinkItem || ((LinkItem)item).Type is not LinkItemType.EndProgram and not LinkItemType.EndFile).ToArray();
-            
-            ProcessProgram(programItems);
+        foreach(var parsedProgram in parsedPrograms) {
+            ProcessProgram(parsedProgram.ProgramName, parsedProgram.Parts);
             CleanupAfterProcessingProgram();
-
-            parsedFileItems = parsedFileItems.Skip(programItems.Length+1).ToArray();
-            if(parsedFileItems.Length == 0 || (parsedFileItems[0] as LinkItem)?.Type is LinkItemType.EndFile) {
-                return;
-            }
         }
     }
 
     private static bool currentProgramHasAbsoluteSegment;
 
-    private static void ProcessProgram(IRelocatableFilePart[] programItems)
+    private static void ProcessProgram(string programName, IRelocatableFilePart[] programItems)
     {
         currentProgramSymbols.Clear();
         currentProgramHasAbsoluteSegment = false;
@@ -316,8 +309,10 @@ public static class RelocatableFilesProcessor
 
         currentProgramCommonBlockName = null;
 
-        var programNameItem = programItems.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.ProgramName);
-        currentProgramName = (programNameItem as LinkItem)?.Symbol ?? currentFile.DisplayName;
+        if(programName == null) {
+            programName = (programItems.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.ProgramName) as LinkItem)?.Symbol ?? "";
+        }
+        currentProgramName = programName;
 
         var programSizeItem = programItems.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.ProgramAreaSize);
         ushort programSize = (programSizeItem as LinkItem)?.Address.Value ?? 0;
@@ -518,7 +513,7 @@ public static class RelocatableFilesProcessor
                     continue;
                 }
 
-                var parsedFileItems = RelocatableFileParser.Parse(stream);
+                var parsedFileItems = RelocatableFileParser.Parse(stream).SelectMany(p => p.Parts).ToArray();
                 var publicSymbols = parsedFileItems
                     .Where(i => i is LinkItem li && li.Type is LinkItemType.EntrySymbol)
                     .Select(i => ((LinkItem)i).Symbol)
@@ -573,6 +568,9 @@ public static class RelocatableFilesProcessor
                 // We have no use for EntrySymbol.
                 // As for the others, we've already dealt with them.
                 continue;
+            }
+            else if(linkItem.Type is LinkItemType.EndProgram) {
+                break;
             }
             else {
                 throw new NotImplementedException();

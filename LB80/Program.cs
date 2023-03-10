@@ -431,8 +431,7 @@ internal partial class Program
             WriteLine("");
         }
 
-        var parts = RelocatableFileParser.Parse(libraryStream);
-        var programs = GetPrograms(parts);
+        var programs = RelocatableFileParser.Parse(libraryStream);
 
         if(programs.Length == 0) {
             WriteLine("The file contains no programs.");
@@ -440,9 +439,11 @@ internal partial class Program
         }
 
         blankLinePrinted = true;
-        foreach(var (programName, programParts) in programs) {
+        foreach(var program in programs) {
+            var programParts = program.Parts;
+
             WriteLine("");
-            WriteLine($"Program: {programName}");
+            WriteLine($"Program: {program.ProgramName}");
 
             if(programParts.Any(p => p is ExtendedRelocatableFileHeader)) {
                 WriteLine("  Extended relocatable file format");
@@ -545,15 +546,11 @@ internal partial class Program
 
             var fileParts = RelocatableFileParser.Parse(libraryStream);
 
-            var programNames = GetPrograms(fileParts).Select(p => p.Item1).ToArray();
+            var programNames = fileParts.Select(p => p.ProgramName).ToArray();
             allProgramNames.AddRange(programNames);
 
-            var programBytes = RelocatableFileParser.LastParsedProgramBytes;
-            if(programBytes[^1] == 0x9E) {
-                //Remove "end of file" link item
-                programBytes = programBytes.Take(programBytes.Length - 1).ToArray();
-            }
-            allProgramBytes.AddRange(programBytes);
+            var fileProgramsBytes = fileParts.SelectMany(p => p.Bytes).ToArray();
+            allProgramBytes.AddRange(fileProgramsBytes);
         }
         
         if(!allowDuplicates) {

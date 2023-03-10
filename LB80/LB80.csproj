@@ -24,6 +24,7 @@
     <Compile Include="..\Linker\Parsing\ExtendedRelocatableFileHeader.cs" Link="Infrastructure\ExtendedRelocatableFileHeader.cs" />
     <Compile Include="..\Linker\Parsing\IRelocatableFilePart.cs" Link="Infrastructure\IRelocatableFilePart.cs" />
     <Compile Include="..\Linker\Parsing\LinkItem.cs" Link="Infrastructure\LinkItem.cs" />
+    <Compile Include="..\Linker\Parsing\ParsedProgram.cs" Link="Infrastructure\ParsedProgram.cs" />
     <Compile Include="..\Linker\Parsing\RawBytes.cs" Link="Infrastructure\RawBytes.cs" />
     <Compile Include="..\Linker\Parsing\RelocatableAddress.cs" Link="Infrastructure\RelocatableAddress.cs" />
     <Compile Include="..\Linker\Parsing\RelocatableFileParser.cs" Link="Infrastructure\RelocatableFileParser.cs" />

@@ -15,7 +15,9 @@ public class RelocatableFileParser
 
     private static byte[] input;
 
-    private static readonly List<IRelocatableFilePart> result = new();
+    private static readonly List<ParsedProgram> result = new();
+
+    private static readonly List<IRelocatableFilePart> currentProgramParts = new();
 
     private static bool extendedFormat;
 
@@ -26,7 +28,7 @@ public class RelocatableFileParser
     /// </summary>
     /// <param name="inputStream">The stream to read the relocatablle file from.</param>
     /// <returns>An array with the items that compose the relocatable file, in the order in which they are found in the file.</returns>
-    public static IRelocatableFilePart[] Parse(Stream inputStream)
+    public static ParsedProgram[] Parse(Stream inputStream)
     {
         var ms = new MemoryStream();
         inputStream.CopyTo(ms);
@@ -35,6 +37,7 @@ public class RelocatableFileParser
 
         rawBytes.Clear();
         result.Clear();
+        currentProgramParts.Clear();
 
         extendedFormat = false;
 
@@ -44,7 +47,7 @@ public class RelocatableFileParser
             if(beginningOfProgram) {
                 var maybeHeader = bsr.PeekBytes(extendedFileFormatHeader.Length);
                 if(Enumerable.SequenceEqual(maybeHeader, extendedFileFormatHeader)) {
-                    result.Add(ExtendedRelocatableFileHeader.Instance);
+                    currentProgramParts.Add(ExtendedRelocatableFileHeader.Instance);
                     bsr.DiscardBytes(extendedFileFormatHeader.Length);
                     extendedFormat = true;
                 }
@@ -63,14 +66,14 @@ public class RelocatableFileParser
             }
 
             if(rawBytes.Count > 0) {
-                result.Add(new RawBytes() { Bytes = rawBytes.ToArray() });
+                currentProgramParts.Add(new RawBytes() { Bytes = rawBytes.ToArray() });
                 rawBytes.Clear();
             }
 
             var relocatableItemType = bsr.ReadByte(2);
             if(relocatableItemType != 0) {
                 var addressValue = bsr.ReadUInt16(16);
-                result.Add(new RelocatableAddress() { Type = (AddressType)relocatableItemType, Value = addressValue });
+                currentProgramParts.Add(new RelocatableAddress() { Type = (AddressType)relocatableItemType, Value = addressValue });
                 continue;
             }
 
@@ -79,19 +82,24 @@ public class RelocatableFileParser
                 bsr.ForceByteBoundary();
                 extendedFormat = false;
                 beginningOfProgram = true;
+                var programBytes = bsr.GetAccummulatedBytes();
+                currentProgramParts.Add(linkItem);
+                var programName = (currentProgramParts.FirstOrDefault(x => x is LinkItem li && li.Type is LinkItemType.ProgramName) as LinkItem)?.Symbol ?? "";
+                result.Add(new() { ProgramName = programName, Parts = currentProgramParts.ToArray(), Bytes = programBytes });
+                currentProgramParts.Clear();
             }
-
-            result.Add(linkItem);
-
-            if(linkItem.Type == LinkItemType.EndFile) {
+            else if(linkItem.Type == LinkItemType.EndFile) {
                 LastParsedProgramBytes = bsr.GetAccummulatedBytes();
                 break;
+            }
+            else {
+                currentProgramParts.Add(linkItem);
             }
         }
 
         if(rawBytes.Count > 0) {
             // Should never happen (an "End of file" link item would have been found) but just in case.
-            result.Add(new RawBytes() { Bytes = rawBytes.ToArray() });
+            currentProgramParts.Add(new RawBytes() { Bytes = rawBytes.ToArray() });
         }
 
         return result.ToArray();
