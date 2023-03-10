@@ -125,6 +125,7 @@ internal partial class Program
                 CMD_DUMP => DumpFile(),
                 CMD_CREATE => CreateFile(remainingArgs),
                 CMD_ADD => AddToFile(remainingArgs),
+                CMD_SET => SetInFile(remainingArgs),
                 //WIP
                 _ => throw new Exception($"Unexpected command code: {command}")
             };
@@ -404,6 +405,8 @@ internal partial class Program
         var isLibraryFile = fileName == null;
         fileName ??= libraryFilePath;
 
+        fileName = Path.GetFullPath(Path.Combine(workingDir, fileName));
+
         if(!File.Exists(fileName)) {
             PrintError(isLibraryFile ? "Library file not found" : $"File not found: {fileName}");
             return ERR_CANT_OPEN_FILE;
@@ -647,11 +650,77 @@ internal partial class Program
         return ERR_SUCCESS;
     }
 
+    private static int SetInFile(string[] args)
+    {
+        if(args.Length == 0) {
+            PrintError("At least one relocatable file path is needed.");
+            return ERR_BAD_ARGUMENTS;
+        }
+
+        var errorCode = OpenLibraryFile();
+        if(errorCode != ERR_SUCCESS) {
+            return errorCode;
+        }
+
+        var libraryPrograms = RelocatableFileParser.Parse(libraryStream).ToList();
+        libraryStream.Close();
+        var programsToSet = new List<ParsedProgram>();
+
+        foreach(var relFilePath in args) {
+            if(verbosityLevel > 1) {
+                PrintStatus($"Reading relocatable file: {relFilePath}");
+            }
+
+            errorCode = OpenLibraryFile(relFilePath);
+            if(errorCode != ERR_SUCCESS) {
+                return errorCode;
+            }
+
+            var filePrograms = RelocatableFileParser.Parse(libraryStream);
+            libraryStream.Close();
+
+            programsToSet.AddRange(filePrograms);
+        }
+
+        var processedProgramNames = new List<string>();
+
+        foreach(var program in programsToSet) {
+            if(processedProgramNames.Contains(program.ProgramName, StringComparer.OrdinalIgnoreCase)) {
+                continue;
+            }
+
+            var matchingLibraryProgram = libraryPrograms.FirstOrDefault(p => string.Equals(p.ProgramName, program.ProgramName, StringComparison.OrdinalIgnoreCase));
+            if(matchingLibraryProgram == null) {
+                libraryPrograms.Add(program);
+            }
+            else {
+                matchingLibraryProgram.Bytes = program.Bytes;
+            }
+
+            processedProgramNames.Add(program.ProgramName);
+        }
+
+        var allProgramBytes = libraryPrograms.Select(p => p.Bytes).SelectMany(x => x).ToList();
+        allProgramBytes.Add(0x9E); //Add "end of file" link item
+
+        try {
+            File.WriteAllBytes(libraryFilePath, allProgramBytes.ToArray());
+        }
+        catch(Exception ex) {
+            PrintError($"Error creating library file: {ex.Message}");
+            return ERR_CANT_CREATE_FILE;
+        }
+
+        if(verbosityLevel > 1) {
+            PrintStatus("");
+        }
+
+        if(verbosityLevel > 0) {
+            PrintStatus($"Library file updated: {libraryFilePath}");
+        }
+
+        return ERR_SUCCESS;
+    }
+
     private static string FormatSize(ushort size) => $"{size} ({size:X4}h) bytes";
-
-    private static bool IsEndOfFile(IRelocatableFilePart part) =>
-        (part as LinkItem)?.Type is LinkItemType.EndFile;
-
-    private static bool IsEndOfProgramOrFile(IRelocatableFilePart part) =>
-        (part as LinkItem)?.Type is LinkItemType.EndProgram or LinkItemType.EndFile;
 }
