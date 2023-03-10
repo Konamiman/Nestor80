@@ -124,6 +124,7 @@ internal partial class Program
                 CMD_VIEW => ViewFile(),
                 CMD_DUMP => DumpFile(),
                 CMD_CREATE => CreateFile(remainingArgs),
+                CMD_ADD => AddToFile(remainingArgs),
                 //WIP
                 _ => throw new Exception($"Unexpected command code: {command}")
             };
@@ -544,12 +545,12 @@ internal partial class Program
                 return openFileError;
             }
 
-            var fileParts = RelocatableFileParser.Parse(libraryStream);
+            var filePrograms = RelocatableFileParser.Parse(libraryStream);
 
-            var programNames = fileParts.Select(p => p.ProgramName).ToArray();
+            var programNames = filePrograms.Select(p => p.ProgramName).ToArray();
             allProgramNames.AddRange(programNames);
 
-            var fileProgramsBytes = fileParts.SelectMany(p => p.Bytes).ToArray();
+            var fileProgramsBytes = filePrograms.SelectMany(p => p.Bytes).ToArray();
             allProgramBytes.AddRange(fileProgramsBytes);
         }
         
@@ -582,27 +583,71 @@ internal partial class Program
         return ERR_SUCCESS;
     }
 
-    private static string FormatSize(ushort size) => $"{size} ({size:X4}h) bytes";
-
-    private static (string, IRelocatableFilePart[])[] GetPrograms(IRelocatableFilePart[] parts)
+    private static int AddToFile(string[] args)
     {
-        var result = new List<(string, IRelocatableFilePart[])>();
+        if(args.Length == 0) {
+            PrintError("At least one relocatable file path is needed.");
+            return ERR_BAD_ARGUMENTS;
+        }
 
-        while(parts.Length > 0 && !IsEndOfFile(parts[0])) {
-            var programParts = parts.TakeWhile(p => !IsEndOfProgramOrFile(p)).ToArray();
-            var programNamePart = parts.FirstOrDefault(p => (p as LinkItem)?.Type is LinkItemType.ProgramName) as LinkItem;
-            var programName = programNamePart?.Symbol ?? "";
+        var errorCode = OpenLibraryFile();
+        if(errorCode != ERR_SUCCESS) {
+            return errorCode;
+        }
 
-            result.Add((programName, programParts));
+        var libraryPrograms = RelocatableFileParser.Parse(libraryStream);
+        libraryStream.Close();
+        var allPrograms = new List<ParsedProgram>();
 
-            parts = parts.Skip(programParts.Length).ToArray();
-            if(parts.Length > 1 ) {
-                parts = parts.Skip(1).ToArray();
+        foreach(var relFilePath in args) {
+            if(verbosityLevel > 1) {
+                PrintStatus($"Reading relocatable file: {relFilePath}");
+            }
+
+            errorCode = OpenLibraryFile(relFilePath);
+            if(errorCode != ERR_SUCCESS) {
+                return errorCode;
+            }
+
+            var filePrograms = RelocatableFileParser.Parse(libraryStream);
+            libraryStream.Close();
+
+            allPrograms.AddRange(filePrograms);
+        }
+
+        var distinctLibraryProgramNames = libraryPrograms.Select(p => p.ProgramName).Distinct(StringComparer.OrdinalIgnoreCase);
+        var allProgramNames = distinctLibraryProgramNames.Concat(allPrograms.Select(p => p.ProgramName)).ToArray();
+        if(!allowDuplicates) {
+            var firstDuplicate = allProgramNames.GroupBy(n => n, StringComparer.OrdinalIgnoreCase).Where(p => p.Count() > 1).FirstOrDefault();
+            if(firstDuplicate != null) {
+                PrintError($"There are {firstDuplicate.Count()} programs named '{firstDuplicate.Key}' amongst the processed files (use --allow-duplicates if that's intentional)");
+                return ERR_DUPLICATES;
             }
         }
 
-        return result.ToArray();
+        var allProgramBytes = libraryPrograms.Concat(allPrograms).Select(p => p.Bytes).SelectMany(x => x).ToList();
+        allProgramBytes.Add(0x9E); //Add "end of file" link item
+
+        try {
+            File.WriteAllBytes(libraryFilePath, allProgramBytes.ToArray());
+        }
+        catch(Exception ex) {
+            PrintError($"Error creating library file: {ex.Message}");
+            return ERR_CANT_CREATE_FILE;
+        }
+
+        if(verbosityLevel > 1) {
+            PrintStatus("");
+        }
+
+        if(verbosityLevel > 0) {
+            PrintStatus($"Library file updated: {libraryFilePath}");
+        }
+
+        return ERR_SUCCESS;
     }
+
+    private static string FormatSize(ushort size) => $"{size} ({size:X4}h) bytes";
 
     private static bool IsEndOfFile(IRelocatableFilePart part) =>
         (part as LinkItem)?.Type is LinkItemType.EndFile;
