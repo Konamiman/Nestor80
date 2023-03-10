@@ -311,7 +311,7 @@ namespace Konamiman.Nestor80.Assembler
             WriteLinkItem(LinkItemType.EndFile);
 
             outputStream.Write(output.ToArray());
-            return output.Count;
+            return output.Count + (extendedFormat ? extendedFileFormatHeader.Length : 0);
         }
 
         private static string EffectiveNameOf(string name)
