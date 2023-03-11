@@ -16,7 +16,8 @@ internal partial class Program
     const int ERR_CANT_OPEN_FILE = 2;
     const int ERR_CANT_CREATE_FILE = 3;
     const int ERR_DUPLICATES = 4;
-    const int ERR_FATAL = 5;
+    const int ERR_NO_PROGRAM = 5;
+    const int ERR_FATAL = 6;
 
     const int CMD_INVALID = -1;
     const int CMD_CREATE = 0;
@@ -35,6 +36,7 @@ internal partial class Program
     static string commandString;
     static string libraryFilePath;
     static bool allowDuplicates;
+    static string relFileExtension;
 
     static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
     static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -128,7 +130,7 @@ internal partial class Program
                 CMD_ADD => AddToFile(remainingArgs),
                 CMD_SET => SetInFile(remainingArgs),
                 CMD_REMOVE => RemoveFromFile(remainingArgs),
-                //WIP
+                CMD_EXTRACT => ExtractFromFile(remainingArgs),
                 _ => throw new Exception($"Unexpected command code: {command}")
             };
 
@@ -153,6 +155,7 @@ internal partial class Program
         showBanner = true;
         verbosityLevel = 1;
         allowDuplicates = false;
+        relFileExtension = null;
         //workingDir excluded on purpose, since it has special handling
     }
 
@@ -179,6 +182,14 @@ internal partial class Program
             }
             else if(arg is "-nad" or "--no-allow-duplicates") {
                 allowDuplicates = false;
+            }
+            else if(arg is "-fe" or "--file-extension") {
+                if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                    return $"The {arg} argument needs to be followed by a file extension";
+                }
+                i++;
+                argsCount++;
+                relFileExtension = args[i];
             }
             else if(arg is "-vb" or "--verbosity") {
                 if(i == args.Length - 1 || args[i + 1][0] == '-') {
@@ -232,6 +243,11 @@ internal partial class Program
         info += $"Color output: {YesOrNo(colorPrint)}\r\n";
         info += $"Show program banner: {YesOrNo(showBanner)}\r\n";
         info += $"Library file: {libraryFilePath}\r\n";
+        info += $"Allow duplicate programs: {YesOrNo(allowDuplicates)}\r\n";
+
+        if(relFileExtension is not null) {
+            info += $"Extracted file extension: {relFileExtension}\r\n";
+        }
 
         PrintStatus(info);
     }
@@ -784,6 +800,51 @@ internal partial class Program
 
         if(verbosityLevel > 0) {
             PrintStatus($"Library file updated: {libraryFilePath}");
+        }
+
+        return ERR_SUCCESS;
+    }
+
+    private static int ExtractFromFile(string[] args)
+    {
+        if(args.Length == 0) {
+            PrintError("At least one program name is needed.");
+            return ERR_BAD_ARGUMENTS;
+        }
+
+        var errorCode = OpenLibraryFile();
+        if(errorCode != ERR_SUCCESS) {
+            return errorCode;
+        }
+
+        var libraryPrograms = RelocatableFileParser.Parse(libraryStream).ToList();
+        libraryStream.Close();
+
+        var programName = args[0];
+        var matchingProgram = libraryPrograms.FirstOrDefault(p => p.ProgramName.Equals(programName, StringComparison.OrdinalIgnoreCase));
+        if(matchingProgram == null) {
+            PrintError($"The library file doesn't contain a program named '{programName}'");
+            return ERR_NO_PROGRAM;
+        }
+
+        var programFilePath =
+            args.Length == 1 ?
+            Path.GetFullPath(Path.Combine(workingDir, Path.ChangeExtension(programName, relFileExtension ?? "REL"))) :
+            Path.GetFullPath(Path.Combine(workingDir, args[1]));
+
+        var programBytes = matchingProgram.Bytes.ToList();
+        programBytes.Add(END_OF_FILE_LINK_ITEM);
+
+        try {
+            File.WriteAllBytes(programFilePath, programBytes.ToArray());
+        }
+        catch(Exception ex) {
+            PrintError($"Error creating relocatable file: {ex.Message}");
+            return ERR_CANT_CREATE_FILE;
+        }
+
+        if(verbosityLevel > 0) {
+            PrintStatus($"Relocatable file created: {programFilePath}");
         }
 
         return ERR_SUCCESS;
