@@ -126,6 +126,7 @@ internal partial class Program
                 CMD_CREATE => CreateFile(remainingArgs),
                 CMD_ADD => AddToFile(remainingArgs),
                 CMD_SET => SetInFile(remainingArgs),
+                CMD_REMOVE => RemoveFromFile(remainingArgs),
                 //WIP
                 _ => throw new Exception($"Unexpected command code: {command}")
             };
@@ -713,6 +714,71 @@ internal partial class Program
 
         if(verbosityLevel > 1) {
             PrintStatus("");
+        }
+
+        if(verbosityLevel > 0) {
+            PrintStatus($"Library file updated: {libraryFilePath}");
+        }
+
+        return ERR_SUCCESS;
+    }
+
+    private static int RemoveFromFile(string[] args)
+    {
+        if(args.Length == 0) {
+            PrintError("At least one program name is needed.");
+            return ERR_BAD_ARGUMENTS;
+        }
+
+        var errorCode = OpenLibraryFile();
+        if(errorCode != ERR_SUCCESS) {
+            return errorCode;
+        }
+
+        var libraryPrograms = RelocatableFileParser.Parse(libraryStream).ToList();
+        libraryStream.Close();
+
+        var removed = false;
+
+        foreach(var programName in args) {
+            var existingProgram = libraryPrograms.FirstOrDefault(p => p.ProgramName.Equals(programName, StringComparison.OrdinalIgnoreCase));
+            if(existingProgram != null) {
+                libraryPrograms.Remove(existingProgram);
+                removed = true;
+            }
+        }
+
+        if(!removed) {
+            if(verbosityLevel > 0) {
+                PrintStatus($"No programs have been removed from the library file.");
+            }
+            return ERR_SUCCESS;
+        }
+        else if(libraryPrograms.Count == 0) {
+            try {
+                File.Delete(libraryFilePath);
+            }
+            catch(Exception ex) {
+                PrintError($"Error deleting library file: {ex.Message}");
+                return ERR_CANT_CREATE_FILE;
+            }
+
+            if(verbosityLevel > 0) {
+                PrintStatus($"Library file deleted: {libraryFilePath}");
+            }
+
+            return ERR_SUCCESS;
+        }
+
+        var allProgramBytes = libraryPrograms.Select(p => p.Bytes).SelectMany(x => x).ToList();
+        allProgramBytes.Add(0x9E); //Add "end of file" link item
+
+        try {
+            File.WriteAllBytes(libraryFilePath, allProgramBytes.ToArray());
+        }
+        catch(Exception ex) {
+            PrintError($"Error creating library file: {ex.Message}");
+            return ERR_CANT_CREATE_FILE;
         }
 
         if(verbosityLevel > 0) {
