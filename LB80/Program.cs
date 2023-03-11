@@ -9,6 +9,8 @@ namespace Konamiman.Nestor80.LB80;
 
 internal partial class Program
 {
+    const int END_OF_FILE_LINK_ITEM = 0x9E;
+
     const int ERR_SUCCESS = 0;
     const int ERR_BAD_ARGUMENTS = 1;
     const int ERR_CANT_OPEN_FILE = 2;
@@ -23,8 +25,7 @@ internal partial class Program
     const int CMD_REMOVE = 3;
     const int CMD_EXTRACT = 4;
     const int CMD_VIEW = 5;
-    const int CMD_DUMP = 6;    
-
+    const int CMD_DUMP = 6;
     static bool colorPrint;
     static bool showBanner;
     static string workingDir;
@@ -566,7 +567,7 @@ internal partial class Program
             }
         }
 
-        allProgramBytes.Add(0x9E); //Add "end of file" link item
+        allProgramBytes.Add(END_OF_FILE_LINK_ITEM);
 
         try {
             File.WriteAllBytes(libraryFilePath, allProgramBytes.ToArray());
@@ -630,7 +631,7 @@ internal partial class Program
         }
 
         var allProgramBytes = libraryPrograms.Concat(allPrograms).Select(p => p.Bytes).SelectMany(x => x).ToList();
-        allProgramBytes.Add(0x9E); //Add "end of file" link item
+        allProgramBytes.Add(END_OF_FILE_LINK_ITEM);
 
         try {
             File.WriteAllBytes(libraryFilePath, allProgramBytes.ToArray());
@@ -702,7 +703,7 @@ internal partial class Program
         }
 
         var allProgramBytes = libraryPrograms.Select(p => p.Bytes).SelectMany(x => x).ToList();
-        allProgramBytes.Add(0x9E); //Add "end of file" link item
+        allProgramBytes.Add(END_OF_FILE_LINK_ITEM);
 
         try {
             File.WriteAllBytes(libraryFilePath, allProgramBytes.ToArray());
@@ -764,14 +765,14 @@ internal partial class Program
             }
 
             if(verbosityLevel > 0) {
-                PrintStatus($"Library file deleted: {libraryFilePath}");
+                PrintStatus($"Library file updated: {libraryFilePath}");
             }
 
             return ERR_SUCCESS;
         }
 
         var allProgramBytes = libraryPrograms.Select(p => p.Bytes).SelectMany(x => x).ToList();
-        allProgramBytes.Add(0x9E); //Add "end of file" link item
+        allProgramBytes.Add(END_OF_FILE_LINK_ITEM);
 
         try {
             File.WriteAllBytes(libraryFilePath, allProgramBytes.ToArray());
