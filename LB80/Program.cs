@@ -1,8 +1,6 @@
 ﻿using Konamiman.Nestor80.Assembler;
 using Konamiman.Nestor80.Assembler.Relocatable;
 using Konamiman.Nestor80.Linker.Parsing;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 
 namespace Konamiman.Nestor80.LB80;
@@ -559,7 +557,7 @@ internal partial class Program
         foreach(var fileName in args) {
             var filePath = Path.GetFullPath(Path.Combine(workingDir, fileName));
             if(verbosityLevel > 1) {
-                PrintStatus($"Reading relocatable file: {filePath}");
+                WriteLine($"Reading relocatable file: {filePath}");
             }
             var openFileError = OpenLibraryFile(filePath);
             if(openFileError != ERR_SUCCESS) {
@@ -581,6 +579,11 @@ internal partial class Program
                 PrintError($"There are {firstDuplicate.Count()} programs named '{firstDuplicate.Key}' amongst the processed files (use --allow-duplicates if that's intentional)");
                 return ERR_DUPLICATES;
             }
+        }
+
+        if(verbosityLevel > 1) {
+            WriteLine();
+            WriteLine($"Program names: {(string.Join(", ", allProgramNames))}");
         }
 
         allProgramBytes.Add(END_OF_FILE_LINK_ITEM);
@@ -618,11 +621,11 @@ internal partial class Program
 
         var libraryPrograms = RelocatableFileParser.Parse(libraryStream);
         libraryStream.Close();
-        var allPrograms = new List<ParsedProgram>();
+        var allAddedPrograms = new List<ParsedProgram>();
 
         foreach(var relFilePath in args) {
             if(verbosityLevel > 1) {
-                PrintStatus($"Reading relocatable file: {relFilePath}");
+                WriteLine($"Reading relocatable file: {relFilePath}");
             }
 
             errorCode = OpenLibraryFile(relFilePath);
@@ -633,11 +636,11 @@ internal partial class Program
             var filePrograms = RelocatableFileParser.Parse(libraryStream);
             libraryStream.Close();
 
-            allPrograms.AddRange(filePrograms);
+            allAddedPrograms.AddRange(filePrograms);
         }
 
         var distinctLibraryProgramNames = libraryPrograms.Select(p => p.ProgramName).Distinct(StringComparer.OrdinalIgnoreCase);
-        var allProgramNames = distinctLibraryProgramNames.Concat(allPrograms.Select(p => p.ProgramName)).ToArray();
+        var allProgramNames = distinctLibraryProgramNames.Concat(allAddedPrograms.Select(p => p.ProgramName)).ToArray();
         if(!allowDuplicates) {
             var firstDuplicate = allProgramNames.GroupBy(n => n, StringComparer.OrdinalIgnoreCase).Where(p => p.Count() > 1).FirstOrDefault();
             if(firstDuplicate != null) {
@@ -646,7 +649,12 @@ internal partial class Program
             }
         }
 
-        var allProgramBytes = libraryPrograms.Concat(allPrograms).Select(p => p.Bytes).SelectMany(x => x).ToList();
+        if(verbosityLevel > 1) {
+            WriteLine();
+            WriteLine($"Added Program names: {(string.Join(", ", allAddedPrograms.Select(p => p.ProgramName).ToArray()))}");
+        }
+
+        var allProgramBytes = libraryPrograms.Concat(allAddedPrograms).Select(p => p.Bytes).SelectMany(x => x).ToList();
         allProgramBytes.Add(END_OF_FILE_LINK_ITEM);
 
         try {
@@ -686,7 +694,7 @@ internal partial class Program
 
         foreach(var relFilePath in args) {
             if(verbosityLevel > 1) {
-                PrintStatus($"Reading relocatable file: {relFilePath}");
+                WriteLine($"Reading relocatable file: {relFilePath}");
             }
 
             errorCode = OpenLibraryFile(relFilePath);
@@ -701,6 +709,8 @@ internal partial class Program
         }
 
         var processedProgramNames = new List<string>();
+        var addedProgramNames = new List<string>();
+        var replacedProgramNames = new List<string>();
 
         foreach(var program in programsToSet) {
             if(processedProgramNames.Contains(program.ProgramName, StringComparer.OrdinalIgnoreCase)) {
@@ -710,12 +720,24 @@ internal partial class Program
             var matchingLibraryProgram = libraryPrograms.FirstOrDefault(p => string.Equals(p.ProgramName, program.ProgramName, StringComparison.OrdinalIgnoreCase));
             if(matchingLibraryProgram == null) {
                 libraryPrograms.Add(program);
+                addedProgramNames.Add(program.ProgramName);
             }
             else {
                 matchingLibraryProgram.Bytes = program.Bytes;
+                replacedProgramNames.Add(program.ProgramName);
             }
 
             processedProgramNames.Add(program.ProgramName);
+        }
+
+        if(verbosityLevel > 1) {
+            WriteLine();
+            if(addedProgramNames.Count > 0) {
+                WriteLine($"Added programs: {string.Join(", ", addedProgramNames.ToArray())}");
+            }
+            if(replacedProgramNames.Count > 0) {
+                WriteLine($"Replaced programs: {string.Join(", ", replacedProgramNames.ToArray())}");
+            }
         }
 
         var allProgramBytes = libraryPrograms.Select(p => p.Bytes).SelectMany(x => x).ToList();
@@ -755,17 +777,17 @@ internal partial class Program
         var libraryPrograms = RelocatableFileParser.Parse(libraryStream).ToList();
         libraryStream.Close();
 
-        var removed = false;
+        var removedProgramNames = new List<string>();
 
         foreach(var programName in args) {
             var existingProgram = libraryPrograms.FirstOrDefault(p => p.ProgramName.Equals(programName, StringComparison.OrdinalIgnoreCase));
             if(existingProgram != null) {
                 libraryPrograms.Remove(existingProgram);
-                removed = true;
+                removedProgramNames.Add(existingProgram.ProgramName);
             }
         }
 
-        if(!removed) {
+        if(removedProgramNames.Count == 0) {
             if(verbosityLevel > 0) {
                 PrintStatus($"No programs have been removed from the library file.");
             }
@@ -781,10 +803,15 @@ internal partial class Program
             }
 
             if(verbosityLevel > 0) {
-                PrintStatus($"Library file updated: {libraryFilePath}");
+                PrintStatus($"Library file deleted: {libraryFilePath}");
             }
 
             return ERR_SUCCESS;
+        }
+
+        if(verbosityLevel > 1) {
+            WriteLine($"Removed programs: {string.Join(", ", removedProgramNames)}");
+            WriteLine();
         }
 
         var allProgramBytes = libraryPrograms.Select(p => p.Bytes).SelectMany(x => x).ToList();
