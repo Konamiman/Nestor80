@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Konamiman.Nestor80.LK80</RootNamespace>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Version>$(VersionPrefix)</Version>
+    <AssemblyVersion>1.0</AssemblyVersion>    
   </PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -15,6 +18,12 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<LangVersion>preview</LangVersion>
 	</PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Release\**" />
+    <EmbeddedResource Remove="Release\**" />
+    <None Remove="Release\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Linker\Linker.csproj" />

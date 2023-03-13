@@ -5,7 +5,9 @@ VisualStudioVersion = 17.2.32505.173
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{49C74F4D-1B8E-41C6-A973-7123185EB696}"
 	ProjectSection(SolutionItems) = preProject
+		build.sh = build.sh
 		README.md = README.md
+		zip.sh = zip.sh
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Assembler", "Assembler\Assembler.csproj", "{789D3C4E-D0A7-48F7-8C42-28DF7492705E}"
@@ -32,7 +34,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Linker", "Linker\Linker.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LK80", "LK80\LK80.csproj", "{0B4848A6-CACE-473C-B5EA-8127DC4A8621}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LB80", "LB80\LB80.csproj", "{40090AE2-7F1F-4D9B-A8B5-9BB959B84950}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LB80", "LB80\LB80.csproj", "{40090AE2-7F1F-4D9B-A8B5-9BB959B84950}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
