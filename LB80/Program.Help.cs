@@ -65,7 +65,7 @@ internal partial class Program
         Example: L80 create MATH.LIB SUM.REL SUBSTR.REL
 
     
-     LB80 [<arguments>] a|add <library file> <relocatable file> [<relocatable file>...]
+    LB80 [<arguments>] a|add <library file> <relocatable file> [<relocatable file>...]
 
         Modifies an existing library file by appending additional programs to it.
         As in the case of "create" the programs are appended to the new library file 
