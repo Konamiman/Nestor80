@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Build the programs on all the publish profiles for all runtimes,
 # unless specific programs/profiles/runtimes are specified via environment variables
@@ -51,13 +51,11 @@ for PROGRAM in $PROGRAMS; do
 					SELF_CONTAINED=false
 				fi
 
-				RUNTIME_FILENAME=${RUNTIME//-/_}
-
 				banner "$PROGRAM $BUILD_TYPE $RUNTIME"
 
 				dotnet publish $PROGRAM/$PROGRAM.csproj /p:PublishProtocol=FileSystem /p:DebugType=None -c Release /p:TargetFramework=net6.0 \
 				  /p:PublishSingleFile=true --self-contained $SELF_CONTAINED /p:RuntimeIdentifier=$RUNTIME \
-				  -o $PROGRAM/Release/$BUILD_TYPE/$RUNTIME_FILENAME
+				  -o $PROGRAM/Release/$BUILD_TYPE/$RUNTIME
 			done
 		fi
     done
