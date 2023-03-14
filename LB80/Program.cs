@@ -207,7 +207,7 @@ internal partial class Program
             else if(arg is "-sb" or "--show-banner" or "-nsb" or "--no-show-banner" or "-nea" or "--no-env-args") {
                 //Already handled
             }
-            else if(arg is "-v" or "--version" or "-h" or "--help" or "--list-encodings") {
+            else if(arg is "-v" or "--version" or "-h" or "--help") {
                 return $"The {arg} argument must be the first one";
             }
             else if(arg[0] is '-') {

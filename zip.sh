@@ -29,7 +29,7 @@ for APPDIR in N80 LK80 LB80; do
 	mkdir -p zips
 	rm -rf zips/*
 
-	for DIR in $(find * -type d ! -path "zips" ! -path "FrameworkDependant" ! -path "SelfContained"); do
+	for DIR in $(find * -type d ! -path "zips" ! -path "FrameworkDependant" ! -path "SelfContained" -path "Portable"); do
 		banner $DIR
 		FILE=zips/${APPDIR}_${version}_$(echo $DIR | tr '/' '_').zip
 		zip -r -j $FILE $DIR
