@@ -236,7 +236,14 @@ namespace Konamiman.Nestor80.Assembler
                         return null;
                     }
 
-                    operationResult = uop.Operate(poppedAddress, null);
+                    operationResult = null;
+                    try {
+                        operationResult = uop.Operate(poppedAddress, null);
+                    }
+                    catch(Exception ex) {
+                        Throw($"Error when applying operator {uop}: {ex.Message}");
+                    }
+
                     stack.Push(operationResult);
                 }
                 else if(item is BinaryOperator bop) {
@@ -266,7 +273,14 @@ namespace Konamiman.Nestor80.Assembler
                         return null;
                     }
 
+                    operationResult = null;
+                    try { 
                     operationResult = bop.Operate(poppedAddress1, poppedAddress2);
+                    }
+                    catch(Exception ex) {
+                        Throw($"Error when applying operator {bop}: {ex.Message}");
+                    }
+
                     stack.Push(operationResult);
                 }
                 else {
