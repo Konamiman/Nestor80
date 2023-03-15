@@ -338,6 +338,8 @@ The header is defined in this way so that it will be identified as an empty prog
 
 Thus if the file starts with the header then it follows the extended relocatable file format, otherwise it can be assumed that it follows the old MACRO-80 and LINK-80 compatible format.
 
+Note also that [in library files the header is per program, not per file](#file-headers-in-library-files).
+
 
 ### Extended symbol bytes field
 
@@ -401,3 +403,28 @@ The extended relocatable file format defines the following additional [arithmeti
 * 24: Bitwise AND
 * 25: Bitwise OR
 * 26: Bitwise XOR
+
+
+### File headers in library files
+
+A [library file](#library-files) is a concatenation of relocatable programs, and thus there is no special format defined for it. However it's important to be aware of the fact that when using the extended relocatable file format, the [file header](#file-header) appears once _per program_, and **not** _per file_. A library file can contain a mix of programs conforming to the old LINK-80 format and programs conforming to the extended format define here; each program in the extended format will have its own header.
+
+As an example, this is the outline of a library file containing three programs, where only the first and the last one conform to the extended format:
+
+```
+extended file format header
+"program name" link item
+...
+"end of program" link item
+
+"program name" link item
+...
+"end of program" link item
+
+extended file format header
+"program name" link item
+...
+"end of program" link item
+
+"end of file" link item
+```
