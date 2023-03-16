@@ -153,7 +153,7 @@ public class RelocatableFileParser
 
             linkItem.SymbolBytes = symbolBytes;
             try {
-                linkItem.Symbol = (extendedFormat ? Encoding.ASCII : Encoding.UTF8).GetString(symbolBytes);
+                linkItem.Symbol = (extendedFormat ? Encoding.UTF8 : Encoding.ASCII).GetString(symbolBytes);
             }
             catch {
                 // Symbol bytes don't actually represent a valid string, so leave symbol as null
