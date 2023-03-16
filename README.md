@@ -2,6 +2,8 @@
 
 Nestor80 is [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) and [R800](https://en.wikipedia.org/wiki/R800_(CPU)) assembler written in C# and almost fully compatible with the [Microsoft MACRO-80](https://en.wikipedia.org/wiki/Microsoft_MACRO-80) assembler.
 
+The project also includes Linkstor80 and Libstor80, which are the respective replacements for the LINK-80 and LIB-80 tools that were part of the MACRO-80 package and are relevant when [writing relocatable Z80 code](docs/WritingRelocatableCode.md).
+
 ## Features highlight
 
 * **Multiplatform**. Runs on any machine/OS that supports [the .NET 6 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0); of course this includes Windows, Linux and macOS.
@@ -24,8 +26,6 @@ Nestor80 is [Z80](https://en.wikipedia.org/wiki/Zilog_Z80) and [R800](https://en
 Ñoñería: ;This is a valid symbol
 このラベルは誇張されていますがNestor80がいかに強力であるかを示しています equ 34 ;This too!
 ```
-
-  _When generating relocatable code, public and external symbols are still limited to ASCII-only and up to 6 characters in length, this is a limitation of [the relocatable file format used by LINK-80](docs/RelocatableFileFormat.md)._
 
 * **Modern string handling**: it's possible to choose the encoding to be used when converting text strings (supplied as arguments to `DEFB` instructions) to sequences of bytes, and most of the [C# string escape sequences](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/strings/#string-escape-sequences) are allowed in strings:
 
@@ -104,6 +104,8 @@ if(!result.HasErrors) {
 }
 ```
 
+The `Linker.dll` library file is also available to write code to link relocatable code.
+
 ## Getting started
 
 1. Head to [the releases page](https://github.com/konamiman/Nestor80/releases) and download the appropriate Nestor80 variant for your system. Note that:
@@ -177,20 +179,21 @@ If you want to build Nestor80 itself you have two options:
 
 1. Use [Visual Studio](https://visualstudio.microsoft.com/) (2022 or newer)
 
-Open the Nestor80 solution, right click in the N80 project, click "Publish" in the menu, select the publish profile for the desired variant and click the "Publish" button.
+Open the Nestor80 solution, right click in the N80, LK80 or LB80 project, and click "Build". If you want to build for a platform other than Windows you'll need to configure the target platform of the projects, see: [How to: Configure projects to target platforms](https://learn.microsoft.com/en-us/visualstudio/ide/how-to-configure-projects-to-target-platforms?view=vs-2022).
 
 2. Use a dedicated script
 
-If you don't have Visual Studio you'll need [the .NET 6 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) to build Nestor80 (installing the SDK gets you the runtime too).
+If you don't have Visual Studio (or you prefer a more automated option) you'll need [the .NET 6 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) to build Nestor80 (installing the SDK gets you the runtime too).
 
-Open a command prompt, go to the `N80` directory and run the `build.sh` script. Running it without arguments will build all the variants;
-to build just one pass its name (the name of the corresponding `.pubxml` file in the `N80\Properties\PublishProfiles` directory) as an argument,
-e.g. `./build.sh FrameworkDependant__linux_x64`.
+Open a command prompt, go to the root directory of the project and run the `build.sh` script. Running it without arguments will build all the variants, which will be located in the `N80/Release`, `LK80/Release` and `LB80/Release` directories; you can choose which tools and which variants are built by using environment variables, for example:
 
-In Linux and macOS you can run the script directly, in Windows 10 and 11 you need to have [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) installed
-and run it like this: `wsl ./build.sh`
+```
+RUNTIMES=linux-x64 PROGRAMS=N80 BUILD_TYPES=FrameworkDependant ./build.sh
+```
 
-In call cases Nestor80 will be built in the `N80/Release` directory.
+See the `build.sh` script itself for the available options.
+
+In Linux and macOS you can run the script directly, in Windows 10 and 11 you need to have [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) installed and run it like this: `wsl ./build.sh`
 
 
 ## Bugs! 🐞
