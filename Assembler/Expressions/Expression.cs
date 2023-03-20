@@ -92,6 +92,11 @@ namespace Konamiman.Nestor80.Assembler
         public static Func<string, string> ModularizeSymbolName { get; set; } = name => name;
 
         /// <summary>
+        /// A flag indicating if compatibility with LINK-80 must be preserved.
+        /// </summary>
+        public static bool Link80Compatibility { get; set; } = false;
+
+        /// <summary>
         /// The parts that compose the expression, will be in postfix format
         /// after <see cref="Postfixize"/> is executed.
         /// </summary>

@@ -384,7 +384,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else {
                         AddZero();
-                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value });
+                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value, CommonName = value.CommonBlockName });
                         if(!isByte) index++;
                     }
                 }
@@ -935,7 +935,7 @@ namespace Konamiman.Nestor80.Assembler
                 effectiveLineLength = walker.SourceLine.Length;
             }
 
-            var match = ProgramNameRegex.Match(rawName);
+            var match = programNameRegex.Match(rawName);
             if(!match.Success) {
                 AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the program name must be in the format ('NAME')");
                 return new ProgramNameLine() { EffectiveLineLength = effectiveLineLength };
@@ -943,7 +943,12 @@ namespace Konamiman.Nestor80.Assembler
 
             var name = match.Groups["name"].Value;
 
-            programName = (name.Length > MaxEffectiveExternalNameLength ? name[..MaxEffectiveExternalNameLength] : name).ToUpper();
+            if(link80Compatibility) {
+                programName = (name.Length > MaxEffectiveExternalNameLength ? name[..MaxEffectiveExternalNameLength] : name).ToUpper();
+            }
+            else {
+                programName = name;
+            }
             programNameInstructionFound = true;
 
             return new ProgramNameLine() { Name = rawName, EffectiveLineLength = effectiveLineLength };
@@ -955,7 +960,12 @@ namespace Konamiman.Nestor80.Assembler
 
             if(!programNameInstructionFound) {
                 var firstWord = title.Split(' ', '\t')[0];
-                programName = firstWord.Length > MaxEffectiveExternalNameLength ? firstWord[..MaxEffectiveExternalNameLength] : firstWord;
+                if(link80Compatibility) {
+                    programName = firstWord.Length > MaxEffectiveExternalNameLength ? firstWord[..MaxEffectiveExternalNameLength] : firstWord;
+                }
+                else {
+                    programName = firstWord;
+                }
             }
 
             return new SetListingTitleLine() { Title = title, EffectiveLineLength = walker.SourceLine.Length };
@@ -1070,7 +1080,7 @@ namespace Konamiman.Nestor80.Assembler
                 else if(!externalSymbolRegex.IsMatch(filename)) {
                     AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: {filename} is not a valid linker request symbol name, it contains invalid characters");
                 }
-                else if(filename.Length > MaxEffectiveRequestFilenameLength) {
+                else if(link80Compatibility && filename.Length > MaxEffectiveRequestFilenameLength) {
                     var truncated = filename[..MaxEffectiveRequestFilenameLength].ToUpper();
                     AddError(AssemblyErrorCode.TruncatedRequestFilename, $"{opcode.ToUpper()}: {filename} is too long, it will be truncated to {truncated}");
                     filenames.Add(truncated);

@@ -11,6 +11,8 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
     /// </remarks>
     internal class SymbolInfo
     {
+        public static bool Link80Compatibility { get; set; }
+
         private SymbolType _Type;
         public SymbolType Type
         {
@@ -54,7 +56,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         /// <summary>
         /// If the symbol is declared as public its effective name (the name that will be used to refer to the symbol
-        /// in the resulting relocatable file) is the original name truncated to 6 characters.
+        /// in the resulting relocatable file) is the original name truncated to 6 characters in LINK-80 compatibility name.
         /// This is a limitation of the LINK-80 relocatable file format.
         /// </summary>
         public string EffectiveName { get; private set; }
@@ -77,10 +79,10 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         private void SetEffectiveName()
         {
-            if ((IsExternal || IsPublic) && Name.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength)
+            if (Link80Compatibility && (IsExternal || IsPublic) && Name.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength)
                 EffectiveName = Name[..AssemblySourceProcessor.MaxEffectiveExternalNameLength].ToUpper();
             else
-                EffectiveName = Name.ToUpper();
+                EffectiveName = Name;
         }
 
         private Address _Value;

@@ -7,6 +7,9 @@
     {
         StoreAsByte = 1,
         StoreAsWord = 2,
+
+        First = 3,
+
         High = 3,
         Low = 4,
         Not = 5,
@@ -15,6 +18,21 @@
         Plus = 8,
         Multiply = 9,
         Divide = 10,
-        Mod = 11
+        Mod = 11,
+
+        //Extended relocatable file format extra operators:
+        ShiftRight = 16,
+        ShiftLeft = 17,
+        Equals = 18,
+        NotEquals = 19,
+        LessThan = 20,
+        LessThanOrEqual = 21,
+        GreaterThan = 22,
+        GreaterThanOrEqual = 23,
+        And = 24,
+        Or = 25,
+        Xor = 26,
+
+        Last = 26
     }
 }

@@ -10,7 +10,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "/";
 
-        public override byte? ExtendedLinkItemType => 10;
+        public override byte ExtendedLinkItemType => 10;
 
         protected override Address OperateCore(Address value1, Address value2)
         {
@@ -24,7 +24,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
             unchecked
             {
-                return new Address(value1.Type, (ushort)(value1.Value / value2.Value));
+                return new Address(value1.Type, (ushort)(value1.Value / value2.Value), value1.CommonBlockName);
             }
         }
     }

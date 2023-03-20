@@ -2,10 +2,14 @@
 
 Nestor80 allows to write [absolute and relocatable code](LanguageReference.md#absolute-and-relocatable-code). This document explains how the process of writing and linking relocatable code works.
 
-Writing relocatable code involves using the LINK-80 tool and optionally the LIB-80 tool additionally to Nestor80, thus you might also want to take a look at:
+Writing relocatable code involves using the Linkstor80 tool and optionally also the Libstor80 tool additionally to Nestor80 (all three are part of the Nestor80 project). Another option is to use LINK-80 and LIB-80 instead, which are part of the original MACRO-80 package; in that case you might also want to take a look at:
 
 * [The original MACRO-80, LINK-80 and LIB-80 user manual](MACRO-80.txt)
 * [The M80dotNet project](https://github.com/konamiman/M80dotNet), a convenient way to use LINK-80 and LIB-80 in modern machines (same system requirements as Nestor80).
+
+You'll need to pass the `--link-80-compatibility` argument to Nestor80 when generating relocatable files if you want to use LINK-80 and LIB-80 instead of Linkstor80 and Libstor80 for the linking process. This argument instructs Nestor80 to generate relocatable files using the old LINK-80 compatible relocatable file format, see ["Relocatable file format"](RelocatableFileFormat.md) for more details. The rest of this document assumes that you will use Linkstor80 and Libstor80.
+
+This document doesn't detail all the arguments available for Linkstor80 and Libstor80, you can run the tools with a `-h` argument to get comprehensive help on the usage of these tools.
 
 This document uses [the same conventions as the Nestor80 language reference guide](LanguageReference.md#document-conventions).
 
@@ -44,11 +48,9 @@ All the code in a relocatable file lives in a _segment_ or logical memory area. 
 
 During the assembly process there's always one of these segments that is considered the _active segment_ (it's the code segment at the beginning of the process) which is where the assembled code and data is assigned. The active segment can be changed with the [`ASEG`](LanguageReference.md#aseg-), [`CSEG`](LanguageReference.md#cseg-), [`DSEG`](LanguageReference.md#dseg-) and [`COMMON`](LanguageReference.md#common-) instructions.
 
+At linking time all the code for each segment in each program is combined together; thus all the content intended for the code segment is combined, the same for the data segment, and the same for each COMMON block. COMMON blocks allow sharing code and data between different programs: while the code and data segments of each program will be linked separately, common blocks of the same name will share the same memory area in the final linked program, regardless of which relocatable program defines them.
+
 The absolute segment isn't actually relocatable: it's used for cases in which code must be assembled at a fixed memory address, bypassing the relocation process performed at linking time.
-
-💡 COMMON blocks exist for compatibility with MACRO-80, which in turn pretty much supported them for compatibility with the (at the time) popular languages Cobol and Fortran. For Z80 assembly code you'll usually only use the code and data segments.
-
-At linking time all the code for each segment in each program is combined together; thus all the content intended for the code segment is combined, the same for the data segment, and the same for each COMMON block.
 
 
 ## A simple example
@@ -114,13 +116,13 @@ Interesting things to note:
 * The `.CONOUT` and `DOS` constants disappear since they are local symbols (not defined as public), and their usages get replaced with their absolute values (since they are not relocatable address references).
 * The `PRINT` and `HELLO` labels also disappear because they are non-public symbols, but this time they get replaced by the relative values resulting from assuming that the code and data segment, respectively, start at address 0 (if that program was assembled as absolute code with `ORG 0`, the `PRINT` label would have the value 0007h).
 
-Now it's linking time. We run LINK-80 like this:
+Now it's linking time. We run Linkstor80 like this:
 
 ```
-L80 /p:0100,/d:0120,SIMPLE,SIMPLE/N/E
+LK80 --code 0100h --data 0120h --output-file SIMPLE.COM SIMPLE.REL
 ```
 
-You can refer to [the original MACRO-80, LINK-80 and LIB-80 user manual](MACRO-80.txt) for the command line syntax, but what this command means is "open SIMPLE.REL and link it assuming that code segment starts at address 0100h and data segment starts at address 0120h".
+You can run Linkstor80 with the `-h` argument for the full command line syntax, but what this command means is "open SIMPLE.REL and link it assuming that code segment starts at address 0100h and data segment starts at address 0120h".
 
 This will generate a `SIMPLE.COM` file that is equivalent to the following absolute program:
 
@@ -150,9 +152,9 @@ db 48h,65h,6Ch,6Ch,6Fh,21h,00h
 Notice how:
 
 * References to `PRINT` get now the absolute value 0107h (start of code segment + relative symbol value) and similarly, references to `HELLO` get the absolute value 0120h.
-* There's a gap between the end of the code segment content and the start of the data segment, the linker fills it with zeros.
+* There's a gap between the end of the code segment content and the start of the data segment, the linker fills it with zeros by default (you can specify a different byte value to use for filling gaps by passing the `--fill` argument to Linkstor80).
 
-⚠ An annoying limitation of LINK-80 is that it assumes that the linked program will be a CP/M executable and thus the starting memory address for the generated absolute program file is fixed to 0100h (so e.g. if you had passed `/p:0105` to LINK-80 in the example above, it would have appended 5 zero bytes of the start of the file) and can't be changed. To overcome this limitation you can use the `/X` switch to tell LINK-80 to generate an [Intel HEX file](https://en.wikipedia.org/wiki/Intel_HEX) instead of a binary file, but then you need an extra tool like [hex2bin](https://github.com/Keidan/hex2bin) to convert it to the final binary file.
+⚠ For compatiblity with LINK-80 the initial code address if no `--code` argument is passed is 0103h.
 
 
 ### Using the absolute segment
@@ -164,7 +166,7 @@ aseg
 org 0120h
 ```
 
-Then assemble it with `N80 SIMPLE.ASM`, but the linker command line is `L80 /p:0100,SIMPLE,SIMPLE/N/E` this time (since the data segment isn't being used now). The generated `SIMPLE.COM` file is equivalent to the one from the previous example.
+Then assemble it with `N80 SIMPLE.ASM`, but the linker command line is `LK80 --code 0100h --output-file SIMPLE.COM SIMPLE.REL` this time (since the data segment isn't being used now). The generated `SIMPLE.COM` file is equivalent to the one from the previous example.
 
 
 ## Example with public and external symbols
@@ -218,17 +220,17 @@ We assemble it with `N80 PROGR.ASM`. This time the generated `PROG.REL` file get
 With both relocatable files at hand we trigger the linking process with:
 
 ```
-L80 /p:0100,/d:0120,PROG,PRINT,PROG/N/E
+LK80 --code 0100h --data 0120h --output-file PROG.COM PRINT.REL PROG.REL
 ```
 
-LINK-80 "connects the dots" and matches the public `PRINT` symbol exposed by `PRINT.REL` with the external reference of the same name in `PROG.REL`. The final program file generated, `PROG.COM`, is identical to the `SIMPLE.COM` of the first example.
+Linkstor80 "connects the dots" and matches the public `PRINT` symbol exposed by `PRINT.REL` with the external reference of the same name in `PROG.REL`. The final program file generated, `PROG.COM`, is identical to the `SIMPLE.COM` of the first example.
 
 
 ## Segment start addresses with multiple programs
 
 You may have noticed something that in principle seems weird regarding how relocatable addresses are linked. In the previous example, both the `PRINT` label from `PRINT.ASM` and the `PROGRAM` label from `PROG.ASM` refer to "code segment relative 0000h" address in their respective relocatable files. Then how can the linking process work? Wouldn't both resolve to address 0100h and thus one would overwrite the other?
 
-The answer is that what the linker actually does is to treat the relocatable addresses in each of the involved programs (each of the `.REL` files passed to the LINK-80 command line) as **relative to the final start address of each program**. This will be the same as the address passed with `/p` or `/d` to LINK-80 only for the first of the programs.
+The answer is that what the linker actually does is to treat the relocatable addresses in each of the involved programs (each of the `.REL` files passed to the LINK-80 command line) as **relative to the final start address of each program**. This will be the same as the address passed with `--code` or `--data` to LINK-80 only for the first of the programs.
 
 Let's see a simple example that also illustrates the fact that the `ORG` instruction refers to relative addresses, not absolute addresses, when used in relocatable files; for simplicty the example involves only the code segment this time but the same concept applies to the data segment as well. Assume we have these two files:
 
@@ -261,7 +263,7 @@ PROGRAM:
   ret
 ```
 
-When both programs are assembled and linked with `L80 /p:0100,PROG,SUM,PROG/N/E`, the resulting `PROG.COM` file is equivalent to this:
+When both programs are assembled and linked with `LK80 --code 0100h --output-file PROG.COM PROG.REL SUM.REL`, the resulting `PROG.COM` file is equivalent to this:
 
 ```
 org 100h
@@ -284,63 +286,180 @@ ret
 `PROGRAM` gets resolved to address 0110h in the final program, and given that the size of the code in `PROG.ASM` is 8 bytes, `SUM` gets resolved to 0128h (the base address for the code segment is 0118h when the linker starts procesing `SUM.REL`).
 
 
-## Defaults for code and data segment locations
+## Rules for code and data organization in the linked program
 
-Both the `/p` and `/d` LINK-80 command line switches are optional. This is how the initial addresses of the code and data segments are decided when one or both of these switches are missing:
+We have seen how the linker processes all the passed relocatable files and converts the contained relocatable programs into absolute code at different parts of the memory used by the final binary program, but what are the exact rules followed to decide where each piece goes?
 
-* No `/p` and no `/d`: data segment starts at 0103h, code segment is placed immediately _after_ the data segment.
-* Only `/d` present: code segment starts at 0103h.
-* Only `/p` present: data segment is placed immediately _before_ the code segment.
+Linkstor80 has three working modes:
 
-In the first two cases the actual content starts at 0103h so that a jump to the actual program start address can be put at 0100h (the entry point address of CP/M programs).
+* **Data before code**. In this mode the programs are placed in memory as follows: first the data segment, right after the last address used by the previous program or at the address provided by a preceding `--code` argument; and immediately following, the code segment. This is the initial mode when Linkstor80 starts.
 
-💡 Worth noting too that `/p` and `/d` can be used multiple times in one single linking process. For example `/p:0100,PROG1,PROG2,/p:4000h,PROG3` will link `PROG1.REL` at address 0100h, `PROG2.REL` immediately after that, and `PROG3.REL` at address 4000h (the space between the end of `PROG2` and the start of `PROG3` will be filled with zeros).
+* **Code before data**. Same as "Data before code" but in the reverse order: the code segment comes before the data segment.
+
+* **Separate code and data**. The code segment of the next processed program is placed right after the end of the code segment of the previously processed program, or at the address provided by a preceding `--code` argument; the data segment of the next processed program is placed right after the end of the data segment of the previously processed program, or at the address provided by a preceding `--data` argument.
+
+Beware: in "Data before code" mode, `--code` arrguments specify the starting address of the next program's _data_ segment, **not** the next program's _code_ segment; this might seem counterintuitive at first.
+
+"Data before code" and "Code before data" modes can be switched back and forth with the `--data-before-code` and `--code-before-data` arguments in the linking sequence, respectively. The "Separate code and data" mode is entered by specifying a `--data` argument. Once the "Separate code and data" mode is entered it is **not** possible to go back to any of the other two modes. This behavior is compatible with LINK-80 (except that LINK-80 doesn't have the "Code before data" mode).
+
+Let's go through an example. Create the following program in a file named `PROG1.ASM`:
+
+```
+cseg
+db "!PROG_1_CODE!"
+
+dseg
+db "?PROG_1_DATA?"
+```
+
+Assemble it with `N80 PROG1.ASM` to get a relocatable file named `PROG1.REL`. Then repeat this process with other six similar programs, `PROG2.ASM` to `PROG7.ASM`, in which the `_1_` in the code is changed to the appropriate number.
+
+Then trigger the link process as follows:
+
+```
+LK80 --output-file PROG.BIN --code 0 PROG1.REL PROG2.REL --code 0040h PROG3.REL \
+     --code-before-data PROG4.REL --data-before-code PROG5.REL \
+     --code 0090h --data 00B0h PROG6.REL PROG7.REL
+```
+
+The resulting binary file, `PROG.BIN`, will have the following contents (dots represent zero bytes):
+
+```
+0000 ?PROG_1_DATA?!PR
+0010 OG_1_CODE!?PROG_
+0020 2_DATA?!PROG_2_C
+0030 ODE!............
+0040 ?PROG_3_DATA?!PR
+0050 OG_3_CODE!!PROG_
+0060 4_CODE!?PROG_4_D
+0070 ATA??PROG_5_DATA
+0080 ?!PROG_5_CODE!..
+0090 !PROG_6_CODE!!PR
+00A0 OG_7_CODE!......
+00B0 ?PROG_6_DATA??PR
+00C0 OG_7_DATA?
+```
+
+Notice how:
+
+* For `PROG1` and `PROG2` the mode is "Data before code" and thus data segment is placed before code segment for each program.
+* For `PROG3` we specify an explicit start address with `--code`, thus bypassing the default "right after the previous program" rule.
+* For `PROG4` we switch to "Code before data" mode, then for `PROG5` we go back to "Data before code" mode.
+* For `PROG6` we switch to "Separate code and data mode", thus the code segments of `PROG6` and `PROG7` go together, and the same for their data segments.
+
+The default start code address used by Linkstor80 if no `--code` argument is specified is 0103h for compatibility with LINK-80 (a jump instruction is supposed to go at address 0100h, the entry point address of CP/M programs).
 
 
 ## Location of COMMON blocks
 
-You will have noticed that there's no LINK-80 command line switch to indicate the location of COMMON blocks. These are always placed before the data segment, in the order in which they appear in the source code. For example:
+When using common blocks the following rules apply:
+
+* The first appearance of a common block with a given name in a program fixes the address in which the block will be located. This address is right before the data segment of that program.
+* The next time the common block with the same name appears in a program, it's linked in the same fixed memory area (`ORG` statements need to be used to prevent data overlap between programs).
+* If a common block of a given name is defined in multiple programs, the first definition must be the largest one.
+
+Let's see an example. Create the following programs:
 
 ```
-;COMMONS.ASM
-
-dseg
-
-db 7,8,9
+;COMMONS1.ASM
 
 common /FOO/
+db "-PROG_1_FOO-"
+ds 20 ;To turn this instance of the block into the largest one
 
-db 1,2,3
+cseg
+db "!PROG_1_CODE!"
 
-common /BAR/
-
-db 4,5,6
+dseg
+db "?PROG_1_DATA?"
 ```
 
-When linked with `L80 /d:100,COMMONS,COMMONS/N/E` this will generate a `COMMONS.COM` file that contains the byte sequence 1,2,3,4,5,6,7,8,9.
+```
+;COMMONS2.ASM
+
+common /FOO/
+org 10h ;To avoid overlap with the data from the block in COMMONS1
+db "-PROG_2_FOO-"
+
+common /BAR/
+db "-PROG_2_BAR-"
+ds 20 ;To turn this instance of the block into the largest one
+
+cseg
+db "!PROG_2_CODE!"
+
+dseg
+db "?PROG_2_DATA?"
+```
+
+```
+;COMMONS3.ASM
+
+common /BAR/
+org 10h ;To avoid overlap with the data from the block in COMMONS2
+db "-PROG_3_BAR-"
+
+common /FIZZ/
+db "-PROG_3_FIZZ-"
+
+cseg
+db "!PROG_3_CODE!"
+
+dseg
+db "?PROG_3_DATA?"
+
+```
+
+Assemble these with `N80 COMMONS1.ASM` etc, then link with:
+
+```
+LK80 --output-file COMMONS.BIN --code 0 COMMONS1.REL COMMONS2.REL --code-before-data --code 0080h COMMONS3.REL
+```
+
+This is how the resulting `COMMONS.BIN` file will look like (dots represent zero bytes):
+
+```
+0000 -PROG_1_FOO-....
+0010 -PROG_2_FOO-....
+0020 ?PROG_1_DATA?!PR
+0030 OG_1_CODE!-PROG_
+0040 2_BAR-....-PROG_
+0050 3_BAR-....?PROG_
+0060 2_DATA?!PROG_2_C
+0070 ODE!............
+0080 !PROG_3_CODE!-PR
+0090 OG_3_FIZZ-?PROG_
+00A0 3_DATA?
+```
+
+Notice how:
+
+* Common blocks of the same name are combined together, even though they are defined through multiple programs.
+* The first appearance of a common block fixes its address.
+* The fixed address of a common block is right before the data segment of the program in which it first appears.
 
 
 ## Combining programs into libraries
 
-The LIB-80 tool can be used to combine multiple relocatable files into one single library file, which can then be used with LINK-80 instead of the individual relocatable files.
+The Libstor80 tool can be used to combine multiple relocatable files into one single library file, which can then be used with LINK-80 instead of the individual relocatable files.
 
 For example, assume that you have a collection of mathematical routines, each in its own file like `SUM.REL`, `MULT.REL` and `DIV.REL`. You may use them with LINK-80 like this:
 
 ```
-L80 PROG,SUM,MULT,DIV,PROG/N/E
+LK80 --output-file PROG.COM PROG.REL SUM.REL MULT.REL DIV.REL
 ```
 
 Instead, you can use LIB-80 to combine the routines into a single `MATH.REL` library like this:
 
 ```
-LIB80 MATH=SUM,MULT,DIV/E
+LB80 create MATH.LIB SUM.REL MULT.REL DIV.REL
 ```
 
 ...and then use it directly in LINK-80:
 
 ```
-L80 PROG,MATH,PROG/N/E
+LK80 --output-file PROG.COM PROG.REL MATH.REL
 ```
 
-⚠ You may think that LINK-80 will only take the required programs from the library, as it happens when using libraries in other languages like C; for example if `PROG` only uses the `MULT` routine then the contents of `SUM.REL` and `DIV.REL` wouldn't be included in the generated `PROG.COM`. Unfortunately that's not the case: the whole `MATH.REL` will be included in the final program in all cases. LINK-80 doesn't actually know which of the relocatable files it processes is "main program" as opposed to "code libraries", thus it treats all the files equally and this implies including the complete contents of all the processed files in the output.
+⚠ You may think that Linkstor80 will only take the required programs from the library, as it happens when using libraries in other languages like C; for example if `PROG` only uses the `MULT` routine then the contents of `SUM.REL` and `DIV.REL` wouldn't be included in the generated `PROG.COM`. Unfortunately that's not the case: the whole `MATH.REL` will be included in the final program in all cases. Linkstor80 doesn't actually know which of the relocatable files it processes is "main program" as opposed to "code libraries", thus it treats all the files equally and this implies including the complete contents of all the processed files in the output. This behavior is compatible with LINK-80.
 

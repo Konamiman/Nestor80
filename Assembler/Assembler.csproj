@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Konamiman.Nestor80.Assembler</RootNamespace>
+    <AssemblyVersion></AssemblyVersion>
   </PropertyGroup>
 
 </Project>

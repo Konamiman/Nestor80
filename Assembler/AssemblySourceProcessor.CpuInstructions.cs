@@ -336,7 +336,11 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         private static bool CpuInstrArgTypeIsByte(CpuInstrArgType type) =>
-            type is CpuInstrArgType.Byte or CpuInstrArgType.ByteInParenthesis or CpuInstrArgType.OffsetFromCurrentLocation or CpuInstrArgType.IxOffset or CpuInstrArgType.IyOffset;
+            //Note that we aren't including CpuInstrArgType.OffsetFromCurrentLocation even though it's of byte type, that's on purpose.
+            //We need expressions of that type to be always evaluated in pass 2 by AdjustInstructionLineForExpression, instead of
+            //generating a relocatable expression with "store as byte";
+            //the resulting offset will later be adjusted by ProcessArgumentForInstruction.
+            type is CpuInstrArgType.Byte or CpuInstrArgType.ByteInParenthesis or CpuInstrArgType.IxOffset or CpuInstrArgType.IyOffset;
 
         private static void CompleteInstructionLine(CpuInstructionLine line)
         {
@@ -524,7 +528,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             return address.IsAbsolute ?
                 null :
-                new RelocatableValue() { Type = address.Type, Value = address.Value, Index = index, IsByte = (size == 1) };
+                new RelocatableValue() { Type = address.Type, Value = address.Value, Index = index, IsByte = (size == 1), CommonName = address.CommonBlockName };
         }
     }
 }

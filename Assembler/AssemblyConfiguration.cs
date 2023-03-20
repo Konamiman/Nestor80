@@ -74,5 +74,12 @@ namespace Konamiman.Nestor80.Assembler
         /// Maximum amount of content that will be read from files included with the INCBIN instruction.
         /// </summary>
         public int MaxIncbinFileSize { get; init; } = 65536;
+
+        /// <summary>
+        /// True to produce relocatable files that are compatible with LINK-80
+        /// (so public and external symbols are limited to 6 ASCII-only characters, and the set of
+        /// arithmetic operators allowed for expressions with external references is limited).
+        /// </summary>
+        public bool Link80Compatibility { get; init; } = false;
     }
 }

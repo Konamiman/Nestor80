@@ -1,6 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
-
-namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators
+﻿namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators
 {
     internal abstract class BinaryOperator : ArithmeticOperator
     {

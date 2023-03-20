@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>Konamiman.Nestor80.Linker</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Assembler\AddressType.cs" Link="Infrastructure\AddressType.cs" />
+    <Compile Include="..\Assembler\Relocatable\ArithmeticOperatorCode.cs" Link="Infrastructure\ArithmeticOperatorCode.cs" />
+    <Compile Include="..\Assembler\Relocatable\ExtensionLinkItemType.cs" Link="Infrastructure\ExtensionLinkItemType.cs" />
+    <Compile Include="..\Assembler\Relocatable\LinkItemType.cs" Link="Infrastructure\LinkItemType.cs" />
+    <Compile Include="..\Assembler\Relocatable\Native.cs" Link="Infrastructure\Native.cs" />
+  </ItemGroup>
+
+</Project>

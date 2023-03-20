@@ -147,11 +147,16 @@ namespace Konamiman.Nestor80.Assembler
             return result.ToArray();
         }
 
+        static readonly byte[] extendedFileFormatHeader = { 0x85, 0xD3, 0x13, 0x92, 0xD4, 0xD5, 0x13, 0xD4, 0xA5, 0x00, 0x00, 0x13, 0x8F, 0xFF, 0xF0, 0x9E };
+
         static BitStreamWriter bitWriter;
         static Dictionary<string, Address> externalChains;
         static AddressType currentLocationArea;
         static Dictionary<AddressType, ushort> locationCounters;
         static List<string> referencedExternals;
+        static bool extendedFormat;
+        static Encoding encoding;
+        static string currentCommonBlockName;
 
         /// <summary>
         /// Generate a LINK-80 compatible relative file from an <see cref="AssemblyResult"/>.
@@ -160,15 +165,17 @@ namespace Konamiman.Nestor80.Assembler
         /// <param name="outputStream">The stream to write the result to.</param>
         /// <param name="initDefs">If true, intialize DEFS blocks with no value with zeros; if false, treat these blocks as equivalent to ORG $+size.</param>
         /// <returns></returns>
-        public static int GenerateRelocatable(AssemblyResult assemblyResult, Stream outputStream, bool initDefs)
+        public static int GenerateRelocatable(AssemblyResult assemblyResult, Stream outputStream, bool initDefs, bool extendedFormat)
         {
             var output = new List<byte>();
+            OutputGenerator.extendedFormat = extendedFormat;
+            encoding = extendedFormat ? Encoding.UTF8 : Encoding.ASCII;
             bitWriter = new BitStreamWriter(output);
             externalChains = new Dictionary<string, Address>(StringComparer.OrdinalIgnoreCase);
             referencedExternals = new List<string>();
             ushort endAddress = 0;
             bool changedToAseg = false;
-            string currentCommonBlockName = null;
+            currentCommonBlockName = null;
             currentLocationArea = AddressType.CSEG;
             locationCounters = new Dictionary<AddressType, ushort>() {
                 { AddressType.CSEG, 0 },
@@ -180,12 +187,15 @@ namespace Konamiman.Nestor80.Assembler
             var publicSymbols = assemblyResult.Symbols
                 .Where(s => s.IsPublic)
                 .Select(s => new {
-                    Name = s.Name.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
-                        s.Name[..AssemblySourceProcessor.MaxEffectiveExternalNameLength].ToUpper() :
-                        s.Name.ToUpper(),
+                    Name = EffectiveNameOf(s.Name),
                     s.ValueArea,
-                    s.Value})
+                    s.Value,
+                    s.CommonName})
                 .ToArray();
+
+            if(extendedFormat) {
+                outputStream.Write(extendedFileFormatHeader);
+            }
 
             WriteLinkItem(LinkItemType.ProgramName, assemblyResult.ProgramName);
             foreach(var symbol in publicSymbols) {
@@ -266,7 +276,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else if(line is LinkerFileReadRequestLine lfr) {
                     foreach(var filename in lfr.Filenames) {
-                        WriteLinkItem(LinkItemType.RequestLibrarySearch, filename.ToUpper());
+                        WriteLinkItem(LinkItemType.RequestLibrarySearch, extendedFormat ? filename : filename.ToUpper());
                     }
                 }
                 else if(line is EndOutputLine) {
@@ -279,16 +289,20 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             foreach(var symbol in publicSymbols) {
+                if(symbol.ValueArea is AddressType.COMMON && symbol.CommonName != currentCommonBlockName) {
+                    WriteLinkItem(LinkItemType.SelectCommonBlock, symbol.CommonName);
+                    currentCommonBlockName = symbol.CommonName;
+                }
                 WriteLinkItem(LinkItemType.DefineEntryPoint, symbol.ValueArea, symbol.Value, symbol.Name);
             }
 
             foreach(var external in externalChains) {
-                WriteLinkItem(LinkItemType.ChainExternal, external.Value.Type, external.Value.Value, external.Key.ToUpper());
+                WriteLinkItem(LinkItemType.ChainExternal, external.Value.Type, external.Value.Value, extendedFormat ? external.Key : external.Key.ToUpper());
             }
 
             var externalsWithoutChain = referencedExternals.Except(externalChains.Keys, StringComparer.OrdinalIgnoreCase);
             foreach(var item in externalsWithoutChain) {
-                WriteLinkItem(LinkItemType.ChainExternal, Address.AbsoluteZero, Encoding.ASCII.GetBytes(item.ToUpper()));
+                WriteLinkItem(LinkItemType.ChainExternal, Address.AbsoluteZero, encoding.GetBytes(extendedFormat ? item : item.ToUpper()));
             }
 
             WriteLinkItem(LinkItemType.EndProgram, AddressType.ASEG, endAddress);
@@ -297,7 +311,16 @@ namespace Konamiman.Nestor80.Assembler
             WriteLinkItem(LinkItemType.EndFile);
 
             outputStream.Write(output.ToArray());
-            return output.Count;
+            return output.Count + (extendedFormat ? extendedFileFormatHeader.Length : 0);
+        }
+
+        private static string EffectiveNameOf(string name)
+        {
+            if(extendedFormat) return name;
+
+            return (name.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
+                   name[..AssemblySourceProcessor.MaxEffectiveExternalNameLength] :
+                   name).ToUpper();
         }
 
         private static void WriteInstructionWithRelocatables(IProducesOutput instruction)
@@ -323,6 +346,10 @@ namespace Konamiman.Nestor80.Assembler
                         locationCounters[currentLocationArea]++;
                     }
                     else {
+                        if(rad.Type is AddressType.COMMON && rad.CommonName != currentCommonBlockName) {
+                            WriteLinkItem(LinkItemType.SelectCommonBlock, rad.CommonName);
+                            currentCommonBlockName = rad.CommonName;
+                        }
                         WriteAddress(rad.Type, rad.Value);
                         locationCounters[currentLocationArea] += 2;
                     }
@@ -382,17 +409,15 @@ namespace Konamiman.Nestor80.Assembler
 
             foreach(var item in group.LinkItems) {
                 if(item.IsExternalReference) {
-                    WriteExtensionLinkItem(ExtensionLinkItemType.ReferenceExternal, Encoding.ASCII.GetBytes(item.GetSymbolName().ToUpper()));
+                    var symbolName = extendedFormat ? item.GetSymbolName() : item.GetSymbolName().ToUpper();
+                    WriteExtensionLinkItem(ExtensionLinkItemType.ReferenceExternal, encoding.GetBytes(symbolName));
                     referencedExternals.Add(item.GetSymbolName());
                 }
                 else if(item.IsAddressReference) {
                     WriteExtensionLinkItem(ExtensionLinkItemType.Address, item.SymbolBytes[1], item.SymbolBytes[2], item.SymbolBytes[3]);
                 }
                 else {
-                    var op = item.ArithmeticOperator;
-                    if(op is null) {
-                        throw new Exception($"Unexpected type of link item found in group: {item}");
-                    }
+                    var op = item.ArithmeticOperator ?? throw new Exception($"Unexpected type of link item found in group: {item}");
                     WriteExtensionLinkItem(ExtensionLinkItemType.ArithmeticOperator, (byte)op);
                 }
             }
@@ -540,19 +565,12 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void WriteExtensionLinkItem(ExtensionLinkItemType type, params byte[] symbolBytes)
         {
-            bitWriter.Write(0b100, 3);
-            bitWriter.Write((byte)LinkItemType.ExtensionLinkItem, 4);
-
-            bitWriter.Write((byte)(symbolBytes.Length+1), 3);
-            bitWriter.Write((byte)type, 8);
-            foreach(var b in symbolBytes) {
-                bitWriter.Write(b, 8);
-            }
+            WriteLinkItem(LinkItemType.ExtensionLinkItem, symbolBytes: new byte[] { (byte)type }.Concat(symbolBytes).ToArray());
         }
 
         private static void WriteLinkItem(LinkItemType type, string symbol)
         {
-            WriteLinkItem(type, symbolBytes: Encoding.ASCII.GetBytes(symbol));
+            WriteLinkItem(type, symbolBytes: encoding.GetBytes(symbol));
         }
 
         private static void WriteLinkItem(LinkItemType type, Address address = null, byte[] symbolBytes = null)
@@ -562,7 +580,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void WriteLinkItem(LinkItemType type, AddressType? addressType, ushort addressValue, string symbolBytes)
         {
-            WriteLinkItem(type, addressType, addressValue, Encoding.ASCII.GetBytes(symbolBytes));
+            WriteLinkItem(type, addressType, addressValue, encoding.GetBytes(symbolBytes));
         }
 
         private static void WriteLinkItem(LinkItemType type, AddressType? addressType, ushort addressValue, byte[] symbolBytes = null)
@@ -574,11 +592,50 @@ namespace Konamiman.Nestor80.Assembler
                 bitWriter.Write((byte)(addressValue & 0xFF), 8);
                 bitWriter.Write((byte)((addressValue >> 8) & 0xFF), 8);
             }
-            if(symbolBytes is not null) {
-                bitWriter.Write((byte)symbolBytes.Length, 3);
-                foreach(var b in symbolBytes) {
-                    bitWriter.Write(b, 8);
+
+            if(symbolBytes is null) {
+                return;
+            }
+
+            if(!extendedFormat) {
+                if(symbolBytes.Length > 7) {
+                    throw new InvalidOperationException("Symbol fields over 7 bytes are only allowed in the extended relocatable format");
                 }
+                WriteSymbolField(symbolBytes);
+                return;
+            }
+
+            if(symbolBytes.LongLength >= 0x1000000) {
+                throw new InvalidOperationException("The maximum supported size of symbol fields is " + uint.MaxValue.ToString());
+            }
+
+            if(symbolBytes.Length > 7 || (symbolBytes.Length > 1 && symbolBytes[0] == 0xFF)) {
+                var legacyContents = symbolBytes.Length switch {
+                    < 0x100 => new byte[] { 0xFF, (byte)symbolBytes.Length },
+                    < 0x10000 => new byte[] { 0xFF, (byte)(symbolBytes.Length & 0xFF), (byte)(symbolBytes.Length >> 8) },
+                    < 0x1000000 => new byte[] { 0xFF, (byte)(symbolBytes.Length & 0xFF), (byte)(symbolBytes.Length >> 8), (byte)(symbolBytes.Length >> 16) },
+                    _ => new byte[] { 0xFF, (byte)(symbolBytes.LongLength & 0xFF), (byte)(symbolBytes.LongLength >> 8), (byte)(symbolBytes.LongLength >> 24) },
+                };
+                WriteSymbolField(legacyContents);
+                if(symbolBytes.Length > 255) {
+                    bitWriter.WriteDirect(symbolBytes);
+                }
+                else {
+                    foreach(var b in symbolBytes) {
+                        bitWriter.Write(b, 8);
+                    }
+                }
+            }
+            else {
+                WriteSymbolField(symbolBytes);
+            }
+        }
+
+        private static void WriteSymbolField(byte[] symbolBytes)
+        {
+            bitWriter.Write((byte)symbolBytes.Length, 3);
+            foreach(var b in symbolBytes) {
+                bitWriter.Write(b, 8);
             }
         }
     }

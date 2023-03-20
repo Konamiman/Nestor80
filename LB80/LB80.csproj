@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>Konamiman.Nestor80.LB80</RootNamespace>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Version>$(VersionPrefix)</Version>
+    <AssemblyVersion>1.0</AssemblyVersion>        
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Release\**" />
+    <EmbeddedResource Remove="Release\**" />
+    <None Remove="Release\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Assembler\AddressType.cs" Link="Infrastructure\AddressType.cs" />
+    <Compile Include="..\Assembler\Relocatable\ExtensionLinkItemType.cs" Link="Infrastructure\ExtensionLinkItemType.cs" />
+    <Compile Include="..\Assembler\Relocatable\LinkItemType.cs" Link="Infrastructure\LinkItemType.cs" />
+    <Compile Include="..\Linker\OutOfDataException.cs" Link="Infrastructure\OutOfDataException.cs" />
+    <Compile Include="..\Linker\Parsing\ExtendedRelocatableFileHeader.cs" Link="Infrastructure\ExtendedRelocatableFileHeader.cs" />
+    <Compile Include="..\Linker\Parsing\IRelocatableFilePart.cs" Link="Infrastructure\IRelocatableFilePart.cs" />
+    <Compile Include="..\Linker\Parsing\LinkItem.cs" Link="Infrastructure\LinkItem.cs" />
+    <Compile Include="..\Linker\Parsing\ParsedProgram.cs" Link="Infrastructure\ParsedProgram.cs" />
+    <Compile Include="..\Linker\Parsing\RawBytes.cs" Link="Infrastructure\RawBytes.cs" />
+    <Compile Include="..\Linker\Parsing\RelocatableAddress.cs" Link="Infrastructure\RelocatableAddress.cs" />
+    <Compile Include="..\Linker\Parsing\RelocatableFileParser.cs" Link="Infrastructure\RelocatableFileParser.cs" />
+    <Compile Include="..\Linker\Infrastructure\BitStreamReader.cs" Link="Infrastructure\BitStreamReader.cs" />
+  </ItemGroup>
+
+</Project>

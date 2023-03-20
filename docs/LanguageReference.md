@@ -2,7 +2,9 @@
 
 This documents details the source file format supported by Nestor80 and lists all the available assembler instructions (called "pseudo-operators" in the MACRO-80 manual), both the ones inherited from MACRO-80 and the ones newly introduced by Nestor80. It also explains some basic concepts about how Nestor80 works (e.g. passes, absolute vs relocatable assembly) and details the available advanced features (e.g. conditioanl assembly, macros, symbol scoping).
 
-Nestor80 is almost fully compatible with MACRO-80. You may want to take a look also to [the original MACRO-80 user manual](MACRO-80.txt) for things that might be missing here or that are explained differently. Additionally, the MACRO-80 user manual is also the manual for LINK-80 and LIB-80, so you'll need to have it at hand if you plan to [write relocatable code](WritingRelocatableCode.md).
+The Nestor80 package actually consists of three tools: Nestor80 (assembler), Linkstor80 (linker), and Libstor80 (library manager). The last two are only relevant when [writing relocatable code](WritingRelocatableCode.md). This document discusses the assembler only.
+
+Nestor80 is almost fully compatible with MACRO-80. You may want to take a look also to [the original MACRO-80 user manual](MACRO-80.txt) for things that might be missing here or that are explained differently.
 
 
 ## Document conventions
@@ -96,7 +98,7 @@ Nestor80 can produce both absolute 🆕 and relocatable files.
 
 * _Relocatable files_ have [a dedicated format](RelocatableFileFormat.md) and contain relocatable code, that is, "pre-assembled" code in which labels are flagged as being relative to the memory address where the target program will be loaded and symbols may be flagged as _external_, that is, defined in other relocatable file.
 
-Relocatable files can't be executed, instead a linker (typically LINK-80) must be used to convert it into an absolute file by providing the actual loading memory addresses for the target program. The linker is typically used to "glue together" two or more of these files (and linking public symbols with the corresponding external symbols).
+Relocatable files can't be executed, instead a linker (typically Linkstor80) must be used to convert it into an absolute file by providing the actual loading memory addresses for the target program. The linker is typically used to "glue together" two or more of these files (and linking public symbols with the corresponding external symbols).
 
 It's possible to instruct Nestor80 to produce an absolute file or a relocatable file by using the `--build-type` command line argument, but by default Nestor80 will decide the appropriate type automatically. The decision is taken as follows:
 
@@ -107,6 +109,8 @@ Put it another way, if you want your code to be automatically detected as intend
 💡 If you want to know the exact source line in which Nestor80 selects the build type, run Nestor80 with a verbosity level of at least two (with the `--verbosity` argument).
 
 ⚠ If the build type is forced to absolute with `--build-type` but the code contains no [`ORG`](#org) instructions, an implicit `ORG 0` at the beginning of the code is assumed.
+
+⚠ Pass the `--link-80-compatibility` argument to Nestor80 if you plan to use the old LINK-80 tool instead of Linkstor80 for the linking process. This argument forces Nestor80 to generate relocatable files using the old MACRO-80/LINK-80 format instead of the new extended format. See ["Relocatable file format"](RelocatableFileFormat.md) for details on the differences between both formats.
 
 Some assembler instructions make sense only in the context of relocatable code, for example [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`PUBLIC`](#public-entry-global-) OR [`EXTRN`](#extrn-ext-external-); these instructions will do nothing, and the assembler will throw warnings, if they are found while assembling absolute code.
 
@@ -140,9 +144,7 @@ Output when using "direct file write" strategy: 1,2,3,4,5,6,7,8,9,10
 
 ## Source code format
 
-Nestor80 converts source code files to absolute or relocatable files. A source code file is a text file in which each line is either blank, a comment, or a statement; lines
-are processed one by one. The maximum supported line length is 1034 characters ✨ and all the usual line ending conventions are supported (CR+LF characters, LF only, and CR only). ✨ 
-Spaces and tabs are treated equivalently, and those found at the beginning and at the end of the line are removed before the line is processed.
+Nestor80 converts source code files to absolute or relocatable files. A source code file is a text file in which each line is either blank, a comment, or a statement; lines are processed one by one. The maximum supported line length is 1034 characters ✨ and all the usual line ending conventions are supported (CR+LF characters, LF only, and CR only). ✨ Spaces and tabs are treated equivalently, and those found at the beginning and at the end of the line are removed before the line is processed.
 
 A comment-only line starts with a semicolon character, `;`,  and has no effect in the assembly process. A statement has the following format:
 
@@ -177,7 +179,7 @@ A _symbol_ is a named 8 or 16 bit value. When assembling relocatable code this v
 
 Nestor80 treats symbols in a case-insensitive way, e.g. `foo`, `FOO` and `Foo` refer all to the same symbol.
 
-There's in principle no limit for the length of a symbol ✨, but when assembling relocatable code the maximum length for external and public symbols is 6 characters. This limitation is given by [the format of the LINK-80 relocatable files](RelocatableFileFormat.md). Nestor80 will issue a warning if it finds two or more external symbols that are different but share the first 6 characters (since these will get their names truncated and thus be actually the same symbol), and will throw an error if the same happens with public symbols.
+There's in principle no limit for the length of a symbol ✨, but when assembling relocatable code with the `--link-80-compatibility` argument the maximum length for external and public symbols will be 6 characters. This limitation is given by [the format of the LINK-80 relocatable files](RelocatableFileFormat.md). Nestor80 will issue a warning if it finds two or more external symbols that are different but share the first 6 characters (since these will get their names truncated and thus be actually the same symbol), and will throw an error if the same happens with public symbols.
 
 When writing relocatable code, the following suffixes are allowed for symbols:
 
@@ -381,36 +383,36 @@ If a 8 bit value is expected (e.g. `DB <value>` or `LD A,<value>`) the expressio
 
 Nestor80 defines the following arithmetic operators:
 
-Operator | Meaning | Precedence | Allowed with externals?
----------|---------|------------|------------------------
-`NUL`      | Rest of expression<br/> is empty? | 10 | See note
-`TYPE`     | Argument type | 9 | See note
-`LOW`      | Low byte | 8 | ✔️
-`HIGH`     | High byte | 8 | ✔️
-`*`        | Multiplication | 7 | ✔️
-`/`        | Integer division | 7 | ✔️
-`MOD`      | Remaining of<br/>integer division | 7 | ✔️
-`SHR`      | Shift right | 7 | ❌
-`SHL`      | Shift left | 7 | ❌
-`-` (unary) | Unary minus | 6 | ✔️
-`+`        | Addition | 5 | ✔️
-`-`        | Substraction  | 5 | ✔️
-`EQ`       | Equals | 4 | ❌
-`=` 🆕    | Equals | 4 | ❌
-`NE`       | Not equals | 4 | ❌
-`NEQ` 🆕  | Not equals | 4 | ❌
-`LT`       | Less than | 4 | ❌
-`LE`       | Less than or equal  | 4 | ❌
-`LTE` 🆕  | Less than or equal  | 4 | ❌
-`GT`       | Greater than | 4 | ❌
-`GE`       | Greater than or equal | 4 | ❌
-`GTE` 🆕  | Greater than or equal | 4 | ❌
-`NOT`      | Bitwise NOT<br/>(one's complement) | 3 | ✔️
-`AND`      | Bitwise AND | 2 | ❌
-`OR`       | Bitwise OR | 1 | ❌
-`XOR`      | Bitwise XOR | 1 | ❌
+Operator | Meaning | Precedence
+---------|---------|-----------
+`NUL`      | Rest of expression<br/> is empty? | 10
+`TYPE`     | Argument type | 9
+`LOW`      | Low byte | 8
+`HIGH`     | High byte | 8
+`*`        | Multiplication | 7
+`/`        | Integer division | 7
+`MOD`      | Remaining of<br/>integer division | 7
+`SHR`      | Shift right | 7
+`SHL`      | Shift left | 7
+`-` (unary) | Unary minus | 6
+`+`        | Addition | 5
+`-`        | Substraction  | 5
+`EQ`       | Equals | 4
+`=` 🆕    | Equals | 4
+`NE`       | Not equals | 4
+`NEQ` 🆕  | Not equals | 4
+`LT`       | Less than | 4
+`LE`       | Less than or equal  | 4
+`LTE` 🆕  | Less than or equal  | 4
+`GT`       | Greater than | 4
+`GE`       | Greater than or equal | 4
+`GTE` 🆕  | Greater than or equal | 4
+`NOT`      | Bitwise NOT<br/>(one's complement) | 3
+`AND`      | Bitwise AND | 2
+`OR`       | Bitwise OR | 1
+`XOR`      | Bitwise XOR | 1
 
-When writing relocatable code only a subset of the existing arithmetic operators can be used in expressions involving external references, this is a limitation given by [the relocatable file format](RelocatableFileFormat.md). Trying to use one of the unsupported operators in such an expression will result in an assembly error.
+When assembling relocatable code with the `--link-80-compatibility` argument only the following arithmetic operators can be used in expressions involving external references: `NUL`, `TYPE`, `LOW`, `HIGH`, `MOD`, `NOT`, `*`, `/`, `+`, `-` (including unary). This is a limitation given by [the old relocatable file format](RelocatableFileFormat.md). Trying to use one of the unsupported operators in such an expression will result in an assembly error.
 
 The `NUL` and `TYPE` operators are special:
 
@@ -1498,7 +1500,7 @@ Enables the [relative labels](#relative-labels-) feature. See also [`.XRELAB`](#
 
 _Syntax:_ `.REQUEST <filename>[,<filename>[,...]]`
 
-Defines a list of files in which the linker will search for any globals that remain undefined during the linking process. For compatibility with LINK-80 filenames must be up to 7 characters long, contain only ASCII letters, and can't contain an extension (`.REL` extension is assumed) nor any drive or directory specification.
+Defines a list of files in which the linker will search for any globals that remain undefined during the linking process. Filenames can't contain an extension (`.REL` extension is assumed) nor any drive or directory specification; additionally, when using the `--link-80-compatibility` argument filenames must be up to 7 characters long and contain only ASCII letters.
 
 
 ### .SALL
@@ -2452,7 +2454,7 @@ Starts a new module with the specified name. See ["Modules"](#modules-).
 
 _Syntax:_ `NAME('<program name>')`
 
-Specifies the program name, which will be set as such in the generated relocatable file. For compatibility with LINK-80 the program name must be composed of ASCII characters, and only the first six characters will be used.
+Specifies the program name, which will be set as such in the generated relocatable file. When using the `--link-80-compatibility` argument program names are limited to 6 characters in length and ASCII letters only.
 
 If no program name is explicitly supplied, the program name is taken from the last [`TITLE`](#title) instruction used. If neither `NAME` nor `TITLE` instructions are present in the code, the program name is taken from the source code file name.
 

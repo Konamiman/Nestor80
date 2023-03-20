@@ -10,13 +10,13 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "u-";
 
-        public override byte? ExtendedLinkItemType => 6;
+        public override byte ExtendedLinkItemType => 6;
 
         protected override Address OperateCore(Address value1, Address value2)
         {
             unchecked
             {
-                return new Address(value1.Type, (ushort)-value1.Value);
+                return new Address(value1.Type, (ushort)-value1.Value, value1.CommonBlockName);
             }
         }
     }

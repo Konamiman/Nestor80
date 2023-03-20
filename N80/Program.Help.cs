@@ -225,6 +225,12 @@ namespace Konamiman.Nestor80.N80
                 the directory of the source file, and the file name will be
                 as when the argument is omitted.
 
+            -l8c, --link-80-compatibility
+                Keep compatibility with LINK-80 (only relevant when the build type is relocatable):
+                public and external symbols will be limited to 6 characters with only ASCII letters
+                allowed, and the set of arithmetic operators allowed for expressions involving
+                external references will be limited to: +, -, unary -, *, /, HIGH, LOW, MOD, NOT.
+
             -lbpl, --listing-bytes-per-line <count>
                 How many bytes to print in one single line of text for instructions that generate
                 an arbitrary number of bytes (typically DB or DW) when generating the listing file;
@@ -323,6 +329,12 @@ namespace Konamiman.Nestor80.N80
 
             -nl, --no-listing-file
                 Don't generate a listing file (default).
+
+            -nl8c, --no-link-80-compatibility
+                Don't keep compatibility with LINK-80 (only relevant when the build type is relocatable):
+                there will be no restrictions to the length and the letter characters used for public and
+                external symbols, and all the arithmetidc operators can be used in expressions involving
+                external references. This is the default behavior.
             
             -nlfc, --no-listing-false-conditionals
                 Don't include conditional block that evaluate to false when generating the listing

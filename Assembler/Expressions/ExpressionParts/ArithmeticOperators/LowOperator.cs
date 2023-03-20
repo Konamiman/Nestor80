@@ -10,11 +10,11 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "LOW";
 
-        public override byte? ExtendedLinkItemType => 4;
+        public override byte ExtendedLinkItemType => 4;
 
         protected override Address OperateCore(Address value1, Address value2)
         {
-            return new Address(value1.Type, (ushort)(value1.Value & 0xFF));
+            return new Address(value1.Type, (ushort)(value1.Value & 0xFF), value1.CommonBlockName);
         }
     }
 }

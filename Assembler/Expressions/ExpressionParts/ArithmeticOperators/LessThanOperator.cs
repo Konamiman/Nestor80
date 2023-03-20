@@ -10,6 +10,8 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
         public override string Name => "LT";
 
+        public override byte ExtendedLinkItemType => 20;
+
         protected override Address OperateCore(Address value1, Address value2)
         {
             // Both addresses must be in the same mode
