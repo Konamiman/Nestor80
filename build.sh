@@ -27,8 +27,8 @@ RUNTIMES="${RUNTIMES:=linux-arm linux-arm64 linux-x64 osx-arm64 osx-x64 win-arm 
 PROGRAMS="${PROGRAMS:=N80 LK80 LB80}"
 BUILD_TYPES="${BUILD_TYPES:=portable FrameworkDependant SelfContained}"
 
-if [ -z "$(which dotnet > /dev/null && dotnet --list-sdks | grep ^6.0.)" ]; then
-	output 1 "*** .NET SDK 6.0 is not installed! See https://docs.microsoft.com/dotnet/core/install/linux"
+if [ -z "$(which dotnet > /dev/null && dotnet --list-sdks | grep ^7.0.)" ]; then
+	output 1 "*** .NET SDK 7.0 is not installed! See https://docs.microsoft.com/dotnet/core/install/linux"
 	exit 1
 fi
 

@@ -12,8 +12,8 @@ internal partial class Program
 
     static readonly string simpleHelpText = """
         Usage: LK80 <configuration flags and link sequence items>
-                LK80 -v|--version
-                LK80 -h|--help
+               LK80 -v|--version
+               LK80 -h|--help
         """;
 
     /// <summary>
