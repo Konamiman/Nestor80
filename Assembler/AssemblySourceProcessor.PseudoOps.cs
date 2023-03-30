@@ -644,6 +644,7 @@ namespace Konamiman.Nestor80.Assembler
             var symbolNames = new List<string>();
             while(!walker.AtEndOfLine) {
                 var symbolName = walker.ExtractExpression();
+                symbolName = state.Modularize(symbolName);
                 if(string.IsNullOrWhiteSpace(symbolName)) {
                     AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the symbol name can't be empty");
                     continue;
