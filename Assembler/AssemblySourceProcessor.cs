@@ -24,6 +24,10 @@ namespace Konamiman.Nestor80.Assembler
         const int MAX_LINE_LENGTH = 1034;
         const int MAX_INCLUDE_NESTING = 34;
 
+        const string Z280_ALLOW_PRIV_SYMBOL = "z280.allowprivileged";
+        const string Z280_ALLOW_IO_SYMBOL = "z280.allowio";
+        const string Z280_INDEX_MODE_SYMBOL = "z280.indexmode";
+
         const RegexOptions RegxOp = RegexOptions.Compiled | RegexOptions.IgnoreCase;
 
         public const int MaxEffectiveExternalNameLength = 6;
@@ -76,6 +80,9 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly string[] instructionsNeedingPass2Reevaluation;
 
         private static CpuType currentCpu;
+        private static bool z280AllowPriviliegedInstructions;
+        private static bool z280AllowIoInstructions;
+        private static Z280IndexMode z280IndexMode;
 
         private static readonly Regex labelRegex = new("^([^\\d\\W]|[$@?._])[\\w$@?._]*:{0,2}$", RegxOp);
 
@@ -162,6 +169,9 @@ namespace Konamiman.Nestor80.Assembler
                 includeStream = null;
                 state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
 
+                z280AllowPriviliegedInstructions = true;
+                z280AllowIoInstructions = true;
+                z280IndexMode = Z280IndexMode.Auto;
                 ProcessPredefinedsymbols(configuration.PredefinedSymbols);
                 maxErrors = configuration.MaxErrors;
                 link80Compatibility = configuration.Link80Compatibility;
@@ -307,6 +317,35 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else {
                     state.AddSymbol(symbol, SymbolType.Defl, Address.Absolute(value));
+                }
+
+                MaybeProcessSpecialSymbol(symbol, Address.Absolute(value).Value);
+            }
+        }
+
+        /// <summary>
+        /// Given a symbol that is being (re)defined as a constant, check if it's a special symbol
+        /// and update internal state accordingly if so.
+        /// </summary>
+        /// <param name="symbol">Symbol name</param>
+        /// <param name="value">Symbol value</param>
+        private static void MaybeProcessSpecialSymbol(string symbol, ushort value)
+        {
+            if(symbol.Equals(Z280_ALLOW_PRIV_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
+                z280AllowPriviliegedInstructions = value != 0;
+            }
+            else if(symbol.Equals(Z280_ALLOW_IO_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
+                z280AllowIoInstructions = value != 0;
+            }
+            else if(symbol.Equals(Z280_INDEX_MODE_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
+                if(value == 1) {
+                    z280IndexMode = Z280IndexMode.Short;
+                }
+                else if(value == 2) {
+                    z280IndexMode = Z280IndexMode.Long;
+                }
+                else {
+                    z280IndexMode = Z280IndexMode.Auto;
                 }
             }
         }

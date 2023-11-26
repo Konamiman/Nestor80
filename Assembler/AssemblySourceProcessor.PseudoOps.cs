@@ -782,13 +782,16 @@ namespace Konamiman.Nestor80.Assembler
                     AddError(AssemblyErrorCode.SymbolWithCpuRegisterName, $"{name.ToUpper()} is a {currentCpu} register or flag name, so it won't be possible to use it as a symbol in {currentCpu} instructions");
                 }
                 state.AddSymbol(name, isRedefinition ? SymbolType.Defl : SymbolType.Equ, value);
+                MaybeProcessSpecialSymbol(name, value.Value);
             }
             else if(!symbol.IsOfKnownType) {
                 symbol.Type = isRedefinition ? SymbolType.Defl : SymbolType.Equ;
                 symbol.Value = value;
+                MaybeProcessSpecialSymbol(name, value.Value);
             }
             else if(isRedefinition && symbol.IsRedefinible) {
                 symbol.Value = value;
+                MaybeProcessSpecialSymbol(name, value.Value);
             }
             else if(value != symbol.Value) {
                 AddError(AssemblyErrorCode.DuplicatedSymbol, $"Symbol '{name.ToUpper()}' already exists (defined as {symbol.Type.ToString().ToLower()}) and can't be redefined with {opcode.ToUpper()}");
