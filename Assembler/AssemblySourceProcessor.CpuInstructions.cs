@@ -144,6 +144,18 @@ namespace Konamiman.Nestor80.Assembler
                 return line;
             }
 
+            if(isZ280 && !z280AllowPriviliegedInstructions && (Z280PrivilegedInstructions.Contains(opcode, StringComparer.OrdinalIgnoreCase) || Z280PrivilegedLdInstructions.Contains(instructionSearchKey, StringComparer.OrdinalIgnoreCase))) {
+                AddError(AssemblyErrorCode.PrivilegedInstructionFound, $"Privileged instructions aren't allowed when {Z280_ALLOW_PRIV_SYMBOL} equals 0, found: {instructionSearchKey.ToUpper()}");
+                walker.DiscardRemaining();
+                return new CpuInstructionLine() { IsInvalid = true };
+            }
+
+            if(isZ280 && !z280AllowPriviliegedInstructions && z280IoInstructionsArePrivileged && Z280IOInstructions.Contains(opcode, StringComparer.OrdinalIgnoreCase)) {
+                AddError(AssemblyErrorCode.IoInstructionFound, $"I/O instructions aren't allowed when {Z280_IO_IS_PRIVILEGED_SYMBOL} equals 0, found: {instructionSearchKey.ToUpper()}");
+                walker.DiscardRemaining();
+                return new CpuInstructionLine() { IsInvalid = true };
+            }
+
             if(currentCpuFixedInstructions.ContainsKey(instructionSearchKey)) {
                 var line = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, OutputBytes = currentCpuFixedInstructions[instructionSearchKey] };
                 CompleteInstructionLine(line);

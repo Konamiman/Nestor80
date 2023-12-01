@@ -56,6 +56,8 @@
         ExitmOutOfScope,
         LocalOutOfMacro,
         UserError,
+        PrivilegedInstructionFound,
+        IoInstructionFound,
         LasetError = UserError,
 
         //Fatal errors

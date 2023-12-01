@@ -11,6 +11,19 @@ namespace Konamiman.Nestor80.Assembler
             "OUTDW","OUTIW","OUTW","PCACHE","RETIL","SC","SUBW","TSET","TSTI"
         };
 
+        static readonly string[] Z280PrivilegedInstructions = new[] {
+            "DI", "EI", "HALT", "IM", "LDCTL", "LDUD", "LDUP", "RETI", "RETIL", "RETN"
+        };
+
+        static readonly string[] Z280PrivilegedLdInstructions = new[] {
+            "LD A,I", "LD I,A", "LD A,R", "LD R,A"
+        };
+
+        static readonly string[] Z280IOInstructions = new[] {
+            "IN", "IND", "INDR", "INDW", "INDRW", "INI", "INIR", "INIW", "INIRW", "INW",
+            "OTDR", "OTDRW", "OTIR", "OTIRW", "OUT", "OUTD", "OUTDW", "OUTI", "OUTIW", "OUTW", "TSTI"
+        };
+
         /// <summary>
         /// Exclusive Z280 instructions that have no argument or that have one or two fixed (register or flag names) arguments.
         /// </summary>

@@ -24,9 +24,9 @@ namespace Konamiman.Nestor80.Assembler
         const int MAX_LINE_LENGTH = 1034;
         const int MAX_INCLUDE_NESTING = 34;
 
-        const string Z280_ALLOW_PRIV_SYMBOL = "z280.allowprivileged";
-        const string Z280_ALLOW_IO_SYMBOL = "z280.allowio";
-        const string Z280_INDEX_MODE_SYMBOL = "z280.indexmode";
+        const string Z280_ALLOW_PRIV_SYMBOL = "_z280.allowprivileged";
+        const string Z280_IO_IS_PRIVILEGED_SYMBOL = "_z280.ioprivileged";
+        const string Z280_INDEX_MODE_SYMBOL = "_z280.indexmode";
 
         const RegexOptions RegxOp = RegexOptions.Compiled | RegexOptions.IgnoreCase;
 
@@ -81,7 +81,7 @@ namespace Konamiman.Nestor80.Assembler
 
         private static CpuType currentCpu;
         private static bool z280AllowPriviliegedInstructions;
-        private static bool z280AllowIoInstructions;
+        private static bool z280IoInstructionsArePrivileged;
         private static bool isZ280;
         private static bool isZ280AutoIndexMode;
         private static bool isZ280LongIndexMode;
@@ -179,7 +179,7 @@ namespace Konamiman.Nestor80.Assembler
                 state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
 
                 z280AllowPriviliegedInstructions = true;
-                z280AllowIoInstructions = true;
+                z280IoInstructionsArePrivileged = false;
                 z280IndexMode = Z280IndexMode.Auto;
                 ProcessPredefinedsymbols(configuration.PredefinedSymbols);
                 maxErrors = configuration.MaxErrors;
@@ -344,8 +344,8 @@ namespace Konamiman.Nestor80.Assembler
             if(symbol.Equals(Z280_ALLOW_PRIV_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
                 z280AllowPriviliegedInstructions = value != 0;
             }
-            else if(symbol.Equals(Z280_ALLOW_IO_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
-                z280AllowIoInstructions = value != 0;
+            else if(symbol.Equals(Z280_IO_IS_PRIVILEGED_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
+                z280IoInstructionsArePrivileged = value != 0;
             }
             else if(symbol.Equals(Z280_INDEX_MODE_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
                 if(value == 1) {
