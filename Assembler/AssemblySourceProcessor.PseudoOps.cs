@@ -918,6 +918,23 @@ namespace Konamiman.Nestor80.Assembler
 
             currentCpu = cpuType;
 
+            SetZ280ConfigVariables();
+            if(isZ280) {
+                currentCpuInstructionOpcodes = Z80InstructionOpcodes.Concat(ExclusiveZ280InstructionOpcodes).ToArray();
+                currentCpuFixedInstructions = new Dictionary<string, byte[]>(FixedZ80Instructions.Concat(ZeroIndexZ80Instructions).Concat(FixedExclusiveZ280Instructions), StringComparer.OrdinalIgnoreCase);
+                currentCpuInstructionsWithSelectorValue = new Dictionary<string, (string, byte[], ushort)[]>(Z80InstructionsWithSelectorValue, StringComparer.OrdinalIgnoreCase);
+                currentCpuInstructionsWithSelectorValue["IM"] = currentCpuInstructionsWithSelectorValue["IM"].Concat(im3instructionData).ToArray();
+                currentCpuInstructionsWithOneVariableArgumentCount = Z80InstructionsWithOneVariableArgument.Length + ExclusiveZ280InstructionsWithOneVariableArgument.Length;
+                currentCpuMemPointedByRegisterRegex = z280MemPointedByRegisterRegex;
+            }
+            else {
+                currentCpuInstructionOpcodes = Z80InstructionOpcodes;
+                currentCpuFixedInstructions = new Dictionary<string, byte[]>(FixedZ80Instructions.Concat(ZeroIndexZ80Instructions), StringComparer.OrdinalIgnoreCase);
+                currentCpuInstructionsWithSelectorValue = Z80InstructionsWithSelectorValue;
+                currentCpuInstructionsWithOneVariableArgumentCount = Z80InstructionsWithOneVariableArgument.Length;
+                currentCpuMemPointedByRegisterRegex = z80MemPointedByRegisterRegex;
+            }
+
             return cpuType;
         }
 

@@ -12,6 +12,12 @@
         WordInParenthesis,
         OffsetFromCurrentLocation,
         IxOffset,
-        IyOffset
+        IyOffset,
+        PcOffset,
+        SpOffset,
+        HlOffset,
+        IxOffsetLong,
+        IyOffsetLong,
+        OffsetFromCurrentLocationMinusOne
     }
 }

@@ -82,7 +82,16 @@ namespace Konamiman.Nestor80.Assembler
         private static CpuType currentCpu;
         private static bool z280AllowPriviliegedInstructions;
         private static bool z280AllowIoInstructions;
+        private static bool isZ280;
+        private static bool isZ280AutoIndexMode;
+        private static bool isZ280LongIndexMode;
         private static Z280IndexMode z280IndexMode;
+
+        private static string[] currentCpuInstructionOpcodes;
+        private static Dictionary<string, byte[]> currentCpuFixedInstructions;
+        private static Dictionary<string, (string, byte[], ushort)[]> currentCpuInstructionsWithSelectorValue;
+        private static int currentCpuInstructionsWithOneVariableArgumentCount;
+        private static Regex currentCpuMemPointedByRegisterRegex;
 
         private static readonly Regex labelRegex = new("^([^\\d\\W]|[$@?._])[\\w$@?._]*:{0,2}$", RegxOp);
 
@@ -185,6 +194,7 @@ namespace Konamiman.Nestor80.Assembler
                     Expression.OutputStringEncoding = Encoding.ASCII;
 
                 state.DefaultOutputStringEncoding = Expression.OutputStringEncoding;
+                state.WordArgumentTypes = wordArgTypes;
 
                 Expression.GetSymbol = GetSymbolForExpression;
                 Expression.ModularizeSymbolName = name => state.Modularize(name);
@@ -347,7 +357,15 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     z280IndexMode = Z280IndexMode.Auto;
                 }
+                SetZ280ConfigVariables();
             }
+        }
+
+        private static void SetZ280ConfigVariables()
+        {
+            isZ280 = currentCpu == CpuType.Z280;
+            isZ280AutoIndexMode = isZ280 && z280IndexMode == Z280IndexMode.Auto;
+            isZ280LongIndexMode = isZ280 && z280IndexMode != Z280IndexMode.Short;
         }
 
         /// <summary>
@@ -558,7 +576,7 @@ namespace Konamiman.Nestor80.Assembler
             // endif  --> This must be processed as the end of the "if 0"
             //
             // The logic is a bit convoluted because we need to take in account REPTs inside the named macro too
-            // (we keep a count of "rept inside named macro inside alse conditional nesting level").
+            // (we keep a count of "rept inside named macro inside also conditional nesting level").
             // There are most likely even more complicated cases that aren't properly handled.
             if(state.InFalseConditional) {
                 if(symbol.Equals("ENDM", StringComparison.OrdinalIgnoreCase)) {
@@ -650,7 +668,7 @@ namespace Konamiman.Nestor80.Assembler
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
                 }
-                else if(Z80InstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) ||
+                else if(currentCpuInstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) ||
                     (currentCpu is CpuType.R800 && R800SpecificOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase))) {
                     opcode = symbol;
                     processedLine = ProcessCpuInstruction(opcode, walker);

@@ -35,6 +35,8 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public Encoding DefaultOutputStringEncoding { get; set; }
 
+        public CpuInstrArgType[] WordArgumentTypes { get; set; }
+
         public bool InPass2 { get; private set; } = false;
 
         public bool InPass1 => !InPass2;
@@ -78,7 +80,13 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         {
             if (InPass2)
             {
-                ExpressionsPendingEvaluation.Add(new ExpressionPendingEvaluation() { Expression = expression, LocationInOutput = location, ArgumentType = argumentType, IsNegativeIxy = isNegativeIxy });
+                ExpressionsPendingEvaluation.Add(new ExpressionPendingEvaluation() {
+                    Expression = expression,
+                    LocationInOutput = location,
+                    ArgumentType = argumentType,
+                    IsByte = !WordArgumentTypes.Contains(argumentType),
+                    IsNegativeIxy = isNegativeIxy
+                });
             }
         }
 

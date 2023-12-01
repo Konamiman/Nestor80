@@ -13,7 +13,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions
 
         public int LocationInOutput { get; set; }
 
-        public bool IsByte => ArgumentType is not CpuInstrArgType.Word && ArgumentType is not CpuInstrArgType.WordInParenthesis;
+        public bool IsByte { get; set; }
 
         public bool IsNegativeIxy { get; set; }
 

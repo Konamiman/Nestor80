@@ -4,11 +4,6 @@ namespace Konamiman.Nestor80.Assembler
 {
     public partial class AssemblySourceProcessor
     {
-        /**
-         * Note: Instructions having (IX) or (IY) as argument are declared separately from (IX+n) and (IY+n)
-         * to simplify processing, but of course they are equivalent to their (IX+0) and (IY+0) equivalents.
-         */
-
         static readonly string[] Z80InstructionOpcodes = new[] {
             "ADC","ADD","AND","BIT","CALL","CCF","CP","CPD","CPDR","CPI","CPIR","CPL",
             "DAA","DEC","DI","DJNZ","EI","EX","EXX","HALT","IM","IN","INC","IND","INDR","INI","INIR",
@@ -28,8 +23,6 @@ namespace Konamiman.Nestor80.Assembler
           { "ADC HL,HL", new byte[] { 0xed, 0x6a } },
           { "ADC HL,SP", new byte[] { 0xed, 0x7a } },
           { "ADC A,(HL)", new byte[] { 0x8e } },
-          { "ADC A,(IX)", new byte[] { 0xdd, 0x8e, 0 } },
-          { "ADC A,(IY)", new byte[] { 0xfd, 0x8e, 0 } },
           { "ADC A,A", new byte[] { 0x8f } },
           { "ADC A,B", new byte[] { 0x88 } },
           { "ADC A,C", new byte[] { 0x89 } },
@@ -44,8 +37,6 @@ namespace Konamiman.Nestor80.Assembler
 
           //Aliases for "ADC A,..." with implicit A
           { "ADC (HL)", new byte[] { 0x8e } },
-          { "ADC (IX)", new byte[] { 0xdd, 0x8e, 0 } },
-          { "ADC (IY)", new byte[] { 0xfd, 0x8e, 0 } },
           { "ADC A", new byte[] { 0x8f } },
           { "ADC B", new byte[] { 0x88 } },
           { "ADC C", new byte[] { 0x89 } },
@@ -71,8 +62,6 @@ namespace Konamiman.Nestor80.Assembler
           { "ADD IY,IY", new byte[] { 0xfd, 0x29 } },
           { "ADD IY,SP", new byte[] { 0xfd, 0x39 } },
           { "ADD A,(HL)", new byte[] { 0x86 } },
-          { "ADD A,(IX)", new byte[] { 0xdd, 0x86, 0 } },
-          { "ADD A,(IY)", new byte[] { 0xfd, 0x86, 0 } },
           { "ADD A,A", new byte[] { 0x87 } },
           { "ADD A,B", new byte[] { 0x80 } },
           { "ADD A,C", new byte[] { 0x81 } },
@@ -87,8 +76,6 @@ namespace Konamiman.Nestor80.Assembler
 
           //Aliases for "ADD A,..." with implicit A
           { "ADD (HL)", new byte[] { 0x86 } },
-          { "ADD (IX)", new byte[] { 0xdd, 0x86, 0 } },
-          { "ADD (IY)", new byte[] { 0xfd, 0x86, 0 } },
           { "ADD A", new byte[] { 0x87 } },
           { "ADD B", new byte[] { 0x80 } },
           { "ADD C", new byte[] { 0x81 } },
@@ -101,9 +88,21 @@ namespace Konamiman.Nestor80.Assembler
           { "ADD IYH", new byte[] { 0xfd, 0x84 } },
           { "ADD IYL", new byte[] { 0xfd, 0x85 } },
 
+          { "AND A,(HL)", new byte[] { 0xa6 } },
+          { "AND A,A", new byte[] { 0xa7 } },
+          { "AND A,B", new byte[] { 0xa0 } },
+          { "AND A,C", new byte[] { 0xa1 } },
+          { "AND A,D", new byte[] { 0xa2 } },
+          { "AND A,E", new byte[] { 0xa3 } },
+          { "AND A,H", new byte[] { 0xa4 } },
+          { "AND A,L", new byte[] { 0xa5 } },
+          { "AND A,IXH", new byte[] { 0xdd, 0xa4 } },
+          { "AND A,IXL", new byte[] { 0xdd, 0xa5 } },
+          { "AND A,IYH", new byte[] { 0xfd, 0xa4 } },
+          { "AND A,IYL", new byte[] { 0xfd, 0xa5 } },
+
+          //Aliases for "AND A,..." with implicit A
           { "AND (HL)", new byte[] { 0xa6 } },
-          { "AND (IX)", new byte[] { 0xdd, 0xa6, 0 } },
-          { "AND (IY)", new byte[] { 0xfd, 0xa6, 0 } },
           { "AND A", new byte[] { 0xa7 } },
           { "AND B", new byte[] { 0xa0 } },
           { "AND C", new byte[] { 0xa1 } },
@@ -118,9 +117,21 @@ namespace Konamiman.Nestor80.Assembler
 
           { "CCF", new byte[] { 0x3f } },
 
+          { "CP A,(HL)", new byte[] { 0xbe } },
+          { "CP A,A", new byte[] { 0xbf } },
+          { "CP A,B", new byte[] { 0xb8 } },
+          { "CP A,C", new byte[] { 0xb9 } },
+          { "CP A,D", new byte[] { 0xba } },
+          { "CP A,E", new byte[] { 0xbb } },
+          { "CP A,H", new byte[] { 0xbc } },
+          { "CP A,L", new byte[] { 0xbd } },
+          { "CP A,IXH", new byte[] { 0xdd, 0xbc } },
+          { "CP A,IXL", new byte[] { 0xdd, 0xbd } },
+          { "CP A,IYH", new byte[] { 0xfd, 0xbc } },
+          { "CP A,IYL", new byte[] { 0xfd, 0xbd } },
+
+          //Aliases for "CP A,..." with implicit A
           { "CP (HL)", new byte[] { 0xbe } },
-          { "CP (IX)", new byte[] { 0xdd, 0xbe, 0 } },
-          { "CP (IY)", new byte[] { 0xfd, 0xbe, 0 } },
           { "CP A", new byte[] { 0xbf } },
           { "CP B", new byte[] { 0xb8 } },
           { "CP C", new byte[] { 0xb9 } },
@@ -141,13 +152,12 @@ namespace Konamiman.Nestor80.Assembler
 
           { "CPIR", new byte[] { 0xed, 0xb1 } },
 
+          { "CPL A", new byte[] { 0x2f } },
           { "CPL", new byte[] { 0x2f } },
 
           { "DAA", new byte[] { 0x27 } },
 
           { "DEC (HL)", new byte[] { 0x35 } },
-          { "DEC (IX)", new byte[] { 0xdd, 0x35, 0 } },
-          { "DEC (IY)", new byte[] { 0xfd, 0x35, 0 } },
           { "DEC A", new byte[] { 0x3d } },
           { "DEC B", new byte[] { 0x05 } },
           { "DEC BC", new byte[] { 0x0b } },
@@ -180,10 +190,6 @@ namespace Konamiman.Nestor80.Assembler
 
           { "HALT", new byte[] { 0x76 } },
 
-          { "IM 0", new byte[] { 0xed, 0x46 } },
-          { "IM 1", new byte[] { 0xed, 0x56 } },
-          { "IM 2", new byte[] { 0xed, 0x5e } },
-
           { "IN A,(C)", new byte[] { 0xed, 0x78 } },
           { "IN B,(C)", new byte[] { 0xed, 0x40 } },
           { "IN C,(C)", new byte[] { 0xed, 0x48 } },
@@ -194,8 +200,6 @@ namespace Konamiman.Nestor80.Assembler
           { "IN F,(C)", new byte[] { 0xed, 0x70 } },
 
           { "INC (HL)", new byte[] { 0x34 } },
-          { "INC (IX)", new byte[] { 0xdd, 0x34, 0 } },
-          { "INC (IY)", new byte[] { 0xfd, 0x34, 0 } },
           { "INC A", new byte[] { 0x3c } },
           { "INC B", new byte[] { 0x04 } },
           { "INC BC", new byte[] { 0x03 } },
@@ -223,8 +227,6 @@ namespace Konamiman.Nestor80.Assembler
           { "INIR", new byte[] { 0xed, 0xb2 } },
 
           { "JP (HL)", new byte[] { 0xe9 } },
-          { "JP (IX)", new byte[] { 0xdd, 0xe9 } },
-          { "JP (IY)", new byte[] { 0xfd, 0xe9 } },
 
           { "LD (BC),A", new byte[] { 0x02 } },
           { "LD (DE),A", new byte[] { 0x12 } },
@@ -235,25 +237,9 @@ namespace Konamiman.Nestor80.Assembler
           { "LD (HL),E", new byte[] { 0x73 } },
           { "LD (HL),H", new byte[] { 0x74 } },
           { "LD (HL),L", new byte[] { 0x75 } },
-          { "LD (IX),A", new byte[] { 0xdd, 0x77, 0 } },
-          { "LD (IX),B", new byte[] { 0xdd, 0x70, 0 } },
-          { "LD (IX),C", new byte[] { 0xdd, 0x71, 0 } },
-          { "LD (IX),D", new byte[] { 0xdd, 0x72, 0 } },
-          { "LD (IX),E", new byte[] { 0xdd, 0x73, 0 } },
-          { "LD (IX),H", new byte[] { 0xdd, 0x74, 0 } },
-          { "LD (IX),L", new byte[] { 0xdd, 0x75, 0 } },
-          { "LD (IY),A", new byte[] { 0xfd, 0x77, 0 } },
-          { "LD (IY),B", new byte[] { 0xfd, 0x70, 0 } },
-          { "LD (IY),C", new byte[] { 0xfd, 0x71, 0 } },
-          { "LD (IY),D", new byte[] { 0xfd, 0x72, 0 } },
-          { "LD (IY),E", new byte[] { 0xfd, 0x73, 0 } },
-          { "LD (IY),H", new byte[] { 0xfd, 0x74, 0 } },
-          { "LD (IY),L", new byte[] { 0xfd, 0x75, 0 } },
           { "LD A,(BC)", new byte[] { 0x0a } },
           { "LD A,(DE)", new byte[] { 0x1a } },
           { "LD A,(HL)", new byte[] { 0x7e } },
-          { "LD A,(IX)", new byte[] { 0xdd, 0x7e, 0 } },
-          { "LD A,(IY)", new byte[] { 0xfd, 0x7e, 0 } },
           { "LD A,A", new byte[] { 0x7f } },
           { "LD A,B", new byte[] { 0x78 } },
           { "LD A,C", new byte[] { 0x79 } },
@@ -262,10 +248,9 @@ namespace Konamiman.Nestor80.Assembler
           { "LD A,H", new byte[] { 0x7c } },
           { "LD A,I", new byte[] { 0xed, 0x57 } },
           { "LD A,R", new byte[] { 0xed, 0x5F } },
+          { "LD R,A", new byte[] { 0xed, 0x4f } },
           { "LD A,L", new byte[] { 0x7d } },
           { "LD B,(HL)", new byte[] { 0x46 } },
-          { "LD B,(IX)", new byte[] { 0xdd, 0x46, 0 } },
-          { "LD B,(IY)", new byte[] { 0xfd, 0x46, 0 } },
           { "LD B,A", new byte[] { 0x47 } },
           { "LD B,B", new byte[] { 0x40 } },
           { "LD B,C", new byte[] { 0x41 } },
@@ -274,8 +259,6 @@ namespace Konamiman.Nestor80.Assembler
           { "LD B,H", new byte[] { 0x44 } },
           { "LD B,L", new byte[] { 0x45 } },
           { "LD C,(HL)", new byte[] { 0x4e } },
-          { "LD C,(IX)", new byte[] { 0xdd, 0x4e, 0 } },
-          { "LD C,(IY)", new byte[] { 0xfd, 0x4e, 0 } },
           { "LD C,A", new byte[] { 0x4f } },
           { "LD C,B", new byte[] { 0x48 } },
           { "LD C,C", new byte[] { 0x49 } },
@@ -284,8 +267,6 @@ namespace Konamiman.Nestor80.Assembler
           { "LD C,H", new byte[] { 0x4c } },
           { "LD C,L", new byte[] { 0x4d } },
           { "LD D,(HL)", new byte[] { 0x56 } },
-          { "LD D,(IX)", new byte[] { 0xdd, 0x56, 0 } },
-          { "LD D,(IY)", new byte[] { 0xfd, 0x56, 0 } },
           { "LD D,A", new byte[] { 0x57 } },
           { "LD D,B", new byte[] { 0x50 } },
           { "LD D,C", new byte[] { 0x51 } },
@@ -294,8 +275,6 @@ namespace Konamiman.Nestor80.Assembler
           { "LD D,H", new byte[] { 0x54 } },
           { "LD D,L", new byte[] { 0x55 } },
           { "LD E,(HL)", new byte[] { 0x5e } },
-          { "LD E,(IX)", new byte[] { 0xdd, 0x5e, 0 } },
-          { "LD E,(IY)", new byte[] { 0xfd, 0x5e, 0 } },
           { "LD E,A", new byte[] { 0x5f } },
           { "LD E,B", new byte[] { 0x58 } },
           { "LD E,C", new byte[] { 0x59 } },
@@ -304,8 +283,6 @@ namespace Konamiman.Nestor80.Assembler
           { "LD E,H", new byte[] { 0x5c } },
           { "LD E,L", new byte[] { 0x5d } },
           { "LD H,(HL)", new byte[] { 0x66 } },
-          { "LD H,(IX)", new byte[] { 0xdd, 0x66, 0 } },
-          { "LD H,(IY)", new byte[] { 0xfd, 0x66, 0 } },
           { "LD H,A", new byte[] { 0x67 } },
           { "LD H,B", new byte[] { 0x60 } },
           { "LD H,C", new byte[] { 0x61 } },
@@ -315,8 +292,6 @@ namespace Konamiman.Nestor80.Assembler
           { "LD H,L", new byte[] { 0x65 } },
           { "LD I,A", new byte[] { 0xed, 0x47 } },
           { "LD L,(HL)", new byte[] { 0x6e } },
-          { "LD L,(IX)", new byte[] { 0xdd, 0x6e, 0 } },
-          { "LD L,(IY)", new byte[] { 0xfd, 0x6e, 0 } },
           { "LD L,A", new byte[] { 0x6f } },
           { "LD L,B", new byte[] { 0x68 } },
           { "LD L,C", new byte[] { 0x69 } },
@@ -384,13 +359,26 @@ namespace Konamiman.Nestor80.Assembler
 
           { "LDIR", new byte[] { 0xed, 0xb0 } },
 
+          { "NEG A", new byte[] { 0xed, 0x44 } },
           { "NEG", new byte[] { 0xed, 0x44 } },
 
           { "NOP", new byte[] { 0x00 } },
 
+          { "OR A,(HL)", new byte[] { 0xb6 } },
+          { "OR A,A", new byte[] { 0xb7 } },
+          { "OR A,B", new byte[] { 0xb0 } },
+          { "OR A,C", new byte[] { 0xb1 } },
+          { "OR A,D", new byte[] { 0xb2 } },
+          { "OR A,E", new byte[] { 0xb3 } },
+          { "OR A,H", new byte[] { 0xb4 } },
+          { "OR A,L", new byte[] { 0xb5 } },
+          { "OR A,IXH", new byte[] { 0xdd, 0xb4 } },
+          { "OR A,IXL", new byte[] { 0xdd, 0xb5 } },
+          { "OR A,IYH", new byte[] { 0xfd, 0xb4 } },
+          { "OR A,IYL", new byte[] { 0xfd, 0xb5 } },
+
+          //Aliases for "OR A,..." with implicit A
           { "OR (HL)", new byte[] { 0xb6 } },
-          { "OR (IX)", new byte[] { 0xdd, 0xb6, 0 } },
-          { "OR (IY)", new byte[] { 0xfd, 0xb6, 0 } },
           { "OR A", new byte[] { 0xb7 } },
           { "OR B", new byte[] { 0xb0 } },
           { "OR C", new byte[] { 0xb1 } },
@@ -456,13 +444,9 @@ namespace Konamiman.Nestor80.Assembler
           { "RL E", new byte[] { 0xcb, 0x13 } },
           { "RL H", new byte[] { 0xcb, 0x14 } },
           { "RL L", new byte[] { 0xcb, 0x15 } },
-          { "RL (IX)", new byte[] { 0xdd, 0xcb, 0, 0x16 } },
-          { "RL (IY)", new byte[] { 0xfd, 0xcb, 0, 0x16 } },
           { "RLA", new byte[] { 0x17 } },
 
           { "RLC (HL)", new byte[] { 0xcb, 0x06 } },
-          { "RLC (IX)", new byte[] { 0xdd, 0xcb, 0, 0x06 } },
-          { "RLC (IY)", new byte[] { 0xfd, 0xcb, 0, 0x06 } },
           { "RLC A", new byte[] { 0xcb, 0x07 } },
           { "RLC B", new byte[] { 0xcb, 0x00 } },
           { "RLC C", new byte[] { 0xcb, 0x01 } },
@@ -483,14 +467,10 @@ namespace Konamiman.Nestor80.Assembler
           { "RR E", new byte[] { 0xcb, 0x1b } },
           { "RR H", new byte[] { 0xcb, 0x1c } },
           { "RR L", new byte[] { 0xcb, 0x1d } },
-          { "RR (IX)", new byte[] { 0xdd, 0xcb, 0, 0x1e } },
-          { "RR (IY)", new byte[] { 0xfd, 0xcb, 0, 0x1e } },
 
           { "RRA", new byte[] { 0x1f } },
 
           { "RRC (HL)", new byte[] { 0xcb, 0x0e } },
-          { "RRC (IX)", new byte[] { 0xdd, 0xcb, 0, 0x0e } },
-          { "RRC (IY)", new byte[] { 0xfd, 0xcb, 0, 0x0e } },
           { "RRC A", new byte[] { 0xcb, 0x0f } },
           { "RRC B", new byte[] { 0xcb, 0x08 } },
           { "RRC C", new byte[] { 0xcb, 0x09 } },
@@ -515,8 +495,6 @@ namespace Konamiman.Nestor80.Assembler
           { "SBC A,E", new byte[] { 0x9b } },
           { "SBC A,H", new byte[] { 0x9c } },
           { "SBC A,L", new byte[] { 0x9d } },
-          { "SBC A,(IX)", new byte[] { 0xdd, 0x9e, 0 } },
-          { "SBC A,(IY)", new byte[] { 0xfd, 0x9e, 0 } },
           { "SBC A,IXH", new byte[] { 0xdd, 0x9c } },
           { "SBC A,IXL", new byte[] { 0xdd, 0x9d } },
           { "SBC A,IYH", new byte[] { 0xfd, 0x9c } },
@@ -531,8 +509,6 @@ namespace Konamiman.Nestor80.Assembler
           { "SBC E", new byte[] { 0x9b } },
           { "SBC H", new byte[] { 0x9c } },
           { "SBC L", new byte[] { 0x9d } },
-          { "SBC (IX)", new byte[] { 0xdd, 0x9e, 0 } },
-          { "SBC (IY)", new byte[] { 0xfd, 0x9e, 0 } },
           { "SBC IXH", new byte[] { 0xdd, 0x9c } },
           { "SBC IXL", new byte[] { 0xdd, 0x9d } },
           { "SBC IYH", new byte[] { 0xfd, 0x9c } },
@@ -541,8 +517,6 @@ namespace Konamiman.Nestor80.Assembler
           { "SCF", new byte[] { 0x37 } },
 
           { "SLA (HL)", new byte[] { 0xcb, 0x26 } },
-          { "SLA (IX)", new byte[] { 0xdd, 0xcb, 0, 0x26 } },
-          { "SLA (IY)", new byte[] { 0xfd, 0xcb, 0, 0x26 } },
           { "SLA A", new byte[] { 0xcb, 0x27 } },
           { "SLA B", new byte[] { 0xcb, 0x20 } },
           { "SLA C", new byte[] { 0xcb, 0x21 } },
@@ -561,8 +535,6 @@ namespace Konamiman.Nestor80.Assembler
           { "SLL A", new byte[] { 0xcb, 0x37 } },
 
           { "SRA (HL)", new byte[] { 0xcb, 0x2e } },
-          { "SRA (IX)", new byte[] { 0xdd, 0xcb, 0, 0x2e } },
-          { "SRA (IY)", new byte[] { 0xfd, 0xcb, 0, 0x2e } },
           { "SRA A", new byte[] { 0xcb, 0x2f } },
           { "SRA B", new byte[] { 0xcb, 0x28 } },
           { "SRA C", new byte[] { 0xcb, 0x29 } },
@@ -581,8 +553,6 @@ namespace Konamiman.Nestor80.Assembler
           { "SRL L", new byte[] { 0xcb, 0x3d } },
 
           { "SUB A,(HL)", new byte[] { 0x96 } },
-          { "SUB A,(IX)", new byte[] { 0xdd, 0x96, 0 } },
-          { "SUB A,(IY)", new byte[] { 0xfd, 0x96, 0 } },
           { "SUB A,A", new byte[] { 0x97 } },
           { "SUB A,B", new byte[] { 0x90 } },
           { "SUB A,C", new byte[] { 0x91 } },
@@ -608,12 +578,22 @@ namespace Konamiman.Nestor80.Assembler
           { "SUB IYH", new byte[] { 0xfd, 0x94 } },
           { "SUB IYL", new byte[] { 0xfd, 0x95 } },
           { "SUB (HL)", new byte[] { 0x96 } },
-          { "SUB (IX)", new byte[] { 0xdd, 0x96, 0 } },
-          { "SUB (IY)", new byte[] { 0xfd, 0x96, 0 } },
 
+          { "XOR A,(HL)", new byte[] { 0xae } },
+          { "XOR A,A", new byte[] { 0xaf } },
+          { "XOR A,B", new byte[] { 0xa8 } },
+          { "XOR A,C", new byte[] { 0xa9 } },
+          { "XOR A,D", new byte[] { 0xaa } },
+          { "XOR A,E", new byte[] { 0xab } },
+          { "XOR A,H", new byte[] { 0xac } },
+          { "XOR A,L", new byte[] { 0xad } },
+          { "XOR A,IXH", new byte[] { 0xdd, 0xac } },
+          { "XOR A,IXL", new byte[] { 0xdd, 0xad } },
+          { "XOR A,IYH", new byte[] { 0xfd, 0xac } },
+          { "XOR A,IYL", new byte[] { 0xfd, 0xad } },
+
+          //Aliases for "XOR A,..." with implicit A
           { "XOR (HL)", new byte[] { 0xae } },
-          { "XOR (IX)", new byte[] { 0xdd, 0xae, 0 } },
-          { "XOR (IY)", new byte[] { 0xfd, 0xae, 0 } },
           { "XOR A", new byte[] { 0xaf } },
           { "XOR B", new byte[] { 0xa8 } },
           { "XOR C", new byte[] { 0xa9 } },
@@ -640,19 +620,143 @@ namespace Konamiman.Nestor80.Assembler
         };
 
         /// <summary>
-        /// Instructions that have one variable argument and maybe also one fixed argument.
+        /// Zero-index versions of the Z80 instructions that have an "(RR+n)" argument, where RR = IX or IY
+        /// (versions where n=0 and the "+n" part is omitted entirely) and don't have any other variable argument
+        /// (so not including the instructions having "(RR+n),n").
         /// 
+        static readonly Dictionary<string, byte[]> ZeroIndexZ80Instructions = new(StringComparer.OrdinalIgnoreCase) {
+          { "ADC A,(IX)", new byte[] { 0xdd, 0x8e, 0 } },
+          { "ADC A,(IY)", new byte[] { 0xfd, 0x8e, 0 } },
+
+          //Aliases for "ADC A,..." with implicit A
+          { "ADC (IX)", new byte[] { 0xdd, 0x8e, 0 } },
+          { "ADC (IY)", new byte[] { 0xfd, 0x8e, 0 } },
+
+          { "ADD A,(IX)", new byte[] { 0xdd, 0x86, 0 } },
+          { "ADD A,(IY)", new byte[] { 0xfd, 0x86, 0 } },
+          
+          //Aliases for "ADD A,..." with implicit A  
+          { "ADD (IX)", new byte[] { 0xdd, 0x86, 0 } },
+          { "ADD (IY)", new byte[] { 0xfd, 0x86, 0 } },
+
+          { "AND A,(IX)", new byte[] { 0xdd, 0xa6, 0 } },
+          { "AND A,(IY)", new byte[] { 0xfd, 0xa6, 0 } },
+          
+          //Aliases for "AND A,..." with implicit A  
+          { "AND (IX)", new byte[] { 0xdd, 0xa6, 0 } },
+          { "AND (IY)", new byte[] { 0xfd, 0xa6, 0 } },
+
+          { "CP A,(IX)", new byte[] { 0xdd, 0xbe, 0 } },
+          { "CP A,(IY)", new byte[] { 0xfd, 0xbe, 0 } },
+          
+          //Aliases for "CP A,..." with implicit A  
+          { "CP (IX)", new byte[] { 0xdd, 0xbe, 0 } },
+          { "CP (IY)", new byte[] { 0xfd, 0xbe, 0 } },
+
+          { "DEC (IX)", new byte[] { 0xdd, 0x35, 0 } },
+          { "DEC (IY)", new byte[] { 0xfd, 0x35, 0 } },
+
+          { "INC (IX)", new byte[] { 0xdd, 0x34, 0 } },
+          { "INC (IY)", new byte[] { 0xfd, 0x34, 0 } },
+
+          { "JP (IX)", new byte[] { 0xdd, 0xe9 } },
+          { "JP (IY)", new byte[] { 0xfd, 0xe9 } },
+
+          { "LD (IX),A", new byte[] { 0xdd, 0x77, 0 } },
+          { "LD (IX),B", new byte[] { 0xdd, 0x70, 0 } },
+          { "LD (IX),C", new byte[] { 0xdd, 0x71, 0 } },
+          { "LD (IX),D", new byte[] { 0xdd, 0x72, 0 } },
+          { "LD (IX),E", new byte[] { 0xdd, 0x73, 0 } },
+          { "LD (IX),H", new byte[] { 0xdd, 0x74, 0 } },
+          { "LD (IX),L", new byte[] { 0xdd, 0x75, 0 } },
+          { "LD (IY),A", new byte[] { 0xfd, 0x77, 0 } },
+          { "LD (IY),B", new byte[] { 0xfd, 0x70, 0 } },
+          { "LD (IY),C", new byte[] { 0xfd, 0x71, 0 } },
+          { "LD (IY),D", new byte[] { 0xfd, 0x72, 0 } },
+          { "LD (IY),E", new byte[] { 0xfd, 0x73, 0 } },
+          { "LD (IY),H", new byte[] { 0xfd, 0x74, 0 } },
+          { "LD (IY),L", new byte[] { 0xfd, 0x75, 0 } },
+          { "LD A,(IX)", new byte[] { 0xdd, 0x7e, 0 } },
+          { "LD A,(IY)", new byte[] { 0xfd, 0x7e, 0 } },
+          { "LD B,(IX)", new byte[] { 0xdd, 0x46, 0 } },
+          { "LD B,(IY)", new byte[] { 0xfd, 0x46, 0 } },
+          { "LD C,(IX)", new byte[] { 0xdd, 0x4e, 0 } },
+          { "LD C,(IY)", new byte[] { 0xfd, 0x4e, 0 } },
+          { "LD D,(IX)", new byte[] { 0xdd, 0x56, 0 } },
+          { "LD D,(IY)", new byte[] { 0xfd, 0x56, 0 } },
+          { "LD E,(IX)", new byte[] { 0xdd, 0x5e, 0 } },
+          { "LD E,(IY)", new byte[] { 0xfd, 0x5e, 0 } },
+          { "LD H,(IX)", new byte[] { 0xdd, 0x66, 0 } },
+          { "LD H,(IY)", new byte[] { 0xfd, 0x66, 0 } },
+          { "LD L,(IX)", new byte[] { 0xdd, 0x6e, 0 } },
+          { "LD L,(IY)", new byte[] { 0xfd, 0x6e, 0 } },
+
+          { "OR A,(IX)", new byte[] { 0xdd, 0xb6, 0 } },
+          { "OR A,(IY)", new byte[] { 0xfd, 0xb6, 0 } },
+
+          //Aliases for "OR A,..." with implicit A
+          { "OR (IX)", new byte[] { 0xdd, 0xb6, 0 } },
+          { "OR (IY)", new byte[] { 0xfd, 0xb6, 0 } },
+
+          { "RL (IX)", new byte[] { 0xdd, 0xcb, 0, 0x16 } },
+          { "RL (IY)", new byte[] { 0xfd, 0xcb, 0, 0x16 } },
+
+          { "RLC (IX)", new byte[] { 0xdd, 0xcb, 0, 0x06 } },
+          { "RLC (IY)", new byte[] { 0xfd, 0xcb, 0, 0x06 } },
+
+          { "RR (IX)", new byte[] { 0xdd, 0xcb, 0, 0x1e } },
+          { "RR (IY)", new byte[] { 0xfd, 0xcb, 0, 0x1e } },
+
+          { "RRC (IX)", new byte[] { 0xdd, 0xcb, 0, 0x0e } },
+          { "RRC (IY)", new byte[] { 0xfd, 0xcb, 0, 0x0e } },
+
+          { "SBC A,(IX)", new byte[] { 0xdd, 0x9e, 0 } },
+          { "SBC A,(IY)", new byte[] { 0xfd, 0x9e, 0 } },
+
+          //Aliases for "SBC A,..." with implicit A
+          { "SBC (IX)", new byte[] { 0xdd, 0x9e, 0 } },
+          { "SBC (IY)", new byte[] { 0xfd, 0x9e, 0 } },
+
+          { "SLA (IX)", new byte[] { 0xdd, 0xcb, 0, 0x26 } },
+          { "SLA (IY)", new byte[] { 0xfd, 0xcb, 0, 0x26 } },
+
+          { "SRA (IX)", new byte[] { 0xdd, 0xcb, 0, 0x2e } },
+          { "SRA (IY)", new byte[] { 0xfd, 0xcb, 0, 0x2e } },
+
+          { "SRL (IX)", new byte[] { 0xdd, 0xcb, 0, 0x3e } },
+          { "SRL (IY)", new byte[] { 0xfd, 0xcb, 0, 0x3e } },
+
+          { "SUB A,(IX)", new byte[] { 0xdd, 0x96, 0 } },
+          { "SUB A,(IY)", new byte[] { 0xfd, 0x96, 0 } },
+
+          //Aliases for "SUB A,..." with implicit A
+          { "SUB (IX)", new byte[] { 0xdd, 0x96, 0 } },
+          { "SUB (IY)", new byte[] { 0xfd, 0x96, 0 } },
+
+          { "XOR A,(IX)", new byte[] { 0xdd, 0xae, 0 } },
+          { "XOR A,(IY)", new byte[] { 0xfd, 0xae, 0 } },
+
+          //Aliases for "XOR A,..." with implicit A
+          { "XOR (IX)", new byte[] { 0xdd, 0xae, 0 } },
+          { "XOR (IY)", new byte[] { 0xfd, 0xae, 0 } }
+        };
+
+        /// <summary>
+        /// Instructions that have one variable argument and maybe also one fixed argument.
+        ///
         /// Items in the tuples are:
         /// - 1: Instruction, followed by the fixed argument if present.
         /// - 2: Type of the variable argument.
         /// - 3: Position of the variable argument in the instruction (single, first or second).
-        /// - 4: Byte position of the variable argument in the output.
+        /// - 4: Instruction bytes.
+        /// - 5: Byte position of the variable argument in the output.
         /// </summary>
-        static readonly (string, CpuInstrArgType, CpuArgPos, byte[], int)[] 
+        static readonly (string, CpuInstrArgType, CpuArgPos, byte[], int)[]
             Z80InstructionsWithOneVariableArgument = new (string, CpuInstrArgType, CpuArgPos, byte[], int)[] {
             ( "ADC A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x8e, 0 }, 2 ), // ADC A,(IX+n)
             ( "ADC A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x8e, 0 }, 2 ), // ADC A,(IY+n)
             ( "ADC A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xce, 0 }, 1 ), // ADC A,n
+
             //Aliases for "ADC A,..." with implicit A
             ( "ADC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x8e, 0 }, 2 ), // ADC (IX+n)
             ( "ADC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x8e, 0 }, 2 ), // ADC (IY+n)
@@ -661,11 +765,17 @@ namespace Konamiman.Nestor80.Assembler
             ( "ADD A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x86, 0 }, 2 ), // ADD A,(ix+n)
             ( "ADD A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x86, 0 }, 2 ), // ADD A,(iy+n)
             ( "ADD A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xc6, 0 }, 1 ), // ADD a,n
+
             //Aliases for "ADD A,..." with implicit A
             ( "ADD", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x86, 0 }, 2 ), // ADD (IX+n)
             ( "ADD", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x86, 0 }, 2 ), // ADD (IY+n)
             ( "ADD", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xc6, 0 }, 1 ), // ADD n
 
+            ( "AND A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0xa6, 0 }, 2 ), // AND A,(IX+n)
+            ( "AND A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0xa6, 0 }, 2 ), // AND A,(IY+n)
+            ( "AND A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xe6, 0 }, 1 ), // AND A,n
+
+            //Aliases for "AND A,..." with implicit A
             ( "AND", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xa6, 0 }, 2 ), // AND (IX+n)
             ( "AND", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xa6, 0 }, 2 ), // AND (IY+n)
             ( "AND", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xe6, 0 }, 1 ), // AND n
@@ -680,6 +790,11 @@ namespace Konamiman.Nestor80.Assembler
             ( "CALL P",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xF4, 0, 0 }, 1 ), // CALL P,nn
             ( "CALL Z",  CpuInstrArgType.Word, CpuArgPos.Second, new byte[] { 0xcc, 0, 0 }, 1 ), // CALL Z,nn
 
+            ( "CP A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0xbe, 0 }, 2 ), //CP A,(IX+n)
+            ( "CP A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0xbe, 0 }, 2 ), //CP A,(IY+n)
+            ( "CP A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xfe, 0 }, 1 ), // CP A,n
+
+            //Aliases for "CP A,..." with implicit A
             ( "CP", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xbe, 0 }, 2 ), //CP (IX+n)
             ( "CP", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xbe, 0 }, 2 ), //CP (IY+n)
             ( "CP", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xfe, 0 }, 1 ), // CP n
@@ -709,7 +824,7 @@ namespace Konamiman.Nestor80.Assembler
             ( "JR NC", CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Second, new byte[] { 0x30, 0 }, 1 ),
             ( "JR NZ", CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Second, new byte[] { 0x20, 0 }, 1 ),
             ( "JR Z",  CpuInstrArgType.OffsetFromCurrentLocation, CpuArgPos.Second, new byte[] { 0x28, 0 }, 1 ),
-            
+           
             // Important: instructions that accept a variable argument in parenthesis
             // must come before the equivalent instructions without parenthesis,
             // e.g. "LD A,(nn)" before "LD A,n"
@@ -776,6 +891,10 @@ namespace Konamiman.Nestor80.Assembler
             ( "LD H", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x74, 0 }, 2 ), // LD (IY+s),H
             ( "LD L", CpuInstrArgType.IyOffset, CpuArgPos.First, new byte[] { 0xfd, 0x75, 0 }, 2 ), // LD (IY+s),L
 
+            ( "OR A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0xb6, 0 }, 2 ), // OR A,(IX+n)
+            ( "OR A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0xb6, 0 }, 2 ), // OR A,(IY+n)
+            ( "OR A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xf6, 0 }, 1 ), // OR A,n
+            //Aliases for "OR A,..." with implicit A
             ( "OR", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xb6, 0 }, 2 ), // OR (IX+n)
             ( "OR", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xb6, 0 }, 2 ), // OR (IY+n)
             ( "OR", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xf6, 0 }, 1 ), // OR n
@@ -797,6 +916,7 @@ namespace Konamiman.Nestor80.Assembler
             ( "SBC A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x9e, 0 }, 2 ), // SBC A,(IX+s)
             ( "SBC A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x9e, 0 }, 2 ), // SBC A,(IY+s)
             ( "SBC A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xde, 0 }, 1 ), // SBC A,n
+
             //Aliases for "SBC A,..." with implicit A
             ( "SBC", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x9e, 0 }, 2 ), // SBC (IX+n)
             ( "SBC", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x9e, 0 }, 2 ), // SBC (IY+n)
@@ -808,14 +928,23 @@ namespace Konamiman.Nestor80.Assembler
             ( "SRA", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xcb, 0, 0x2e }, 2 ), // SRA (IX+n)
             ( "SRA", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xcb, 0, 0x2e }, 2 ), // SRA (IY+n)
 
+            ( "SRL", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xcb, 0, 0x3e }, 2 ), // SRL (IX+n)
+            ( "SRL", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xcb, 0, 0x3e }, 2 ), // SRL (IY+n)
+
             ( "SUB A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0x96, 0 }, 2 ), // SUB A,(IX+s)
             ( "SUB A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0x96, 0 }, 2 ), // SUB A,(IY+s)
             ( "SUB A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xd6, 0 }, 1 ), // SUB A,n
+
             //Aliases for "SUB A,..." with implicit A
             ( "SUB", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0x96, 0 }, 2 ), // SUB (IX+n)
             ( "SUB", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0x96, 0 }, 2 ), // SUB (IY+n)
             ( "SUB", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xd6, 0 }, 1 ), // SUB n
 
+            ( "XOR A", CpuInstrArgType.IxOffset, CpuArgPos.Second, new byte[] { 0xdd, 0xae, 0 }, 2 ), // XOR A,(IX+n)
+            ( "XOR A", CpuInstrArgType.IyOffset, CpuArgPos.Second, new byte[] { 0xfd, 0xae, 0 }, 2 ), // XOR A,(IY+n)
+            ( "XOR A", CpuInstrArgType.Byte, CpuArgPos.Second, new byte[] { 0xee, 0 }, 1 ), // XOR A,n
+
+            //Aliases for "XOR A,..." with implicit A
             ( "XOR", CpuInstrArgType.IxOffset, CpuArgPos.Single, new byte[] { 0xdd, 0xae, 0 }, 2 ), // XOR (IX+n)
             ( "XOR", CpuInstrArgType.IyOffset, CpuArgPos.Single, new byte[] { 0xfd, 0xae, 0 }, 2 ), // XOR (IY+n)
             ( "XOR", CpuInstrArgType.Byte, CpuArgPos.Single, new byte[] { 0xee, 0 }, 1 ), // XOR n
@@ -823,16 +952,16 @@ namespace Konamiman.Nestor80.Assembler
 
         /// <summary>
         /// Instructions whose first argument is one of a fixed set.
-        /// 
+        ///
         /// It's assumed that if there's a second argument it's either fixed (register reference) or (IX+n) or (IY+n),
         /// and that if the second argument is (IX+n) or (IY+n) then its byte position in the output is 2.
-        /// 
+        ///
         /// Items in the tuples are:
         /// - 1: Second argument, null if none, "x" for (IX+n), "y" for (IY+n).
         /// - 2: Output bytes of the instruction.
         /// - 3: Value of the first argument that selects this variant of the instruction.
         /// </summary>
-        static readonly Dictionary<string, (string, byte[], ushort)[]> Z80InstructionsWithSelectorValue = 
+        static readonly Dictionary<string, (string, byte[], ushort)[]> Z80InstructionsWithSelectorValue =
             new(StringComparer.OrdinalIgnoreCase) {
             { "BIT", new (string, byte[], ushort)[] {
                 ( "(HL)", new byte[] { 0xcb, 0x46 }, 0 ),
@@ -1144,5 +1273,16 @@ namespace Konamiman.Nestor80.Assembler
                 (null, new byte[] { 0xff }, 0x38 ) }
             }
         };
+
+
+        /* These are handled as special cases within the assembler code.
+
+        //First argument goes in position 2, second argument comes after that.
+        static readonly (string, CpuInstrArgType, CpuInstrArgType, byte[])[]
+            Z80InstructionsWithTwoVariableArguments = new (string, CpuInstrArgType, CpuInstrArgType, byte[])[] {
+                ("LD", CpuInstrArgType.IxOffset, CpuInstrArgType.Byte, new byte[] { 0xdd, 0x36, 0, 0 }), // LD (IX+n),n
+                ("LD", CpuInstrArgType.IyOffset, CpuInstrArgType.Byte, new byte[] { 0xfd, 0x36, 0, 0 }), // LD (IY+n),n
+            };
+        */
     }
 }
