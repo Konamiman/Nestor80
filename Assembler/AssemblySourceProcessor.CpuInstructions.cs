@@ -156,6 +156,18 @@ namespace Konamiman.Nestor80.Assembler
                 return new CpuInstructionLine() { IsInvalid = true };
             }
 
+            if(isZ280 && opcode.Equals("SLL", StringComparison.OrdinalIgnoreCase)) {
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, "SLL is an undocumented Z80 instruction that isn't available in the Z280");
+                walker.DiscardRemaining();
+                return new CpuInstructionLine() { IsInvalid = true };
+            }
+
+            if(isZ280 && instructionSearchKey.Equals("OUT F,(C)", StringComparison.OrdinalIgnoreCase)) {
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, "OUT F,(C) is an undocumented Z80 instruction that isn't available in the Z280");
+                walker.DiscardRemaining();
+                return new CpuInstructionLine() { IsInvalid = true };
+            }
+
             if(currentCpuFixedInstructions.ContainsKey(instructionSearchKey)) {
                 var line = new CpuInstructionLine() { FirstArgumentTemplate = firstArgument, SecondArgumentTemplate = secondArgument, OutputBytes = currentCpuFixedInstructions[instructionSearchKey] };
                 CompleteInstructionLine(line);

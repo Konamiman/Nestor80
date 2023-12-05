@@ -14,7 +14,7 @@ Nestor80 has a mechanism to disallow the core privileged instructions and option
 The mechanism is implemented as two special symbols that can be defined with the standard `EQU` and `DEFL` instructions, and with the Nestor80 `--define-symbols` command line argument:
 
 * `_Z280.AllowPrivileged`: when this symbol exists and has a value **equal to zero**, privileged instructions won't be allowed. The core privileged instructions are: `DI`, `EI`, `HALT`, `IM`, `LDCTL`, `LDUD`, `LDUP`, `RETI`, `RETIL`, `RETN`, `LD A,I`, `LD I,A`, `LD A,R`, `LD R,A`.
-* `_Z280.IoPrivileged`: when this symbol exists and has a value **different from zero**, I/O instructions will be considered as privileged, and thus they won't be allowed if `_Z280.AllowPrivileged` exists and equals zero. The I/O instructions are: `IN`, `IND`, `INDR`, `INDW`, `INDRW`, `INI`, `INIR`, `INIW`, `INIRW`, `INW`, `OTDR`, `OTDRW`, `OTIR`, `OTIRW`, `OUT`, `OUTD`, `OUTDW`, `OUTI`, `OUTIW`, `OUTW`, `TSTI`
+* `_Z280.IoPrivileged`: when this symbol exists and has a value **different from zero**, I/O instructions will be considered as privileged, and thus they won't be allowed if `_Z280.AllowPrivileged` exists and equals zero. The I/O instructions are: `IN`, `IND`, `INDR`, `INDW`, `INDRW`, `INI`, `INIR`, `INIW`, `INIRW`, `INW`, `OTDR`, `OTDRW`, `OTIR`, `OTIRW`, `OUT`, `OUTD`, `OUTDW`, `OUTI`, `OUTIW`, `OUTW`, `TSTI`.
 
 As it's the case of regular symbols, the names are case-insensitive.
 
