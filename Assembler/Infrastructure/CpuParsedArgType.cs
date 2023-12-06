@@ -10,6 +10,9 @@
         Number,
         NumberInParenthesis,
         IxPlusOffset,
-        IyPlusOffset
+        IyPlusOffset,
+        PcPlusOffset,
+        SpPlusOffset,
+        HlPlusOffset
     }
 }

@@ -24,6 +24,10 @@ namespace Konamiman.Nestor80.Assembler
         const int MAX_LINE_LENGTH = 1034;
         const int MAX_INCLUDE_NESTING = 34;
 
+        const string Z280_ALLOW_PRIV_SYMBOL = "_z280.allowprivileged";
+        const string Z280_IO_IS_PRIVILEGED_SYMBOL = "_z280.ioprivileged";
+        const string Z280_INDEX_MODE_SYMBOL = "_z280.indexmode";
+
         const RegexOptions RegxOp = RegexOptions.Compiled | RegexOptions.IgnoreCase;
 
         public const int MaxEffectiveExternalNameLength = 6;
@@ -76,6 +80,18 @@ namespace Konamiman.Nestor80.Assembler
         private static readonly string[] instructionsNeedingPass2Reevaluation;
 
         private static CpuType currentCpu;
+        private static bool z280AllowPriviliegedInstructions;
+        private static bool z280IoInstructionsArePrivileged;
+        private static bool isZ280;
+        private static bool isZ280AutoIndexMode;
+        private static bool isZ280LongIndexMode;
+        private static Z280IndexMode z280IndexMode;
+
+        private static string[] currentCpuInstructionOpcodes;
+        private static Dictionary<string, byte[]> currentCpuFixedInstructions;
+        private static Dictionary<string, (string, byte[], ushort)[]> currentCpuInstructionsWithSelectorValue;
+        private static int currentCpuInstructionsWithOneVariableArgumentCount;
+        private static Regex currentCpuMemPointedByRegisterRegex;
 
         private static readonly Regex labelRegex = new("^([^\\d\\W]|[$@?._])[\\w$@?._]*:{0,2}$", RegxOp);
 
@@ -162,6 +178,9 @@ namespace Konamiman.Nestor80.Assembler
                 includeStream = null;
                 state = new AssemblyState(configuration, sourceStream, sourceStreamEncoding);
 
+                z280AllowPriviliegedInstructions = true;
+                z280IoInstructionsArePrivileged = false;
+                z280IndexMode = Z280IndexMode.Auto;
                 ProcessPredefinedsymbols(configuration.PredefinedSymbols);
                 maxErrors = configuration.MaxErrors;
                 link80Compatibility = configuration.Link80Compatibility;
@@ -175,6 +194,7 @@ namespace Konamiman.Nestor80.Assembler
                     Expression.OutputStringEncoding = Encoding.ASCII;
 
                 state.DefaultOutputStringEncoding = Expression.OutputStringEncoding;
+                state.WordArgumentTypes = wordArgTypes;
 
                 Expression.GetSymbol = GetSymbolForExpression;
                 Expression.ModularizeSymbolName = name => state.Modularize(name);
@@ -308,7 +328,44 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     state.AddSymbol(symbol, SymbolType.Defl, Address.Absolute(value));
                 }
+
+                MaybeProcessSpecialSymbol(symbol, Address.Absolute(value).Value);
             }
+        }
+
+        /// <summary>
+        /// Given a symbol that is being (re)defined as a constant, check if it's a special symbol
+        /// and update internal state accordingly if so.
+        /// </summary>
+        /// <param name="symbol">Symbol name</param>
+        /// <param name="value">Symbol value</param>
+        private static void MaybeProcessSpecialSymbol(string symbol, ushort value)
+        {
+            if(symbol.Equals(Z280_ALLOW_PRIV_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
+                z280AllowPriviliegedInstructions = value != 0;
+            }
+            else if(symbol.Equals(Z280_IO_IS_PRIVILEGED_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
+                z280IoInstructionsArePrivileged = value != 0;
+            }
+            else if(symbol.Equals(Z280_INDEX_MODE_SYMBOL, StringComparison.OrdinalIgnoreCase)) {
+                if(value == 1) {
+                    z280IndexMode = Z280IndexMode.Short;
+                }
+                else if(value == 2) {
+                    z280IndexMode = Z280IndexMode.Long;
+                }
+                else {
+                    z280IndexMode = Z280IndexMode.Auto;
+                }
+                SetZ280ConfigVariables();
+            }
+        }
+
+        private static void SetZ280ConfigVariables()
+        {
+            isZ280 = currentCpu == CpuType.Z280;
+            isZ280AutoIndexMode = isZ280 && z280IndexMode == Z280IndexMode.Auto;
+            isZ280LongIndexMode = isZ280 && z280IndexMode != Z280IndexMode.Short;
         }
 
         /// <summary>
@@ -519,7 +576,7 @@ namespace Konamiman.Nestor80.Assembler
             // endif  --> This must be processed as the end of the "if 0"
             //
             // The logic is a bit convoluted because we need to take in account REPTs inside the named macro too
-            // (we keep a count of "rept inside named macro inside alse conditional nesting level").
+            // (we keep a count of "rept inside named macro inside also conditional nesting level").
             // There are most likely even more complicated cases that aren't properly handled.
             if(state.InFalseConditional) {
                 if(symbol.Equals("ENDM", StringComparison.OrdinalIgnoreCase)) {
@@ -611,7 +668,7 @@ namespace Konamiman.Nestor80.Assembler
                     var processor = PseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
                 }
-                else if(Z80InstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) ||
+                else if(currentCpuInstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) ||
                     (currentCpu is CpuType.R800 && R800SpecificOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase))) {
                     opcode = symbol;
                     processedLine = ProcessCpuInstruction(opcode, walker);
