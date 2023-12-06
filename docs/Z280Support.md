@@ -86,7 +86,7 @@ This mode might be useful for programs that modify themselves, so that you might
 Here's a listing file that illustrates how Nestor80 generates code for an instruction that has short and long index versions, depending on the configured index mode:
 
 ```
-                          cpu Z280
+                          .cpu Z280
                           
   0000'                   RELOC:
                           
