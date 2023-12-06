@@ -25,6 +25,8 @@ namespace Konamiman.Nestor80.N80
     /// </summary>
     internal partial class Program
     {
+        const int PREVIEW_LEVEL = 1;
+
         const int ERR_SUCCESS = 0;
         const int ERR_BAD_ARGUMENTS = 1;
         const int ERR_CANT_OPEN_INPUT_FILE = 2;
@@ -1533,7 +1535,7 @@ namespace Konamiman.Nestor80.N80
             while(version.EndsWith(".0") && version.Count(ch => ch is '.') > 1) {
                 version = version[..^2];
             }
-            return version;
+            return PREVIEW_LEVEL == 0 ? version : version + " preview " + PREVIEW_LEVEL;
         }
     }
 }
