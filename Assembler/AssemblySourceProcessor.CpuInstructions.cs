@@ -174,10 +174,16 @@ namespace Konamiman.Nestor80.Assembler
                 return line;
             }
 
-            // There's at least one variable argument.
+            // There's (or there should be) at least one variable argument.
 
             var firstArgumentType = GetCpuInstructionArgumentPattern(firstArgument);
             var secondArgumentType = GetCpuInstructionArgumentPattern(secondArgument);
+
+            if(firstArgumentType is CpuParsedArgType.Fixed && secondArgumentType is CpuParsedArgType.Fixed or CpuParsedArgType.None) {
+                AddError(AssemblyErrorCode.InvalidCpuInstruction, $"Invalid {currentCpu} instruction: {instructionSearchKey}");
+                walker.DiscardRemaining();
+                return new CpuInstructionLine() { IsInvalid = true };
+            }
 
             bool isInstructionWithTwoVariableArguments = false;
             var isLD = string.Equals("LD", opcode, StringComparison.OrdinalIgnoreCase);
