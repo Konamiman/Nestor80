@@ -5,8 +5,8 @@ namespace Konamiman.Nestor80.N80
     internal partial class Program
     {
         static readonly string bannerText = """
-            Nestor80 - The Z80 assembler for the 21th century
-            (c) Konamiman 2023
+            Nestor80 - The Z80 and Z280 assembler for the 21th century
+            (c) Konamiman 2024
 
             """;
 
