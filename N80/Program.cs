@@ -25,7 +25,7 @@ namespace Konamiman.Nestor80.N80
     /// </summary>
     internal partial class Program
     {
-        const int PREVIEW_LEVEL = 1;
+        const int PREVIEW_LEVEL = 0;
 
         const int ERR_SUCCESS = 0;
         const int ERR_BAD_ARGUMENTS = 1;
