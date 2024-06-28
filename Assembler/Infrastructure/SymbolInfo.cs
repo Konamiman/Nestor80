@@ -13,6 +13,8 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
     {
         public static bool Link80Compatibility { get; set; }
 
+        public static bool IsSdasBuild { get; set; }
+
         private SymbolType _Type;
         public SymbolType Type
         {
@@ -43,6 +45,23 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 SetEffectiveName();
             }
         }
+
+        private string _SdasAreaName;
+        public string SdasAreaName
+        {
+            get => _SdasAreaName;
+            set
+            {
+                if(IsSdasBuild && string.IsNullOrWhiteSpace(value)) {
+                    throw new ArgumentNullException("Symbol SDAS area name can't be empty");
+                }
+
+                _SdasAreaName = value;
+                SetEffectiveName();
+            }
+        }
+
+        public bool SdasAreaIsAbs { get; set; }
 
         public bool IsLabel => Type == SymbolType.Label;
 

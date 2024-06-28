@@ -5,6 +5,7 @@ using Konamiman.Nestor80.Assembler.Infrastructure;
 using Konamiman.Nestor80.Assembler.Output;
 using Konamiman.Nestor80.Assembler.ProcessedLineTypes;
 using Konamiman.Nestor80.Assembler.Relocatable;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -115,6 +116,10 @@ namespace Konamiman.Nestor80.Assembler
             // .Z80: Select Z80 as the current CPU
             { ".Z80", ProcessChangeCpuToZ80Line },
 
+            // AREA: Change current SDAS area
+            { "AREA", ProcessSdasAreaLine },
+            { ".AREA", ProcessSdasAreaLine },
+
             // ASEG: Select the absolute segment
             { "ASEG", ProcessAsegLine },
 
@@ -132,12 +137,14 @@ namespace Konamiman.Nestor80.Assembler
 
             // DB: Alias for DEFB
             { "DB", ProcessDefbLine },
+            { ".DB", ProcessDefbLine },
 
             // DC <string>: Define string with last cahacter having MSB set
             { "DC", ProcessDcLine },
 
             // DEFB <byte or string>[,<byte or string>[,...]]: Define sequence of bytes
             { "DEFB", ProcessDefbLine },
+            { ".DEFB", ProcessDefbLine },
 
             // DEFM: Alias for DEFB
             { "DEFM", ProcessDefbLine },
@@ -154,12 +161,14 @@ namespace Konamiman.Nestor80.Assembler
 
             // DS: Alias for DEFS
             { "DS", ProcessDefsLine },
+            { ".DS", ProcessDefsLine },
 
             // DSEG: Select the data segment
             { "DSEG", ProcessDsegLine },
 
             // DW: Alias for DEFW
             { "DW", ProcessDefwLine },
+            { ".DW", ProcessDefwLine },
 
             // DZ: Alias for DEFZ
             { "DZ", ProcessDefzLine },
@@ -289,6 +298,7 @@ namespace Konamiman.Nestor80.Assembler
 
             // ORG <address>: Change the location counter in the current area
             { "ORG", ProcessOrgLine },
+            { ".ORG", ProcessOrgLine },
 
             // PAGE [<size>]: Change the current subpage, optionally setting the new page size
             { "PAGE", ProcessSetListingNewPageLine },
@@ -384,7 +394,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else {
                         AddZero();
-                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value, CommonName = value.CommonBlockName });
+                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value, CommonName = value.CommonBlockName, SdasAreaName = expression.SdasAreaName });
                         if(!isByte) index++;
                     }
                 }
@@ -435,7 +445,10 @@ namespace Konamiman.Nestor80.Assembler
                         var valueExpressionText = walker.ExtractExpression();
                         var valueExpression = state.GetExpressionFor(valueExpressionText, isByte: true);
                         var valueAddress = EvaluateIfNoSymbolsOrPass2(valueExpression);
-                        if(valueAddress is null) {
+                        if(buildType is BuildType.Sdas) {
+                            throw new InvalidExpressionException("the value argument isn't allowed in SDAS build mode");
+                        }
+                        else if(valueAddress is null) {
                             state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Byte);
                         }
                         else if(!valueAddress.IsValidByte) {
@@ -521,6 +534,14 @@ namespace Konamiman.Nestor80.Assembler
                 return new ChangeAreaLine();
             }
 
+            if(buildType == BuildType.Absolute) {
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing to a common block when the output type is absolute has no effect");
+            }
+
+            if(buildType == BuildType.Sdas) {
+                AddError(AssemblyErrorCode.IgnoredForSdasOutput, $"Changing to a common block when the output type is SDAS has no effect, use the AREA instruction instead");
+            }
+
             var commonBlockName = commonBlockNameExpression.Trim('/', ' ', '\t').ToUpper();
             return ProcessChangeAreaLine(AddressType.COMMON, commonBlockName);
         }
@@ -533,6 +554,10 @@ namespace Konamiman.Nestor80.Assembler
 
             if(buildType == BuildType.Absolute && area != AddressType.ASEG) {
                 AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing area to {area} when the output type is absolute has no effect");
+            }
+
+            if(buildType == BuildType.Sdas) {
+                AddError(AssemblyErrorCode.IgnoredForSdasOutput, $"Changing area to {area} when the output type is SDAS has no effect, use the AREA instruction instead");
             }
 
             if(state.IsCurrentlyPhased) {
@@ -570,6 +595,9 @@ namespace Konamiman.Nestor80.Assembler
                     state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Word);
                     return line;
                 }
+                else if(buildType is BuildType.Sdas) {
+                    return ProcessSdasOrgLine(value.Value);
+                }
                 else {
                     state.SwitchToLocation(value.Value);
                     return new ChangeOriginLine() { NewLocationArea = state.CurrentLocationArea, NewLocationCounter = value.Value };
@@ -580,6 +608,29 @@ namespace Konamiman.Nestor80.Assembler
                 walker.DiscardRemaining();
                 return new ChangeOriginLine();
             }
+        }
+
+        static ProcessedSourceLine ProcessSdasOrgLine(ushort value)
+        {
+            var currentArea = state.CurrentSdasArea;
+            if(!currentArea.IsAbsolute) {
+                AddError(AssemblyErrorCode.OrgInRelSdasArea, $"ORG is only allowed in ABS areas, current area ({currentArea.Name}) is REL");
+                return new ChangeOriginLine();
+            }
+
+            var indexedAreaName = state.GetToNextIndexedSdasAreaName();
+            var existingIndexedArea = state.GetExistingSdasArea(indexedAreaName);
+            if(existingIndexedArea is null) {
+                state.SwitchToSdasArea(indexedAreaName, true, currentArea.IsOverlay, address: value, isIndexed: true);
+            }
+            else if(!existingIndexedArea.IsAbsolute) {
+                AddError(AssemblyErrorCode.MismatchingSdasArea, $"ORG would cause a switch to area {indexedAreaName}, but this area already exists and is REL");
+            }
+            else {
+                state.SwitchToSdasArea(indexedAreaName);
+            }
+
+            return new ChangeOriginLine() { NewLocationArea = AddressType.ASEG, NewLocationCounter = value, SdasAreaName = indexedAreaName };
         }
 
         static ProcessedSourceLine ProcessExternalDeclarationLine(string opcode, SourceLineWalker walker)
@@ -1087,8 +1138,8 @@ namespace Konamiman.Nestor80.Assembler
                 return new LinkerFileReadRequestLine();
             }
 
-            if(buildType == BuildType.Absolute) {
-                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} is ignored when the output type is absolute");
+            if(buildType is BuildType.Absolute or BuildType.Sdas) {
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} is ignored when the output type is absolute or SDAS");
             }
 
             var filenames = new List<string>();
@@ -1998,6 +2049,66 @@ namespace Konamiman.Nestor80.Assembler
         {
             state.RelativeLabelsEnabled = false;
             return new RelabLine() { Enable = false };
+        }
+
+        static ProcessedSourceLine ProcessSdasAreaLine(string opcode, SourceLineWalker walker)
+        {
+            var name = walker.ExtractSymbol();
+            if(name == null) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an area name");
+                return new SdasAreaLine();
+            }
+
+            if(buildType is BuildType.Automatic) {
+                SetBuildType(BuildType.Sdas);
+            }
+
+            var arguments = walker.GetUntil(';').Trim();
+            arguments = arguments.TrimStart('(').TrimEnd(')');
+            var modifiers = arguments.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            modifiers = modifiers.Select(m => m.Trim()).ToArray();
+            var hasModifiers = modifiers.Length > 0;
+
+            var isAbsolute = false;
+            var isOverlay = false;
+            foreach(var modifier in modifiers) {
+                switch(modifier) {
+                    case "ABS":
+                        isAbsolute = true;
+                        break;
+                    case "OVR":
+                        isOverlay = true;
+                        break;
+                    case "REL":
+                    case "CON":
+                        break;
+                    default:
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Allowed mofifiers for {opcode} are ABS, REL, OVR, CON");
+                        return new SdasAreaLine();
+                }
+            }
+
+            if(hasModifiers && isAbsolute && !isOverlay) {
+                AddError(AssemblyErrorCode.SdasAbsAreaCantBeCon, $"Area '{name}' was defined as as ABS and CON, but absolute areas are always OVR");
+            }
+
+            var result = new SdasAreaLine(name, isAbsolute, isOverlay);
+
+            var existingArea = state.GetExistingSdasArea(name);
+            if(existingArea is null) {
+                state.SwitchToSdasArea(name, isAbsolute, isOverlay);
+            }
+            else if(!hasModifiers) {
+                state.SwitchToSdasArea(name);
+            }
+            else if(existingArea.IsAbsolute != isAbsolute && existingArea.IsOverlay != isOverlay) {
+                AddError(AssemblyErrorCode.MismatchingSdasArea, $"Can't redefine area '{name}' as {result.Area.PrintableModifiers}; it has been already defined as {existingArea.PrintableModifiers}");
+            }
+            else {
+                state.SwitchToSdasArea(name);
+            }
+
+            return result;
         }
     }
 }

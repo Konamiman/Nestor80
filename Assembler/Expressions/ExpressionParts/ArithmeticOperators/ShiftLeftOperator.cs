@@ -19,7 +19,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
             if (!value1.IsAbsolute || !value2.IsAbsolute)
             {
-                throw new InvalidExpressionException($"SHL: The second operand must be absolute (attempted {value1.Type} SHL {value2.Type})");
+                throw new InvalidExpressionException($"SHL: The second operand must be absolute (attempted {value1.EffectiveType} SHL {value2.EffectiveType})");
             }
 
             unchecked

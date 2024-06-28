@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.ProcessedLineTypes;
 using Konamiman.Nestor80.Assembler.Relocatable;
 using System.Text;
 
@@ -637,6 +638,193 @@ namespace Konamiman.Nestor80.Assembler
             foreach(var b in symbolBytes) {
                 bitWriter.Write(b, 8);
             }
+        }
+
+        const int MAX_BYTES_PER_SDAS_T_LINE = 16;
+        public static int GenerateSdasRelocatable(AssemblyResult assemblyResult, Stream outputStream)
+        {
+            var outputLines = new List<string> { "XL3" };
+
+            var globalSymbols = assemblyResult.Symbols.Where(s => s.IsPublic).ToArray();
+            var externalSymbols = assemblyResult.Symbols.Where(s => s.Type is Infrastructure.SymbolType.External).ToArray();
+
+            var totalSymbolsCount = globalSymbols.Length + externalSymbols.Length + 1; //+1 for .__.ABS.
+            outputLines.Add($"H {assemblyResult.SdasAreas.Length:X} areas {totalSymbolsCount:X} global symbols");
+
+            if(!assemblyResult.ImplicitProgramName) {
+                outputLines.Add($"M {assemblyResult.ProgramName}");
+            }
+
+            outputLines.Add("S .__.ABS. Def000000");
+
+            var symbolIndexesByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var currentSymbolIndex = 0;
+            var areaIndexesByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var currentAreaIndex = 0;
+            var areasByName = new Dictionary<string, SdasArea>(StringComparer.OrdinalIgnoreCase);
+            var currentAreaName = "_CODE";
+            var locationPointersByAreaName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            foreach(var symbol in externalSymbols) {
+                outputLines.Add($"S {symbol.Name} Ref000000");
+                symbolIndexesByName[symbol.Name] = currentSymbolIndex++;
+            }
+
+            foreach(var area in assemblyResult.SdasAreas) {
+                var areaFlags =
+                    (area.IsOverlay ? 4 : 0) +
+                    (area.IsAbsolute ? 8 : 0);
+
+                int areaAddress, areaSize;
+                if(area.IsOverlay && area.IsAbsolute) {
+                    areaAddress = 0;
+                    areaSize = area.Address + area.Size;
+                }
+                else {
+                    areaAddress = area.Address;
+                    areaSize = area.Size;
+                }
+
+                outputLines.Add($"A {area.Name} size {areaSize:X} flags {areaFlags:X} addr {areaAddress:X}");
+                areaIndexesByName[area.Name] = currentAreaIndex++;
+                areasByName[area.Name] = area;
+                locationPointersByAreaName[area.Name] = area.Address;
+
+                var areaSymbols = globalSymbols.Where(s => s.SdasAreaName == area.Name).ToArray();
+                foreach(var symbol in areaSymbols) {
+                    outputLines.Add($"S {symbol.Name} Def{symbol.Value:X6}");
+                    symbolIndexesByName[symbol.Name] = currentSymbolIndex++;
+                }
+            }
+
+            var assemblyResultLines = FlattenLinesList(assemblyResult.ProcessedLines);
+            var bytesInCurrentOutputLine = 0;
+            var outputLineBuilder = new StringBuilder();
+            var currentLocationPointer = 0;
+            var previousAreaIndex = 0;
+            var previousLocationPointer = 0;
+            var changeDataLinePending = false;
+            var pendingRelocations = new List<(int,int,int)>(); //flags,offset,area/symbol index
+
+            var flushCurrentOutputLine = () => {
+                if(bytesInCurrentOutputLine == 0) {
+                    return;
+                }
+
+                outputLines.Add(outputLineBuilder.ToString());
+                outputLineBuilder.Clear();
+                bytesInCurrentOutputLine = 0;
+
+                outputLineBuilder.Append($"R 00 00 {currentAreaIndex & 0xFF:X2} {currentAreaIndex >> 8:X2}");
+                foreach(var relocationInfo in pendingRelocations) {
+                    outputLineBuilder.Append($" {relocationInfo.Item1:X2} {relocationInfo.Item2:X2} {relocationInfo.Item3 & 0xFF:X2} {relocationInfo.Item3 >> 8:X2}");
+                }
+                outputLines.Add(outputLineBuilder.ToString());
+                outputLineBuilder.Clear();
+
+                pendingRelocations.Clear();
+            };
+
+            var maybeInitCurrentOutputLine = () => {
+                if(bytesInCurrentOutputLine == 0) {
+                    outputLineBuilder.Append($"T {currentLocationPointer & 0xFF:X2} {currentLocationPointer >> 8:X2} 00");
+                    bytesInCurrentOutputLine = 3;
+                }
+            };
+
+            var maybeFlushCurrentOutputLine = (int countOfBytesToAdd) => {
+                maybeInitCurrentOutputLine();
+                if(bytesInCurrentOutputLine + countOfBytesToAdd > MAX_BYTES_PER_SDAS_T_LINE) {
+                    flushCurrentOutputLine();
+                    maybeInitCurrentOutputLine();
+                }
+            };
+
+            var addPendingRelocation = (int flags, int offset, int index) => {
+                if(pendingRelocations.Count >= (MAX_BYTES_PER_SDAS_T_LINE - 4)/4) {
+                    offset -= (bytesInCurrentOutputLine - 3); //+3 to skip "<address low> <address high> 00" at the beginning of the T line
+                    flushCurrentOutputLine();
+                    maybeInitCurrentOutputLine();
+                }
+
+                pendingRelocations.Add((flags, offset, index));
+            };
+
+            foreach(var line in assemblyResultLines) {
+                if(line is SdasAreaLine sdasAreaLine) {
+                    if(sdasAreaLine.Name != areasByName[currentAreaName].Name) {
+                        flushCurrentOutputLine();
+                        if(!areasByName[currentAreaName].IsAbsolute && !areasByName[currentAreaName].IsOverlay) {
+                            locationPointersByAreaName[currentAreaName] = currentLocationPointer;
+                        }
+                    }
+
+                    currentAreaName = sdasAreaLine.Name;
+                    currentAreaIndex = areaIndexesByName[currentAreaName];
+                    currentLocationPointer = locationPointersByAreaName[currentAreaName];
+                }
+                else if(line is ChangeOriginLine orgLine) {
+                    flushCurrentOutputLine();
+
+                    currentAreaIndex = areaIndexesByName[orgLine.SdasAreaName];
+                    currentLocationPointer = areasByName[orgLine.SdasAreaName].Address;
+
+                    maybeInitCurrentOutputLine();
+                    flushCurrentOutputLine();
+                }
+                else if(line is DefineSpaceLine defsLine) {
+                    maybeInitCurrentOutputLine();
+                    currentLocationPointer += defsLine.Size;
+                }
+                else if(line is IProducesOutput ipo) {
+                    var relocatablePartsByIndex = ipo.RelocatableParts.ToDictionary(part => part.Index);
+                    for(int i = 0; i<ipo.OutputBytes.Length; i++) {
+                        if(relocatablePartsByIndex.TryGetValue(i, out var relocatablePartAtIndex)) {
+                            if(relocatablePartAtIndex is RelocatableValue relocatableValue) {
+                                maybeFlushCurrentOutputLine(relocatableValue.IsByte ? 3 : 2);
+                                var flags = relocatableValue.IsByte ? 0x01 | 0x08 : 0;
+                                addPendingRelocation(flags, bytesInCurrentOutputLine, areaIndexesByName[relocatableValue.SdasAreaName]);
+                                outputLineBuilder.Append($" {relocatableValue.Value & 0xFF:X2} {relocatableValue.Value >> 8:X2}");
+                                if(relocatableValue.IsByte) {
+                                    outputLineBuilder.Append($" 00");
+                                }
+                                else {
+                                    //We are iterating OutputBytes byte by byte, but for relocatable 16-bit values
+                                    //there are actually two bytes in place, so we need to skip the second one
+                                    //(these are dummy bytes, we've written the actual bytes in "outputLineBuilder.Append" above).
+                                    i++;
+                                }
+                                bytesInCurrentOutputLine += relocatableValue.IsByte ? 3 : 2;
+                                currentLocationPointer += relocatableValue.IsByte ? 1 : 2;
+                            }
+                            else {
+                                throw new Exception("Not implemented yet!");
+                            }
+                        }
+                        else {
+                            maybeFlushCurrentOutputLine(1);
+                            outputLineBuilder.Append($" {ipo.OutputBytes[i]:X2}");
+                            bytesInCurrentOutputLine++;
+                            currentLocationPointer++;
+                        }
+                    }
+                }
+                else if(line is EndOutputLine or AssemblyEndLine) {
+                    break;
+                }
+
+                //TODO: More line types!
+            }
+
+            flushCurrentOutputLine();
+
+            var sb = new StreamWriter(outputStream, Encoding.UTF8);
+            foreach(var line in outputLines) {
+                sb.WriteLine(line);
+            }
+
+            sb.Flush();
+            return (int)outputStream.Length;
         }
     }
 }

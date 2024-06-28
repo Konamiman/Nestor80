@@ -15,6 +15,8 @@
         SymbolWithCpuRegisterName,
         ConfusingOffset,
         IgnoredForAbsoluteOutput,
+        IgnoredForSdasOutput,
+        IgnoredForNonSdaOutput,
         UnterminatedConditional,
         PhaseWithoutArgument,
         DephaseWithoutPhase,
@@ -28,6 +30,7 @@
         DuplicatedMacro,
         LocationPointerOverflow,
         UserWarning,
+        SdasAbsAreaCantBeCon,
         LastWarning = UserWarning,
 
         //Normal errors
@@ -58,6 +61,8 @@
         UserError,
         PrivilegedInstructionFound,
         IoInstructionFound,
+        MismatchingSdasArea,
+        OrgInRelSdasArea,
         LasetError = UserError,
 
         //Fatal errors

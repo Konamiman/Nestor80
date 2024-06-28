@@ -35,6 +35,8 @@ namespace Konamiman.Nestor80.Assembler
         /// </summary>
         public string CommonName { get; set; }
 
-        public override string ToString() => $"{Name} = {ValueArea} {Value:X4}, {Type}, {CommonName}";
+        public string SdasAreaName { get; set; }
+
+        public override string ToString() => $"{Name} = {ValueArea} {Value:X4}, {Type}, {CommonName}{(SdasAreaName is null ? "" : ", area: " + SdasAreaName)}";
     }
 }

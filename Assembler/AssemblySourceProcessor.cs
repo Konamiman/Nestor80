@@ -7,6 +7,7 @@ using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
 using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
 using Konamiman.Nestor80.Assembler.Infrastructure;
 using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.ProcessedLineTypes;
 using Konamiman.Nestor80.Assembler.Relocatable;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
@@ -246,7 +247,8 @@ namespace Konamiman.Nestor80.Assembler
                     IsPublic = s.IsPublic,
                     Value = s.Value?.Value ?? 0,
                     ValueArea = s.Value?.Type ?? AddressType.ASEG,
-                    CommonName = s.Value?.CommonBlockName
+                    CommonName = s.Value?.CommonBlockName,
+                    SdasAreaName = s.SdasAreaName,
                 }).ToArray();
 
             var duplicateExternals = symbols.Where(s => s.Type is SymbolType.External).GroupBy(s => s.EffectiveName).Where(s => s.Count() > 1).ToArray();
@@ -303,7 +305,8 @@ namespace Konamiman.Nestor80.Assembler
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
                 BuildType = buildType,
                 MaxRelocatableSymbolLength = configuration.Link80Compatibility ? MaxEffectiveExternalNameLength : int.MaxValue,
-                MacroNames = state.NamedMacros.Keys.ToArray()
+                MacroNames = state.NamedMacros.Keys.ToArray(),
+                SdasAreas = state.SdasAreas.Values.ToArray()
             };
         }
 
@@ -734,6 +737,9 @@ namespace Konamiman.Nestor80.Assembler
                 else if(processedLine is IProducesOutput or DefineSpaceLine or LinkerFileReadRequestLine) {
                     SetBuildType(BuildType.Relocatable);
                 }
+                else if(processedLine is SdasAreaLine) {
+                    SetBuildType(BuildType.Sdas);
+                }
             }
 
             return processedLine;
@@ -853,7 +859,8 @@ namespace Konamiman.Nestor80.Assembler
                             IsByte = expressionPendingEvaluation.IsByte,
                             Type = expressionValue.Type, 
                             Value = expressionValue.Value,
-                            CommonName = expressionValue.CommonBlockName
+                            CommonName = expressionValue.CommonBlockName,
+                            SdasAreaName = expressionPendingEvaluation.Expression.SdasAreaName
                         });
                     }
                 }
@@ -921,7 +928,12 @@ namespace Konamiman.Nestor80.Assembler
         private static SymbolInfo GetSymbolForExpression(string name, bool isExternal, bool isRoot)
         {
             if(name == "$") {
-                return new SymbolInfo() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
+                return new SymbolInfo() { 
+                    Name = "$", 
+                    Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer),
+                    SdasAreaName = state.CurrentSdasArea?.Name,
+                    SdasAreaIsAbs = state.CurrentSdasArea?.IsAbsolute ?? false
+                };
             }
 
             if(!isRoot && !isExternal) {
@@ -1021,6 +1033,10 @@ namespace Konamiman.Nestor80.Assembler
                 //Either PUBLIC declaration preceded label in code,
                 //or the label first appeared as part of an expression
                 symbol.Value = state.GetCurrentLocation();
+                if(buildType is BuildType.Sdas) {
+                    symbol.SdasAreaName = state.CurrentSdasArea?.Name;
+                    symbol.SdasAreaIsAbs = state.CurrentSdasArea?.IsAbsolute ?? false;
+                }
 
                 //In case the label first appeared as part of an expression
                 //and thus was of type "Unknown"
@@ -1044,6 +1060,15 @@ namespace Konamiman.Nestor80.Assembler
             buildType = type;
             if(BuildTypeAutomaticallySelected is not null) {
                 BuildTypeAutomaticallySelected(null, (state.CurrentIncludeFilename, state.CurrentLineNumber, buildType));
+            }
+
+            if(type is BuildType.Sdas) {
+                state.SetIsSdasBuild();
+                SymbolInfo.IsSdasBuild = true;
+                Expression.IsSdasBuild = true;
+                Address.IsSdasBuild = true;
+                ArithmeticOperator.IsSdasBuild = true;
+                ProcessedSourceLine.IsSdasBuild = true;
             }
         }
 

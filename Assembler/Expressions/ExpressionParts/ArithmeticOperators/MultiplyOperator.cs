@@ -19,7 +19,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
             if (!value1.IsAbsolute && !value2.IsAbsolute)
             {
-                throw new InvalidExpressionException($"*: At least one of the operands must be absolute (attempted {value1.Type} * {value2.Type})");
+                throw new InvalidExpressionException($"*: At least one of the operands must be absolute (attempted {value1.EffectiveType} * {value2.EffectiveType})");
             }
 
             var type = value1.IsAbsolute ? value2.Type : value1.Type;

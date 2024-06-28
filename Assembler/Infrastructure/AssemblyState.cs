@@ -2,6 +2,7 @@
 using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Output;
 using Konamiman.Nestor80.Assembler.Relocatable;
+using System.Net;
 using System.Text;
 
 namespace Konamiman.Nestor80.Assembler.Infrastructure
@@ -52,6 +53,10 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         private readonly Dictionary<string, int> commonAreaSizes = new();
         private string currentCommonBlockName = null;
 
+        public SdasArea CurrentSdasArea { get; private set; } = null;
+
+        public Dictionary<string, SdasArea> SdasAreas { get; private set; } = null;
+
         public bool InsideNamedMacroInsideFalseConditional { get; set; } = false;
 
         public int IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
@@ -60,7 +65,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public Dictionary<string, NamedMacroDefinitionLine> NamedMacros { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
 
+        private bool isSdasBuild;
+
         private bool _RelativeLabelsEnabled;
+
+        private int lastUsedSdasAreaIndex = -1;
         public bool RelativeLabelsEnabled
         {
             get => _RelativeLabelsEnabled;
@@ -70,6 +79,15 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 RegisterLastNonRelativeLabel(null);
             }
         }
+
+        public void SetIsSdasBuild()
+        {
+            isSdasBuild = true;
+            SdasAreas = new(StringComparer.OrdinalIgnoreCase) { { "_CODE", new SdasArea("_CODE", isAbsolute: false, isOverlay: false ) } };
+            CurrentSdasArea = SdasAreas["_CODE"];
+        }
+
+        public SdasArea GetExistingSdasArea(string name) => SdasAreas.GetValueOrDefault(name, null);
 
         public void RegisterPendingExpression(
             ProcessedSourceLine line,
@@ -127,9 +145,15 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             modules.Clear();
             Expression.DefaultRadix = 10;
             ClearExpressionsCache();
+            lastUsedSdasAreaIndex = -1;
 
-            SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
             SwitchToLocation(0);
+            if(isSdasBuild) {
+                SetIsSdasBuild();
+            }
+            else {
+                SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
+            }
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
@@ -220,6 +244,51 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             currentCommonBlockName = commonName;
         }
 
+        public void SwitchToSdasArea(string areaName, bool isAbsolute, bool isOverlay, ushort address = 0, bool isIndexed = false)
+        {
+            if(!isSdasBuild) {
+                throw new InvalidOperationException($"{nameof(SwitchToSdasArea)} is intended to be executed only when the build type is SDAS");
+            }
+
+            if(SdasAreas.ContainsKey(areaName)) {
+                throw new InvalidOperationException($"The {nameof(SwitchToSdasArea)} overload that takes isAbsolute and isOverlay is for new areas only, {areaName} already exists");
+            }
+
+            CurrentSdasArea.Size = Math.Max(CurrentSdasArea.Size, (ushort)(CurrentLocationPointer - CurrentSdasArea.Address));
+
+            CurrentSdasArea = new SdasArea(areaName, isAbsolute, isOverlay) { Address = address, Size = 0 };
+            SdasAreas.Add(areaName, CurrentSdasArea);
+            CurrentLocationPointer = address;
+            CurrentLocationArea = CurrentSdasArea.IsAbsolute ? AddressType.ASEG : AddressType.CSEG;
+            if(!isIndexed) {
+                currentUnindexedSdasAreaName = areaName;
+            }
+        }
+
+        public void SwitchToSdasArea(string areaName)
+        {
+            if(!isSdasBuild) {
+                throw new InvalidOperationException($"{nameof(SwitchToSdasArea)} is intended to be executed only when the build type is SDAS");
+            }
+
+            if(!SdasAreas.ContainsKey(areaName)) {
+                throw new InvalidOperationException($"The {nameof(SwitchToSdasArea)} overload that takes only the area name is for existing areas only, {areaName} doesn't exist");
+            }
+
+            CurrentSdasArea.Size = Math.Max(CurrentSdasArea.Size, (ushort)(CurrentLocationPointer - CurrentSdasArea.Address));
+            CurrentSdasArea = SdasAreas[areaName];
+            CurrentLocationPointer = CurrentSdasArea.IsOverlay ? (ushort)0 : (ushort)(CurrentSdasArea.Address + CurrentSdasArea.Size);
+            currentUnindexedSdasAreaName = areaName;
+        }
+
+        private string currentUnindexedSdasAreaName;
+
+        public string GetToNextIndexedSdasAreaName()
+        {
+            lastUsedSdasAreaIndex++;
+            return $"{currentUnindexedSdasAreaName}{lastUsedSdasAreaIndex:x}";
+        }
+
         private void AdjustAreaSize()
         {
             if (CurrentLocationArea is AddressType.COMMON)
@@ -232,6 +301,9 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 {
                     commonAreaSizes.Add(currentCommonBlockName, CurrentLocationPointer);
                 }
+            }
+            else if(isSdasBuild) {
+                CurrentSdasArea.Size = Math.Max(CurrentSdasArea.Size, (ushort)(CurrentLocationPointer - CurrentSdasArea.Address));
             }
             else
             {
@@ -358,7 +430,15 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 isNonRelativeLabel = true;
             }
 
-            Symbols.Add(name, new SymbolInfo() { Name = name, Type = type, Value = value, IsPublic = isPublic, IsNonRelativeLabel = isNonRelativeLabel });
+            Symbols.Add(name, new SymbolInfo() {
+                Name = name,
+                Type = type,
+                Value = value, 
+                IsPublic = isPublic,
+                IsNonRelativeLabel = isNonRelativeLabel,
+                SdasAreaName = CurrentSdasArea?.Name,
+                SdasAreaIsAbs = CurrentSdasArea?.IsAbsolute ?? false
+            });
         }
 
         public void RegisterLastNonRelativeLabel(string label)
@@ -870,5 +950,13 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
             CurrentMacroExpansionState.Exit(forceEnd);
         }
+
+        /*
+        public int GetNextSdasAreaIndex()
+        {
+            lastUsedSdasAreaIndex++;
+            return lastUsedSdasAreaIndex;
+        }
+        */
     }
 }

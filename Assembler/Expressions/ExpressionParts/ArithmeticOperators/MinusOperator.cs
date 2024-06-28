@@ -19,7 +19,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
             if (!value2.IsAbsolute && value1.Type != value2.Type)
             {
-                throw new InvalidExpressionException($"-: Both operand modes must be the same or the second operand must be absolute (attempted {value1.Type} - {value2.Type})");
+                throw new InvalidExpressionException($"-: Both operand modes must be the same or the second operand must be absolute (attempted {value1.EffectiveType} - {value2.EffectiveType})");
             }
 
             var type = value2.IsAbsolute ? value1.Type : AddressType.ASEG;

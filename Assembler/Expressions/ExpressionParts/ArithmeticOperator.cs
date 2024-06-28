@@ -14,6 +14,8 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts
 
         protected ArithmeticOperator() { }
 
+        public static bool IsSdasBuild { get; set; }
+
         public abstract int Precedence { get; }
 
         public abstract string Name { get; }

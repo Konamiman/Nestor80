@@ -402,6 +402,15 @@ namespace Konamiman.Nestor80.Assembler
                 return Address.AbsoluteZero;
             }
 
+            if(IsSdasBuild && !symbol.SdasAreaIsAbs) {
+                if(SdasAreaName is null) {
+                    SdasAreaName = symbol.SdasAreaName;
+                }
+                else if(!string.Equals(SdasAreaName, symbol.SdasAreaName, StringComparison.OrdinalIgnoreCase)) {
+                    Throw("Expression involves symbols from different relocatable areas");
+                }
+            }
+
             if(symbol.HasKnownValue) {
                 return symbol.Value;
             }

@@ -5,6 +5,8 @@
         public AddressType NewLocationArea { get; set; }
         public ushort NewLocationCounter { get; set; }
 
-        public override string ToString() => $"{base.ToString()}, {NewLocationArea} {NewLocationCounter}";
+        public string SdasAreaName { get; set; }
+
+        public override string ToString() => $"{base.ToString()}, {(IsSdasBuild ? SdasAreaName : NewLocationArea)} {NewLocationCounter}";
     }
 }
