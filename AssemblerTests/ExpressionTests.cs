@@ -639,7 +639,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("type DATAZ", 0x22)]
         [TestCase("type COMONZ", 0x23)]
         [TestCase("type EXT", 0x80)]
-        [TestCase("type (EXT+1)", 0x80)]
+        [TestCase("type (EXT+1)", -1)]
         [TestCase("type EXT+1", 0x81)]
         [TestCase("2+(type CODEZ)+1", 0x24)]
         public void TestType(string line, int expectedResult)
@@ -667,8 +667,8 @@ namespace Konamiman.Nestor80.AssemblerTests
 
             var exp = Expression.Parse(line);
             exp.ValidateAndPostifixize();
-            if(line.Contains("EXT")) {
-                Assert.Throws<ExpressionContainsExternalReferencesException>(() => exp.Evaluate());
+            if(expectedResult == -1) {
+                Assert.Throws<InvalidExpressionException>(() => exp.Evaluate());
             }
             else {
                 exp.ValidateAndPostifixize();
