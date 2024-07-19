@@ -270,6 +270,7 @@ Notation |  Radix
 `nnnnQ`  |   Octal
 `nnnnH`  |   Hexadecimal
 `X'nnnn'`|  Hexadecimal
+`0xnnnn` 🆕 |  Hexadecimal
 `#nnnn` 🆕 |   Hexadecimal
 
 <blockquote>

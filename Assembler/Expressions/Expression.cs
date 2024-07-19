@@ -154,6 +154,7 @@ namespace Konamiman.Nestor80.Assembler
                 currentRadixRegex = new Regex(
                     $"(#(?<number_hex_hash>[0-9a-f]+))|" +
                     $"((?<number_hex>[0-9a-f]+)h)|" +
+                    $"(0x(?<number_hex_0x>[0-9a-f]+))|" +
                     $"(%(?<number_bin_percent>[01]+))|" +
                     $"((?<number_bin>[01]+)[{extraBinarySuffix}i])|" +
                     $"((?<number_dec>[0-9]+)[{extraDecimalSuffix}m])|" +
@@ -320,6 +321,7 @@ namespace Konamiman.Nestor80.Assembler
                 "number" => DefaultRadix,
                 "number_hex" => 16,
                 "number_hex_hash" => 16,
+                "number_hex_0x" => 16,
                 "number_bin" => 2,
                 "number_bin_percent" => 2,
                 "number_dec" => 10,

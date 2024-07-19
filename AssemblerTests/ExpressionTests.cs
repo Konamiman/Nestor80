@@ -110,9 +110,14 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { 16, "12efH", 0x12EF },
 
             // Radix 16, hash prefix
-            new object[] { 10, "#12ef", 0x12ef },
-            new object[] { 10, "#abcd", 0xabcd },
-            new object[] { 10, "#0", 0 },
+            new object[] { 16, "#12ef", 0x12ef },
+            new object[] { 16, "#abcd", 0xabcd },
+            new object[] { 16, "#0", 0 },
+
+            // Radix 16, 0x prefix
+            new object[] { 16, "0x12ef", 0x12ef },
+            new object[] { 16, "0Xabcd", 0xabcd },
+            new object[] { 16, "0x0", 0 },
 
             // Arbitrary radixes, including suffixes
 
