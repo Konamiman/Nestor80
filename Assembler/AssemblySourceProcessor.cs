@@ -200,6 +200,7 @@ namespace Konamiman.Nestor80.Assembler
                 Expression.ModularizeSymbolName = name => state.Modularize(name);
                 Expression.AllowEscapesInStrings = configuration.AllowEscapesInStrings;
                 Expression.Link80Compatibility = link80Compatibility;
+                Expression.DiscardHashPrefix = configuration.DiscardHashPrefix;
                 SymbolInfo.Link80Compatibility = link80Compatibility;
                 LinkItem.Link80Compatibility = link80Compatibility;
 

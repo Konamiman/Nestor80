@@ -135,6 +135,12 @@ namespace Konamiman.Nestor80.N80
                 Read arguments from the .N80 file in the directory of the input file (default).
                 This argument is ignored when found inside an arguments file (.N80 or any other).
 
+            -dhp, --discard-hash-prefix
+                Discard any hash (#) character prefixing expressions before evaluating them,
+                for example "dw #1234" will be equivalent to "dw 1234". This is iseful when assembling
+                source code written for the SDAS assembler, which requires numeric literals
+                to be prefixed with #.
+
             -do, --do-output
                 Generate an output file (this is the default behavior).
                 This argument is the opposite of --no-output.
@@ -304,6 +310,11 @@ namespace Konamiman.Nestor80.N80
             -ndfa, --no-default-file-args
                 Don't read arguments from the .N80 file in the directory of the input file.
                 This argument is ignored when found inside an arguments file (.N80 or any other).
+
+            -nodhp, --no-discard-hash-prefix
+                Don't discard hash (#) characters prefixing expressions before evaluating them,
+                so the hash character will act as a prefix for hexadecimal numbers,
+                for example "dw #1234" will be equivalent to "dw 1234h". This is the default behavior.
 
             -ndow, --no-direct-output-write
                 Use the "memory map" strategy, instead of rge "direct output file write" strategy,

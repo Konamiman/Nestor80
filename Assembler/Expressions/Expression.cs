@@ -97,6 +97,11 @@ namespace Konamiman.Nestor80.Assembler
         public static bool Link80Compatibility { get; set; } = false;
 
         /// <summary>
+        /// A flag indicating if a hash (#) at the beginning of an expression must be discarded.
+        /// </summary>
+        public static bool DiscardHashPrefix { get; set; } = false;
+
+        /// <summary>
         /// The parts that compose the expression, will be in postfix format
         /// after <see cref="Postfixize"/> is executed.
         /// </summary>
@@ -219,6 +224,10 @@ namespace Konamiman.Nestor80.Assembler
         /// <exception cref="InvalidExpressionException">The supplied string doesn't represent a valid expression</exception>
         public static Expression Parse(string expressionString, bool forDefb = false, bool isByte = false)
         {
+            if(DiscardHashPrefix && expressionString[0] == '#') {
+                expressionString = expressionString[1..];
+            }
+
             if(OutputStringEncoding is null) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: { nameof(OutputStringEncoding)} is null");
             }

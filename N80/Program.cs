@@ -77,14 +77,15 @@ namespace Konamiman.Nestor80.N80
         static bool mustGenerateListingFile;
         static string listingFileExtension;
         static bool link80compatibility;
+        static bool discardHashPrefix;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
         static readonly Stopwatch assemblyTimeMeasurer = new();
         static readonly Stopwatch totalTimeMeasurer = new();
-        static readonly List<(string, string[])> argsByFile = new();
+        static readonly List<(string, string[])> argsByFile = [];
         static bool n80FileUsed = false;
-        static readonly List<AssemblyError> warningsFromPass1 = new();
+        static readonly List<AssemblyError> warningsFromPass1 = [];
         static bool inPass2 = false;
         static string[] envArgs = null;
         static string[] commandLineArgs;
@@ -417,6 +418,7 @@ namespace Konamiman.Nestor80.N80
             info += $"Expand DEFS instructions: {YesOrNo(initDefs)}\r\n";
             info += $"Show source in error messages: {YesOrNo(sourceInErrorMessage)}\r\n";
             info += $"Allow relative labels: {YesOrNo(allowRelativeLabels)}\r\n";
+            info += $"Discard '#' prefix in expressions: {YesOrNo(discardHashPrefix)}\r\n";
             if(buildType != BuildType.Absolute) {
                 info += $"LINK-80 compatibility: {YesOrNo(link80compatibility)}\r\n";
             }
@@ -504,6 +506,7 @@ namespace Konamiman.Nestor80.N80
             mustGenerateListingFile = false;
             listingFileExtension = null;
             link80compatibility = false;
+            discardHashPrefix = false;
 
             listingConfig.MaxSymbolLength = 16;
             listingConfig.ListFalseConditionals = true;
@@ -1098,6 +1101,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nl8c" or "--no-link-80-compatibility") {
                     link80compatibility = false;
                 }
+                else if(arg is "-dhp" or "--discard-hash-prefix") {
+                    discardHashPrefix = true;
+                }
+                else if(arg is "-nodhp" or "--no-discard-hash-prefix") {
+                    discardHashPrefix = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -1181,7 +1190,8 @@ namespace Konamiman.Nestor80.N80
                 AllowBareExpressions = allowBareExpressions,
                 AllowRelativeLabels = allowRelativeLabels,
                 MaxIncbinFileSize = (buildType is BuildType.Absolute && directOutputWrite) ? MAX_INCBIN_SIZE_DOW : MAX_INCBIN_SIZE_MEMMAP,
-                Link80Compatibility = link80compatibility
+                Link80Compatibility = link80compatibility,
+                DiscardHashPrefix = discardHashPrefix,
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();

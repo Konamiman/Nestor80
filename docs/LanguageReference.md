@@ -271,7 +271,9 @@ Notation |  Radix
 `nnnnH`  |   Hexadecimal
 `X'nnnn'`|  Hexadecimal
 `0xnnnn` 🆕 |  Hexadecimal
-`#nnnn` 🆕 |   Hexadecimal
+`#nnnn` 🆕 |   Hexadecimal (see note)
+
+**Note:** The `#` character is interpreted as a hexadecimal number prefix by default, but if the `--discard-hash-prefix` argument is passed to Nestor80 then such characters will be ignored when used as number prefixes; so for example `#1234` will be equivalent to `1234` in the default radix, and `#1010I` will be equivalent to the binary number `1010`. This can be useful to assemble source code written for the SDAS assembler, which requires numeric constants to be prefixed with a `#` character.
 
 <blockquote>
 ⚠ The <code>B</code> and <code>D</code> suffixes are actually unusable when the default radix is 12 or higher and 14 or higher, respectively. Consider the following example:

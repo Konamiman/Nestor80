@@ -150,6 +150,16 @@ namespace Konamiman.Nestor80.AssemblerTests
             AssertParsesToNumber(input, (ushort)output);
         }
 
+        [TestCaseSource(nameof(TestNumberCases))]
+        public void TestParsingNumberWithHashDiscard(int radix, string input, int output)
+        {
+            Expression.DefaultRadix = radix;
+            Expression.DiscardHashPrefix = true;
+            input = $"#{input}";
+            AssertParsesToNumber(input, (ushort)output);
+            Expression.DiscardHashPrefix = false;
+        }
+
         static object[] TestWrongNumberCases = {
             new object[] { 10, "123x", "Unexpected character found after number: x" },
             new object[] { 10, "102b", "Invalid number" },

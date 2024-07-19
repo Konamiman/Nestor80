@@ -81,5 +81,12 @@ namespace Konamiman.Nestor80.Assembler
         /// arithmetic operators allowed for expressions with external references is limited).
         /// </summary>
         public bool Link80Compatibility { get; init; } = false;
+
+        /// <summary>
+        /// True if a hash character (#) present at the beginning of an expression needs to be discarded
+        /// before evaluating the expression. This is useful for assembling sources intended for the
+        /// SDAS assembler, which expects numeric constants to be prefixed with a hash character.
+        /// </summary>
+        public bool DiscardHashPrefix { get; init; } = false;
     }
 }
