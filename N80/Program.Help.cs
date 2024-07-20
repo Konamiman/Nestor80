@@ -72,6 +72,12 @@ namespace Konamiman.Nestor80.N80
                 Note that you need this argument too if you want to use named macros
                 before they are defined.
 
+            -adp, --accept-dot-prefix
+                Accept a dot (.) as prefix for non-CPU instructions that don't have
+                already a dot in front of its name, for example ".ORG" will be
+                accepted as an alias for "ORG". This may be useful when assembling
+                code written for other assemblers.
+
             -af, --arguments-file <file path>
                 Read additional arguments from the specified file. The arguments are
                 processed immediately. Recursivity is not supported (additional
@@ -370,6 +376,10 @@ namespace Konamiman.Nestor80.N80
             -no, --no-output
                 Process the input file but don't generate the output file (the <output file> argument,
                 if specified, is ignored). This argument is the opposite of --do-output.
+
+            -noadp, --no-accept-dot-prefix
+                Don't accept a dot (.) as prefix for non-CPU instructions that don't have
+                already a dot in front of its name. This is the default behavior.
 
             -nsb, --no-show-banner
                 Don't display the program title and copyright notice banner.

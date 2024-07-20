@@ -78,6 +78,7 @@ namespace Konamiman.Nestor80.N80
         static string listingFileExtension;
         static bool link80compatibility;
         static bool discardHashPrefix;
+        static bool acceptDottedInstructionAliases;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -419,6 +420,7 @@ namespace Konamiman.Nestor80.N80
             info += $"Show source in error messages: {YesOrNo(sourceInErrorMessage)}\r\n";
             info += $"Allow relative labels: {YesOrNo(allowRelativeLabels)}\r\n";
             info += $"Discard '#' prefix in expressions: {YesOrNo(discardHashPrefix)}\r\n";
+            info += $"Accept '.' prefix in instructions: {YesOrNo(acceptDottedInstructionAliases)}\r\n";
             if(buildType != BuildType.Absolute) {
                 info += $"LINK-80 compatibility: {YesOrNo(link80compatibility)}\r\n";
             }
@@ -507,6 +509,7 @@ namespace Konamiman.Nestor80.N80
             listingFileExtension = null;
             link80compatibility = false;
             discardHashPrefix = false;
+            acceptDottedInstructionAliases = false;
 
             listingConfig.MaxSymbolLength = 16;
             listingConfig.ListFalseConditionals = true;
@@ -1107,6 +1110,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nodhp" or "--no-discard-hash-prefix") {
                     discardHashPrefix = false;
                 }
+                else if(arg is "-adp" or "--accept-dot-prefix") {
+                    acceptDottedInstructionAliases = true;
+                }
+                else if(arg is "-noadp" or "-no-accept-dot-prefix") {
+                    acceptDottedInstructionAliases = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -1192,6 +1201,7 @@ namespace Konamiman.Nestor80.N80
                 MaxIncbinFileSize = (buildType is BuildType.Absolute && directOutputWrite) ? MAX_INCBIN_SIZE_DOW : MAX_INCBIN_SIZE_MEMMAP,
                 Link80Compatibility = link80compatibility,
                 DiscardHashPrefix = discardHashPrefix,
+                AcceptDottedInstructionAliases = acceptDottedInstructionAliases
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();

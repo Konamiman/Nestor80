@@ -88,5 +88,10 @@ namespace Konamiman.Nestor80.Assembler
         /// SDAS assembler, which expects numeric constants to be prefixed with a hash character.
         /// </summary>
         public bool DiscardHashPrefix { get; init; } = false;
+
+        /// <summary>
+        /// True if instruction aliases with a dot prefix (e.g. ".DS" as an alias of "DS") are accepted
+        /// </summary>
+        public bool AcceptDottedInstructionAliases { get; set; } = false;
     }
 }

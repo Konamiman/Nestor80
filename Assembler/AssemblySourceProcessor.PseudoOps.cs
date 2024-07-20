@@ -742,7 +742,7 @@ namespace Konamiman.Nestor80.Assembler
         static ProcessedSourceLine ProcessConstantDefinition(string opcode, string name, SourceLineWalker walker = null, Expression expression = null)
         {
             name = state.Modularize(name, true);
-            var isRedefinition = !opcode.Equals("EQU", StringComparison.OrdinalIgnoreCase);
+            var isRedefinition = !opcode.Equals("EQU", StringComparison.OrdinalIgnoreCase) && !opcode.Equals(".EQU", StringComparison.OrdinalIgnoreCase);
             var line = new ConstantDefinitionLine() { Name = name, IsRedefinible = isRedefinition };
 
             if(walker is not null && walker.AtEndOfLine) {

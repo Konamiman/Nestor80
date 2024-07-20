@@ -86,6 +86,7 @@ namespace Konamiman.Nestor80.Assembler
         private static bool isZ280AutoIndexMode;
         private static bool isZ280LongIndexMode;
         private static Z280IndexMode z280IndexMode;
+        private static bool acceptDottedInstructionAliases;
 
         private static string[] currentCpuInstructionOpcodes;
         private static Dictionary<string, byte[]> currentCpuFixedInstructions;
@@ -109,7 +110,9 @@ namespace Konamiman.Nestor80.Assembler
         
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
-        private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "ASET" };
+        private static readonly string[] canonicalConstantDefinitionOpcodes = { "EQU", "DEFL", "ASET" };
+        private static string[] constantDefinitionOpcodesWithDottedAliases;
+        private static string[] constantDefinitionOpcodes;
 
         private static readonly ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
 
@@ -141,6 +144,8 @@ namespace Konamiman.Nestor80.Assembler
         /// in the previous INCLUDEd file or in the input file).
         /// </summary>
         public static event EventHandler IncludedFileFinished;
+
+        private static Dictionary<string, Func<string, SourceLineWalker, ProcessedSourceLine>> DotAliasedPseudoOpProcessors = null;
 
         //This runs the first time that any static member of the class is accessed.
         static AssemblySourceProcessor()
@@ -184,6 +189,19 @@ namespace Konamiman.Nestor80.Assembler
                 ProcessPredefinedsymbols(configuration.PredefinedSymbols);
                 maxErrors = configuration.MaxErrors;
                 link80Compatibility = configuration.Link80Compatibility;
+                acceptDottedInstructionAliases = configuration.AcceptDottedInstructionAliases;
+
+                if(acceptDottedInstructionAliases && DotAliasedPseudoOpProcessors is null) {
+                    DotAliasedPseudoOpProcessors = new Dictionary<string, Func<string, SourceLineWalker, ProcessedSourceLine>>(
+                        PseudoOpProcessors
+                        .Where(p => p.Key[0] != '.')
+                        .Select(p => new KeyValuePair<string, Func<string, SourceLineWalker, ProcessedSourceLine>>( "." + p.Key, p.Value ))
+                        ,StringComparer.OrdinalIgnoreCase);
+
+                    constantDefinitionOpcodesWithDottedAliases =
+                        canonicalConstantDefinitionOpcodes.Concat(canonicalConstantDefinitionOpcodes.Select(o => "." + o)).ToArray();
+                }
+                constantDefinitionOpcodes = acceptDottedInstructionAliases ? constantDefinitionOpcodesWithDottedAliases : canonicalConstantDefinitionOpcodes;
 
                 SetCurrentCpu(configuration.CpuName);
                 buildType = configuration.BuildType;
@@ -667,6 +685,11 @@ namespace Konamiman.Nestor80.Assembler
                 if(PseudoOpProcessors.ContainsKey(symbol)) {
                     opcode = symbol;
                     var processor = PseudoOpProcessors[opcode];
+                    processedLine = processor(opcode, walker);
+                }
+                else if(acceptDottedInstructionAliases && DotAliasedPseudoOpProcessors.ContainsKey(symbol)) {
+                    opcode = symbol;
+                    var processor = DotAliasedPseudoOpProcessors[opcode];
                     processedLine = processor(opcode, walker);
                 }
                 else if(currentCpuInstructionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase) ||

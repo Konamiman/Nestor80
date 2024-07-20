@@ -1249,6 +1249,8 @@ Some instructions have aliases. In most cases these come inherited from MACRO-80
 
 Instruction arguments are specified using the standard notation `<argument>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example [`IFB`](#ifb).
 
+💡 If the `--accept-dot-prefix` argument is passed to Nestor80 then it's possible to write all the instructions listed here prefixed with a dot (`.`), except those that have a dot  prefixing its name already. For example ` .ORG` will be accepted as an alias for `ORG`. This may be useful when assembling code written for other assemblers.
+
 
 ### .COMMENT
 
