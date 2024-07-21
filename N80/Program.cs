@@ -1110,13 +1110,13 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-dhp" or "--discard-hash-prefix") {
                     discardHashPrefix = true;
                 }
-                else if(arg is "-nodhp" or "--no-discard-hash-prefix") {
+                else if(arg is "-ndhp" or "--no-discard-hash-prefix") {
                     discardHashPrefix = false;
                 }
                 else if(arg is "-adp" or "--accept-dot-prefix") {
                     acceptDottedInstructionAliases = true;
                 }
-                else if(arg is "-noadp" or "-no-accept-dot-prefix") {
+                else if(arg is "-nadp" or "-no-accept-dot-prefix") {
                     acceptDottedInstructionAliases = false;
                 }
                 else if(arg is "-use" or "--unknown-symbols-external") {

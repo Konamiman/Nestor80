@@ -302,7 +302,11 @@ namespace Konamiman.Nestor80.N80
 
             -nabe, --no-allow-bare-expressions
                 Don't treat a line containing a list of comma-separated expressions as a DB line
-                (so e.g. 'FOO: db 1,2,3,4' will throw an error). This is the default behavior.
+                (so e.g. 'FOO: 1,2,3,4' will throw an error). This is the default behavior.
+
+            -nadp, --no-accept-dot-prefix
+                Don't accept a dot (.) as prefix for non-CPU instructions that don't have
+                already a dot in front of its name. This is the default behavior.
 
             -narl, --no-allow-relative-labels
                 Disable support for relative labels (default). See --allow-relative-labels for an
@@ -317,7 +321,7 @@ namespace Konamiman.Nestor80.N80
                 Don't read arguments from the .N80 file in the directory of the input file.
                 This argument is ignored when found inside an arguments file (.N80 or any other).
 
-            -nodhp, --no-discard-hash-prefix
+            -ndhp, --no-discard-hash-prefix
                 Don't discard hash (#) characters prefixing expressions before evaluating them,
                 so the hash character will act as a prefix for hexadecimal numbers,
                 for example "dw #1234" will be equivalent to "dw 1234h". This is the default behavior.
@@ -376,10 +380,6 @@ namespace Konamiman.Nestor80.N80
             -no, --no-output
                 Process the input file but don't generate the output file (the <output file> argument,
                 if specified, is ignored). This argument is the opposite of --do-output.
-
-            -noadp, --no-accept-dot-prefix
-                Don't accept a dot (.) as prefix for non-CPU instructions that don't have
-                already a dot in front of its name. This is the default behavior.
 
             -nsb, --no-show-banner
                 Don't display the program title and copyright notice banner.
