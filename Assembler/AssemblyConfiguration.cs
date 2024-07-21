@@ -98,5 +98,10 @@ namespace Konamiman.Nestor80.Assembler
         /// True to consider symbols that are unknown in pass 2 as external symbol references.
         /// </summary>
         public bool TreatUnknownSymbolsAsExternals { get; set; } = false;
+
+        /// <summary>
+        /// Character sequence to use as end of line markers for text files.
+        /// </summary>
+        public string EndOfLine { get; set; } = Environment.NewLine;
     }
 }

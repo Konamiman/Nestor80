@@ -188,6 +188,12 @@ namespace Konamiman.Nestor80.N80
 
                 Example: -ds symbol1,symbol2=1234,symbol3=ABCDh
 
+            -eol, --end-of-line auto|cr|lf|crlf
+                Character sequence to use as line separator for the text files generated
+                during the assembly process. The default value is 'auto', which means using
+                the standard end of line sequence of the system in which Nestor80 is running.
+                Currently this setting only affects the generation of listing files.
+                
             -id, --include-directory <directory path>
                 By default relative paths referenced in INCLUDE and INCBIN instructions will
                 be considered to be relative to the current directory or to the directory

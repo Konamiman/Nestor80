@@ -80,6 +80,7 @@ namespace Konamiman.Nestor80.N80
         static bool discardHashPrefix;
         static bool acceptDottedInstructionAliases;
         static bool treatUnknownSymbolsAsExternals;
+        static string endOfLIne;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -95,6 +96,13 @@ namespace Konamiman.Nestor80.N80
         static int printedWarningsCount = 0;
 
         static readonly ListingFileConfiguration listingConfig = new();
+
+        static readonly Dictionary<string, string> endOfLines = new(StringComparer.OrdinalIgnoreCase) {
+            { "auto", Environment.NewLine },
+            { "cr", "\r" },
+            { "lf", "\n" },
+            { "crlf", "\r\n" }
+        };
 
         static int Main(string[] args)
         {
@@ -422,6 +430,7 @@ namespace Konamiman.Nestor80.N80
             info += $"Allow relative labels: {YesOrNo(allowRelativeLabels)}\r\n";
             info += $"Discard '#' prefix in expressions: {YesOrNo(discardHashPrefix)}\r\n";
             info += $"Accept '.' prefix in instructions: {YesOrNo(acceptDottedInstructionAliases)}\r\n";
+            info += $"End of line sequence for text files: {endOfLIne.ToUpper()}\r\n";
             if(buildType != BuildType.Absolute) {
                 info += $"LINK-80 compatibility: {YesOrNo(link80compatibility)}\r\n";
                 info += $"Treat unknown symbols as external references: {YesOrNo(treatUnknownSymbolsAsExternals)}\r\n";
@@ -513,6 +522,7 @@ namespace Konamiman.Nestor80.N80
             discardHashPrefix = false;
             acceptDottedInstructionAliases = false;
             treatUnknownSymbolsAsExternals = false;
+            endOfLIne = "auto";
 
             listingConfig.MaxSymbolLength = 16;
             listingConfig.ListFalseConditionals = true;
@@ -1125,6 +1135,19 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nuse" or "--no-unknown-symbols-external") {
                     treatUnknownSymbolsAsExternals = false;
                 }
+                else if(arg is "-eol" or "--end-of-line") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by the end of line sequence (cr, lf, crlf or auto)";
+                    }
+
+                    if(endOfLines.ContainsKey(args[i + 1])) {
+                        endOfLIne = args[i + 1];
+                    }
+                    else {
+                        return $"{arg}: the end of line sequence must be one of: cr, lf, crlf, auto";
+                    }
+                    i++;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -1211,7 +1234,8 @@ namespace Konamiman.Nestor80.N80
                 Link80Compatibility = link80compatibility,
                 DiscardHashPrefix = discardHashPrefix,
                 AcceptDottedInstructionAliases = acceptDottedInstructionAliases,
-                TreatUnknownSymbolsAsExternals = treatUnknownSymbolsAsExternals
+                TreatUnknownSymbolsAsExternals = treatUnknownSymbolsAsExternals,
+                EndOfLine = endOfLines[endOfLIne]
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();
@@ -1294,7 +1318,7 @@ namespace Konamiman.Nestor80.N80
             if(mustGenerateListingFile) {
                 try {
                     var listingStream = File.Create(listingFilePath);
-                    var listingStreamWriter = new StreamWriter(listingStream, listingFileEncoding);
+                    var listingStreamWriter = new StreamWriter(listingStream, listingFileEncoding) { NewLine = config.EndOfLine };
                     listingWrittenBytes = ListingFileGenerator.GenerateListingFile(result, listingStreamWriter, listingConfig);
                     listingStream.Close();
                 }
