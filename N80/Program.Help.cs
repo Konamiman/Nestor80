@@ -407,6 +407,10 @@ namespace Konamiman.Nestor80.N80
                 instruction directly in code. You may want to disallow escape sequences
                 when compiling old sources that were intended to be assembled with MACRO-80.
 
+            -nuse, --no-unknown-symbols-external
+                Don't treat symbols that are still unknown at the end of pass 2 as external symbol
+                references (throw "Unknown symbol" errors instead). This is the default behavior.
+
             -ofc, --output-file-case upper|lower|orig
                 Whether the casing of the output file name will be converted to lower case,
                 converted to upper case, or kept as the input file name (this is the default).
@@ -487,6 +491,11 @@ namespace Konamiman.Nestor80.N80
                 Escape sequences can also be turned on and off by using the .STRESC ON/OFF
                 instruction directly in code. You may want to disallow escape sequences
                 when compiling old sources that were intended to be assembled with MACRO-80.
+
+            -use, --unknown-symbols-external
+                Treat any symbol that is still unknown at the end of pass 2 as an external
+                symbol reference. This argument doesn't have any effect when the build type
+                is absolute.
 
             -vb, --verbosity <level>
                 Selects the verbosity of the status messages shown during the assembly process.

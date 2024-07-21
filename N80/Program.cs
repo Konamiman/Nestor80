@@ -79,6 +79,7 @@ namespace Konamiman.Nestor80.N80
         static bool link80compatibility;
         static bool discardHashPrefix;
         static bool acceptDottedInstructionAliases;
+        static bool treatUnknownSymbolsAsExternals;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
@@ -423,6 +424,7 @@ namespace Konamiman.Nestor80.N80
             info += $"Accept '.' prefix in instructions: {YesOrNo(acceptDottedInstructionAliases)}\r\n";
             if(buildType != BuildType.Absolute) {
                 info += $"LINK-80 compatibility: {YesOrNo(link80compatibility)}\r\n";
+                info += $"Treat unknown symbols as external references: {YesOrNo(treatUnknownSymbolsAsExternals)}\r\n";
             }
 
             if(mustProcessOutputFileName) {
@@ -510,6 +512,7 @@ namespace Konamiman.Nestor80.N80
             link80compatibility = false;
             discardHashPrefix = false;
             acceptDottedInstructionAliases = false;
+            treatUnknownSymbolsAsExternals = false;
 
             listingConfig.MaxSymbolLength = 16;
             listingConfig.ListFalseConditionals = true;
@@ -1116,6 +1119,12 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-noadp" or "-no-accept-dot-prefix") {
                     acceptDottedInstructionAliases = false;
                 }
+                else if(arg is "-use" or "--unknown-symbols-external") {
+                    treatUnknownSymbolsAsExternals = true;
+                }
+                else if(arg is "-nuse" or "--no-unknown-symbols-external") {
+                    treatUnknownSymbolsAsExternals = false;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -1201,7 +1210,8 @@ namespace Konamiman.Nestor80.N80
                 MaxIncbinFileSize = (buildType is BuildType.Absolute && directOutputWrite) ? MAX_INCBIN_SIZE_DOW : MAX_INCBIN_SIZE_MEMMAP,
                 Link80Compatibility = link80compatibility,
                 DiscardHashPrefix = discardHashPrefix,
-                AcceptDottedInstructionAliases = acceptDottedInstructionAliases
+                AcceptDottedInstructionAliases = acceptDottedInstructionAliases,
+                TreatUnknownSymbolsAsExternals = treatUnknownSymbolsAsExternals
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();

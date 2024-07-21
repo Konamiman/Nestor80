@@ -87,6 +87,7 @@ namespace Konamiman.Nestor80.Assembler
         private static bool isZ280LongIndexMode;
         private static Z280IndexMode z280IndexMode;
         private static bool acceptDottedInstructionAliases;
+        private static bool treatUnknownSymbolsAsExternals;
 
         private static string[] currentCpuInstructionOpcodes;
         private static Dictionary<string, byte[]> currentCpuFixedInstructions;
@@ -190,6 +191,7 @@ namespace Konamiman.Nestor80.Assembler
                 maxErrors = configuration.MaxErrors;
                 link80Compatibility = configuration.Link80Compatibility;
                 acceptDottedInstructionAliases = configuration.AcceptDottedInstructionAliases;
+                treatUnknownSymbolsAsExternals = configuration.TreatUnknownSymbolsAsExternals;
 
                 if(acceptDottedInstructionAliases && DotAliasedPseudoOpProcessors is null) {
                     DotAliasedPseudoOpProcessors = new Dictionary<string, Func<string, SourceLineWalker, ProcessedSourceLine>>(
@@ -973,6 +975,9 @@ namespace Konamiman.Nestor80.Assembler
                 else {
                     symbol.Type = SymbolType.External;
                 }
+            }
+            else if(treatUnknownSymbolsAsExternals && !symbol.HasKnownValue && state.InPass2 && buildType != BuildType.Absolute) {
+                symbol.Type = SymbolType.External;
             }
 
             return symbol;

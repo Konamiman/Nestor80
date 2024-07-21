@@ -207,6 +207,8 @@ FOO:
   ;Some code
 ```
 
+💡 If the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol reference.
+
 ### Named constants
 
 A _named constant_ (or just "constant") is a symbol that represents a numeric value and can be used in expressions. There are two types of constants: fixed and redefinible. The value of a _fixed_ constant can't be altered, while the value of a _redefinible_ constant can, by using a new constant definition instruction with the same constant name.
@@ -2002,6 +2004,8 @@ call FOO##
 extrn FOO
 call FOO
 ```
+
+Additionally, if the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol reference.
 
 See also [`PUBLIC`](#public-entry-global-).
 

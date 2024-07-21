@@ -90,8 +90,13 @@ namespace Konamiman.Nestor80.Assembler
         public bool DiscardHashPrefix { get; init; } = false;
 
         /// <summary>
-        /// True if instruction aliases with a dot prefix (e.g. ".DS" as an alias of "DS") are accepted
+        /// True if instruction aliases with a dot prefix (e.g. ".DS" as an alias of "DS") are accepted.
         /// </summary>
         public bool AcceptDottedInstructionAliases { get; set; } = false;
+
+        /// <summary>
+        /// True to consider symbols that are unknown in pass 2 as external symbol references.
+        /// </summary>
+        public bool TreatUnknownSymbolsAsExternals { get; set; } = false;
     }
 }
