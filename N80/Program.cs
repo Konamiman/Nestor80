@@ -3,6 +3,7 @@ using Konamiman.Nestor80.Assembler.Errors;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -127,7 +128,7 @@ namespace Konamiman.Nestor80.N80
                 Console.WriteLine("Available encodings for strings:");
                 Console.WriteLine();
                 Console.WriteLine(string.Format(formatString, "Name", "Code page"));
-                Console.WriteLine(new string('-', longestNameLength + 12));
+                Console.WriteLine(new string('-', longestNameLength + 1) + "|" + new string('-', 10));
                 foreach(var encoding in encodings) {
                     Console.WriteLine(string.Format(formatString, encoding.Name, encoding.CodePage));
                 }
@@ -136,8 +137,13 @@ namespace Konamiman.Nestor80.N80
 
             if(args[0] is "-h" or "--help") {
                 WriteLine(bannerText);
-                WriteLine(simpleHelpText);
-                WriteLine(extendedHelpText);
+                if(args.Length > 1) {
+                    ShowArgumentHelp(args[1]);
+                }
+                else {
+                    WriteLine(simpleHelpText);
+                    WriteLine(extendedHelpText);
+                }
                 return ERR_SUCCESS;
             }
 
@@ -1590,6 +1596,31 @@ namespace Konamiman.Nestor80.N80
                 version = version[..^2];
             }
             return PREVIEW_LEVEL == 0 ? version : version + " preview " + PREVIEW_LEVEL;
+        }
+
+        private static void ShowArgumentHelp(string argument)
+        {
+            var lines = extendedHelpText.Split(Environment.NewLine);
+            argument = argument.TrimStart('-');
+
+            int i;
+            for(i = 0; i < lines.Length; i++) {
+                if(Regex.IsMatch(lines[i], $"^(-{argument},|-[^,]+, --{argument}(?![a-z-]))")) {
+                    break;
+                }
+            }
+
+            if(i == lines.Length) {
+                WriteLine($"*** Argument '{argument}' not found.");
+                return;
+            }
+
+            var result = lines[i++] + Environment.NewLine;
+            while(i < lines.Length && (lines[i].StartsWith(' ') || string.IsNullOrWhiteSpace(lines[i]))) {
+                result += lines[i++] + Environment.NewLine;
+            }
+
+            WriteLine(result.Trim());
         }
     }
 }

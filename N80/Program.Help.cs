@@ -13,7 +13,7 @@ namespace Konamiman.Nestor80.N80
         static readonly string simpleHelpText = """
             Usage: N80 <source file> [<output file>] [<arguments>]
                    N80 -v|--version
-                   N80 -h|--help
+                   N80 -h|--help [<argument name>]
                    N80 --list-encodings
             """;
 
