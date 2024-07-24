@@ -97,6 +97,11 @@ namespace Konamiman.Nestor80.Assembler
         public static bool Link80Compatibility { get; set; } = false;
 
         /// <summary>
+        /// A flag indicating if a hash (#) at the beginning of an expression must be discarded.
+        /// </summary>
+        public static bool DiscardHashPrefix { get; set; } = false;
+
+        /// <summary>
         /// The parts that compose the expression, will be in postfix format
         /// after <see cref="Postfixize"/> is executed.
         /// </summary>
@@ -154,6 +159,7 @@ namespace Konamiman.Nestor80.Assembler
                 currentRadixRegex = new Regex(
                     $"(#(?<number_hex_hash>[0-9a-f]+))|" +
                     $"((?<number_hex>[0-9a-f]+)h)|" +
+                    $"(0x(?<number_hex_0x>[0-9a-f]+))|" +
                     $"(%(?<number_bin_percent>[01]+))|" +
                     $"((?<number_bin>[01]+)[{extraBinarySuffix}i])|" +
                     $"((?<number_dec>[0-9]+)[{extraDecimalSuffix}m])|" +
@@ -218,6 +224,10 @@ namespace Konamiman.Nestor80.Assembler
         /// <exception cref="InvalidExpressionException">The supplied string doesn't represent a valid expression</exception>
         public static Expression Parse(string expressionString, bool forDefb = false, bool isByte = false)
         {
+            if(DiscardHashPrefix && expressionString[0] == '#') {
+                expressionString = expressionString[1..];
+            }
+
             if(OutputStringEncoding is null) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: { nameof(OutputStringEncoding)} is null");
             }
@@ -320,6 +330,7 @@ namespace Konamiman.Nestor80.Assembler
                 "number" => DefaultRadix,
                 "number_hex" => 16,
                 "number_hex_hash" => 16,
+                "number_hex_0x" => 16,
                 "number_bin" => 2,
                 "number_bin_percent" => 2,
                 "number_dec" => 10,

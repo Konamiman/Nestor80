@@ -13,7 +13,7 @@ namespace Konamiman.Nestor80.N80
         static readonly string simpleHelpText = """
             Usage: N80 <source file> [<output file>] [<arguments>]
                    N80 -v|--version
-                   N80 -h|--help
+                   N80 -h|--help [<argument name>]
                    N80 --list-encodings
             """;
 
@@ -71,6 +71,12 @@ namespace Konamiman.Nestor80.N80
 
                 Note that you need this argument too if you want to use named macros
                 before they are defined.
+
+            -adp, --accept-dot-prefix
+                Accept a dot (.) as prefix for non-CPU instructions that don't have
+                already a dot in front of its name, for example ".ORG" will be
+                accepted as an alias for "ORG". This may be useful when assembling
+                code written for other assemblers.
 
             -af, --arguments-file <file path>
                 Read additional arguments from the specified file. The arguments are
@@ -135,6 +141,12 @@ namespace Konamiman.Nestor80.N80
                 Read arguments from the .N80 file in the directory of the input file (default).
                 This argument is ignored when found inside an arguments file (.N80 or any other).
 
+            -dhp, --discard-hash-prefix
+                Discard any hash (#) character prefixing expressions before evaluating them,
+                for example "dw #1234" will be equivalent to "dw 1234". This is iseful when assembling
+                source code written for the SDAS assembler, which requires numeric literals
+                to be prefixed with #.
+
             -do, --do-output
                 Generate an output file (this is the default behavior).
                 This argument is the opposite of --no-output.
@@ -176,6 +188,12 @@ namespace Konamiman.Nestor80.N80
 
                 Example: -ds symbol1,symbol2=1234,symbol3=ABCDh
 
+            -eol, --end-of-line auto|cr|lf|crlf
+                Character sequence to use as line separator for the text files generated
+                during the assembly process. The default value is 'auto', which means using
+                the standard end of line sequence of the system in which Nestor80 is running.
+                Currently this setting only affects the generation of listing files.
+                
             -id, --include-directory <directory path>
                 By default relative paths referenced in INCLUDE and INCBIN instructions will
                 be considered to be relative to the current directory or to the directory
@@ -290,7 +308,11 @@ namespace Konamiman.Nestor80.N80
 
             -nabe, --no-allow-bare-expressions
                 Don't treat a line containing a list of comma-separated expressions as a DB line
-                (so e.g. 'FOO: db 1,2,3,4' will throw an error). This is the default behavior.
+                (so e.g. 'FOO: 1,2,3,4' will throw an error). This is the default behavior.
+
+            -nadp, --no-accept-dot-prefix
+                Don't accept a dot (.) as prefix for non-CPU instructions that don't have
+                already a dot in front of its name. This is the default behavior.
 
             -narl, --no-allow-relative-labels
                 Disable support for relative labels (default). See --allow-relative-labels for an
@@ -304,6 +326,11 @@ namespace Konamiman.Nestor80.N80
             -ndfa, --no-default-file-args
                 Don't read arguments from the .N80 file in the directory of the input file.
                 This argument is ignored when found inside an arguments file (.N80 or any other).
+
+            -ndhp, --no-discard-hash-prefix
+                Don't discard hash (#) characters prefixing expressions before evaluating them,
+                so the hash character will act as a prefix for hexadecimal numbers,
+                for example "dw #1234" will be equivalent to "dw 1234h". This is the default behavior.
 
             -ndow, --no-direct-output-write
                 Use the "memory map" strategy, instead of rge "direct output file write" strategy,
@@ -386,6 +413,10 @@ namespace Konamiman.Nestor80.N80
                 instruction directly in code. You may want to disallow escape sequences
                 when compiling old sources that were intended to be assembled with MACRO-80.
 
+            -nuse, --no-unknown-symbols-external
+                Don't treat symbols that are still unknown at the end of pass 2 as external symbol
+                references (throw "Unknown symbol" errors instead). This is the default behavior.
+
             -ofc, --output-file-case upper|lower|orig
                 Whether the casing of the output file name will be converted to lower case,
                 converted to upper case, or kept as the input file name (this is the default).
@@ -466,6 +497,11 @@ namespace Konamiman.Nestor80.N80
                 Escape sequences can also be turned on and off by using the .STRESC ON/OFF
                 instruction directly in code. You may want to disallow escape sequences
                 when compiling old sources that were intended to be assembled with MACRO-80.
+
+            -use, --unknown-symbols-external
+                Treat any symbol that is still unknown at the end of pass 2 as an external
+                symbol reference. This argument doesn't have any effect when the build type
+                is absolute.
 
             -vb, --verbosity <level>
                 Selects the verbosity of the status messages shown during the assembly process.

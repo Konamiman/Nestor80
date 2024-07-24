@@ -207,6 +207,8 @@ FOO:
   ;Some code
 ```
 
+💡 If the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol reference.
+
 ### Named constants
 
 A _named constant_ (or just "constant") is a symbol that represents a numeric value and can be used in expressions. There are two types of constants: fixed and redefinible. The value of a _fixed_ constant can't be altered, while the value of a _redefinible_ constant can, by using a new constant definition instruction with the same constant name.
@@ -270,7 +272,10 @@ Notation |  Radix
 `nnnnQ`  |   Octal
 `nnnnH`  |   Hexadecimal
 `X'nnnn'`|  Hexadecimal
-`#nnnn` 🆕 |   Hexadecimal
+`0xnnnn` 🆕 |  Hexadecimal
+`#nnnn` 🆕 |   Hexadecimal (see note)
+
+**Note:** The `#` character is interpreted as a hexadecimal number prefix by default, but if the `--discard-hash-prefix` argument is passed to Nestor80 then such characters will be ignored when used as number prefixes; so for example `#1234` will be equivalent to `1234` in the default radix, and `#1010I` will be equivalent to the binary number `1010`. This can be useful to assemble source code written for the SDAS assembler, which requires numeric constants to be prefixed with a `#` character.
 
 <blockquote>
 ⚠ The <code>B</code> and <code>D</code> suffixes are actually unusable when the default radix is 12 or higher and 14 or higher, respectively. Consider the following example:
@@ -1246,6 +1251,8 @@ Some instructions have aliases. In most cases these come inherited from MACRO-80
 
 Instruction arguments are specified using the standard notation `<argument>`. A few instructions require an argument to be passed surrounded by literal angle brackets, in these cases thes angle brackets are specified as `"<"` and `">"`, see for example [`IFB`](#ifb).
 
+💡 If the `--accept-dot-prefix` argument is passed to Nestor80 then it's possible to write all the instructions listed here prefixed with a dot (`.`), except those that have a dot  prefixing its name already. For example ` .ORG` will be accepted as an alias for `ORG`. This may be useful when assembling code written for other assemblers.
+
 
 ### .COMMENT
 
@@ -1997,6 +2004,8 @@ call FOO##
 extrn FOO
 call FOO
 ```
+
+Additionally, if the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol reference.
 
 See also [`PUBLIC`](#public-entry-global-).
 

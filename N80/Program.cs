@@ -3,6 +3,7 @@ using Konamiman.Nestor80.Assembler.Errors;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Konamiman.Nestor80.N80
 {
@@ -77,14 +78,18 @@ namespace Konamiman.Nestor80.N80
         static bool mustGenerateListingFile;
         static string listingFileExtension;
         static bool link80compatibility;
+        static bool discardHashPrefix;
+        static bool acceptDottedInstructionAliases;
+        static bool treatUnknownSymbolsAsExternals;
+        static string endOfLIne;
 
         static readonly ConsoleColor defaultForegroundColor = Console.ForegroundColor;
         static readonly ConsoleColor defaultBackgroundColor = Console.BackgroundColor;
         static readonly Stopwatch assemblyTimeMeasurer = new();
         static readonly Stopwatch totalTimeMeasurer = new();
-        static readonly List<(string, string[])> argsByFile = new();
+        static readonly List<(string, string[])> argsByFile = [];
         static bool n80FileUsed = false;
-        static readonly List<AssemblyError> warningsFromPass1 = new();
+        static readonly List<AssemblyError> warningsFromPass1 = [];
         static bool inPass2 = false;
         static string[] envArgs = null;
         static string[] commandLineArgs;
@@ -92,6 +97,13 @@ namespace Konamiman.Nestor80.N80
         static int printedWarningsCount = 0;
 
         static readonly ListingFileConfiguration listingConfig = new();
+
+        static readonly Dictionary<string, string> endOfLines = new(StringComparer.OrdinalIgnoreCase) {
+            { "auto", Environment.NewLine },
+            { "cr", "\r" },
+            { "lf", "\n" },
+            { "crlf", "\r\n" }
+        };
 
         static int Main(string[] args)
         {
@@ -116,7 +128,7 @@ namespace Konamiman.Nestor80.N80
                 Console.WriteLine("Available encodings for strings:");
                 Console.WriteLine();
                 Console.WriteLine(string.Format(formatString, "Name", "Code page"));
-                Console.WriteLine(new string('-', longestNameLength + 12));
+                Console.WriteLine(new string('-', longestNameLength + 1) + "|" + new string('-', 10));
                 foreach(var encoding in encodings) {
                     Console.WriteLine(string.Format(formatString, encoding.Name, encoding.CodePage));
                 }
@@ -125,8 +137,13 @@ namespace Konamiman.Nestor80.N80
 
             if(args[0] is "-h" or "--help") {
                 WriteLine(bannerText);
-                WriteLine(simpleHelpText);
-                WriteLine(extendedHelpText);
+                if(args.Length > 1) {
+                    ShowArgumentHelp(args[1]);
+                }
+                else {
+                    WriteLine(simpleHelpText);
+                    WriteLine(extendedHelpText);
+                }
                 return ERR_SUCCESS;
             }
 
@@ -417,8 +434,12 @@ namespace Konamiman.Nestor80.N80
             info += $"Expand DEFS instructions: {YesOrNo(initDefs)}\r\n";
             info += $"Show source in error messages: {YesOrNo(sourceInErrorMessage)}\r\n";
             info += $"Allow relative labels: {YesOrNo(allowRelativeLabels)}\r\n";
+            info += $"Discard '#' prefix in expressions: {YesOrNo(discardHashPrefix)}\r\n";
+            info += $"Accept '.' prefix in instructions: {YesOrNo(acceptDottedInstructionAliases)}\r\n";
+            info += $"End of line sequence for text files: {endOfLIne.ToUpper()}\r\n";
             if(buildType != BuildType.Absolute) {
                 info += $"LINK-80 compatibility: {YesOrNo(link80compatibility)}\r\n";
+                info += $"Treat unknown symbols as external references: {YesOrNo(treatUnknownSymbolsAsExternals)}\r\n";
             }
 
             if(mustProcessOutputFileName) {
@@ -504,6 +525,10 @@ namespace Konamiman.Nestor80.N80
             mustGenerateListingFile = false;
             listingFileExtension = null;
             link80compatibility = false;
+            discardHashPrefix = false;
+            acceptDottedInstructionAliases = false;
+            treatUnknownSymbolsAsExternals = false;
+            endOfLIne = "auto";
 
             listingConfig.MaxSymbolLength = 16;
             listingConfig.ListFalseConditionals = true;
@@ -1098,6 +1123,37 @@ namespace Konamiman.Nestor80.N80
                 else if(arg is "-nl8c" or "--no-link-80-compatibility") {
                     link80compatibility = false;
                 }
+                else if(arg is "-dhp" or "--discard-hash-prefix") {
+                    discardHashPrefix = true;
+                }
+                else if(arg is "-ndhp" or "--no-discard-hash-prefix") {
+                    discardHashPrefix = false;
+                }
+                else if(arg is "-adp" or "--accept-dot-prefix") {
+                    acceptDottedInstructionAliases = true;
+                }
+                else if(arg is "-nadp" or "-no-accept-dot-prefix") {
+                    acceptDottedInstructionAliases = false;
+                }
+                else if(arg is "-use" or "--unknown-symbols-external") {
+                    treatUnknownSymbolsAsExternals = true;
+                }
+                else if(arg is "-nuse" or "--no-unknown-symbols-external") {
+                    treatUnknownSymbolsAsExternals = false;
+                }
+                else if(arg is "-eol" or "--end-of-line") {
+                    if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                        return $"The {arg} argument needs to be followed by the end of line sequence (cr, lf, crlf or auto)";
+                    }
+
+                    if(endOfLines.ContainsKey(args[i + 1])) {
+                        endOfLIne = args[i + 1];
+                    }
+                    else {
+                        return $"{arg}: the end of line sequence must be one of: cr, lf, crlf, auto";
+                    }
+                    i++;
+                }
                 else {
                     return $"Unknwon argument '{arg}'";
                 }
@@ -1181,7 +1237,11 @@ namespace Konamiman.Nestor80.N80
                 AllowBareExpressions = allowBareExpressions,
                 AllowRelativeLabels = allowRelativeLabels,
                 MaxIncbinFileSize = (buildType is BuildType.Absolute && directOutputWrite) ? MAX_INCBIN_SIZE_DOW : MAX_INCBIN_SIZE_MEMMAP,
-                Link80Compatibility = link80compatibility
+                Link80Compatibility = link80compatibility,
+                DiscardHashPrefix = discardHashPrefix,
+                AcceptDottedInstructionAliases = acceptDottedInstructionAliases,
+                TreatUnknownSymbolsAsExternals = treatUnknownSymbolsAsExternals,
+                EndOfLine = endOfLines[endOfLIne]
             };
 
             if(showAssemblyDuration) assemblyTimeMeasurer.Start();
@@ -1264,7 +1324,7 @@ namespace Konamiman.Nestor80.N80
             if(mustGenerateListingFile) {
                 try {
                     var listingStream = File.Create(listingFilePath);
-                    var listingStreamWriter = new StreamWriter(listingStream, listingFileEncoding);
+                    var listingStreamWriter = new StreamWriter(listingStream, listingFileEncoding) { NewLine = config.EndOfLine };
                     listingWrittenBytes = ListingFileGenerator.GenerateListingFile(result, listingStreamWriter, listingConfig);
                     listingStream.Close();
                 }
@@ -1536,6 +1596,31 @@ namespace Konamiman.Nestor80.N80
                 version = version[..^2];
             }
             return PREVIEW_LEVEL == 0 ? version : version + " preview " + PREVIEW_LEVEL;
+        }
+
+        private static void ShowArgumentHelp(string argument)
+        {
+            var lines = extendedHelpText.Split(Environment.NewLine);
+            argument = argument.TrimStart('-');
+
+            int i;
+            for(i = 0; i < lines.Length; i++) {
+                if(Regex.IsMatch(lines[i], $"^(-{argument},|-[^,]+, --{argument}(?![a-z-]))")) {
+                    break;
+                }
+            }
+
+            if(i == lines.Length) {
+                WriteLine($"*** Argument '{argument}' not found.");
+                return;
+            }
+
+            var result = lines[i++] + Environment.NewLine;
+            while(i < lines.Length && (lines[i].StartsWith(' ') || string.IsNullOrWhiteSpace(lines[i]))) {
+                result += lines[i++] + Environment.NewLine;
+            }
+
+            WriteLine(result.Trim());
         }
     }
 }

@@ -77,8 +77,6 @@ namespace Konamiman.Nestor80.Assembler
             "INCLUDE", "$INCLUDE", "MACLIB"
         };
 
-        private static readonly string[] instructionsNeedingPass2Reevaluation;
-
         private static CpuType currentCpu;
         private static bool z280AllowPriviliegedInstructions;
         private static bool z280IoInstructionsArePrivileged;
@@ -86,6 +84,8 @@ namespace Konamiman.Nestor80.Assembler
         private static bool isZ280AutoIndexMode;
         private static bool isZ280LongIndexMode;
         private static Z280IndexMode z280IndexMode;
+        private static bool acceptDottedInstructionAliases;
+        private static bool treatUnknownSymbolsAsExternals;
 
         private static string[] currentCpuInstructionOpcodes;
         private static Dictionary<string, byte[]> currentCpuFixedInstructions;
@@ -110,8 +110,8 @@ namespace Konamiman.Nestor80.Assembler
         //Constant definitions are considered pseudo-ops, but they are handled as a special case
         //(instead of being included in PseudoOpProcessors) because the actual opcode comes after the name of the constant
         private static readonly string[] constantDefinitionOpcodes = { "EQU", "DEFL", "ASET" };
-
         private static readonly ProcessedSourceLine blankLineWithoutLabel = new BlankLine();
+        private static readonly string[] dotPrefixedPseudoOps;
 
         /// <summary>
         /// Event fired when the assembly process generates an assembly error.
@@ -146,7 +146,16 @@ namespace Konamiman.Nestor80.Assembler
         static AssemblySourceProcessor()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            instructionsNeedingPass2Reevaluation = conditionalInstructions.Concat(new[] { ".PHASE", ".DEPHASE" }).ToArray();
+
+            dotPrefixedPseudoOps =
+                CopyWithDottedAliases(PseudoOpProcessors.Keys.ToArray())
+                .Concat(CopyWithDottedAliases(conditionalInstructions))
+                .Concat(CopyWithDottedAliases(macroDefinitionOrExpansionInstructions))
+                .Concat(CopyWithDottedAliases(macroDefinitionOrExpansionInstructionsMinusNamed))
+                .Concat(CopyWithDottedAliases(instructionsThatAcceptFreeText))
+                .Concat(CopyWithDottedAliases(includeInstructions))
+                .Concat(CopyWithDottedAliases(constantDefinitionOpcodes))
+                .Distinct().ToArray();
         }
 
         public static bool IsValidCpu(string cpuName)
@@ -184,6 +193,8 @@ namespace Konamiman.Nestor80.Assembler
                 ProcessPredefinedsymbols(configuration.PredefinedSymbols);
                 maxErrors = configuration.MaxErrors;
                 link80Compatibility = configuration.Link80Compatibility;
+                acceptDottedInstructionAliases = configuration.AcceptDottedInstructionAliases;
+                treatUnknownSymbolsAsExternals = configuration.TreatUnknownSymbolsAsExternals;
 
                 SetCurrentCpu(configuration.CpuName);
                 buildType = configuration.BuildType;
@@ -200,6 +211,7 @@ namespace Konamiman.Nestor80.Assembler
                 Expression.ModularizeSymbolName = name => state.Modularize(name);
                 Expression.AllowEscapesInStrings = configuration.AllowEscapesInStrings;
                 Expression.Link80Compatibility = link80Compatibility;
+                Expression.DiscardHashPrefix = configuration.DiscardHashPrefix;
                 SymbolInfo.Link80Compatibility = link80Compatibility;
                 LinkItem.Link80Compatibility = link80Compatibility;
 
@@ -504,11 +516,11 @@ namespace Konamiman.Nestor80.Assembler
             var symbol = walker.ExtractSymbol(colonIsDelimiter: true);
 
             if(definingMacro) {
-                opcode = symbol;
+                opcode = MaybeResolveDottedAlias(symbol);
                 
                 var stillInMacroDefinitionMode = true;
-                if(string.Equals(symbol, "ENDM", StringComparison.InvariantCultureIgnoreCase)) {
-                    processedLine = ProcessEndmLine(symbol, walker);
+                if(string.Equals(opcode, "ENDM", StringComparison.InvariantCultureIgnoreCase)) {
+                    processedLine = ProcessEndmLine(opcode, walker);
 
                     //We need to check if we are still in macro definition mode
                     //because the ENDM could be part of a nested REPT inside a MACRO or another REPT;
@@ -517,7 +529,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
 
                 if(stillInMacroDefinitionMode) {
-                    AssemblyState.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(symbol, StringComparer.OrdinalIgnoreCase));
+                    AssemblyState.RegisterMacroDefinitionLine(line, macroDefinitionOrExpansionInstructions.Contains(opcode, StringComparer.OrdinalIgnoreCase));
                     walker.DiscardRemaining();
                     processedLine = new MacroDefinitionBodyLine() { Line = line, EffectiveLineLength = line.Length };
                 }
@@ -562,6 +574,8 @@ namespace Konamiman.Nestor80.Assembler
 
                 symbol = walker.ExtractSymbol();
             }
+
+            symbol = MaybeResolveDottedAlias(symbol);
 
             // Normally, when we are inside a false conditional we still need to process IF and ENDIF
             // statements so as to properly keep the conditional block "state machine".
@@ -625,7 +639,7 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 else if(label is null && !instructionsThatAcceptFreeText.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
                     walker.BackupPointer();
-                    var symbol2 = walker.ExtractSymbol();
+                    var symbol2 = MaybeResolveDottedAlias(walker.ExtractSymbol());
                     if(constantDefinitionOpcodes.Contains(symbol2, StringComparer.OrdinalIgnoreCase)) {
                         opcode = symbol2;
                         processedLine = ProcessConstantDefinition(opcode: opcode, name: symbol, walker: walker);
@@ -950,6 +964,9 @@ namespace Konamiman.Nestor80.Assembler
                     symbol.Type = SymbolType.External;
                 }
             }
+            else if(treatUnknownSymbolsAsExternals && !symbol.HasKnownValue && state.InPass2 && buildType != BuildType.Absolute) {
+                symbol.Type = SymbolType.External;
+            }
 
             return symbol;
         }
@@ -1130,5 +1147,17 @@ namespace Konamiman.Nestor80.Assembler
 
         static Address EvaluateIfNoSymbolsOrPass2(Expression expression) =>
             state.InPass2 ? expression.Evaluate() : expression.EvaluateIfNoSymbols();
+
+        static string[] CopyWithDottedAliases(string[] opcodes)
+        {
+            return opcodes.Where(o => o[0] != '.').Select(o => '.' + o).ToArray();
+        }
+
+        static string MaybeResolveDottedAlias(string symbol)
+        {
+            return
+                acceptDottedInstructionAliases && dotPrefixedPseudoOps.Contains(symbol, StringComparer.OrdinalIgnoreCase) ?
+                symbol[1..] : symbol;
+        }
     }
 }

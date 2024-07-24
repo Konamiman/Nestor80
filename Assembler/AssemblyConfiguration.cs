@@ -81,5 +81,27 @@ namespace Konamiman.Nestor80.Assembler
         /// arithmetic operators allowed for expressions with external references is limited).
         /// </summary>
         public bool Link80Compatibility { get; init; } = false;
+
+        /// <summary>
+        /// True if a hash character (#) present at the beginning of an expression needs to be discarded
+        /// before evaluating the expression. This is useful for assembling sources intended for the
+        /// SDAS assembler, which expects numeric constants to be prefixed with a hash character.
+        /// </summary>
+        public bool DiscardHashPrefix { get; init; } = false;
+
+        /// <summary>
+        /// True if instruction aliases with a dot prefix (e.g. ".DS" as an alias of "DS") are accepted.
+        /// </summary>
+        public bool AcceptDottedInstructionAliases { get; set; } = false;
+
+        /// <summary>
+        /// True to consider symbols that are unknown in pass 2 as external symbol references.
+        /// </summary>
+        public bool TreatUnknownSymbolsAsExternals { get; set; } = false;
+
+        /// <summary>
+        /// Character sequence to use as end of line markers for text files.
+        /// </summary>
+        public string EndOfLine { get; set; } = Environment.NewLine;
     }
 }

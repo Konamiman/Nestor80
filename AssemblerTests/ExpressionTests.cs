@@ -110,9 +110,14 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { 16, "12efH", 0x12EF },
 
             // Radix 16, hash prefix
-            new object[] { 10, "#12ef", 0x12ef },
-            new object[] { 10, "#abcd", 0xabcd },
-            new object[] { 10, "#0", 0 },
+            new object[] { 16, "#12ef", 0x12ef },
+            new object[] { 16, "#abcd", 0xabcd },
+            new object[] { 16, "#0", 0 },
+
+            // Radix 16, 0x prefix
+            new object[] { 16, "0x12ef", 0x12ef },
+            new object[] { 16, "0Xabcd", 0xabcd },
+            new object[] { 16, "0x0", 0 },
 
             // Arbitrary radixes, including suffixes
 
@@ -143,6 +148,16 @@ namespace Konamiman.Nestor80.AssemblerTests
         {
             Expression.DefaultRadix = radix;
             AssertParsesToNumber(input, (ushort)output);
+        }
+
+        [TestCaseSource(nameof(TestNumberCases))]
+        public void TestParsingNumberWithHashDiscard(int radix, string input, int output)
+        {
+            Expression.DefaultRadix = radix;
+            Expression.DiscardHashPrefix = true;
+            input = $"#{input}";
+            AssertParsesToNumber(input, (ushort)output);
+            Expression.DiscardHashPrefix = false;
         }
 
         static object[] TestWrongNumberCases = {
@@ -634,7 +649,7 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("type DATAZ", 0x22)]
         [TestCase("type COMONZ", 0x23)]
         [TestCase("type EXT", 0x80)]
-        [TestCase("type (EXT+1)", 0x80)]
+        [TestCase("type (EXT+1)", -1)]
         [TestCase("type EXT+1", 0x81)]
         [TestCase("2+(type CODEZ)+1", 0x24)]
         public void TestType(string line, int expectedResult)
@@ -662,8 +677,8 @@ namespace Konamiman.Nestor80.AssemblerTests
 
             var exp = Expression.Parse(line);
             exp.ValidateAndPostifixize();
-            if(line.Contains("EXT")) {
-                Assert.Throws<ExpressionContainsExternalReferencesException>(() => exp.Evaluate());
+            if(expectedResult == -1) {
+                Assert.Throws<InvalidExpressionException>(() => exp.Evaluate());
             }
             else {
                 exp.ValidateAndPostifixize();
