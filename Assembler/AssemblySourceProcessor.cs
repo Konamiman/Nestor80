@@ -627,7 +627,7 @@ namespace Konamiman.Nestor80.Assembler
             //
             // TITLE EQU 1      ---> defines constant "TITLE" with value 1
             // FOO: TITLE EQU 1 ---> sets the program title as "EQU 1"
-            if(!definingMacro && !state.InFalseConditional && !walker.AtEndOfLine) {
+            if(!definingMacro && !state.InFalseConditional && (!walker.AtEndOfLine || symbol.Equals("MACRO", StringComparison.OrdinalIgnoreCase))) {
                 if(label is not null && constantDefinitionOpcodes.Contains(symbol, StringComparer.OrdinalIgnoreCase)) {
                     opcode = symbol;
                     processedLine = ProcessConstantDefinition(opcode: opcode, name: label.TrimEnd(':'), walker: walker);
