@@ -1025,7 +1025,7 @@ namespace Konamiman.Nestor80.Assembler
                         AddError(AssemblyErrorCode.DuplicatedSymbol, $"Duplicate label: {labelValue}");
                     }
                     else {
-                        AddError(AssemblyErrorCode.DifferentPassValues, $"Label {labelValue} has different values in pass 1 ({symbol.Value:X4}h) and in pass 2 ({state.GetCurrentLocation().Value:X4}h)");
+                        AddError(AssemblyErrorCode.DifferentPassValues, $"Label {labelValue} has different values in pass 1 ({symbol.Value:X4}h) and in pass 2 ({state.GetCurrentLocation():X4}h)");
                     }
                 }
 
