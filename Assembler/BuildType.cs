@@ -5,6 +5,7 @@
         Invalid,
         Automatic,
         Relocatable,
-        Absolute
+        Absolute,
+        Sdcc
     }
 }

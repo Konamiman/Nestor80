@@ -1,6 +1,8 @@
 ﻿using Konamiman.Nestor80.Assembler.Infrastructure;
 using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.ProcessedLineTypes;
 using Konamiman.Nestor80.Assembler.Relocatable;
+using System.Diagnostics.Metrics;
 using System.Text;
 
 namespace Konamiman.Nestor80.Assembler
@@ -32,8 +34,10 @@ namespace Konamiman.Nestor80.Assembler
 
         private static StreamWriter writer;
         static AddressType currentLocationArea;
+        static string currentSdccArea;
         static Dictionary<AddressType, ushort> locationCounters;
         static bool isAbsoluteBuild;
+        static bool isSdccBuild;
         static AddressType currentPhasedLocationArea;
         static ushort currentPhasedLocationCounter;
         static bool isPhased = false;
@@ -64,6 +68,8 @@ namespace Konamiman.Nestor80.Assembler
         static bool listingActive;
         static bool instructionBytesTruncated;
         static ushort truncatedBytesLength;
+        static Dictionary<string, SdccArea> sdccAreas;
+        static Dictionary<string, ushort> sdccAreaLocationCounters;
 
         /// <summary>
         /// Generate a MACRO-80-style listing file.
@@ -82,6 +88,14 @@ namespace Konamiman.Nestor80.Assembler
             ListingFileGenerator.writer = writer;
             ListingFileGenerator.config = config;
             isAbsoluteBuild = assemblyResult.BuildType == BuildType.Absolute;
+            isSdccBuild = assemblyResult.BuildType == BuildType.Sdcc;
+            if(isSdccBuild) {
+                var areaKvps = assemblyResult.SdccAreas.Select(a => new KeyValuePair<string, SdccArea>(a.Name, a));
+                sdccAreas = new Dictionary<string, SdccArea>(areaKvps, StringComparer.OrdinalIgnoreCase);
+                var areaLocationCounters = assemblyResult.SdccAreas.Select(a => new KeyValuePair<string, ushort>(a.Name, 0));
+                sdccAreaLocationCounters = new Dictionary<string, ushort>(areaLocationCounters, StringComparer.OrdinalIgnoreCase);
+                currentSdccArea = "_CODE";
+            }
             currentLocationArea = isAbsoluteBuild ? AddressType.ASEG : AddressType.CSEG;
             locationCounters = new Dictionary<AddressType, ushort>() {
                 { AddressType.CSEG, 0 },
@@ -124,6 +138,7 @@ namespace Konamiman.Nestor80.Assembler
                 PrintSymbols(assemblyResult.BuildType, assemblyResult.Symbols, assemblyResult.MacroNames, assemblyResult.CommonAreaSizes.Keys.ToArray());
             }
 
+
             writer.Flush();
             return (int)writer.BaseStream.Position;
         }
@@ -160,6 +175,7 @@ namespace Konamiman.Nestor80.Assembler
             var mustPrintAddress = processedLine.Label is not null;
             ushort increaseLocationCounterBy = 0;
             AddressType? changeAreaTo = null;
+            string? changeSdccAreaTo = null;
             var incrementSubpage = false;
             currentConstantDefinitionLine = null;
 
@@ -291,7 +307,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(processedLine is ChangeAreaLine cal) {
-                if(!isAbsoluteBuild) {
+                if(!isAbsoluteBuild && !isSdccBuild) {
                     changeAreaTo = cal.NewLocationArea;
                     if(cal.NewLocationArea is AddressType.COMMON) {
                         locationCounters[AddressType.COMMON] = 0;
@@ -299,8 +315,22 @@ namespace Konamiman.Nestor80.Assembler
                 }
                 mustPrintAddress = cal.NewLocationArea is not AddressType.COMMON;
             }
+            else if(processedLine is SdccAreaLine sal) {
+                if(isSdccBuild) {
+                    changeSdccAreaTo = sal.Area.Name;
+                    var area = sdccAreas[changeSdccAreaTo];
+                    if(area.IsAbsolute || area.IsOverlay) {
+                        sdccAreaLocationCounters[sal.Area.Name] = 0;
+                    }
+                }
+            }
             else if(processedLine is ChangeOriginLine col) {
-                locationCounters[currentLocationArea] = col.NewLocationCounter;
+                if(isSdccBuild) {
+                    sdccAreaLocationCounters[currentSdccArea] = col.NewLocationCounter;
+                }
+                else {
+                    locationCounters[currentLocationArea] = col.NewLocationCounter;
+                }
             }
             else if(processedLine is PhaseLine phl) {
                 currentPhasedLocationArea = phl.NewLocationArea;
@@ -320,6 +350,10 @@ namespace Konamiman.Nestor80.Assembler
             if(changeAreaTo.HasValue) {
                 currentLocationArea = changeAreaTo.Value;
             }
+            else if(changeSdccAreaTo is not null) {
+                currentSdccArea = changeSdccAreaTo;
+            }
+
             if(increaseLocationCounterBy > 0) {
                 IncreaseLocationCounter(increaseLocationCounterBy);
             }
@@ -399,7 +433,13 @@ namespace Konamiman.Nestor80.Assembler
 
         private static void IncreaseLocationCounter(ushort value)
         {
-            locationCounters[currentLocationArea] += value;
+            if(isSdccBuild) {
+                sdccAreaLocationCounters[currentSdccArea] += value;
+            }
+            else {
+                locationCounters[currentLocationArea] += value;
+            }
+
             if(isPhased) {
                 currentPhasedLocationCounter += value;
             }
@@ -411,13 +451,16 @@ namespace Konamiman.Nestor80.Assembler
                 sb.Append($"  {currentConstantDefinitionLine.Value:X4}{addressSuffixes[currentConstantDefinitionLine.ValueArea]}");
                 currentConstantDefinitionLine = null;
             }
-            else if(printAddress) {
-                var area = isPhased ? currentPhasedLocationArea : currentLocationArea;
-                var counter = isPhased ? currentPhasedLocationCounter : locationCounters[currentLocationArea];
-                sb.Append($"  {counter:X4}{addressSuffixes[area]}");
+            else if(!printAddress) {
+                sb.Append("       ");
+            }
+            else if(isPhased) {
+                sb.Append($"  {currentPhasedLocationCounter:X4}{addressSuffixes[currentPhasedLocationArea]}");
             }
             else {
-                sb.Append("       ");
+                var area =  isSdccBuild ? (sdccAreas[currentSdccArea].IsAbsolute ? AddressType.ASEG : AddressType.CSEG) : currentLocationArea;
+                var counter = isSdccBuild ? sdccAreaLocationCounters[currentSdccArea] : locationCounters[currentLocationArea];
+                sb.Append($"  {counter:X4}{addressSuffixes[area]}");
             }
 
             sb.Append("   ");
@@ -578,6 +621,17 @@ namespace Konamiman.Nestor80.Assembler
                 PrintLine();
                 PrintLine("Common areas:");
                 PrintSymbolsCollection(commonAreaNames);
+            }
+
+            if(isSdccBuild) {
+                PrintLine();
+                PrintLine("Areas:");
+
+                var areaNames = sdccAreas.Keys.OrderBy(s => s).ToArray();
+                foreach(var areaName in areaNames) {
+                    var area = sdccAreas[areaName];
+                    PrintLine($"{(config.UppercaseSymbolNames ? area.Name.ToUpper() : area.Name)}\t({(area.IsAbsolute ? "ABS" : "REL")},{(area.IsOverlay ? "OVR" : "CON")})\taddress 0x{area.Address:X4}\tsize {area.Size}");
+                }
             }
         }
 

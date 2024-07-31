@@ -52,6 +52,10 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         private readonly Dictionary<string, int> commonAreaSizes = new();
         private string currentCommonBlockName = null;
 
+        public SdccArea CurrentSdccArea { get; private set; } = null;
+
+        public Dictionary<string, SdccArea> SdccAreas { get; private set; } = null;
+
         public bool InsideNamedMacroInsideFalseConditional { get; set; } = false;
 
         public int IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
@@ -60,7 +64,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public Dictionary<string, NamedMacroDefinitionLine> NamedMacros { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
 
+        private bool isSdccBuild;
+
         private bool _RelativeLabelsEnabled;
+
+        private int lastUsedSdccAreaIndex = -1;
         public bool RelativeLabelsEnabled
         {
             get => _RelativeLabelsEnabled;
@@ -70,6 +78,15 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 RegisterLastNonRelativeLabel(null);
             }
         }
+
+        public void SetIsSdccBuild()
+        {
+            isSdccBuild = true;
+            SdccAreas = new(StringComparer.OrdinalIgnoreCase) { { "_CODE", new SdccArea("_CODE", isAbsolute: false, isOverlay: false ) } };
+            CurrentSdccArea = SdccAreas["_CODE"];
+        }
+
+        public SdccArea GetExistingSdccArea(string name) => SdccAreas.GetValueOrDefault(name, null);
 
         public void RegisterPendingExpression(
             ProcessedSourceLine line,
@@ -127,9 +144,16 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             modules.Clear();
             Expression.DefaultRadix = 10;
             ClearExpressionsCache();
+            lastUsedSdccAreaIndex = -1;
 
-            SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
             SwitchToLocation(0);
+            if(isSdccBuild) {
+                SetIsSdccBuild();
+                SwitchToSdccArea("_CODE");
+            }
+            else {
+                SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
+            }
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
@@ -161,13 +185,13 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         };
 
         private AddressType locationAreaBeforePhase;
+        private SdccArea sdccAreaBeforePhase;
 
         public AddressType CurrentLocationArea { get; private set; }
 
         public void EnterPhase(Address address)
         {
-            if (IsCurrentlyPhased)
-            {
+            if(IsCurrentlyPhased) {
                 throw new InvalidOperationException($"{nameof(EnterPhase)} isn't intended to be called while already in .PHASE mode");
             }
 
@@ -220,6 +244,52 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             currentCommonBlockName = commonName;
         }
 
+        public void SwitchToSdccArea(string areaName, bool isAbsolute, bool isOverlay, ushort address = 0, bool isIndexed = false)
+        {
+            if(!isSdccBuild) {
+                throw new InvalidOperationException($"{nameof(SwitchToSdccArea)} is intended to be executed only when the build type is SDCC");
+            }
+
+            if(SdccAreas.ContainsKey(areaName)) {
+                throw new InvalidOperationException($"The {nameof(SwitchToSdccArea)} overload that takes isAbsolute and isOverlay is for new areas only, {areaName} already exists");
+            }
+
+            CurrentSdccArea.Size = Math.Max(CurrentSdccArea.Size, (ushort)(CurrentLocationPointer - CurrentSdccArea.Address));
+
+            CurrentSdccArea = new SdccArea(areaName, isAbsolute, isOverlay) { Address = address, Size = 0 };
+            SdccAreas.Add(areaName, CurrentSdccArea);
+            CurrentLocationPointer = address;
+            CurrentLocationArea = CurrentSdccArea.IsAbsolute ? AddressType.ASEG : AddressType.CSEG;
+            if(!isIndexed) {
+                currentUnindexedSdccAreaName = areaName;
+            }
+        }
+
+        public void SwitchToSdccArea(string areaName)
+        {
+            if(!isSdccBuild) {
+                throw new InvalidOperationException($"{nameof(SwitchToSdccArea)} is intended to be executed only when the build type is SDCC");
+            }
+
+            if(!SdccAreas.ContainsKey(areaName)) {
+                throw new InvalidOperationException($"The {nameof(SwitchToSdccArea)} overload that takes only the area name is for existing areas only, {areaName} doesn't exist");
+            }
+
+            CurrentSdccArea.Size = Math.Max(CurrentSdccArea.Size, (ushort)(CurrentLocationPointer - CurrentSdccArea.Address));
+            CurrentSdccArea = SdccAreas[areaName];
+            CurrentLocationPointer = (CurrentSdccArea.IsAbsolute || CurrentSdccArea.IsOverlay) ? (ushort)0 : (ushort)(CurrentSdccArea.Address + CurrentSdccArea.Size);
+            CurrentLocationArea = CurrentSdccArea.IsAbsolute ? AddressType.ASEG : AddressType.CSEG;
+            currentUnindexedSdccAreaName = areaName;
+        }
+
+        private string currentUnindexedSdccAreaName;
+
+        public string GetToNextIndexedSdccAreaName()
+        {
+            lastUsedSdccAreaIndex++;
+            return $"{currentUnindexedSdccAreaName}{lastUsedSdccAreaIndex:x}";
+        }
+
         private void AdjustAreaSize()
         {
             if (CurrentLocationArea is AddressType.COMMON)
@@ -232,6 +302,9 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 {
                     commonAreaSizes.Add(currentCommonBlockName, CurrentLocationPointer);
                 }
+            }
+            else if(isSdccBuild) {
+                CurrentSdccArea.Size = Math.Max(CurrentSdccArea.Size, (ushort)(CurrentLocationPointer - CurrentSdccArea.Address));
             }
             else
             {
@@ -358,7 +431,15 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 isNonRelativeLabel = true;
             }
 
-            Symbols.Add(name, new SymbolInfo() { Name = name, Type = type, Value = value, IsPublic = isPublic, IsNonRelativeLabel = isNonRelativeLabel });
+            Symbols.Add(name, new SymbolInfo() {
+                Name = name,
+                Type = type,
+                Value = value, 
+                IsPublic = isPublic,
+                IsNonRelativeLabel = isNonRelativeLabel,
+                SdccAreaName = CurrentSdccArea?.Name,
+                SdccAreaIsAbs = CurrentSdccArea?.IsAbsolute ?? false
+            });
         }
 
         public void RegisterLastNonRelativeLabel(string label)

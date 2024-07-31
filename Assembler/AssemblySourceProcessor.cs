@@ -7,6 +7,7 @@ using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
 using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
 using Konamiman.Nestor80.Assembler.Infrastructure;
 using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.ProcessedLineTypes;
 using Konamiman.Nestor80.Assembler.Relocatable;
 
 [assembly: InternalsVisibleTo("AssemblerTests")]
@@ -198,8 +199,11 @@ namespace Konamiman.Nestor80.Assembler
 
                 SetCurrentCpu(configuration.CpuName);
                 buildType = configuration.BuildType;
+                if(buildType is BuildType.Sdcc) {
+                    SetIsSdccBuildFlags();
+                }
                 state.SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
-
+                
                 var validInitialStringEncoding = SetStringEncoding(configuration.OutputStringEncoding, initial: true);
                 if(!validInitialStringEncoding)
                     Expression.OutputStringEncoding = Encoding.ASCII;
@@ -258,7 +262,8 @@ namespace Konamiman.Nestor80.Assembler
                     IsPublic = s.IsPublic,
                     Value = s.Value?.Value ?? 0,
                     ValueArea = s.Value?.Type ?? AddressType.ASEG,
-                    CommonName = s.Value?.CommonBlockName
+                    CommonName = s.Value?.CommonBlockName,
+                    SdccAreaName = s.SdccAreaName,
                 }).ToArray();
 
             var duplicateExternals = symbols.Where(s => s.Type is SymbolType.External).GroupBy(s => s.EffectiveName).Where(s => s.Count() > 1).ToArray();
@@ -315,7 +320,8 @@ namespace Konamiman.Nestor80.Assembler
                 EndAddress = (ushort)(state.EndAddress is null ? 0 : state.EndAddress.Value),
                 BuildType = buildType,
                 MaxRelocatableSymbolLength = configuration.Link80Compatibility ? MaxEffectiveExternalNameLength : int.MaxValue,
-                MacroNames = state.NamedMacros.Keys.ToArray()
+                MacroNames = state.NamedMacros.Keys.ToArray(),
+                SdccAreas = state.SdccAreas?.Values.ToArray()
             };
         }
 
@@ -748,6 +754,9 @@ namespace Konamiman.Nestor80.Assembler
                 else if(processedLine is IProducesOutput or DefineSpaceLine or LinkerFileReadRequestLine) {
                     SetBuildType(BuildType.Relocatable);
                 }
+                else if(processedLine is SdccAreaLine) {
+                    SetBuildType(BuildType.Sdcc);
+                }
             }
 
             return processedLine;
@@ -809,6 +818,15 @@ namespace Konamiman.Nestor80.Assembler
                     throw new Exception($"Expression '{expressionPendingEvaluation.Expression.Source}' has unresolved TYPE operators, that should never happen");
                 }
 
+                if(buildType is BuildType.Sdcc) {
+                    expressionPendingEvaluation.Expression.ValidateAndPostifixize();
+                    var simplifyOk = expressionPendingEvaluation.Expression.SimplifyForSdcc();
+                    if(!simplifyOk) { 
+                        AddError(AssemblyErrorCode.ExpressionInvalidForSdcc, $"Invalid expression for {processedLine.Opcode.ToUpper()}: the expression is not supported by the SDCC relocatable file format");
+                        continue;
+                    }
+                }
+
                 if(referencedSymbols.Any(s => s.IsExternal)) {
                     if(expressionPendingEvaluation.ArgumentType is CpuInstrArgType.OffsetFromCurrentLocation) {
                         AddError(AssemblyErrorCode.InvalidExpression, $"Invalid expression for {processedLine.Opcode.ToUpper()}: the expression can't contain external references");
@@ -867,7 +885,8 @@ namespace Konamiman.Nestor80.Assembler
                             IsByte = expressionPendingEvaluation.IsByte,
                             Type = expressionValue.Type, 
                             Value = expressionValue.Value,
-                            CommonName = expressionValue.CommonBlockName
+                            CommonName = expressionValue.CommonBlockName,
+                            SdccAreaName = expressionPendingEvaluation.Expression.SdccAreaName
                         });
                     }
                 }
@@ -903,7 +922,7 @@ namespace Konamiman.Nestor80.Assembler
                         items.Add(LinkItem.ForExternalReference(symbol.EffectiveName));
                     }
                     else {
-                        items.Add(LinkItem.ForAddressReference(symbol.Value.Type, symbol.Value.Value));
+                        items.Add(LinkItem.ForAddressReference(symbol.Value.Type, symbol.Value.Value, symbol.SdccAreaName));
                     }
                 }
                 else if(part is ArithmeticOperator op) {
@@ -935,7 +954,12 @@ namespace Konamiman.Nestor80.Assembler
         private static SymbolInfo GetSymbolForExpression(string name, bool isExternal, bool isRoot)
         {
             if(name == "$") {
-                return new SymbolInfo() { Name = "$", Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer) };
+                return new SymbolInfo() { 
+                    Name = "$", 
+                    Value = new Address(state.CurrentLocationArea, state.CurrentLocationPointer),
+                    SdccAreaName = state.CurrentSdccArea?.Name,
+                    SdccAreaIsAbs = state.CurrentSdccArea?.IsAbsolute ?? false
+                };
             }
 
             if(!isRoot && !isExternal) {
@@ -1038,6 +1062,10 @@ namespace Konamiman.Nestor80.Assembler
                 //Either PUBLIC declaration preceded label in code,
                 //or the label first appeared as part of an expression
                 symbol.Value = state.GetCurrentLocation();
+                if(buildType is BuildType.Sdcc) {
+                    symbol.SdccAreaName = state.CurrentSdccArea?.Name;
+                    symbol.SdccAreaIsAbs = state.CurrentSdccArea?.IsAbsolute ?? false;
+                }
 
                 //In case the label first appeared as part of an expression
                 //and thus was of type "Unknown"
@@ -1062,6 +1090,19 @@ namespace Konamiman.Nestor80.Assembler
             if(BuildTypeAutomaticallySelected is not null) {
                 BuildTypeAutomaticallySelected(null, (state.CurrentIncludeFilename, state.CurrentLineNumber, buildType));
             }
+
+            if(type is BuildType.Sdcc) {
+                SetIsSdccBuildFlags();
+            }
+        }
+
+        private static void SetIsSdccBuildFlags()
+        {
+            state.SetIsSdccBuild();
+            SymbolInfo.IsSdccBuild = true;
+            Expression.IsSdccBuild = true;
+            Address.IsSdccBuild = true;
+            ProcessedSourceLine.IsSdccBuild = true;
         }
 
         /// <summary>

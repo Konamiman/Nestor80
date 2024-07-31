@@ -1,4 +1,6 @@
-﻿using Konamiman.Nestor80.Assembler.Output;
+﻿using Konamiman.Nestor80.Assembler.Infrastructure;
+using Konamiman.Nestor80.Assembler.Output;
+using Konamiman.Nestor80.Assembler.ProcessedLineTypes;
 using Konamiman.Nestor80.Assembler.Relocatable;
 using System.Text;
 
@@ -637,6 +639,252 @@ namespace Konamiman.Nestor80.Assembler
             foreach(var b in symbolBytes) {
                 bitWriter.Write(b, 8);
             }
+        }
+
+        /// <summary>
+        /// Generate a SDCC compatible compatible relocatable file from an <see cref="AssemblyResult"/>.
+        /// </summary>
+        /// <param name="assemblyResult">Assembly result ro use for the file generation.</param>
+        /// <param name="outputStream">The stream to write the result to.</param>
+        /// <param name="endOfLine">End of line sequence to use in the generated file.</param>
+        /// <returns></returns>
+        public static int GenerateSdccRelocatable(AssemblyResult assemblyResult, Stream outputStream, string endOfLine)
+        {
+            const int MAX_BYTES_PER_SDCC_T_OR_R_LINE = 16; //Note: this counts represented bytes (e.g. "T 00 12 34" is 3 bytes)
+
+            var outputLines = new List<string> { "XL3" };
+
+            var globalSymbols = assemblyResult.Symbols.Where(s => s.IsPublic).ToArray();
+            var externalSymbols = assemblyResult.Symbols.Where(s => s.Type is Infrastructure.SymbolType.External).ToArray();
+
+            var totalSymbolsCount = globalSymbols.Length + externalSymbols.Length + 1; //+1 for .__.ABS.
+            outputLines.Add($"H {assemblyResult.SdccAreas.Length:X} areas {totalSymbolsCount:X} global symbols");
+
+            if(!assemblyResult.ImplicitProgramName) {
+                outputLines.Add($"M {assemblyResult.ProgramName}");
+            }
+
+            //SDAS always produces this line, seems to be a flag for the linker.
+            outputLines.Add("S .__.ABS. Def000000");
+
+            var symbolIndexesByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var currentSymbolIndex = 1; //0 is for .__.ABS.
+            var areaIndexesByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var currentAreaIndex = 0;
+            var areasByName = new Dictionary<string, SdccArea>(StringComparer.OrdinalIgnoreCase);
+            var currentAreaName = "_CODE";
+            var locationPointersByAreaName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            foreach(var symbol in externalSymbols) {
+                outputLines.Add($"S {symbol.Name} Ref000000");
+                symbolIndexesByName[symbol.Name] = currentSymbolIndex++;
+            }
+
+            foreach(var area in assemblyResult.SdccAreas) {
+                var areaFlags =
+                    (area.IsOverlay ? 4 : 0) +
+                    (area.IsAbsolute ? 8 : 0);
+
+                int areaAddress, areaSize;
+                if(area.IsOverlay && area.IsAbsolute) {
+                    areaAddress = 0;
+                    areaSize = area.Address + area.Size;
+                }
+                else {
+                    areaAddress = area.Address;
+                    areaSize = area.Size;
+                }
+
+                outputLines.Add($"A {area.Name} size {areaSize:X} flags {areaFlags:X} addr {areaAddress:X}");
+                areaIndexesByName[area.Name] = currentAreaIndex++;
+                areasByName[area.Name] = area;
+                locationPointersByAreaName[area.Name] = area.Address;
+
+                var areaSymbols = globalSymbols.Where(s => s.SdccAreaName == area.Name).ToArray();
+                foreach(var symbol in areaSymbols) {
+                    outputLines.Add($"S {symbol.Name} Def{symbol.Value:X6}");
+                    symbolIndexesByName[symbol.Name] = currentSymbolIndex++;
+                }
+            }
+
+            currentAreaIndex = 0;
+            var assemblyResultLines = FlattenLinesList(assemblyResult.ProcessedLines);
+            var bytesInCurrentOutputLine = 0;
+            var outputLineBuilder = new StringBuilder();
+            var currentLocationPointer = 0;
+            var pendingRelocations = new List<(int,int,int)>(); //flags,offset,area/symbol index
+
+            var flushCurrentOutputLine = () => {
+                if(bytesInCurrentOutputLine == 0) {
+                    return;
+                }
+
+                outputLines.Add(outputLineBuilder.ToString());
+                outputLineBuilder.Clear();
+                bytesInCurrentOutputLine = 0;
+
+                outputLineBuilder.Append($"R 00 00 {currentAreaIndex & 0xFF:X2} {currentAreaIndex >> 8:X2}");
+                foreach(var relocationInfo in pendingRelocations) {
+                    outputLineBuilder.Append($" {relocationInfo.Item1:X2} {relocationInfo.Item2:X2} {relocationInfo.Item3 & 0xFF:X2} {relocationInfo.Item3 >> 8:X2}");
+                }
+                outputLines.Add(outputLineBuilder.ToString());
+                outputLineBuilder.Clear();
+
+                pendingRelocations.Clear();
+            };
+
+            var maybeInitCurrentOutputLine = () => {
+                if(bytesInCurrentOutputLine == 0) {
+                    outputLineBuilder.Append($"T {currentLocationPointer & 0xFF:X2} {currentLocationPointer >> 8:X2} 00");
+                    bytesInCurrentOutputLine = 3;
+                }
+            };
+
+            var maybeFlushCurrentOutputLine = (int countOfBytesToAdd) => {
+                maybeInitCurrentOutputLine();
+                if(bytesInCurrentOutputLine + countOfBytesToAdd > MAX_BYTES_PER_SDCC_T_OR_R_LINE) {
+                    flushCurrentOutputLine();
+                    maybeInitCurrentOutputLine();
+                }
+            };
+
+            var addPendingRelocation = (int flags, int offset, int index) => {
+                if(pendingRelocations.Count >= (MAX_BYTES_PER_SDCC_T_OR_R_LINE - 4)/4) {
+                    offset -= (bytesInCurrentOutputLine - 3); //+3 to skip "<address low> <address high> 00" at the beginning of the T line
+                    flushCurrentOutputLine();
+                    maybeInitCurrentOutputLine();
+                }
+
+                pendingRelocations.Add((flags, offset, index));
+            };
+
+            var previousWasDsOrgArea = true;    //There's an implicit "area _CODE" instruction at the beginning of the processing
+            foreach(var line in assemblyResultLines) {
+                if(line is SdccAreaLine sdccAreaLine) {
+                    if(sdccAreaLine.Name != areasByName[currentAreaName].Name) {
+                        flushCurrentOutputLine();
+                        if(!areasByName[currentAreaName].IsAbsolute && !areasByName[currentAreaName].IsOverlay) {
+                            locationPointersByAreaName[currentAreaName] = currentLocationPointer;
+                        }
+                    }
+
+                    currentAreaName = sdccAreaLine.Name;
+                    currentAreaIndex = areaIndexesByName[currentAreaName];
+                    currentLocationPointer = locationPointersByAreaName[currentAreaName];
+                }
+                else if(line is ChangeOriginLine orgLine) {
+                    flushCurrentOutputLine();
+
+                    currentAreaIndex = areaIndexesByName[orgLine.SdccAreaName];
+                    currentLocationPointer = areasByName[orgLine.SdccAreaName].Address;
+
+                    maybeInitCurrentOutputLine();
+                    flushCurrentOutputLine();
+                }
+                else if(line is DefineSpaceLine defsLine) {
+                    // SDAS generates an "empty" T-R lines pair with just the location and the area
+                    // (but only if the previous line wasn't DS, ORG or AREA),
+                    // hence (for compatibility) the double init-flush.
+
+                    if(!previousWasDsOrgArea) {
+                        maybeInitCurrentOutputLine();
+                        flushCurrentOutputLine();
+                    }
+                    maybeInitCurrentOutputLine();
+                    flushCurrentOutputLine();
+                    currentLocationPointer += defsLine.Size;
+                }
+                else if(line is IProducesOutput ipo) {
+                    var relocatablePartsByIndex = ipo.RelocatableParts.ToDictionary(part => part.Index);
+                    for(int i = 0; i < ipo.OutputBytes.Length; i++) {
+                        if(relocatablePartsByIndex.TryGetValue(i, out var relocatablePartAtIndex)) {
+                            if(relocatablePartAtIndex is RelocatableValue relocatableValue) {
+                                maybeFlushCurrentOutputLine(relocatableValue.IsByte ? 3 : 2);
+                                var flags = relocatableValue.IsByte ? 0x01 | 0x08 : 0;
+                                addPendingRelocation(flags, bytesInCurrentOutputLine, areaIndexesByName[relocatableValue.SdccAreaName]);
+                                outputLineBuilder.Append($" {relocatableValue.Value & 0xFF:X2} {relocatableValue.Value >> 8:X2}");
+                                if(relocatableValue.IsByte) {
+                                    outputLineBuilder.Append(" 00");
+                                }
+                                else {
+                                    //We are iterating OutputBytes byte by byte, but for relocatable 16-bit values
+                                    //there are actually two bytes in place, so we need to skip the second one
+                                    //(these are dummy bytes, we've written the actual bytes in "outputLineBuilder.Append" above).
+                                    i++;
+                                }
+                                bytesInCurrentOutputLine += relocatableValue.IsByte ? 3 : 2;
+                                currentLocationPointer += relocatableValue.IsByte ? 1 : 2;
+                            }
+                            else if(relocatablePartAtIndex is LinkItemsGroup lkGroup) {
+                                maybeFlushCurrentOutputLine(lkGroup.IsByte ? 3 : 2);
+
+                                var isHigh = lkGroup.IsByte && lkGroup.LinkItems.Any(li => li.ArithmeticOperator is ArithmeticOperatorCode.High);
+                                var externalSymbol = lkGroup.LinkItems.SingleOrDefault(li => li.IsExternalReference)?.GetSymbolName();
+                                var relocatableAddress = lkGroup.LinkItems.SingleOrDefault(li => li.IsAddressReference && li.ReferencedAddressType is AddressType.CSEG);
+                                var addressValue = relocatableAddress?.ReferencedAddressValue ?? 0;
+                                var addressArea = relocatableAddress?.SdccAreaName;
+                                var offset = lkGroup.LinkItems.SingleOrDefault(li => li.IsAddressReference && li.ReferencedAddressType is AddressType.ASEG)?.ReferencedAddressValue ?? 0;
+                                addressValue += offset;
+
+                                var flags =
+                                    (lkGroup.IsByte ? 1 | 8 : 0) |
+                                    (externalSymbol is null ? 0 : 2) |
+                                    (isHigh ? 0x80 : 0);
+
+                                var relocationIndex =
+                                    externalSymbol is null ?
+                                    areaIndexesByName[addressArea] :
+                                    symbolIndexesByName[externalSymbol];
+
+                                addPendingRelocation(flags, bytesInCurrentOutputLine, relocationIndex);
+
+                                //TODO: The code below is duplicated in the previous "if", extract to an inline function
+                                outputLineBuilder.Append($" {addressValue & 0xFF:X2} {addressValue >> 8:X2}");
+                                if(lkGroup.IsByte) {
+                                    //Apparently SDAS always adds an extra "00" for relocatable byte values,
+                                    //but for offsets applied to externals it adds "00" for positive values and "FF" for negative values.
+                                    outputLineBuilder.Append(externalSymbol is not null && addressValue > 0x7FFF ? " FF" : " 00");
+                                }
+                                else {
+                                    i++;
+                                }
+                                bytesInCurrentOutputLine += lkGroup.IsByte ? 3 : 2;
+                                currentLocationPointer += lkGroup.IsByte ? 1 : 2;
+                            }
+                            else {
+                                throw new InvalidOperationException($"Unexpected relocatable output part of type {relocatablePartAtIndex.GetType().Name} found while generating SDCC relocatable output");
+                            }
+                        }
+                        else {
+                            maybeFlushCurrentOutputLine(1);
+                            outputLineBuilder.Append($" {ipo.OutputBytes[i]:X2}");
+                            bytesInCurrentOutputLine++;
+                            currentLocationPointer++;
+                        }
+                    }
+                }
+                else if(line is EndOutputLine or AssemblyEndLine) {
+                    break;
+                }
+
+                if(line is IChangesLocationCounter) {
+                    previousWasDsOrgArea = line is DefineSpaceLine || line is ChangeOriginLine || line is SdccAreaLine;
+                }
+            }
+
+            if(previousWasDsOrgArea) {
+                maybeInitCurrentOutputLine();
+            }
+            flushCurrentOutputLine();
+
+            var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false); //SDCC doesn't support UTF-8 files with BOM.
+            var sb = new StreamWriter(outputStream, encoding) { NewLine = endOfLine };
+            foreach(var line in outputLines) {
+                sb.WriteLine(line);
+            }
+
+            sb.Flush();
+            return (int)outputStream.Length;
         }
     }
 }

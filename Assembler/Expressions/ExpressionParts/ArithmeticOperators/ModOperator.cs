@@ -19,7 +19,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
             if (!value2.IsAbsolute)
             {
-                throw new InvalidExpressionException($"MOD: The second operand must be absolute (attempted {value1.Type} MOD {value2.Type})");
+                throw new InvalidExpressionException($"MOD: The second operand must be absolute (attempted {value1.EffectiveType} MOD {value2.EffectiveType})");
             }
 
             unchecked

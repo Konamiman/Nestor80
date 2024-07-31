@@ -18,7 +18,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         public bool IsExternal { get; set; }
 
         /// <summary>
-        /// True if the symbol is references as public with the : prefix.
+        /// True if the symbol is referenced as root with the : prefix.
         /// </summary>
         public bool IsRoot { get; set; }
 

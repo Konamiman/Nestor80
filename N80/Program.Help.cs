@@ -116,13 +116,15 @@ namespace Konamiman.Nestor80.N80
 
                 Support for relative labels can also be enabled in code with the .RELAB instruction.
 
-            -bt, --build-type abs|rel|auto
-                The type of output to build. Default is auto.
+            -bt, --build-type abs|rel|sdcc|auto
+                The type of output to build: "abs" is for absolute, "rel" is for M80 relocatable,
+                "sdcc" is for SDCC relocatable. Default is auto.
             
-                In auto mode the build type will be set as absolute if an ORG statement is found
-                in the code before a CPU instruction, a label defined as public with "::", or any
-                of the following instructions: ASEG, CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DZ,
-                PUBLIC, EXTRN, .REQUEST; otherwise the build type will be set as relocatable.
+                In auto mode the build type will be set as absolute or SDCC relocatable if an ORG
+                statement or an AREA statement, respectively, is found in the code before a CPU
+                instruction, a label defined as public with "::", or any of the following instructions:
+                ASEG, CSEG, DSEG, COMMON, DB, DW, DS, DC, DM, DZ, PUBLIC, EXTRN, .REQUEST;
+                otherwise the build type will be set as M80 relocatable.
 
                 The --direct-output-write argument will also set the build type to absolute.
 
@@ -192,7 +194,8 @@ namespace Konamiman.Nestor80.N80
                 Character sequence to use as line separator for the text files generated
                 during the assembly process. The default value is 'auto', which means using
                 the standard end of line sequence of the system in which Nestor80 is running.
-                Currently this setting only affects the generation of listing files.
+                Currently this setting affects the generation of listing files and
+                SDCC relocatable files.
                 
             -id, --include-directory <directory path>
                 By default relative paths referenced in INCLUDE and INCBIN instructions will
@@ -213,9 +216,9 @@ namespace Konamiman.Nestor80.N80
                 that are in a different directory).
 
             -ids, --initialize-defs
-                This argument has effect only when the build type is relocatable. It will cause areas
-                defined with "DEFS <size>" statements to be initialized with zeros, that is, these
-                will be treated as equivalent to "DEFS <size>,0".
+                This argument has effect only when the build type is MACRO-80 relocatable.
+                It will cause areas defined with "DEFS <size>" statements to be initialized
+                with zeros, that is, these will be treated as equivalent to "DEFS <size>,0".
 
             -ie, --input-encoding <encoding>
                 Text encoding of the source file, it can be an encoding name or a codepage number.
@@ -257,7 +260,7 @@ namespace Konamiman.Nestor80.N80
 
             -le, --listing-file-encoding <encoding>
                 Text encoding for the generated listing file, it can be an encoding name
-                or a codepage number Run N80 with the --list-encodings argument to get 
+                or a codepage number. Run N80 with the --list-encodings argument to get 
                 a list of available encodings. Default is UTF-8.
 
             -lfc, --listing-false-conditionals
@@ -270,8 +273,8 @@ namespace Konamiman.Nestor80.N80
                 (this is the default).
 
             -lis, --listing-include-symbols
-                Include the generted symbols and macro names when generating the listing file
-                (this is the default).
+                Include the generted symbols, macro names and SDCC area names when generating
+                the listing file (this is the default).
 
             -lmbi, --listing-max-bytes-per-instruction <count>
                 The maximum number of bytes to print for instructions that generate an arbitrary
@@ -292,8 +295,8 @@ namespace Konamiman.Nestor80.N80
                 the default value is 4.
 
             -lus, --listing-uppercase-symbols
-                Uppercase the symbol names when printing them in the listing file
-                (mimics the behavior of MACRO-80).
+                Uppercase the symbol names, macro names and SDCC are names when printing them
+                in the listing file (mimics the behavior of MACRO-80).
 
             -lx, --listing-file-extension [.]<extension>
                 The extension for the generated listing file. This value is used only when the

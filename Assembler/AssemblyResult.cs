@@ -1,4 +1,5 @@
 ﻿using Konamiman.Nestor80.Assembler.Errors;
+using Konamiman.Nestor80.Assembler.Relocatable;
 
 namespace Konamiman.Nestor80.Assembler
 {
@@ -9,6 +10,8 @@ namespace Konamiman.Nestor80.Assembler
     public class AssemblyResult
     {
         public string ProgramName { get; set; }
+
+        public bool ImplicitProgramName { get; set; }
 
         public int ProgramAreaSize { get; set; }
 
@@ -52,5 +55,7 @@ namespace Konamiman.Nestor80.Assembler
             symbol.Length > MaxRelocatableSymbolLength ? symbol[..MaxRelocatableSymbolLength] : symbol;
 
         public string[] MacroNames { get; set; }
+
+        public SdccArea[] SdccAreas { get; set; }
     }
 }
