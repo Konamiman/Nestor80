@@ -190,7 +190,7 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             if(stopOnSymbolFound) {
-                var symbolParts = Parts.OfType<SymbolReference>();
+                var symbolParts = Parts.OfType<SymbolReference>().Where(s => !GetSymbol(s.SymbolName, s.IsExternal, s.IsRoot).IsConstant);
                 if(symbolParts.Any()) {
                     //We need each symbol to be registered, even if value is still unknown
                     foreach(var sr in symbolParts) {
