@@ -18,7 +18,7 @@ namespace Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOpe
 
             if (!value1.SameModeAs(value2))
             {
-                throw new InvalidExpressionException($"EQ: Both values must be in the same mode (attempted {value1.Type} EQ {value2.Type})");
+                throw new InvalidExpressionException($"EQ: Both values must be in the same mode (attempted {value1.EffectiveType} EQ {value2.EffectiveType})");
             }
 
             return value1.Value == value2.Value ? AbsoluteMinusOne : AbsoluteZero;

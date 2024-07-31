@@ -447,6 +447,7 @@ namespace Konamiman.Nestor80.N80
                     outputFileExtension ?? buildType switch {
                         BuildType.Absolute => ".BIN",
                         BuildType.Relocatable => ".REL",
+                        BuildType.Sdcc => ".REL",
                         _ => ".BIN or .REL"
                     };
 
@@ -914,7 +915,7 @@ namespace Konamiman.Nestor80.N80
                 }
                 else if(arg is "-bt" or "--build-type") {
                     if(i == args.Length - 1 || args[i + 1][0] == '-') {
-                        return $"The {arg} argument needs to be followed by the build type (abs, rel or auto)";
+                        return $"The {arg} argument needs to be followed by the build type (abs, rel, sdcc or auto)";
                     }
                     i++;
                     var buildTypeString = args[i];
@@ -922,12 +923,13 @@ namespace Konamiman.Nestor80.N80
                     buildType = buildTypeString switch {
                         "abs" => BuildType.Absolute,
                         "rel" => BuildType.Relocatable,
+                        "sdcc" => BuildType.Sdcc,
                         "auto" => BuildType.Automatic,
                         _ => BuildType.Invalid
                     };
 
                     if(buildType is BuildType.Invalid) {
-                        return $"{arg}: the build type must be one of: abs, rel, auto";
+                        return $"{arg}: the build type must be one of: abs, rel, sdcc, auto";
                     }
                 }
                 else if(arg is "-sx" or "--string-escapes") {
@@ -1260,7 +1262,7 @@ namespace Konamiman.Nestor80.N80
             }
 
             if(mustProcessOutputFileName) {
-                var defaultExtension = result.BuildType is BuildType.Relocatable ? ".REL" : ".BIN";
+                var defaultExtension = result.BuildType is BuildType.Absolute ? ".BIN" : ".REL";
 
                 if(outputFileCase is OF_CASE_ORIGINAL) {
                     outputFilePath = Path.ChangeExtension(outputFilePath, outputFileExtension ?? defaultExtension);
@@ -1299,13 +1301,16 @@ namespace Konamiman.Nestor80.N80
                         link80compatibility && inputFileNameNoExt.Length > AssemblySourceProcessor.MaxEffectiveExternalNameLength ?
                         inputFileNameNoExt[..AssemblySourceProcessor.MaxEffectiveExternalNameLength] :
                         inputFileNameNoExt;
+                    result.ImplicitProgramName = true;
                 }
 
                 try {
                     writtenBytes =
+                        result.BuildType is BuildType.Absolute ?
+                        OutputGenerator.GenerateAbsolute(result, outputStream, directOutputWrite) :
                         result.BuildType is BuildType.Relocatable ?
                         OutputGenerator.GenerateRelocatable(result, outputStream, initDefs, !link80compatibility) :
-                        OutputGenerator.GenerateAbsolute(result, outputStream, directOutputWrite);
+                        OutputGenerator.GenerateSdccRelocatable(result, outputStream, endOfLines[endOfLIne]);
                 }
                 catch(Exception ex) {
                     PrintFatal($"Can't write to output file ({outputFilePath}): {ex.Message}");

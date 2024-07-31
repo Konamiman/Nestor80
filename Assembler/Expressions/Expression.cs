@@ -57,6 +57,11 @@ namespace Konamiman.Nestor80.Assembler
         /// </summary>
         public static byte[] ZeroCharBytes { get; private set; }
 
+        public static bool IsSdccBuild { get; set; }
+
+        // This is set when the expression is evaluated.
+        public string SdccAreaName { get; private set; }
+
         public bool HasRelocatableToStoreAsByte { get; private set; }
 
         private static Encoding _OutputStringEncoding;

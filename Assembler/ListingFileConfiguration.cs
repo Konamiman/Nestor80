@@ -23,7 +23,7 @@
         public bool ListCode { get; set; } = true;
 
         /// <summary>
-        /// Whether the listing should include the symbols and macros list or not.
+        /// Whether the listing should include the symbols, macros and SDCC areas lists or not.
         /// </summary>
         public bool ListSymbols { get; set; } = true;
 

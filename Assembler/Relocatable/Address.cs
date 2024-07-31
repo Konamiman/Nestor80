@@ -18,6 +18,11 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
         public static Address Code(ushort value) => new(AddressType.CSEG, value);
         public static Address Data(ushort value) => new(AddressType.DSEG, value);
 
+        public static bool IsSdccBuild { get; set; }
+
+        public string EffectiveType =>
+            IsSdccBuild ? (Type is AddressType.ASEG ? "absolute" : "relocatable") : Type.ToString();
+
         public AddressType Type { get; private set; }
 
         public ushort Value { get; private set; }
@@ -50,7 +55,7 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
 
         public override string ToString()
         {
-            return $"{Type} {Value:X4}";
+            return $"{EffectiveType} {Value:X4}";
         }
 
         public static bool operator ==(Address address1, object address2)

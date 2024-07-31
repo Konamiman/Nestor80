@@ -28,6 +28,8 @@
         DuplicatedMacro,
         LocationPointerOverflow,
         UserWarning,
+        IgnoredForSdccOutput,
+        IgnoredForNonSdaOutput,
         LastWarning = UserWarning,
 
         //Normal errors
@@ -58,6 +60,10 @@
         UserError,
         PrivilegedInstructionFound,
         IoInstructionFound,
+        MismatchingSdccArea,
+        OrgInRelSdccArea,
+        ExpressionInvalidForSdcc,
+        SdccAreaChangeNotAllowedWhilePhased,
         LasetError = UserError,
 
         //Fatal errors

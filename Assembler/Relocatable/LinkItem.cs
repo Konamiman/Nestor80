@@ -35,7 +35,7 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
 
         public static bool Link80Compatibility { get; set; } = false;
 
-        public static LinkItem ForAddressReference(AddressType addressType, ushort addressValue)
+        public static LinkItem ForAddressReference(AddressType addressType, ushort addressValue, string sdccAreaName = null)
         {
             var symbolBytes = new byte[4];
             symbolBytes[0] = (byte)ExtensionLinkItemType.Address;
@@ -43,7 +43,7 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
             symbolBytes[2] = (byte)(addressValue & 0xFF);
             symbolBytes[3] = (byte)(addressValue >> 8 & 0xFF);
 
-            return new LinkItem(LinkItemType.ExtensionLinkItem, symbolBytes);
+            return new LinkItem(LinkItemType.ExtensionLinkItem, symbolBytes) { SdccAreaName = sdccAreaName };
         }
 
         public static LinkItem ForExternalReference(string symbol)
@@ -99,6 +99,8 @@ namespace Konamiman.Nestor80.Assembler.Relocatable
         public ushort ReferencedAddressValue => (ushort)(SymbolBytes[2] | SymbolBytes[3] << 8);
 
         public AddressType ReferencedAddressType => (AddressType)SymbolBytes[1];
+
+        public string SdccAreaName { get; private set; }
 
         public ArithmeticOperatorCode? ArithmeticOperator =>
             Type == LinkItemType.ExtensionLinkItem && (ExtensionLinkItemType)SymbolBytes[0] == ExtensionLinkItemType.ArithmeticOperator ?

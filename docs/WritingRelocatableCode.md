@@ -2,6 +2,8 @@
 
 Nestor80 allows to write [absolute and relocatable code](LanguageReference.md#absolute-and-relocatable-code). This document explains how the process of writing and linking relocatable code works.
 
+⚠ This documents explains concepts related to relocatable code as a generic concept, but focuses on the MACRO-80 compatible relocatable file format whenever specific examples are provided and when the linking process is detailed. Nestor80 can also generate relocatable files that are compatible with the [SDCC](https://sdcc.sourceforge.net/) compiler; see ["SDCC file format support"](SdccFileFormatSupport.md) for specific information about this capability.
+
 Writing relocatable code involves using the Linkstor80 tool and optionally also the Libstor80 tool additionally to Nestor80 (all three are part of the Nestor80 project). Another option is to use LINK-80 and LIB-80 instead, which are part of the original MACRO-80 package; in that case you might also want to take a look at:
 
 * [The original MACRO-80, LINK-80 and LIB-80 user manual](MACRO-80.txt)

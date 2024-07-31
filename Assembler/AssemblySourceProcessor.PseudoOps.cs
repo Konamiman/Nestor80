@@ -30,6 +30,9 @@ namespace Konamiman.Nestor80.Assembler
             // .8080: Unsupported, always throws error
             { ".8080", ProcessChangeCpuTo8080Line },
 
+            // .AREA: Alias for AREA
+            { ".AREA", ProcessSdccAreaLine },
+
             // .COMMENT <delimiter>: Start multiline comment
             { ".COMMENT", ProcessDelimitedCommentStartLine },
 
@@ -114,6 +117,9 @@ namespace Konamiman.Nestor80.Assembler
             
             // .Z80: Select Z80 as the current CPU
             { ".Z80", ProcessChangeCpuToZ80Line },
+
+            // AREA: Change current SDCC area
+            { "AREA", ProcessSdccAreaLine },
 
             // ASEG: Select the absolute segment
             { "ASEG", ProcessAsegLine },
@@ -384,7 +390,7 @@ namespace Konamiman.Nestor80.Assembler
                     }
                     else {
                         AddZero();
-                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value, CommonName = value.CommonBlockName });
+                        relocatables.Add(new RelocatableValue() { Index = index, IsByte = isByte, Type = value.Type, Value = value.Value, CommonName = value.CommonBlockName, SdccAreaName = expression.SdccAreaName });
                         if(!isByte) index++;
                     }
                 }
@@ -435,7 +441,10 @@ namespace Konamiman.Nestor80.Assembler
                         var valueExpressionText = walker.ExtractExpression();
                         var valueExpression = state.GetExpressionFor(valueExpressionText, isByte: true);
                         var valueAddress = EvaluateIfNoSymbolsOrPass2(valueExpression);
-                        if(valueAddress is null) {
+                        if(buildType is BuildType.Sdcc) {
+                            throw new InvalidExpressionException("the value argument isn't allowed when build type is SDCC");
+                        }
+                        else if(valueAddress is null) {
                             state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Byte);
                         }
                         else if(!valueAddress.IsValidByte) {
@@ -521,6 +530,14 @@ namespace Konamiman.Nestor80.Assembler
                 return new ChangeAreaLine();
             }
 
+            if(buildType == BuildType.Absolute) {
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing to a common block when the output type is absolute has no effect");
+            }
+
+            if(buildType == BuildType.Sdcc) {
+                AddError(AssemblyErrorCode.IgnoredForSdccOutput, $"Changing to a common block when the output type is SDCC has no effect, use the AREA instruction instead");
+            }
+
             var commonBlockName = commonBlockNameExpression.Trim('/', ' ', '\t').ToUpper();
             return ProcessChangeAreaLine(AddressType.COMMON, commonBlockName);
         }
@@ -533,6 +550,10 @@ namespace Konamiman.Nestor80.Assembler
 
             if(buildType == BuildType.Absolute && area != AddressType.ASEG) {
                 AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"Changing area to {area} when the output type is absolute has no effect");
+            }
+
+            if(buildType == BuildType.Sdcc) {
+                AddError(AssemblyErrorCode.IgnoredForSdccOutput, $"Changing area to {area} when the output type is SDCC has no effect, use the AREA instruction instead");
             }
 
             if(state.IsCurrentlyPhased) {
@@ -553,6 +574,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             if(state.IsCurrentlyPhased) {
                 AddError(AssemblyErrorCode.InvalidInPhased, "Changing the location pointer is not allowed inside a .PHASE block");
+                walker.DiscardRemaining();
                 return new ChangeOriginLine();
             }
 
@@ -570,6 +592,9 @@ namespace Konamiman.Nestor80.Assembler
                     state.RegisterPendingExpression(line, valueExpression, argumentType: CpuInstrArgType.Word);
                     return line;
                 }
+                else if(buildType is BuildType.Sdcc) {
+                    return ProcessSdccOrgLine(value.Value);
+                }
                 else {
                     state.SwitchToLocation(value.Value);
                     return new ChangeOriginLine() { NewLocationArea = state.CurrentLocationArea, NewLocationCounter = value.Value };
@@ -580,6 +605,29 @@ namespace Konamiman.Nestor80.Assembler
                 walker.DiscardRemaining();
                 return new ChangeOriginLine();
             }
+        }
+
+        static ProcessedSourceLine ProcessSdccOrgLine(ushort value)
+        {
+            var currentArea = state.CurrentSdccArea;
+            if(!currentArea.IsAbsolute) {
+                AddError(AssemblyErrorCode.OrgInRelSdccArea, $"ORG is only allowed in ABS areas when the build type is SDCC, current area ({currentArea.Name}) is REL");
+                return new ChangeOriginLine();
+            }
+
+            var indexedAreaName = state.GetToNextIndexedSdccAreaName();
+            var existingIndexedArea = state.GetExistingSdccArea(indexedAreaName);
+            if(existingIndexedArea is null) {
+                state.SwitchToSdccArea(indexedAreaName, true, currentArea.IsOverlay, address: value, isIndexed: true);
+            }
+            else if(!existingIndexedArea.IsAbsolute) {
+                AddError(AssemblyErrorCode.MismatchingSdccArea, $"ORG would cause a switch to area {indexedAreaName}, but this area already exists and is REL");
+            }
+            else {
+                state.SwitchToSdccArea(indexedAreaName);
+            }
+
+            return new ChangeOriginLine() { NewLocationArea = AddressType.ASEG, NewLocationCounter = value, SdccAreaName = indexedAreaName };
         }
 
         static ProcessedSourceLine ProcessExternalDeclarationLine(string opcode, SourceLineWalker walker)
@@ -693,8 +741,14 @@ namespace Konamiman.Nestor80.Assembler
                 return new AssemblyEndLine() { Line = walker.SourceLine };
             }
 
-            if(buildType == BuildType.Absolute) {
-                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, "The argument of the END statement is ignored when the output type is absolute");
+            if(buildType is BuildType.Absolute) {
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, "The argument of the END statement is ignored when the build type is absolute");
+                state.RegisterEndInstruction(Address.AbsoluteZero);
+                return new AssemblyEndLine() { Line = walker.SourceLine, EffectiveLineLength = walker.DiscardRemaining() };
+            }
+
+            if(buildType is BuildType.Sdcc) {
+                AddError(AssemblyErrorCode.IgnoredForSdccOutput, "The argument of the END statement is ignored when the build type is SDCC");
                 state.RegisterEndInstruction(Address.AbsoluteZero);
                 return new AssemblyEndLine() { Line = walker.SourceLine, EffectiveLineLength = walker.DiscardRemaining() };
             }
@@ -1087,8 +1141,8 @@ namespace Konamiman.Nestor80.Assembler
                 return new LinkerFileReadRequestLine();
             }
 
-            if(buildType == BuildType.Absolute) {
-                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} is ignored when the output type is absolute");
+            if(buildType is BuildType.Absolute or BuildType.Sdcc) {
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} is ignored when the build type is absolute or SDCC");
             }
 
             var filenames = new List<string>();
@@ -1450,7 +1504,7 @@ namespace Konamiman.Nestor80.Assembler
         {
             static bool? evaluator()
             {
-                return buildType == BuildType.Relocatable;
+                return buildType is BuildType.Relocatable or BuildType.Sdcc;
             }
 
             return ProcessIfLine(opcode, evaluator);
@@ -1998,6 +2052,73 @@ namespace Konamiman.Nestor80.Assembler
         {
             state.RelativeLabelsEnabled = false;
             return new RelabLine() { Enable = false };
+        }
+
+        static ProcessedSourceLine ProcessSdccAreaLine(string opcode, SourceLineWalker walker)
+        {
+            var name = walker.ExtractSymbol();
+            if(name == null) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} requires an area name");
+                return new SdccAreaLine();
+            }
+
+            if(buildType is BuildType.Automatic) {
+                SetBuildType(BuildType.Sdcc);
+            }
+            else if(buildType is not BuildType.Sdcc) {
+                AddError(AssemblyErrorCode.IgnoredForNonSdaOutput, $"{opcode.ToUpper()} is ignored when the output type is not SDCC");
+                walker.DiscardRemaining();
+                return new SdccAreaLine();
+            }
+
+            if(state.IsCurrentlyPhased) {
+                AddError(AssemblyErrorCode.SdccAreaChangeNotAllowedWhilePhased, $"Changing the SDCC area is not allowed while inside a .PHASE block");
+                walker.DiscardRemaining();
+                return new SdccAreaLine();
+            }
+
+            var arguments = walker.GetUntil(';').Trim();
+            arguments = arguments.TrimStart('(').TrimEnd(')');
+            var modifiers = arguments.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            modifiers = modifiers.Select(m => m.Trim()).ToArray();
+            var hasModifiers = modifiers.Length > 0;
+
+            var isAbsolute = false;
+            var isOverlay = false;
+            foreach(var modifier in modifiers) {
+                switch(modifier) {
+                    case "ABS":
+                        isAbsolute = true;
+                        break;
+                    case "OVR":
+                        isOverlay = true;
+                        break;
+                    case "REL":
+                    case "CON":
+                        break;
+                    default:
+                        AddError(AssemblyErrorCode.InvalidExpression, $"Allowed mofifiers for {opcode} are ABS, REL, OVR, CON");
+                        return new SdccAreaLine();
+                }
+            }
+
+            var result = new SdccAreaLine(name, isAbsolute, isOverlay);
+
+            var existingArea = state.GetExistingSdccArea(name);
+            if(existingArea is null) {
+                state.SwitchToSdccArea(name, isAbsolute, isOverlay);
+            }
+            else if(!hasModifiers) {
+                state.SwitchToSdccArea(name);
+            }
+            else if(existingArea.IsAbsolute != isAbsolute || existingArea.IsOverlay != isOverlay) {
+                AddError(AssemblyErrorCode.MismatchingSdccArea, $"Can't redefine area '{name}' as {result.Area.PrintableModifiers}; it has been already defined as {existingArea.PrintableModifiers}");
+            }
+            else {
+                state.SwitchToSdccArea(name);
+            }
+
+            return result;
         }
     }
 }

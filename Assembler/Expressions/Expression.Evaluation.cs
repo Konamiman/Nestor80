@@ -1,4 +1,4 @@
-﻿using Konamiman.Nestor80.Assembler.Errors;
+using Konamiman.Nestor80.Assembler.Errors;
 using Konamiman.Nestor80.Assembler.Expressions;
 using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
 using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
@@ -275,7 +275,7 @@ namespace Konamiman.Nestor80.Assembler
 
                     operationResult = null;
                     try { 
-                    operationResult = bop.Operate(poppedAddress1, poppedAddress2);
+                        operationResult = bop.Operate(poppedAddress1, poppedAddress2);
                     }
                     catch(Exception ex) {
                         Throw($"Error when applying operator {bop}: {ex.Message}");
@@ -402,12 +402,135 @@ namespace Konamiman.Nestor80.Assembler
                 return Address.AbsoluteZero;
             }
 
+            if(IsSdccBuild && !symbol.SdccAreaIsAbs) {
+                if(SdccAreaName is null) {
+                    SdccAreaName = symbol.SdccAreaName;
+                }
+                else if(!string.Equals(SdccAreaName, symbol.SdccAreaName, StringComparison.OrdinalIgnoreCase)) {
+                    Throw("Expression involves symbols from different relocatable areas");
+                }
+            }
+
             if(symbol.HasKnownValue) {
                 return symbol.Value;
             }
             else {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Try to simplify an expression that can't be fully evaluated at compile time (it contains an external o relocatable symbol),
+        /// while checking if it's compatible with the SDCC relocatable file format.
+        /// 
+        /// A non-evaluable expression is compatible with the SDCC relocatable file format if it contains only the following:
+        /// 
+        /// - Absolute values.
+        /// - Binary plus and minus operators.
+        /// - Unary minus operators, if they are applied to absolute values.
+        /// - One single relocatable value, or one single external reference (but not both).
+        /// - One single "high" or "low" operator, provided that it's at the bottom of the evaluation stack
+        ///   (so it gets applied last in the evaluation process).
+        /// 
+        /// If all of the above is true, the expression will be evaluated by considering 0 as the value of the symbol;
+        /// then the expression will be simplified to "symbol/relocatable+value", with the high/low operator at the bottom if present.
+        /// Of course, if the evaluated value is 0 then the resulting expression will be simply the symbol or relocatable value and that's it.
+        /// 
+        /// </summary>
+        /// <returns>True if the expression was simplified successfully, false if the expression is not compatible with the SDCC relocatable file format.</returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public bool SimplifyForSdcc()
+        {
+            if(!IsSdccBuild) {
+                throw new InvalidOperationException($"{nameof(SimplifyForSdcc)} should be called only when build type is SDCC");
+            }
+
+            if(ReferencedSymbols.Length != 1) { return false; }
+
+            var referencedSymbol = ReferencedSymbols.SingleOrDefault();
+            if(referencedSymbol is null) {
+                return false;
+            }
+
+            var symbol = GetSymbol(referencedSymbol.SymbolName, referencedSymbol.IsExternal, referencedSymbol.IsRoot);
+            if(!symbol.IsExternal && symbol.Value.Type is not AddressType.CSEG) {
+                return false;
+            }
+
+            IExpressionPart highOrLow = null;
+            if(Parts.Last() is HighOperator or LowOperator) {
+                highOrLow = Parts.Last();
+            }
+
+            var lastWasTheSymbol = false;
+            var stack = new Stack<short>();
+            foreach(var item in Parts) {
+                if(item == highOrLow) continue;
+
+                if(item == referencedSymbol) {
+                    stack.Push(0);
+                    lastWasTheSymbol = true;
+                    continue;
+                }
+
+                if(item is Address address) {
+                    if(!address.IsAbsolute) {
+                        throw new InvalidOperationException($"{nameof(SimplifyForSdcc)}: found an unexpected non-absolute value: 0x{address.Value:X4}");
+                    }
+
+                    stack.Push((short)address.Value);
+                    lastWasTheSymbol = false;
+                    continue;
+                }
+
+                if(item is UnaryMinusOperator unaryMinus) {
+                    if(lastWasTheSymbol) {
+                        return false;
+                    }
+                    var poppedItem = stack.Pop();
+                    var operationResult = (short)-poppedItem;
+                    stack.Push(operationResult);
+                }
+                else if(item is PlusOperator) {
+                    var poppedItem2 = stack.Pop();
+                    var poppedItem1 = stack.Pop();
+                    var operationResult = (short)(poppedItem1 + poppedItem2);
+                    stack.Push(operationResult);
+                }
+                else if(item is MinusOperator) {
+                    if(lastWasTheSymbol) {
+                        return false;
+                    }
+                    var poppedItem2 = stack.Pop();
+                    var poppedItem1 = stack.Pop();
+                    var operationResult = (short)(poppedItem1 - poppedItem2);
+                    stack.Push(operationResult);
+                }
+                else {
+                    return false;
+                }
+
+                lastWasTheSymbol = false;
+            }
+
+            if(stack.Count != 1) {
+                return false;
+            }
+
+            var calculatedValue = stack.Pop();
+            parts.Clear();
+
+            parts.Add(referencedSymbol);
+            if(calculatedValue != 0) {
+                parts.Add(Address.Absolute((ushort)calculatedValue));
+                parts.Add(PlusOperator.Instance);
+            }
+            if(highOrLow is not null) {
+                parts.Add(highOrLow);
+            }
+
+            Parts = parts.ToArray();
+            return true;
         }
     }
 }

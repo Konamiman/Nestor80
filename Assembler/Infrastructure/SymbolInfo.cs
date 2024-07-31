@@ -13,6 +13,8 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
     {
         public static bool Link80Compatibility { get; set; }
 
+        public static bool IsSdccBuild { get; set; }
+
         private SymbolType _Type;
         public SymbolType Type
         {
@@ -43,6 +45,23 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 SetEffectiveName();
             }
         }
+
+        private string _SdccAreaName;
+        public string SdccAreaName
+        {
+            get => _SdccAreaName;
+            set
+            {
+                if(IsSdccBuild && string.IsNullOrWhiteSpace(value)) {
+                    throw new ArgumentException("SDCC area name can't be empty");
+                }
+
+                _SdccAreaName = value;
+                SetEffectiveName();
+            }
+        }
+
+        public bool SdccAreaIsAbs { get; set; }
 
         public bool IsLabel => Type == SymbolType.Label;
 

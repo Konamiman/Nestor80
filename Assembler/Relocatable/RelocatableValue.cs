@@ -11,6 +11,8 @@
 
         public string CommonName { get; set; }
 
-        public override string ToString() => $"{base.ToString()}, {Type} {Value:X4} {CommonName}";
+        public string SdccAreaName { get; set; }
+
+        public override string ToString() => $"{base.ToString()}, {Type} {Value:X4} {SdccAreaName ?? CommonName}";
     }
 }

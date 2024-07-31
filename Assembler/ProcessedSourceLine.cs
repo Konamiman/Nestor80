@@ -40,6 +40,8 @@
         /// </summary>
         public int FormFeedsCount { get; set; }
 
+        public static bool IsSdccBuild { get; set; }
+
         public override string ToString() => Label + " " + (Opcode is null ? "" : Opcode + " ");
     }
 }

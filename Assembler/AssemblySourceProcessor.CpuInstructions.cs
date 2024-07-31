@@ -606,7 +606,8 @@ namespace Konamiman.Nestor80.Assembler
                 var relocatable = RelocatableFromAddress(
                     variableArgumentValue,
                     argBytePosition,
-                    wordArgTypes.Contains(argType) ? 2 : 1
+                    wordArgTypes.Contains(argType) ? 2 : 1,
+                    argumentExpression.SdccAreaName
                 );
                 line.RelocatableParts = new[] { relocatable };
             }
@@ -736,11 +737,11 @@ namespace Konamiman.Nestor80.Assembler
             }
         }
 
-        private static RelocatableOutputPart RelocatableFromAddress(Address address, int index, int size)
+        private static RelocatableOutputPart RelocatableFromAddress(Address address, int index, int size, string sdccAreaName)
         {
             return address.IsAbsolute ?
                 null :
-                new RelocatableValue() { Type = address.Type, Value = address.Value, Index = index, IsByte = (size == 1), CommonName = address.CommonBlockName };
+                new RelocatableValue() { Type = address.Type, Value = address.Value, Index = index, IsByte = (size == 1), CommonName = address.CommonBlockName, SdccAreaName = sdccAreaName };
         }
     }
 }
