@@ -96,23 +96,27 @@ Nestor80 can produce both absolute 🆕 and relocatable files.
 
 * An _absolute file_ contains binary code "ready to use", intended to be loaded and executed at the fixed memory locations indicated by the [`ORG`](#org) instructions found in code. Most assemblers produce only absolute files.
 
-* _Relocatable files_ have [a dedicated format](RelocatableFileFormat.md) and contain relocatable code, that is, "pre-assembled" code in which labels are flagged as being relative to the memory address where the target program will be loaded and symbols may be flagged as _external_, that is, defined in other relocatable file.
+* _Relocatable files_ contain relocatable code, that is, "pre-assembled" code in which labels are flagged as being relative to the memory address where the target program will be loaded and symbols may be flagged as _external_, that is, defined in other relocatable file.
 
-Relocatable files can't be executed, instead a linker (typically Linkstor80) must be used to convert it into an absolute file by providing the actual loading memory addresses for the target program. The linker is typically used to "glue together" two or more of these files (and linking public symbols with the corresponding external symbols).
+💡 Nestor80 can produce relocatable files in two formats: [extended MACRO-80 compatible format](RelocatableFileFormat.md), and [SDCC](https://sdcc.sourceforge.net/) compatible format. When the term "relocatable code" is used in this document it refers to a concept or capability that applies to both formats; when discussing a concept or capability that applies to one of the two formats only, "MACRO-80 relocatable" or "SDCC relocatable" will be used instead.
 
-It's possible to instruct Nestor80 to produce an absolute file or a relocatable file by using the `--build-type` command line argument, but by default Nestor80 will decide the appropriate type automatically. The decision is taken as follows:
+Relocatable files can't be executed, instead a linker (typically Linkstor80 for MACRO-80 relocatable files, or SDLD -often through SDCC itself- for SDCC relocatable files) must be used to convert it into an absolute file by providing the actual loading memory addresses for the target program. The linker is typically used to "glue together" two or more of these files (and linking public symbols with the corresponding external symbols).
 
-> If an [`ORG`](#org) instruction is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: [`ASEG`](#cseg-), [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-), [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw), [`DEFS`](#defs-ds), `DC`, [`DEFZ`](#defz-dz-), [`PUBLIC`](#public-entry-global-), [`EXTRN`](#extrn-ext-external-), [`.REQUEST`](#request-), then the build type will be absolute; otherwise the build type will be relocatable.
+It's possible to instruct Nestor80 to produce an absolute file, a MACRO-80 relocatable file or a SDCC relocatable file by using the `--build-type` command line argument, but by default Nestor80 will decide the appropriate type automatically. The decision is taken as follows:
 
-Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an [`ORG`](#org) instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions).
+* If an [`ORG`](#org) instruction is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: [`ASEG`](#cseg-), [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-), [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw), [`DEFS`](#defs-ds), `DC`, [`DEFZ`](#defz-dz-), [`PUBLIC`](#public-entry-global-), [`EXTRN`](#extrn-ext-external-), [`.REQUEST`](#request-), then the build type will be absolute.
+* Otherwise, if an [`AREA`](#area-area-) instruction is found before any of the above, the build type will be SDCC relocatble.
+* Otherwise, the build type will be MACRO-80 relocatable.
+
+Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an [`ORG`](#org) instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions); if you want that automatic detection to choose the SDCC relocatable format, use an [`AREA`](#area-area-) instruction instead.
 
 💡 If you want to know the exact source line in which Nestor80 selects the build type, run Nestor80 with a verbosity level of at least two (with the `--verbosity` argument).
 
 ⚠ If the build type is forced to absolute with `--build-type` but the code contains no [`ORG`](#org) instructions, an implicit `ORG 0` at the beginning of the code is assumed.
 
-⚠ Pass the `--link-80-compatibility` argument to Nestor80 if you plan to use the old LINK-80 tool instead of Linkstor80 for the linking process. This argument forces Nestor80 to generate relocatable files using the old MACRO-80/LINK-80 format instead of the new extended format. See ["Relocatable file format"](RelocatableFileFormat.md) for details on the differences between both formats.
+⚠ Pass the `--link-80-compatibility` argument to Nestor80 if you are building a MACRO-80 relocatable file and you plan to use the old LINK-80 tool instead of Linkstor80 for the linking process. This argument forces Nestor80 to generate relocatable files using the old MACRO-80/LINK-80 format instead of the new extended format. See ["Relocatable file format"](RelocatableFileFormat.md) for details on the differences between both formats.
 
-Some assembler instructions make sense only in the context of relocatable code, for example [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`PUBLIC`](#public-entry-global-) OR [`EXTRN`](#extrn-ext-external-); these instructions will do nothing, and the assembler will throw warnings, if they are found while assembling absolute code.
+Some assembler instructions make sense only in the context of relocatable code, for example [`AREA`](#area-area-), [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`PUBLIC`](#public-entry-global-) OR [`EXTRN`](#extrn-ext-external-); these instructions will do nothing, and the assembler will throw warnings, if they are found while assembling absolute code.
 
 See ["Writing relocatable code"](WritingRelocatableCode.md) for more details about how relocatable code programming works.
 
@@ -179,7 +183,7 @@ A _symbol_ is a named 8 or 16 bit value. When assembling relocatable code this v
 
 Nestor80 treats symbols in a case-insensitive way, e.g. `foo`, `FOO` and `Foo` refer all to the same symbol.
 
-There's in principle no limit for the length of a symbol ✨, but when assembling relocatable code with the `--link-80-compatibility` argument the maximum length for external and public symbols will be 6 characters. This limitation is given by [the format of the LINK-80 relocatable files](RelocatableFileFormat.md). Nestor80 will issue a warning if it finds two or more external symbols that are different but share the first 6 characters (since these will get their names truncated and thus be actually the same symbol), and will throw an error if the same happens with public symbols.
+There's in principle no limit for the length of a symbol ✨, but when assembling MACRO-80 relocatable code with the `--link-80-compatibility` argument the maximum length for external and public symbols will be 6 characters. This limitation is given by [the format of the LINK-80 relocatable files](RelocatableFileFormat.md). Nestor80 will issue a warning if it finds two or more external symbols that are different but share the first 6 characters (since these will get their names truncated and thus be actually the same symbol), and will throw an error if the same happens with public symbols.
 
 When writing relocatable code, the following suffixes are allowed for symbols:
 
@@ -207,7 +211,7 @@ FOO:
   ;Some code
 ```
 
-💡 If the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol reference.
+💡 If the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol.
 
 ### Named constants
 
@@ -417,7 +421,9 @@ Operator | Meaning | Precedence
 `OR`       | Bitwise OR | 1
 `XOR`      | Bitwise XOR | 1
 
-When assembling relocatable code with the `--link-80-compatibility` argument only the following arithmetic operators can be used in expressions involving external references: `NUL`, `TYPE`, `LOW`, `HIGH`, `MOD`, `NOT`, `*`, `/`, `+`, `-` (including unary). This is a limitation given by [the old relocatable file format](RelocatableFileFormat.md). Trying to use one of the unsupported operators in such an expression will result in an assembly error.
+When assembling code in the MACRO-80 relocatable format with the `--link-80-compatibility` argument only the following arithmetic operators can be used in expressions involving external references: `NUL`, `TYPE`, `LOW`, `HIGH`, `MOD`, `NOT`, `*`, `/`, `+`, `-` (including unary). This is a limitation given by [the old relocatable file format](RelocatableFileFormat.md). Trying to use one of the unsupported operators in such an expression will result in an assembly error.
+
+When assembling code in the SDCC relocatable format only a small subset of the available arithmetic operators can be used in expressions involving external references or symbols in relocatable areas. See ["SDCC relocatable file format support"](SdccFileFormatSupport.md) for the details.
 
 The `NUL` and `TYPE` operators are special:
 
@@ -431,9 +437,9 @@ Argument type |  Value
 --------------|-------
 External symbol reference | 0x80
 Numeric constant or absolute symbol | 0x20
-Symbol defined in the code segment | 0x21
-Symbol defined in the data segment | 0x22
-Symbol defined in a COMMON block | 0x23
+Symbol defined in the code segment (MACRO-80 format)<br/>or in a relocatable area (SDCC format) | 0x21
+Symbol defined in the data segment (MACRO-80 format only) | 0x22
+Symbol defined in a COMMON block (MACRO-80 format only) | 0x23
 
 For example `TYPE FOO##` evaluates to 0x80, and `TYPE FOO` evaluates to 0x21 if `FOO` is a label defined in the code segment. Of course, when assembling absolute code `TYPE` will evaluate everything to 0x20.
 
@@ -1183,9 +1189,9 @@ where:
 `<address>` is a four digit hexadecimal numbers that is possibly followed by a suffix:
 
 * No suffix: absolute address.
-* `'`: address in the code segment.
-* `"`: address in the data segment.
-* `!`: address in a COMMON block.
+* `'`: address in the code segment (MACRO-80 format)<br/>or in a relocatable area (SDCC format).
+* `"`: address in the data segment (MACRO-80 format only).
+* `!`: address in a COMMON block (MACRO-80 format only).
 * `*`: address that is calculated at linking time (e.g. external symbol references), always shown as zero.
 
 By default the `<bytes>` area will only display four bytes, and any remaining bytes (e.g. for long [`DEFB`](#defb-db-defm) or [`INCBIN`](#incbin-) instructions) will appear below in extra lines, without source line. The amount of bytes per line can be configured 🆕 with the Nestor80 argument `--listing-bytes-per-line`.
@@ -1201,11 +1207,11 @@ The possible flags are:
 
 ### Symbols list
 
-After the last page of regular listing a list of local symbols, public symbols, external symbols and named macros is included as well. The main page "number" used for these lists is `S`.
+After the last page of regular listing a list of local symbols, public symbols, external symbols, named macros and (when building SDCC relocatable files) area names is included as well. The main page "number" used for these lists is `S`.
 
-By default 4 symbols will be listed in each listing line, and only the first 16 characters of each symbol will be printed (longer symbols will be truncated and will get a `...` at the end). These values can be configured 🆕 with the Nestor80 arguments `--listing-symbols-per-line` and `--listing-max-symbol-length`, respectively.
+By default four symbols will be listed in each listing line, and only the first 16 characters of each symbol will be printed (longer symbols will be truncated and will get a `...` at the end). These values can be configured 🆕 with the Nestor80 arguments `--listing-symbols-per-line` and `--listing-max-symbol-length`, respectively.
 
-By default all symbols and macro names in the symbols list will keep their original casing 🆕, but Nestor80 can be instructed to convert them to uppercase (which is what MACRO-80 does when generating listings) with the  `--listing-uppercase-symbols` argument.
+By default all symbols, macro names and area names in the symbols list will keep their original casing 🆕, but Nestor80 can be instructed to convert them to uppercase (which is what MACRO-80 does when generating listings) with the  `--listing-uppercase-symbols` argument.
 
 
 ### Temporarily stopping the listing
@@ -1238,7 +1244,8 @@ Additionally to the Nestor80 arguments already mentioned, the following ones are
 
 * `--listing-file-encoding`: the character encoding that will be used to generate the listing file, default is UTF-8.
 * `--no-listing-include-code`: don't actually include the source code in the listing file (list only symbols and macros).
-* `--no-listing-include-symbols`: don't include symbols or macros in the listing file.
+* `--no-listing-include-symbols`: don't include symbols, macros or SDCC areas in the listing file.
+* `--end-of-line`: use the specified end of line character sequence (`CRLF`, `CR` or `LF`) instead of the system default sequence.
 
 
 ## Assembler instructions reference
@@ -1246,6 +1253,8 @@ Additionally to the Nestor80 arguments already mentioned, the following ones are
 This section lists all the assembler instructions supported by Nestor80. Any instruction alias is listed together with the "canonical" instruction name.
 
 ® Additionally to the document-wide icons, an "R" symbol next to an instruction name means that the instruction is relevant only when writing relocatable code. If you only write code intended to be assembled as absolute you can skip the documentation for these instructions. See ["Absolute and relocatable code"](#absolute-and-relocatable-code) and ["Writing relocatable code"](WritingRelocatableCode.md).
+
+💡 Some of the instructions with ® can be used only when building MACRO-80 relocatable files or only when building SDCC relocatable files. This is specified in the description of each instruction.
 
 Some instructions have aliases. In most cases these come inherited from MACRO-80, which in turn implemented them for compatibility with even older assemblers. Except where otherwise stated, the syntax for the aliases is exactly the same as the one for the "canonical" instruction.
 
@@ -1442,7 +1451,7 @@ Although the starting address of a phased block will normally be an absolute add
 🚫 There are two restrictions for phased blocks that weren't present in MACRO-80:
 
 1. The value of `<address>` must be known by the time the `.PHASE` statement is reached (it can't be an expression containing a symbol that is defined later in code).
-2. Segment change instructions ([`ASEG`](#aseg-), [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-)) aren't allowed inside a phased block.
+2. Segment/area change instructions ([`AREA`](#area-area-), [`ASEG`](#aseg-), [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-)) aren't allowed inside a phased block.
 
 The second one is something that doesn't seem to be supported by MACRO-80 anyway: even though no errors are emitted, the location counter gets an incorrect value after a segment change instruction inside a phased block.
 
@@ -1508,6 +1517,8 @@ Enables the [relative labels](#relative-labels-) feature. See also [`.XRELAB`](#
 ### .REQUEST ®
 
 _Syntax:_ `.REQUEST <filename>[,<filename>[,...]]`
+
+⚠ This instruction can be used only when buidling a MACRO-80 relocatable file.
 
 Defines a list of files in which the linker will search for any globals that remain undefined during the linking process. Filenames can't contain an extension (`.REL` extension is assumed) nor any drive or directory specification; additionally, when using the `--link-80-compatibility` argument filenames must be up to 7 characters long and contain only ASCII letters.
 
@@ -1607,9 +1618,60 @@ _Syntax:_ `.Z80`
 Sets the Z80 as the current target CPU. This instruction is provided for compatibility with MACRO-80, new programs should use [`.CPU Z80`](#cpu-) instead.
 
 
+### AREA (.AREA) ®
+
+_Syntax:_ `AREA <name> [({ABS|REL}[,{CON|OVR}])]`
+
+_Aliases:_ `.AREA`
+
+⚠ This instruction can be used only when buidling a SDCC relocatable file.
+
+⚠ The syntax of this command is the same as the command of the same name in the SDAS assembler, however Nestor80 doesn't support paged areas and thus the `PAG` argument isn't available.
+
+Switches to the code area with the specified name. Area names are case-insensitive.
+
+There are two configurable parameters when defining an area (an area gets defined when it's switched to for the first time):
+
+* _Absolute_ or _relocatable_. Code in an absolute area will be assembled at a fixed address, the final address for code in relocatable areas will be decided at linking time.
+* _Concatenable_ or _overlay_. This defines what will the linker do when encountering multiple pieces of code defined in areas with the same name: if the area is defined as concatenable, then all the pieces will be concatenated together; if the area is defined as overlay, then each piece will be placed on top of the previous one.
+
+Put it another way: when an already existing area is switched to, the location counter is set to the last used value for the area if it's concatenable, or reset to zero if it's overlay.
+
+💡 Absolute areas are functionally equivalent to the `ASEG` area when building MACRO-80 relocatable files; relocatable concatenable areas are equivalent to the `CSEG` and `DSEG` areas (but you can define as many areas as you want); and relocatable overlay areas are equivalent to `COMMON` blocks.
+
+The default value if no `ABS`/`REL` is specified is `REL`. For `CON`/`OVR`, the default is `CON`. So:
+
+```
+  area DATA           ;equivalent to: area DATA (REL,CON)
+  area DATA (ABS)     ;equivalent to: area DATA (ABS,CON)
+  area DATA (REL,OVR) ;when specifying OVR the initial ABS/REL is mandatory
+```
+
+⚠ An absolute area will always be effectively handled as overlay, even if defined as concatenable.
+
+When switching again to an already defined area, either it must have no `ABS`/`REL` and `CON`/`OVR` specifiers (and thus it inherits the values from the definition), or it must have the same values used in the definition:
+
+```
+  area DATA (REL,OVR)
+  area DATA            ;Ok, area is still (REL,OVR)
+  area DATA (REL,OVR)  ;Ok, same definition
+  area DATA (ABS,OVR)  ;Error!
+  area DATA (REL,CON)  ;Error!
+  area DATA (REL)      ;Error! (assumes CON in definition)
+```
+
+When the assembly process starts one single area exists, named `_CODE` and defined as `(REL,CON)`. You can switch back to this area at any time, but you can't redefine it to be `ABS` or `OVR`.
+
+See the [`ORG`](#org) instruction for details about an important nuance regarding area names when using `ORG` statements.
+
+See ["SDCC relocatable file format support"](SdccFileFormatSupport.md) for more details about building SDCC relocatable files.
+
+
 ### ASEG ®
 
 _Syntax:_ `ASEG`
+
+⚠ This instruction can be used only when buidling a MACRO-80 relocatable file.
 
 Switches to the absolute segment and sets the location counter to the value it had the last time that segment was switched off with [`CSEG`](#cseg-), [`DSEG`](#dseg-) or [`COMMON`](#common-) (or to zero, if it's the first time this instruction is used).
 
@@ -1636,6 +1698,8 @@ ASEG
 ### COMMON ®
 
 _Syntax:_ `COMMON /[<name>]/`
+
+⚠ This instruction can be used only when buidling a MACRO-80 relocatable file.
 
 Switches to the COMMON block of the specified name and sets the location counter to zero (**not** to the last known location counter value for the block, this behavior is compatible with MACRO-80). The COMMON block name must be enclosed in two `/` characters (that aren't part of the name), is case-insensitive, and can be empty.
 
@@ -1688,6 +1752,8 @@ db 2
 ### CSEG ®
 
 _Syntax:_ `CSEG`
+
+⚠ This instruction can be used only when buidling a MACRO-80 relocatable file.
 
 Switches to the code segment and sets the location counter to the value it had the last time that segment was switched off with `CESG`, [`DSEG`](#dseg-) or [`COMMON`](#common-). The code segment is switched on with the location counter set to zero at the start of the source code processing.
 
@@ -1758,6 +1824,8 @@ _Syntax:_ `DEFS <size>[,<value>]`
 
 _Aliases:_ `DS`
 
+⚠ When buidling a SDCC relocatable file the `<value>` argument can't be used, and thus the syntax for this instruction is just `DEFS <size>`.
+
 Defines a block of contiguous memory addresses of a given size, to be optionally filled with a repeated byte value.
 
 Example with `<value>` specified:
@@ -1774,7 +1842,7 @@ When `<value>` is not specified the output depends on the build type:
 
 * When the build type is absolute, `DEFB <size>` is equivalent to `DEFB <size>,0`.
 * When the build type is relocatable, by default `DEFB <size>` will generate an output equivalent to `ORG $+<size>`; that is, the location counter will be increased by the specified size and the block will be considered by the linker as a "memory gap" (how memory gaps are filled at linking time is undefined).
-* When the build type is relocatable and a `--initialize-defs` argument is supplied to Nestor80, `DEFB <size>` is equivalent to `DEFB <size>,0`.
+* When the build type is MACRO-80 relocatable and a `--initialize-defs` argument is supplied to Nestor80, `DEFB <size>` is equivalent to `DEFB <size>,0`.
 
 See ["Absolute and relocatable code"](#absolute-and-relocatable-code).
 
@@ -1830,6 +1898,8 @@ defb "Hello",0
 
 _Syntax:_ `DSEG`
 
+⚠ This instruction can be used only when buidling a MACRO-80 relocatable file.
+
 Switches to the data segment and sets the location counter to the value it had the last time that segment was switched off with [`CSEG`](#cseg-), [`ASEG`](#aseg-) or [`COMMON`](#common-) (or to zero, if it's the first time this instruction is used).
 
 Example:
@@ -1865,7 +1935,7 @@ _Syntax:_ `END [<address>]`
 
 Ends the assembly process immediately, ignoring any source code remaining in the file.
 
-The optional `<address>` argument is significant only when writing relocatable code, this address will be stored in the relocatable file as the program start address and it's up to the linker to use it during the linking process.
+The optional `<address>` argument is significant only when producing a MACRO-80 relocatable file, this address will be stored in the relocatable file as the program start address and it's up to the linker to use it during the linking process. When producing absolute files or SDCC relocatable files the argument will be ignored and a warning will be generated.
 
 
 ### ENDIF
@@ -2005,7 +2075,7 @@ extrn FOO
 call FOO
 ```
 
-Additionally, if the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol reference.
+Additionally, if the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol.
 
 See also [`PUBLIC`](#public-entry-global-).
 
@@ -2304,7 +2374,7 @@ See ["Conditional assembly"](#conditional-assembly).
 
 _Syntax:_ `IFREL <symbol>`
 
-This instruction is the opposite of [`IFABS`](#ifabs-): the true condition is that the build type is relative. See ["Absolute and relocatable code"](#absolute-and-relocatable-code), ["Conditional assembly"](#conditional-assembly).
+This instruction is the opposite of [`IFABS`](#ifabs-): the true condition is that the build type is relocatable. See ["Absolute and relocatable code"](#absolute-and-relocatable-code), ["Conditional assembly"](#conditional-assembly).
 
 ⚠ If no build type is explicitly selected with the `--build-type` argument, before the build type is automatically selected both `IFABS` and `IFREL` will evaluate to false.
 
@@ -2478,6 +2548,8 @@ See ["Writing relocatable code"](WritingRelocatableCode.md).
 
 _Syntax:_ `ORG <address>`
 
+⚠ When buidling a SDCC relocatable file this instruction can only be used inside absolute areas.
+
 Changes the current location counter, that is, the memory address in which the output is to be generated moving forward in the target program.
 
 When assembling absolute code the `ORG` instruction found with the smallest address value is the "base" address of the file, and subsequent `ORG`s move the location counter accordingly inside the output file relative to this base, filling any gaps with zeros. For example:
@@ -2493,7 +2565,7 @@ The contents of the generated output file will be: 4,5,6,0,0,1,2,3.
 
 If the `--direct-output-write` argument is passed to Nestor80 all the `ORG` statements will be treated as [`.PHASE`](#phase) statements, this means that `ORG`s will be taken in account to assign the appropriate values to labels, but not to decide the placement of the output in the output file: all the file contents will be generated sequentially. In the previous example, the generated file output with `--direct-output-write` would be simply 1,2,3,4,5,6. See ["Absolute output strategies"](#absolute-output-strategies).
 
-When assembling relocatable code any `ORG` statements found inside the absolute segment refer to absolute addresses, but addresses for `ORG` statements found in the code segment, the data segment or a COMMON block are relative to where these segments will end up being assembled in the final program. For example:
+When building a MACRO-80 relocatable file any `ORG` statements found inside the absolute segment refer to absolute addresses, but addresses for `ORG` statements found in the code segment, the data segment or a COMMON block are relative to where these segments will end up being assembled in the final program. For example:
 
 ```
 dseg
@@ -2507,6 +2579,49 @@ The above is true when linking one single relocatable file; when linking two or 
 
 💡 The build type is by default selected automatically based on what instructions are found (or not found) before the first `ORG` instruction in the source code. See ["Absolute and relocatable code"](#absolute-and-relocatable-code).
 
+💡 When building a SDCC relocatable file absolute areas are always defined as starting at address 0, and `ORG` instructions actually create a new area whose name is the one of the current area plus an increasing hexadecimal, lower-case suffix that begins at zero (there's one single suffix sequence that is shared by all area names) and has the specified address as the area staring address. These are otherwise regular absolute areas that can be switched to in code, but not redefined.
+
+For example, the following code
+
+```
+  .area ONE_AREA (ABS)
+  .org 0x100
+  .org 0x200
+  .area OTHER_AREA (ABS)
+  .org 0x300
+  .org 0x400
+  .area ONE_AREA
+  .org 0x500
+  .org 0x600
+  .area OTHER_AREA
+  .org 0x700
+  .org 0x800
+  .area ONE_AREA
+  .org 0x900
+  .org 0xA00
+  .area OTHER_AREA
+  .org 0xB00
+  .org 0xC00
+```
+
+will generate the following sequence of areas:
+
+```
+ONE_AREA at 0
+ONE_AREA0 at 0x100
+ONE_AREA1 at 0x200
+OTHER_AREA at 0
+OTHER_AREA2 at 0x300
+OTHER_AREA3 at 0x400
+ONE_AREA4 at 0x500
+ONE_AREA5 at 0x600
+OTHER_AREA6 at 0x700
+OTHER_AREA7 at 0x800
+ONE_AREA8 at 0x900
+ONE_AREA9 at 0xA00
+OTHER_AREAa at 0xB00
+OTHER_AREAb at 0xC00
+```
 
 ### PAGE (SUBPAGE 🆕, $EJECT)
 
