@@ -185,7 +185,6 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         };
 
         private AddressType locationAreaBeforePhase;
-        private SdccArea sdccAreaBeforePhase;
 
         public AddressType CurrentLocationArea { get; private set; }
 

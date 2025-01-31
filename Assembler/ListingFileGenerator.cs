@@ -175,7 +175,7 @@ namespace Konamiman.Nestor80.Assembler
             var mustPrintAddress = processedLine.Label is not null;
             ushort increaseLocationCounterBy = 0;
             AddressType? changeAreaTo = null;
-            string? changeSdccAreaTo = null;
+            string changeSdccAreaTo = null;
             var incrementSubpage = false;
             currentConstantDefinitionLine = null;
 
