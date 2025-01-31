@@ -11,13 +11,13 @@ namespace Konamiman.Nestor80.Assembler
 
     public partial class AssemblySourceProcessor
     {
-        private static readonly Regex ixPlusArgumentRegex = new(@"^\(\s*IX\s*[+-][^)]+\)$", RegxOp);
-        private static readonly Regex iyPlusArgumentRegex = new(@"^\(\s*IY\s*[+-][^)]+\)$", RegxOp);
-        private static readonly Regex pcPlusArgumentRegex = new(@"^\(\s*PC\s*[+-][^)]+\)$", RegxOp);
-        private static readonly Regex spPlusArgumentRegex = new(@"^\(\s*SP\s*[+-][^)]+\)$", RegxOp);
-        private static readonly Regex hlPlusArgumentRegex = new(@"^\(\s*HL\s*[+-][^)]+\)$", RegxOp);
-        private static readonly Regex indexPlusArgumentRegex = new(@"^\(\s*I(X|Y)\s*(?<sign>[+-])(?<expression>[^)]+)\)$", RegxOp);
-        private static readonly Regex registerPlusArgumentRegex = new(@"^\(\s*(IX|IY|PC|SP|HL)\s*(?<sign>[+-])(?<expression>[^)]+)\)$", RegxOp);
+        private static readonly Regex ixPlusArgumentRegex = new(@"^\(\s*IX\s*[+-].+\)$", RegxOp);
+        private static readonly Regex iyPlusArgumentRegex = new(@"^\(\s*IY\s*[+-].+\)$", RegxOp);
+        private static readonly Regex pcPlusArgumentRegex = new(@"^\(\s*PC\s*[+-].+\)$", RegxOp);
+        private static readonly Regex spPlusArgumentRegex = new(@"^\(\s*SP\s*[+-].+\)$", RegxOp);
+        private static readonly Regex hlPlusArgumentRegex = new(@"^\(\s*HL\s*[+-].+\)$", RegxOp);
+        private static readonly Regex indexPlusArgumentRegex = new(@"^\(\s*I(X|Y)\s*(?<sign>[+-])(?<expression>.+)\)$", RegxOp);
+        private static readonly Regex registerPlusArgumentRegex = new(@"^\(\s*(IX|IY|PC|SP|HL)\s*(?<sign>[+-])(?<expression>.+)\)$", RegxOp);
         private static readonly Regex z80MemPointedByRegisterRegex = new(@"^\(\s*(?<reg>HL|DE|BC|IX|IY|SP|C)\s*\)$", RegxOp);
         private static readonly Regex z280MemPointedByRegisterRegex = new(@"^\(\s*(?<reg>HL|DE|BC|IX|IY|PC|SP|C|IX *\+ *IY|HL *\+ *IX|HL *\+ *IY)\s*\)$", RegxOp);
         private static readonly Regex registerRegex = new(@"^[A-Z]{1,3}$", RegxOp);
