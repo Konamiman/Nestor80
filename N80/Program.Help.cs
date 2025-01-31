@@ -6,7 +6,7 @@ namespace Konamiman.Nestor80.N80
     {
         static readonly string bannerText = """
             Nestor80 - The Z80 and Z280 assembler for the 21th century
-            (c) Konamiman 2024
+            (c) Konamiman 2025
 
             """;
 
