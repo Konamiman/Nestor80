@@ -914,7 +914,7 @@ namespace Konamiman.Nestor80.Assembler
                     items.Add(LinkItem.ForAddressReference(ad.Type, ad.Value));
                 }
                 else if(part is SymbolReference sr) {
-                    var symbol = state.GetSymbolWithoutLocalNameReplacement(sr.SymbolName);
+                    var symbol = state.GetSymbolWithoutLocalNameReplacement(state.Modularize(sr.SymbolName));
                     if(symbol is null) {
                         throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: {symbol} doesn't exist (this should have been catched earlier)");
                     }
