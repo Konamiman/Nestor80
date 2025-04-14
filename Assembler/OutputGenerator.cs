@@ -161,7 +161,7 @@ namespace Konamiman.Nestor80.Assembler
         static string currentCommonBlockName;
 
         /// <summary>
-        /// Generate a LINK-80 compatible relative file from an <see cref="AssemblyResult"/>.
+        /// Generate a LINK-80 compatible relocatable file from an <see cref="AssemblyResult"/>.
         /// </summary>
         /// <param name="assemblyResult">Assembly result ro use for the file generation.</param>
         /// <param name="outputStream">The stream to write the result to.</param>
@@ -185,6 +185,10 @@ namespace Konamiman.Nestor80.Assembler
                 { AddressType.ASEG, 0 },
                 { AddressType.COMMON, 0 }
             };
+
+            if(assemblyResult.ProgramName is null) {
+                throw new InvalidOperationException($"{nameof(assemblyResult)}.{nameof(assemblyResult.ProgramName)} is mandatory when generating a relocatable file.");
+            }
 
             var publicSymbols = assemblyResult.Symbols
                 .Where(s => s.IsPublic)
@@ -661,6 +665,9 @@ namespace Konamiman.Nestor80.Assembler
             outputLines.Add($"H {assemblyResult.SdccAreas.Length:X} areas {totalSymbolsCount:X} global symbols");
 
             if(!assemblyResult.ImplicitProgramName) {
+                if(assemblyResult.ProgramName is null) {
+                    throw new InvalidOperationException($"{nameof(assemblyResult)}.{nameof(assemblyResult.ProgramName)} is mandatory when generating a SDCC compatible relocatable file if {nameof(assemblyResult)}.{nameof(assemblyResult.ImplicitProgramName)} is false.");
+                }
                 outputLines.Add($"M {assemblyResult.ProgramName}");
             }
 
