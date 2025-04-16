@@ -1,6 +1,6 @@
 # Nestor80 assembler library
 
-[Nestor80](https://github.com/Konamiman/Nestor80) is a Z80, R800 and Z280 assembler almost fully compatible with [Microsoft's Macro80](https://en.wikipedia.org/wiki/Microsoft_MACRO-80) at the source code level. It can produce absolute and relocatable files; relocatable files can be linked using the Linkstor80 package.
+[Nestor80](https://github.com/Konamiman/Nestor80) is a Z80, R800 and Z280 assembler almost fully compatible with [Microsoft's Macro80](https://en.wikipedia.org/wiki/Microsoft_MACRO-80) at the source code level. It can produce absolute and relocatable files; relocatable files can be linked using [the Linkstor80 package](https://www.nuget.org/packages/Linkstor80/).
 
 Nestor80 [is published](https://github.com/konamiman/Nestor80/releases) as a standalone command line application, `N80` (or `N80.exe`). Additionally, you can use this NuGet package to assemble code programmatically. The process is as follows:
 

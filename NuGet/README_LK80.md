@@ -4,7 +4,7 @@
 
 Linkstor80 [is published](https://github.com/konamiman/Nestor80/releases) as a standalone command line application, `LK80` (or `LK80.exe`). Additionally, you can use this NuGet package to link relocatable programmatically. The process is as follows:
 
-1. Use Nestor80 (the `N80` or `N80.exe` command line application, or the Nestor80 NuGet package) to generate one or more relocatable files.
+1. Use Nestor80 (the `N80` or `N80.exe` command line application, or [the Nestor80 assembler NuGet package](https://www.nuget.org/packages/Nestor80/)) to generate one or more relocatable files.
 
 2. Create a an array of instances of `ILinkingSequenceItem`. The classes tha implement this interface are:
 

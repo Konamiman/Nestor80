@@ -86,7 +86,7 @@ USELESS:
     ret
 ```
 
-* **Programmatic API**. The `Assembler.dll` and `Linker.dll` library files can be referenced and used from any .NET language in order to assemble and link code from an IDE or any kind of custom tool. Additionally, they are available as [NuGet](https://www.nuget.org/) packages, with identifiers _Nestor80_ and _Linkstor80_ respectively.
+* **Programmatic API**. The `Assembler.dll` and `Linker.dll` library files can be referenced and used from any .NET language in order to assemble and link code from an IDE or any kind of custom tool. Additionally, they are available as [NuGet](https://www.nuget.org/) packages, with identifiers [_Nestor80_](https://www.nuget.org/packages/Nestor80/) and [_Linkstor80_](https://www.nuget.org/packages/Linkstor80/) respectively.
 
 See the NuGet README files of [Nestor80](NuGet/README_N80.md) and [Linkstor80](NuGet/README_LK80.md) for more details on how to use these library files/NuGet packages.
 
