@@ -5,6 +5,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Konamiman.Nestor80.Linker</RootNamespace>
+    <PackageId>Linkstor80</PackageId>
+    <Title>Nestor80 linker library</Title>
+    <Authors>Konamiman</Authors>
+    <Product>Nestor80 linker library</Product>
+    <Description>Allows to link together relocatable files generated with Nestor80, producing ready to use Z80, R800 and Z280 binary files.</Description>
+    <Copyright>(c) 2025 Konamiman</Copyright>
+    <PackageProjectUrl></PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Konamiman/Nestor80</RepositoryUrl>
+    <PackageTags>Z80;Z280</PackageTags>
+    <PackageIcon>LK80_NuGet_logo.png</PackageIcon>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +26,13 @@
     <Compile Include="..\Assembler\Relocatable\ExtensionLinkItemType.cs" Link="Infrastructure\ExtensionLinkItemType.cs" />
     <Compile Include="..\Assembler\Relocatable\LinkItemType.cs" Link="Infrastructure\LinkItemType.cs" />
     <Compile Include="..\Assembler\Relocatable\Native.cs" Link="Infrastructure\Native.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\NuGet\LK80_NuGet_logo.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

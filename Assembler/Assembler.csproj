@@ -5,7 +5,28 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Konamiman.Nestor80.Assembler</RootNamespace>
-    <AssemblyVersion></AssemblyVersion>
+    <AssemblyVersion>1.3.2</AssemblyVersion>
+    <FileVersion>1.3.2</FileVersion>
+    <Version>1.3.2</Version>
+    <PackageId>Nestor80</PackageId>
+    <Title>Nestor80 assembler library</Title>
+    <Authors>Konamiman</Authors>
+    <Company />
+    <Product>Nestor80 assembler library</Product>
+    <PackageTags>Z80;Z280</PackageTags>
+    <Copyright>(c) 2025 Konamiman</Copyright>
+    <Description>Z80, R800 and Z280 assembler almost fully compatible with Microsoft Macro80 at the source code level. Produces absolute and relocatable binary files. Relocatable files can be linked using Linkstor80.</Description>
+    <PackageProjectUrl></PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Konamiman/Nestor80</RepositoryUrl>
+    <PackageIcon>N80_NuGet_logo.png</PackageIcon>
+    <PackageReadmeFile></PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\NuGet\N80_NuGet_logo.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
 </Project>
