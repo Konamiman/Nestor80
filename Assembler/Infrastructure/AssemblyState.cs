@@ -146,7 +146,6 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             ClearExpressionsCache();
             lastUsedSdccAreaIndex = -1;
 
-            SwitchToLocation(0);
             if(isSdccBuild) {
                 SetIsSdccBuild();
                 SwitchToSdccArea("_CODE");
@@ -158,6 +157,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
             LocationPointersByArea[AddressType.ASEG] = 0;
+            SwitchToLocation(0);
 
             if (streamCanSeek)
             {
