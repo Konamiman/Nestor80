@@ -84,7 +84,7 @@ namespace Konamiman.Nestor80.Assembler
                         lastAddressPlusOne = 65536;
                     }
                 }
-                else if(line is DefineSpaceLine ds) {
+                else if(line is DefineSpaceLine ds) { //Note that this includes AlignLine too
                     var outputByte = ds.Value ?? 0;
                     var length = ds.Size;
                     if(directFileWrite) {
