@@ -2065,7 +2065,7 @@ namespace Konamiman.Nestor80.Assembler
                 SetBuildType(BuildType.Absolute);
             }
             else if(buildType is not BuildType.Absolute) {
-                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} can only be used when the build type is absolute");
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} can only be used when the build type is absolute, address alignments for relocatable programs are controlled with the --align-code and --align-data arguments of Linkstor80");
                 walker.DiscardRemaining();
                 return line;
             }

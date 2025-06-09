@@ -12,6 +12,9 @@ namespace Konamiman.Nestor80.Linker;
 /// </summary>
 public static class RelocatableFilesProcessor
 {
+    // For compatibility with LINK-80
+    const ushort DEFAULT_CODE_SEGMENT_START_ADDRESS = 0x0103;
+
     private static ushort startAddress;
     private static ushort endAddress;
     private static AddressType currentAddressType;
@@ -165,9 +168,30 @@ public static class RelocatableFilesProcessor
             if(linkItem is SetCodeSegmentAddress scsa) {
                 codeSegmentAddressFromInput = scsa.Address;
             }
+            else if(linkItem is AlignCodeSegmentAddress acsa) {
+                if(acsa.Value == 0) {
+                    AddError("The value for \"align code segment address\" can't be zero");
+                }
+                else {
+                    codeSegmentAddressFromInput ??= (ushort)((programInfos.LastOrDefault(pi => pi.HasContent)?.CodeSegmentEnd ?? DEFAULT_CODE_SEGMENT_START_ADDRESS - 1) + 1);
+                    codeSegmentAddressFromInput = Align(codeSegmentAddressFromInput.Value, acsa.Value);
+                }
+            }
             else if(linkItem is SetDataSegmentAddress sdsa) {
                 dataSegmentAddressFromInput = sdsa.Address;
                 segmentsSequencingMode = SegmentsSequencingMode.CombineSameSegment;
+            }
+            else if (linkItem is AlignDataSegmentAddress adsa) {
+                if(adsa.Value == 0) {
+                    AddError("The value for \"align data segment address\" can't be zero");
+                }
+                else if(segmentsSequencingMode is not SegmentsSequencingMode.CombineSameSegment) {
+                    AddError("Can't align the data segment address before the \"separate code and data\" mode has been set");
+                }
+                else {
+                    dataSegmentAddressFromInput ??= (ushort)(programInfos.Last().DataSegmentEnd + 1);
+                    dataSegmentAddressFromInput = Align(dataSegmentAddressFromInput.Value, adsa.Value);
+                }
             }
             else if(linkItem is SetCodeBeforeDataMode) {
                 if(segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment) {
@@ -342,7 +366,7 @@ public static class RelocatableFilesProcessor
 
         if(segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment) {
             currentProgramCodeSegmentStart =
-                codeSegmentAddressFromInput ?? (ushort)((previousProgram?.CodeSegmentEnd ?? 0x102) + 1);
+                codeSegmentAddressFromInput ?? (ushort)((previousProgram?.CodeSegmentEnd ?? DEFAULT_CODE_SEGMENT_START_ADDRESS - 1) + 1);
 
             // The "CombineSameSegment" mode is entered only after an explicit data segment address is supplied.
             // Thus, either it was supplied right before this program (and thus dataSegmentAddressFromInput
@@ -359,7 +383,7 @@ public static class RelocatableFilesProcessor
 
         else if(segmentsSequencingMode is SegmentsSequencingMode.CodeBeforeData) {
             currentProgramCodeSegmentStart =
-                codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? 0x102) + 1);
+                codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? DEFAULT_CODE_SEGMENT_START_ADDRESS - 1) + 1);
 
             currentProgramCommonSegmentStart = (ushort)(currentProgramCodeSegmentStart + programSize);
             currentProgramDataSegmentStart = (ushort)(currentProgramCommonSegmentStart + commonsSize);
@@ -368,7 +392,7 @@ public static class RelocatableFilesProcessor
             // Not a bug: in this mode the data segment really starts at the address
             // specified for the code segment. This is also how LINK-80 works.
             currentProgramCommonSegmentStart =
-                codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? 0x102) + 1);
+                codeSegmentAddressFromInput ?? (ushort)((previousProgram?.MaxSegmentEnd ?? DEFAULT_CODE_SEGMENT_START_ADDRESS - 1) + 1);
             currentProgramDataSegmentStart = (ushort)(currentProgramCommonSegmentStart + commonsSize);
 
             currentProgramCodeSegmentStart = (ushort)(currentProgramDataSegmentStart + dataSize);
@@ -671,6 +695,23 @@ public static class RelocatableFilesProcessor
     {
         warnings.Add(message);
         LinkWarning?.Invoke(null, message);
+    }
+
+    private static ushort Align(ushort address, ushort alignmentValue)
+    {
+        if(alignmentValue == 0) {
+            AddError("Alignment value must be greater than 0");
+            return address;
+        }
+
+        int newAddress = address + alignmentValue - 1;
+        newAddress -= (newAddress % alignmentValue);
+        if(newAddress > ushort.MaxValue) {
+            AddError($"Alignment value {alignmentValue} is too large, it would cause the location pointer to exceed 65535");
+            return address;
+        }
+
+        return (ushort)newAddress;
     }
 
     class MaxErrorsReachedException : Exception { }
