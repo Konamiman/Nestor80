@@ -173,6 +173,18 @@ public static class RelocatableFilesProcessor
                     AddError("The value for \"align code segment address\" can't be zero");
                 }
                 else {
+                    if(codeSegmentAddressFromInput is null) {
+                        if(programInfos.Count == 0) {
+                            codeSegmentAddressFromInput = DEFAULT_CODE_SEGMENT_START_ADDRESS;
+                        }
+                        else {
+                            var lastProgram = programInfos.Last(pi => pi.HasContent);
+                            codeSegmentAddressFromInput =
+                                segmentsSequencingMode is SegmentsSequencingMode.CombineSameSegment ?
+                                (ushort)(lastProgram.CodeSegmentEnd + 1) :
+                                (ushort)(lastProgram.MaxSegmentEnd + 1);
+                        }
+                    }
                     codeSegmentAddressFromInput ??= (ushort)((programInfos.LastOrDefault(pi => pi.HasContent)?.CodeSegmentEnd ?? DEFAULT_CODE_SEGMENT_START_ADDRESS - 1) + 1);
                     codeSegmentAddressFromInput = Align(codeSegmentAddressFromInput.Value, acsa.Value);
                 }
