@@ -441,6 +441,79 @@ Notice how:
 * The fixed address of a common block is right before the data segment of the program in which it first appears.
 
 
+## Aligning code
+
+Sometimes you'll need part of your code or data to be aligned at a given boundary in memory, for example you may want the start of a data table to be located at an address that is a multiple of 256. While you can achieve that by simply using the `.ALIGN` instruction in your code when building an absolute file, in the case of relocatable code you'll need to rely on the linker for that.
+
+To that end Linkstor80 provides two arguments:
+
+* `--align-code <alignment>`: Instructs the linker to start the linking of the code segment for the next program (if the "separate code and data" linking mode is active) or the entire next program (if one of the "code before data" or "data before code" modes is active) in the first address that is greater than the last address used by the previous program (the last code segment or data segment address, depending on the linking mode) _and_ is a multiple of the `<alignment>` argument provided.
+
+* `--align-data <alignment>`: This argument can be used only in "separate code and data" mode and is similar to `--align-code`, but it applies to the data segment only.
+
+Let's see an example using the `PROG1.ASM` and `PROG2.ASM` files that we saw in the "Rules for code and data organization in the linked program" section. Assuming you have already assembled them with N80, run the following to link them using the code alignment feature:
+
+```
+LK80 --output-file PROG.BIN --code 0 PROG1.REL --align-code 0020h PROG2.REL
+```
+
+This is how the resulting `PROG.BIN` file will look like (dots represent zero bytes):
+
+```
+0000 ?PROG_1_DATA?!PR
+0010 OG_1_CODE!......
+0020 ?PROG_2_DATA?!PR
+0030 OG_2_CODE!
+```
+
+As you can see the first program contents end at address 0019h, then we instruct the linker to start the next program at the first address after that one that is a multiple of 16. The first address for which that is true is 0020h, so that's where the second program is linked.
+
+Switching to the "code before data" mode has a similar result:
+
+```
+LK80 --output-file PROG.BIN --code-before-data --code 0 \
+     PROG1.REL --align-code 0020h PROG2.REL
+```
+
+Result:
+
+```
+0000 !PROG_1_CODE!?PR
+0010 OG_1_DATA?......
+0020 !PROG_2_CODE!?PR
+0030 OG_2_DATA?
+```
+
+Now let's take a look at what happens when we switch to "separate code and data" mode and use both `--align-code` and `--align-data`:
+
+```
+LK80 --output-file PROG.BIN --code 0 --data 0040h PROG1.REL \
+     --align-code 0010h --align-data 0020h PROG2.REL
+```
+
+Result:
+
+```
+0000 !PROG_1_CODE!...
+0010 !PROG_2_CODE!...
+0020 ................
+0030 ................
+0040 ?PROG_1_DATA?...
+0050 ................
+0060 ?PROG_2_DATA?
+```
+
+We see the two alignments in place here:
+
+* The first program's code ends at address 000Ch, and then we instruct the linker to start linking the next program's code at the next address that is a multiple of 16. That address is 0010h.
+* Similarly, the first program's data ends at address 004Ch, and then we instruct the linker to start linking the next program's data at the next address that is a multiple of 32. That address is 0060h.
+
+Notes:
+
+* The `--align-code` and `--align-data` arguments were introduced in version 1.1 of Linkstor80.
+* By default Linkstor80 will fill gaps between programs with zero bytes, you can use the `--fill` argument to specify a different value.
+
+
 ## Combining programs into libraries
 
 The Libstor80 tool can be used to combine multiple relocatable files into one single library file, which can then be used with LINK-80 instead of the individual relocatable files.
