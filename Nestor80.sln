@@ -21,6 +21,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{F7F80F37-5
 		docs\LanguageReference.md = docs\LanguageReference.md
 		docs\MACRO-80.txt = docs\MACRO-80.txt
 		docs\RelocatableFileFormat.md = docs\RelocatableFileFormat.md
+		docs\WritingRelocatableCode.md = docs\WritingRelocatableCode.md
 		docs\Z280Support.md = docs\Z280Support.md
 	EndProjectSection
 EndProject

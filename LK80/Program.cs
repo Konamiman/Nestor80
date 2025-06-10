@@ -595,6 +595,28 @@ internal partial class Program
             else if(arg is "-dbc" or "--data-before-code") {
                 linkingSequence.Add(new SetDataBeforeCodeMode());
             }
+            else if(arg is "-ac" or "--align-code") {
+                if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                    return $"The {arg} argument needs to be followed by a value";
+                }
+                else {
+                    i++;
+                    var value = ParseNumericArg(arg, args[i], false, out error);
+                    if(error is not null) return error;
+                    linkingSequence.Add(new AlignCodeSegmentAddress() { Value = value });
+                }
+            }
+            else if(arg is "-ad" or "--align-data") {
+                if(i == args.Length - 1 || args[i + 1][0] == '-') {
+                    return $"The {arg} argument needs to be followed by a value";
+                }
+                else {
+                    i++;
+                    var value = ParseNumericArg(arg, args[i], false, out error);
+                    if(error is not null) return error;
+                    linkingSequence.Add(new AlignDataSegmentAddress() { Value = value });
+                }
+            }
             else if(arg is "-y" or "--symbols-file") {
                 generateListingFile = true;
                 if(i != args.Length - 1 && args[i + 1][0] != '-') {
@@ -830,6 +852,8 @@ internal partial class Program
                     SetCodeSegmentAddress scsa => $"Set code segment address to {scsa.Address:X4}h\r\n",
                     SetDataSegmentAddress sdsa => $"Set data segment address to {sdsa.Address:X4}h\r\n",
                     RelocatableFileReference rfr => $"Process file {rfr.FullName}\r\n",
+                    AlignCodeSegmentAddress acsa => $"Align code segment address to {acsa.Value} bytes\r\n",
+                    AlignDataSegmentAddress adsa => $"Align data segment address to {adsa.Value} bytes\r\n",
                     _ => throw new InvalidOperationException($"Unexpected linking sequence item: {item.GetType().Name}")
                 };
             }

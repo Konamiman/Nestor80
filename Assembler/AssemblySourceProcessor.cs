@@ -746,10 +746,10 @@ namespace Konamiman.Nestor80.Assembler
                 else if(processedLine is ChangeAreaLine cal) {
                     SetBuildType(BuildType.Relocatable);
                 }
-                else if(processedLine is ChangeOriginLine col) {
+                else if(processedLine is ChangeOriginLine or AlignLine) {
                     SetBuildType(BuildType.Absolute);
                     state.SwitchToArea(AddressType.ASEG);
-                    state.SwitchToLocation(col.NewLocationCounter);
+                    state.SwitchToLocation(((IChangesLocationCounter)processedLine).NewLocationCounter);
                 }
                 else if(processedLine is IProducesOutput or DefineSpaceLine or LinkerFileReadRequestLine) {
                     SetBuildType(BuildType.Relocatable);

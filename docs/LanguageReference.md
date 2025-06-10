@@ -557,10 +557,10 @@ SOUND.initloop:
   ret
 ```
 
-In order to refer to a symbol defined outside the module there are two options:
+In order to refer to a symbol defined outside the module you need to declare it as a _root symbol_, that is, a symbol to be considered as defined outside the module. There are two options for that:
 
 1. Prepend the symbol name with a colon, `:`
-2. Use the [`ROOT`](#root-) instruction to list the symbols that are to be considered as defined outside the module.
+2. Use the [`ROOT`](#root-) instruction to declare a list of symbols as root symbols.
 
 Example:
 
@@ -631,6 +631,8 @@ module GRAPHICS
 
 endmod
 ```
+
+If you are using modules in a program with external symbol declarations you can instruct Nestor80 to implicitly consider all external symbols as root symbols, see [`.EXTROOT`](#extroot-).
 
 
 ### Relative labels 🆕
@@ -1263,6 +1265,45 @@ Instruction arguments are specified using the standard notation `<argument>`. A 
 💡 If the `--accept-dot-prefix` argument is passed to Nestor80 then it's possible to write all the instructions listed here prefixed with a dot (`.`), except those that have a dot  prefixing its name already. For example ` .ORG` will be accepted as an alias for `ORG`. This may be useful when assembling code written for other assemblers.
 
 
+### .ALIGN 🆕
+
+_Syntax:_ `.ALIGN <alignment>[,<value>]`
+
+Modifies the current location counter, increasing it (if necessary) to make it a multiple of the `<alignment>` argument. The addresses in between are filled with `<value>` if specified, or with zeros otherwise. `<alignment>` can be any non-zero 16 bit value.
+
+Example:
+
+```
+  org 100h
+
+  defb 1,2,3
+DISALIGNED:
+
+  .align 16
+
+ALIGNED:
+  defb 4,5,6
+```
+
+This is equivalent to:
+
+```
+  org 100h
+
+  defb 1,2,3
+DISALIGNED:
+
+  defs 13
+
+ALIGNED:
+  defb 4,5,6
+```
+
+In both cases `DISALIGNED` will be at address 103h and `ALIGNED` at address 110h, which is the closest multiple of 16 after 103h.
+
+⚠ This instruction can be used only when buidling an absolute file. Address alignments for relocatable files are controlled with the Linkstor80's `--align-code` and `--align-data` arguments (make sure that you are using Linkstor80 v1.1 or newer). See ["Writing relocatable code"](WritingRelocatableCode.md).
+
+
 ### .COMMENT
 
 _Syntax:_ `.COMMENT <delimiter><text><delimiter>`
@@ -1340,6 +1381,74 @@ _Syntax:_ `.ERROR ["]<text>["]`
 Emits an assembly error with the specified text. The text supports [expression interpolation](#expression-interpolation-).
 
 When one or more errors are emitted in pass 1, pass 2 will be skipped. See ["Passes"](#passes), ["Strings in messages for the assembler console"](#strings-in-messages-for-the-assembler-console).
+
+
+### .EXTROOT 🆕
+
+Instructs Nestor80 to consider all the declared external symbols as root symbols, so you don't need to register them with [`ROOT`](#root-) or prepend them with `:` to use them inside a module.
+
+Let's see the three possible variants of an example program that references external symbols from within a module. First, with `ROOT`:
+
+```
+extrn FOO
+extrn BAR
+extrn FIZZ
+extrn BUZZ
+
+module MY_MODULE
+
+root FOO
+root BAR
+root FIZZ
+root BUZZ
+
+call FOO
+call BAR
+call FIZZ
+call BUZZ
+
+endmod
+```
+
+Second, prepending the external symbols with `:`:
+
+```
+extrn FOO
+extrn BAR
+extrn FIZZ
+extrn BUZZ
+
+module MY_MODULE
+
+call :FOO
+call :BAR
+call :FIZZ
+call :BUZZ
+
+endmod
+```
+
+And third, using `.EXTROOT`:
+
+```
+.extroot
+
+extrn FOO
+extrn BAR
+extrn FIZZ
+extrn BUZZ
+
+module MY_MODULE
+
+call FOO
+call BAR
+call FIZZ
+call BUZZ
+
+endmod
+```
+
+`.EXTROOT` can be placed at any point of the program (even inside a module) and will be effective immediately and until the end of the program, or until a [`.XEXTROOT`](#xextroot-) instruction is found.
 
 
 ### .FATAL 🆕
@@ -1595,6 +1704,11 @@ Instructs Nestor80 to include macro expansions in listings following the instruc
 _Syntax:_ `.XCREF` 
 
 In MACRO-80 this instruction disabled the inclusion of cross-reference information when generating a listing file (which had been enabled with [`.CREF`](#cref-)). Nestor80 doesn't implement cross-reference information generation and thus this instruction is a no-op.
+
+
+### .XEXTROOT 🆕
+
+Instructs Nestor80 to no longer consider external symbols as root symbols inside modules. See [`.EXTROOT`](#extroot-).
 
 
 ### .XLIST
@@ -2691,7 +2805,7 @@ See ["Macros"](#macros).
 
 _Syntax:_ `ROOT <symbol>[,<symbol>[,...]]`
 
-This instruction must appear inside a module. It's used to declare one or more symbols that will be considered as a "root" symbol, that is, not relative to the module; thus when these symbols are referenced they won't be prepended with the module name before being evaluated. Another option to achieve the same effect is to prepend the symbol names with a colon, `:`, when they are referenced. See ["Modules"](#modules-).
+This instruction must appear inside a module. It's used to declare one or more symbols that will be considered as a "root" symbol, that is, not relative to the module; thus when these symbols are referenced they won't be prepended with the module name before being evaluated. Another option to achieve the same effect is to prepend the symbol names with a colon, `:`, when they are referenced. See ["Modules"](#modules-) and [`.EXTROOT`](#extroot-).
 
 
 ### SUBTTL ($TITLE)

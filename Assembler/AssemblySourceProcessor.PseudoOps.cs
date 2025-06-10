@@ -30,6 +30,9 @@ namespace Konamiman.Nestor80.Assembler
             // .8080: Unsupported, always throws error
             { ".8080", ProcessChangeCpuTo8080Line },
 
+            // .ALIGN: Align code to an address multiple of a given value
+            { ".ALIGN", ProcessAlignLine },
+
             // .AREA: Alias for AREA
             { ".AREA", ProcessSdccAreaLine },
 
@@ -47,6 +50,9 @@ namespace Konamiman.Nestor80.Assembler
 
             // .ERROR <text>: Produce an assembly normal error
             { ".ERROR", ProcessUserErrorLine },
+
+            // .EXTROOT: Enable automatic external symbols as root symbols
+            { ".EXTROOT", ProcessExtrootLine },
 
             // .FATAL <text>: Produce an assembly fatal error
             { ".FATAL", ProcessUserFatalLine },
@@ -108,6 +114,9 @@ namespace Konamiman.Nestor80.Assembler
 
             // .XCREF: Unsupported, does nothing
             { ".XCREF", ProcessListingControlLine },
+
+            // .XEXTROOT: Disable automatic external symbols as root symbols
+            { ".XEXTROOT", ProcessXExtrootLine },
 
             // .XLIST: Suppress output of code lines in listing
             { ".XLIST", ProcessListingControlLine },
@@ -2052,6 +2061,93 @@ namespace Konamiman.Nestor80.Assembler
         {
             state.RelativeLabelsEnabled = false;
             return new RelabLine() { Enable = false };
+        }
+
+        static ProcessedSourceLine ProcessExtrootLine(string opcode, SourceLineWalker walker)
+        {
+            state.AutoRootEnabled = true;
+            return new ExtrootLine() { Enable = true };
+        }
+
+        static ProcessedSourceLine ProcessXExtrootLine(string opcode, SourceLineWalker walker)
+        {
+            state.AutoRootEnabled = false;
+            return new ExtrootLine() { Enable = false };
+        }
+        
+        static ProcessedSourceLine ProcessAlignLine(string opcode, SourceLineWalker walker)
+        {
+            var line = new AlignLine();
+
+            if(buildType == BuildType.Automatic) {
+                SetBuildType(BuildType.Absolute);
+            }
+            else if(buildType is not BuildType.Absolute) {
+                AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} can only be used when the build type is absolute, address alignments for relocatable programs are controlled with the --align-code and --align-data arguments of Linkstor80");
+                walker.DiscardRemaining();
+                return line;
+            }
+
+            Address fillValue = null;
+            Address alignValue;
+            if(walker.AtEndOfLine) {
+                AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs the alignment value argument");
+                return line;
+            }
+            else try {
+                    var alignValueExpressionText = walker.ExtractExpression();
+                    var alignValueExpression = state.GetExpressionFor(alignValueExpressionText);
+                    alignValue = alignValueExpression.Evaluate();
+                    if(!alignValue.IsAbsolute) {
+                        AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the alignment value argument must evaluate to an absolute value");
+                        walker.DiscardRemaining();
+                        return line;
+                    }
+                    else if(alignValue.Value < 1 || alignValue.Value > 65535) {
+                        AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the alignment value argument must be between 1 and 65535");
+                        walker.DiscardRemaining();
+                        return line;
+                    }
+
+                    if(!walker.AtEndOfLine) {
+                        var fillValueExpressionText = walker.ExtractExpression();
+                        var fillValueExpression = state.GetExpressionFor(fillValueExpressionText, isByte: true);
+                        fillValue = EvaluateIfNoSymbolsOrPass2(fillValueExpression);
+                        if(fillValue is null) {
+                            state.RegisterPendingExpression(line, fillValueExpression, argumentType: CpuInstrArgType.Byte);
+                        }
+                        else if(!fillValue.IsValidByte) {
+                            AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the value argument must evaluate to a valid byte");
+                            walker.DiscardRemaining();
+                            return line;
+                        }
+                    }
+                }
+                catch(InvalidExpressionException ex) {
+                    AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
+                    walker.DiscardRemaining();
+                    return line;
+                }
+
+            int newLocationPointer = state.CurrentLocationPointer + alignValue.Value - 1;
+            newLocationPointer = newLocationPointer - (newLocationPointer % alignValue.Value);
+            if(newLocationPointer > ushort.MaxValue) {
+                AddError(AssemblyErrorCode.InvalidExpression, $"{opcode.ToUpper()}: the alignment value {alignValue.Value} is too large, it would cause the location pointer to exceed 65535");
+                return new AlignLine();
+            }
+
+            var increment = (ushort)(newLocationPointer - state.CurrentLocationPointer);
+            state.SwitchToLocation((ushort)newLocationPointer);
+
+            line.NewLocationArea = state.CurrentLocationArea;
+            line.NewLocationCounter = state.CurrentLocationPointer;
+            line.DeclaredAlignmentValue = alignValue.Value;
+            line.Size = increment;
+            if(fillValue is not null) {
+                line.Value = fillValue.ValueAsByte;
+            };
+
+            return line;
         }
 
         static ProcessedSourceLine ProcessSdccAreaLine(string opcode, SourceLineWalker walker)

@@ -6,7 +6,7 @@ internal partial class Program
 {
     static readonly string bannerText = """
         Linkstor80 - The Z80 linker for the 21th century
-        (c) Konamiman 2023
+        (c) Konamiman 2025
 
         """;
 
@@ -58,14 +58,15 @@ internal partial class Program
 
         If the current linking mode is "separate code and data" then the code segment 
         of the file will be linked after the code segment of the last linked file 
-        (unless a different address is supplied beforehand with --code), and the data 
-        segment of the file will be linked after the data segment of the last linked 
-        file (unless a different address is supplied beforehand with --data).
+        (unless a different address is supplied beforehand with --code or --align-code),
+        and the data segment of the file will be linked after the data segment of the last
+        linked file (unless a different address is supplied beforehand with --data
+        or --align-data).
 
         Otherwise, the entire file (data and then code, or the opposite) will be linked 
         after the last linked file (unless a different address is supplied beforehand
-        with --code). It may be a bit confusing but indeed, the entire file is linked 
-        starting at the address specified by --code even in "data before code" mode.
+        with --code or --align-code). It may be a bit confusing but indeed, the entire file
+        is linked starting at the address specified by --code even in "data before code" mode.
 
     -dbc, --data-before-code
         Switches the linking process to "data before code" mode: any relocatable file 
@@ -96,12 +97,24 @@ internal partial class Program
         "separate code and data" mode it's not possible to go back to the "code before data" 
         and "data before code" modes.
 
+    -ac, --align-code <alignment>
+        Specifies the alignment for the address where the linking of the next relocatable file
+        (the whole file or only the code segment, depending on the linking mode) will start:
+        the address will be set the the last address of the previous program plus one, rounded up
+        to the nearest multiple of the specified alignment value.
+
+    -ad, --align-data <alignment>
+        Specifies the alignment for the address in which the data segment of the next
+        relocatable file will be linked: the address will be set to the last data segment
+        address of the previous program plus one, rounded up to the nearest multiple of the
+        specified alignment value. This argument can be used only after the linking process
+        has been set to "separate code and data" mode with the --data argument.
 
     CONFIGURATION FLAGS
 
     -af, --args-file <file path>
         Read additional arguments from the specified file. The arguments are
-        processed immediately. Recursivity is not supported (additional
+        processed immediately. Recursion is not supported (additional
         --args-file arguments aren't allowed inside an arguments file).
         A non-absolute path will be considered relative to the current directory.
         
