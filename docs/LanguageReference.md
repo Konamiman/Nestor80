@@ -1263,6 +1263,45 @@ Instruction arguments are specified using the standard notation `<argument>`. A 
 💡 If the `--accept-dot-prefix` argument is passed to Nestor80 then it's possible to write all the instructions listed here prefixed with a dot (`.`), except those that have a dot  prefixing its name already. For example ` .ORG` will be accepted as an alias for `ORG`. This may be useful when assembling code written for other assemblers.
 
 
+### .ALIGN
+
+_Syntax:_ `.ALIGN <alignment>[,<value>]`
+
+Modifies the current location counter, increasing it (if necessary) to make it a multiple of the `<alignment>` argument. The addresses in between are filled with `<value>` if specified, or with zeros otherwise. `<alignment>` can be any non-zero 16 bit value.
+
+Example:
+
+```
+  org 100h
+
+  defb 1,2,3
+DISALIGNED:
+
+  .align 16
+
+ALIGNED:
+  defb 4,5,6
+```
+
+This is equivalent to:
+
+```
+  org 100h
+
+  defb 1,2,3
+DISALIGNED:
+
+  defs 13
+
+ALIGNED:
+  defb 4,5,6
+```
+
+In both cases `DISALIGNED` will be at address 103h and `ALIGNED` at address 110h, which is the closest multiple of 16 after 103h.
+
+⚠ This instruction can be used only when buidling an absolute file. Address alignments for relocatable files are controlled with the Linkstor80's `--align-code` and `--align-data` arguments (make sure that you are using Linkstor80 v1.1 or newer). See ["Writing relocatable code"](WritingRelocatableCode.md).
+
+
 ### .COMMENT
 
 _Syntax:_ `.COMMENT <delimiter><text><delimiter>`
@@ -1616,45 +1655,6 @@ Disables the [relative labels](#relative-labels-) feature. See also [`.RELAB`](#
 _Syntax:_ `.Z80`
 
 Sets the Z80 as the current target CPU. This instruction is provided for compatibility with MACRO-80, new programs should use [`.CPU Z80`](#cpu-) instead.
-
-
-### ALIGN
-
-_Syntax:_ `ALIGN <alignment>[,<value>]`
-
-Modifies the current location counter, increasing it (if necessary) to make it a multiple of the `<alignment>` argument. The addresses in between are filled with `<value>` if specified, or with zeros otherwise. `<alignment>` can be any non-zero 16 bit value.
-
-Example:
-
-```
-  org 100h
-
-  defb 1,2,3
-DISALIGNED:
-
-  align 16
-
-ALIGNED:
-  defb 4,5,6
-```
-
-This is equivalent to:
-
-```
-  org 100h
-
-  defb 1,2,3
-DISALIGNED:
-
-  defs 13
-
-ALIGNED:
-  defb 4,5,6
-```
-
-In both cases `DISALIGNED` will be at address 103h and `ALIGNED` at address 110h, which is the closest multiple of 16 after 103h.
-
-⚠ This instruction can be used only when buidling an absolute file. Address alignments for relocatable files are controlled with the Linkstor80's `--align-code` and `--align-data` arguments (make sure that you are using Linkstor80 v1.1 or newer). See ["Writing relocatable code"](WritingRelocatableCode.md).
 
 
 ### AREA (.AREA) ®

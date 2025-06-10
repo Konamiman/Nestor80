@@ -30,6 +30,9 @@ namespace Konamiman.Nestor80.Assembler
             // .8080: Unsupported, always throws error
             { ".8080", ProcessChangeCpuTo8080Line },
 
+            // .ALIGN: Align code to an address multiple of a given value
+            { ".ALIGN", ProcessAlignLine },
+
             // .AREA: Alias for AREA
             { ".AREA", ProcessSdccAreaLine },
 
@@ -117,9 +120,6 @@ namespace Konamiman.Nestor80.Assembler
             
             // .Z80: Select Z80 as the current CPU
             { ".Z80", ProcessChangeCpuToZ80Line },
-
-            // ALIGN: Align code to an address multiple of a given value
-            { "ALIGN", ProcessAlignLine },
 
             // AREA: Change current SDCC area
             { "AREA", ProcessSdccAreaLine },

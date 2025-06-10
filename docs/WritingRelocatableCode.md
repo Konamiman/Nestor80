@@ -443,7 +443,7 @@ Notice how:
 
 ## Aligning code
 
-Sometimes you'll need part of your code or data to be aligned at a given boundary in memory, for example you may want the start of a data table to be located at an address that is a multiple of 256. While you can achieve that by simply using the `ALIGN` instruction in your code when building an absolute file, in the case of relocatable code you'll need to rely on the linker for that.
+Sometimes you'll need part of your code or data to be aligned at a given boundary in memory, for example you may want the start of a data table to be located at an address that is a multiple of 256. While you can achieve that by simply using the `.ALIGN` instruction in your code when building an absolute file, in the case of relocatable code you'll need to rely on the linker for that.
 
 To that end Linkstor80 provides two arguments:
 
@@ -507,6 +507,11 @@ We see the two alignments in place here:
 
 * The first program's code ends at address 000Ch, and then we instruct the linker to start linking the next program's code at the next address that is a multiple of 16. That address is 0010h.
 * Similarly, the first program's data ends at address 004Ch, and then we instruct the linker to start linking the next program's data at the next address that is a multiple of 32. That address is 0060h.
+
+Notes:
+
+* The `--align-code` and `--align-data` arguments were introduced in version 1.1 of Linkstor80.
+* By default Linkstor80 will fill gaps between programs with zero bytes, you can use the `--fill` argument to specify a different value.
 
 
 ## Combining programs into libraries
