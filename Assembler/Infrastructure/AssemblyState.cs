@@ -79,6 +79,8 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             }
         }
 
+        public bool AutoRootEnabled { get; set; } = false;
+
         public void SetIsSdccBuild()
         {
             isSdccBuild = true;
@@ -140,6 +142,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             InsideNamedMacroInsideFalseConditional = false;
             IrpInsideNamedMacroInsideFalseConditionalNestingLevel = 0;
             RelativeLabelsEnabled = Configuration.AllowRelativeLabels;
+            AutoRootEnabled = false;
             RegisterLastNonRelativeLabel(null);
             modules.Clear();
             Expression.DefaultRadix = 10;
@@ -637,6 +640,13 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             }
         }
 
+        private bool MustConsiderAsRootSymbol(string symbol)
+        {
+            return
+                currentRootSymbols.Contains(symbol) ||
+                (AutoRootEnabled && Symbols.TryGetValue(symbol, out var symbolInfo) && symbolInfo.IsExternal);
+        }
+
         /// <summary>
         /// Given a symbol name, prefixes it with the current module or non-relative label name
         /// if needed, unless the symbol is declared as root for the current module or is prefixed with ":".
@@ -647,7 +657,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         {
             var inModule = CurrentModule is not null;
 
-            if (inModule && currentRootSymbols.Contains(symbol))
+            if (inModule && MustConsiderAsRootSymbol(symbol))
             {
                 return symbol;
             }
