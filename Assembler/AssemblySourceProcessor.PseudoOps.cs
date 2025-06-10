@@ -51,6 +51,9 @@ namespace Konamiman.Nestor80.Assembler
             // .ERROR <text>: Produce an assembly normal error
             { ".ERROR", ProcessUserErrorLine },
 
+            // .EXTROOT: Enable automatic external symbols as root symbols
+            { ".EXTROOT", ProcessExtrootLine },
+
             // .FATAL <text>: Produce an assembly fatal error
             { ".FATAL", ProcessUserFatalLine },
 
@@ -111,6 +114,9 @@ namespace Konamiman.Nestor80.Assembler
 
             // .XCREF: Unsupported, does nothing
             { ".XCREF", ProcessListingControlLine },
+
+            // .XEXTROOT: Disable automatic external symbols as root symbols
+            { ".XEXTROOT", ProcessXExtrootLine },
 
             // .XLIST: Suppress output of code lines in listing
             { ".XLIST", ProcessListingControlLine },
@@ -2057,6 +2063,18 @@ namespace Konamiman.Nestor80.Assembler
             return new RelabLine() { Enable = false };
         }
 
+        static ProcessedSourceLine ProcessExtrootLine(string opcode, SourceLineWalker walker)
+        {
+            state.AutoRootEnabled = true;
+            return new ExtrootLine() { Enable = true };
+        }
+
+        static ProcessedSourceLine ProcessXExtrootLine(string opcode, SourceLineWalker walker)
+        {
+            state.AutoRootEnabled = false;
+            return new ExtrootLine() { Enable = false };
+        }
+        
         static ProcessedSourceLine ProcessAlignLine(string opcode, SourceLineWalker walker)
         {
             var line = new AlignLine();
