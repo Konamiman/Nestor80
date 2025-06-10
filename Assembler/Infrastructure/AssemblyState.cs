@@ -604,6 +604,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             }
         }
 
+        public string Modularize(SymbolReference symbolRef, bool isConstantDefinition = false)
+        {
+            return Modularize(symbolRef.SymbolName, isConstantDefinition, symbolRef.IsRoot);
+        }
+
         private bool MustConsiderAsRootSymbol(string symbol)
         {
             return
@@ -617,11 +622,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         /// </summary>
         /// <param name="symbol">Symbol to check.</param>
         /// <returns>Symbol (maybe) prefixed with the current module or non-relative label name.</returns>
-        public string Modularize(string symbol, bool isConstantDefinition = false)
+        public string Modularize(string symbol, bool isConstantDefinition = false, bool isRoot = false)
         {
             var inModule = CurrentModule is not null;
 
-            if(inModule && MustConsiderAsRootSymbol(symbol)) {
+            if(inModule && (isRoot || MustConsiderAsRootSymbol(symbol))) {
                 return symbol;
             }
 
