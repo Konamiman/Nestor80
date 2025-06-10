@@ -1263,7 +1263,7 @@ Instruction arguments are specified using the standard notation `<argument>`. A 
 💡 If the `--accept-dot-prefix` argument is passed to Nestor80 then it's possible to write all the instructions listed here prefixed with a dot (`.`), except those that have a dot  prefixing its name already. For example ` .ORG` will be accepted as an alias for `ORG`. This may be useful when assembling code written for other assemblers.
 
 
-### .ALIGN
+### .ALIGN 🆕
 
 _Syntax:_ `.ALIGN <alignment>[,<value>]`
 
