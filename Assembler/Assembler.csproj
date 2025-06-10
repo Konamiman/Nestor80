@@ -5,9 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Konamiman.Nestor80.Assembler</RootNamespace>
-    <AssemblyVersion>1.3.2</AssemblyVersion>
-    <FileVersion>1.3.2</FileVersion>
-    <Version>1.3.2.1</Version>
+    <AssemblyVersion>1.3.3</AssemblyVersion>
+    <FileVersion>1.3.3</FileVersion>
+    <Version>1.3.3</Version>
     <PackageId>Nestor80</PackageId>
     <Title>Nestor80 assembler library</Title>
     <Authors>Konamiman</Authors>
@@ -20,12 +20,12 @@
     <RepositoryUrl>https://github.com/Konamiman/Nestor80</RepositoryUrl>
     <PackageIcon>N80_NuGet_logo.png</PackageIcon>
     <PackageReadmeFile></PackageReadmeFile>
-    <PackageReleaseNotes>Repackaging of v1.3.2. The original package was built from the wrong code branch and did not include the intended fixes on top of v1.3.1:
+    <PackageReleaseNotes>- Add the .ALIGN instruction
+- Add the .EXTROOT and .XEXTROOT instructions
+- Fix: external symbols can't be declared as root inside modules with a ":" prefix
+- Fix: location pointer not properly reset when starting pass 2
 
-- Add missing "Modularize" call in AssemblySourceProcessor.GetLinkItemsGroupFromExpression
-- Make ProgramName mandatory in the input for OutputGenerator.GenerateRelocatable
-
-https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3Av1.3.2</PackageReleaseNotes>
+https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3Av1.3.3</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
