@@ -2079,12 +2079,10 @@ namespace Konamiman.Nestor80.Assembler
         {
             var line = new AlignLine();
 
-            if (buildType == BuildType.Automatic)
-            {
+            if(buildType == BuildType.Automatic) {
                 SetBuildType(BuildType.Absolute);
             }
-            else if (buildType is not BuildType.Absolute)
-            {
+            else if(buildType is not BuildType.Absolute) {
                 AddError(AssemblyErrorCode.IgnoredForAbsoluteOutput, $"{opcode.ToUpper()} can only be used when the build type is absolute, address alignments for relocatable programs are controlled with the --align-code and --align-data arguments of Linkstor80");
                 walker.DiscardRemaining();
                 return line;
@@ -2092,48 +2090,40 @@ namespace Konamiman.Nestor80.Assembler
 
             Address fillValue = null;
             Address alignValue;
-            if (walker.AtEndOfLine)
-            {
+            if(walker.AtEndOfLine) {
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} needs the alignment value argument");
                 return line;
             }
-            else try
-                {
+            else try {
                     var alignValueExpressionText = walker.ExtractExpression();
                     var alignValueExpression = state.GetExpressionFor(alignValueExpressionText);
                     alignValue = alignValueExpression.Evaluate();
-                    if (!alignValue.IsAbsolute)
-                    {
+                    if(!alignValue.IsAbsolute) {
                         AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the alignment value argument must evaluate to an absolute value");
                         walker.DiscardRemaining();
                         return line;
                     }
-                    else if (alignValue.Value < 1 || alignValue.Value > 65535)
-                    {
+                    else if(alignValue.Value < 1 || alignValue.Value > 65535) {
                         AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the alignment value argument must be between 1 and 65535");
                         walker.DiscardRemaining();
                         return line;
                     }
 
-                    if (!walker.AtEndOfLine)
-                    {
+                    if(!walker.AtEndOfLine) {
                         var fillValueExpressionText = walker.ExtractExpression();
                         var fillValueExpression = state.GetExpressionFor(fillValueExpressionText, isByte: true);
                         fillValue = EvaluateIfNoSymbolsOrPass2(fillValueExpression);
-                        if (fillValue is null)
-                        {
+                        if(fillValue is null) {
                             state.RegisterPendingExpression(line, fillValueExpression, argumentType: CpuInstrArgType.Byte);
                         }
-                        else if (!fillValue.IsValidByte)
-                        {
+                        else if(!fillValue.IsValidByte) {
                             AddError(AssemblyErrorCode.InvalidArgument, $"{opcode.ToUpper()}: the value argument must evaluate to a valid byte");
                             walker.DiscardRemaining();
                             return line;
                         }
                     }
                 }
-                catch (InvalidExpressionException ex)
-                {
+                catch(InvalidExpressionException ex) {
                     AddError(ex.ErrorCode, $"Invalid expression for {opcode.ToUpper()}: {ex.Message}");
                     walker.DiscardRemaining();
                     return line;
@@ -2141,8 +2131,7 @@ namespace Konamiman.Nestor80.Assembler
 
             int newLocationPointer = state.CurrentLocationPointer + alignValue.Value - 1;
             newLocationPointer = newLocationPointer - (newLocationPointer % alignValue.Value);
-            if (newLocationPointer > ushort.MaxValue)
-            {
+            if(newLocationPointer > ushort.MaxValue) {
                 AddError(AssemblyErrorCode.InvalidExpression, $"{opcode.ToUpper()}: the alignment value {alignValue.Value} is too large, it would cause the location pointer to exceed 65535");
                 return new AlignLine();
             }
@@ -2154,11 +2143,9 @@ namespace Konamiman.Nestor80.Assembler
             line.NewLocationCounter = state.CurrentLocationPointer;
             line.DeclaredAlignmentValue = alignValue.Value;
             line.Size = increment;
-            if (fillValue is not null)
-            {
+            if(fillValue is not null) {
                 line.Value = fillValue.ValueAsByte;
-            }
-                ;
+            };
 
             return line;
         }
