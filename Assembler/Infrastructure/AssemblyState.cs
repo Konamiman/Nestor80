@@ -82,7 +82,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         public void SetIsSdccBuild()
         {
             isSdccBuild = true;
-            SdccAreas = new(StringComparer.OrdinalIgnoreCase) { { "_CODE", new SdccArea("_CODE", isAbsolute: false, isOverlay: false ) } };
+            SdccAreas = new(StringComparer.OrdinalIgnoreCase) { { "_CODE", new SdccArea("_CODE", isAbsolute: false, isOverlay: false) } };
             CurrentSdccArea = SdccAreas["_CODE"];
         }
 
@@ -95,8 +95,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             CpuInstrArgType argumentType = CpuInstrArgType.None,
             bool isNegativeIxy = false)
         {
-            if (InPass2)
-            {
+            if(InPass2) {
                 ExpressionsPendingEvaluation.Add(new ExpressionPendingEvaluation() {
                     Expression = expression,
                     LocationInOutput = location,
@@ -118,7 +117,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void RegisterEndInstruction(Address address)
         {
-            if (address is null)
+            if(address is null)
                 throw new ArgumentNullException(nameof(address));
 
             EndAddress = address;
@@ -159,13 +158,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             LocationPointersByArea[AddressType.ASEG] = 0;
             SwitchToLocation(0);
 
-            if (streamCanSeek)
-            {
+            if(streamCanSeek) {
                 SourceStreamReader.BaseStream.Seek(0, SeekOrigin.Begin);
                 SourceStreamReader = new StreamReader(SourceStreamReader.BaseStream, sourceStreamEncoding, true, 4096);
             }
-            else
-            {
+            else {
                 var allSourceText = string.Join("\n", MainSourceLines);
                 var allSourceBytes = sourceStreamEncoding.GetBytes(allSourceText);
                 SourceStreamReader = new StreamReader(new MemoryStream(allSourceBytes), sourceStreamEncoding, true, 4096);
@@ -201,8 +198,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void ExitPhase()
         {
-            if (!IsCurrentlyPhased)
-            {
+            if(!IsCurrentlyPhased) {
                 throw new InvalidOperationException($"{nameof(ExitPhase)} isn't intended to be called while not in .PHASE mode");
             }
 
@@ -231,8 +227,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void SwitchToArea(AddressType area, string commonName = null)
         {
-            if (IsCurrentlyPhased && area is not AddressType.ASEG)
-            {
+            if(IsCurrentlyPhased && area is not AddressType.ASEG) {
                 throw new InvalidOperationException($"{nameof(SwitchToArea)} isn't intended to be executed while in .PHASE mode");
             }
 
@@ -291,22 +286,18 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         private void AdjustAreaSize()
         {
-            if (CurrentLocationArea is AddressType.COMMON)
-            {
-                if (commonAreaSizes.ContainsKey(currentCommonBlockName))
-                {
+            if(CurrentLocationArea is AddressType.COMMON) {
+                if(commonAreaSizes.ContainsKey(currentCommonBlockName)) {
                     commonAreaSizes[currentCommonBlockName] = Math.Max(commonAreaSizes[currentCommonBlockName], CurrentLocationPointer);
                 }
-                else
-                {
+                else {
                     commonAreaSizes.Add(currentCommonBlockName, CurrentLocationPointer);
                 }
             }
             else if(isSdccBuild) {
                 CurrentSdccArea.Size = Math.Max(CurrentSdccArea.Size, (ushort)(CurrentLocationPointer - CurrentSdccArea.Address));
             }
-            else
-            {
+            else {
                 AreaSizes[CurrentLocationArea] = Math.Max(AreaSizes[CurrentLocationArea], CurrentLocationPointer);
                 LocationPointersByArea[CurrentLocationArea] = CurrentLocationPointer;
             }
@@ -314,13 +305,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void SwitchToLocation(ushort location)
         {
-            if (IsCurrentlyPhased)
-            {
+            if(IsCurrentlyPhased) {
                 throw new InvalidOperationException($"{nameof(SwitchToLocation)} isn't intended to be executed while in .PHASE mode");
             }
 
-            if (location == CurrentLocationPointer)
-            {
+            if(location == CurrentLocationPointer) {
                 return;
             }
 
@@ -330,8 +319,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public ushort GetAreaSize(AddressType area)
         {
-            if (area == AddressType.COMMON)
-            {
+            if(area == AddressType.COMMON) {
                 throw new InvalidOperationException($"{nameof(GetAreaSize)} isn't intended to be invoked for common blocks");
             }
 
@@ -343,17 +331,15 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         public void IncreaseLocationPointer(int amount)
         {
             currentDephasedLocationPointer += (ushort)amount;
-            if (IsCurrentlyPhased)
-            {
+            if(IsCurrentlyPhased) {
                 CurrentPhasedLocationPointer += (ushort)amount;
             }
         }
 
         public void IncreaseLineNumber()
         {
-            if (CurrentMacroMode is MacroMode.None ||
-                CurrentMacroMode is MacroMode.Definition && CurrentMacroExpansionState is null)
-            {
+            if(CurrentMacroMode is MacroMode.None ||
+                CurrentMacroMode is MacroMode.Definition && CurrentMacroExpansionState is null) {
                 CurrentLineNumber++;
             }
         }
@@ -370,21 +356,17 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         private int GetLineNumberForError()
         {
-            foreach (var state in previousExpansionStates)
-            {
-                if (state.MacroType is MacroType.Named)
-                {
+            foreach(var state in previousExpansionStates) {
+                if(state.MacroType is MacroType.Named) {
                     return state.StartLineNumber;
                 }
             }
 
-            if (CurrentMacroExpansionState?.MacroType == MacroType.Named)
-            {
+            if(CurrentMacroExpansionState?.MacroType == MacroType.Named) {
                 return CurrentMacroExpansionState.StartLineNumber;
             }
 
-            if (CurrentMacroExpansionState is not null)
-            {
+            if(CurrentMacroExpansionState is not null) {
                 return CurrentMacroExpansionState.ActualLineNumber;
             }
 
@@ -396,10 +378,8 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             var allStates = previousExpansionStates.Concat(new[] { CurrentMacroExpansionState }).ToArray();
 
             //TODO: Fix: the number returned isn't accurate for errors thrown inside REPTs inside named macros.
-            foreach (var state in allStates)
-            {
-                if (state is NamedMacroExpansionState nmes)
-                {
+            foreach(var state in allStates) {
+                if(state is NamedMacroExpansionState nmes) {
                     return nmes.RelativeLineNumber < 0 ? null : new (string, int)[] { (nmes.MacroName.ToUpper(), nmes.RelativeLineNumber + 1) };
                 }
             }
@@ -424,8 +404,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         public void AddSymbol(string name, SymbolType type, Address value = null, bool isPublic = false)
         {
             bool isNonRelativeLabel = false;
-            if (type is SymbolType.Label && name[0] is not '.' && !CurrentRelativeLabels.Contains(name))
-            {
+            if(type is SymbolType.Label && name[0] is not '.' && !CurrentRelativeLabels.Contains(name)) {
                 RegisterLastNonRelativeLabel(name);
                 isNonRelativeLabel = true;
             }
@@ -433,7 +412,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             Symbols.Add(name, new SymbolInfo() {
                 Name = name,
                 Type = type,
-                Value = value, 
+                Value = value,
                 IsPublic = isPublic,
                 IsNonRelativeLabel = isNonRelativeLabel,
                 SdccAreaName = CurrentSdccArea?.Name,
@@ -464,18 +443,13 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         /// <returns>Symbol object, or null if that symbol hasn't appeared in the source yet.</returns>
         public SymbolInfo GetSymbol(ref string name)
         {
-            if (CurrentMacroExpansionState is NamedMacroExpansionState nmes)
-            {
+            if(CurrentMacroExpansionState is NamedMacroExpansionState nmes) {
                 var replaced = nmes.MaybeConvertLocalSymbolName(ref name, ref nextLocalSymbolNumber);
-                if (!replaced)
-                {
-                    foreach (var state in previousExpansionStates)
-                    {
-                        if (state is NamedMacroExpansionState nmes2)
-                        {
+                if(!replaced) {
+                    foreach(var state in previousExpansionStates) {
+                        if(state is NamedMacroExpansionState nmes2) {
                             replaced = nmes2.MaybeConvertLocalSymbolName(ref name, ref nextLocalSymbolNumber);
-                            if (replaced)
-                            {
+                            if(replaced) {
                                 break;
                             }
                         }
@@ -513,7 +487,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void PushAndSetConditionalBlock(ConditionalBlockType blockType)
         {
-            if (CurrentConditionalBlockType is not ConditionalBlockType.None)
+            if(CurrentConditionalBlockType is not ConditionalBlockType.None)
                 conditionalBlocksStack.Push(CurrentConditionalBlockType);
 
             CurrentConditionalBlockType = blockType;
@@ -526,19 +500,15 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void PopConditionalBlock()
         {
-            if (conditionalBlocksStack.Count == 0)
-            {
-                if (InConditionalBlock)
-                {
+            if(conditionalBlocksStack.Count == 0) {
+                if(InConditionalBlock) {
                     CurrentConditionalBlockType = ConditionalBlockType.None;
                 }
-                else
-                {
+                else {
                     throw new InvalidOperationException("Attempted to exit a conditional block when none was in progress");
                 }
             }
-            else
-            {
+            else {
                 CurrentConditionalBlockType = conditionalBlocksStack.Pop();
             }
         }
@@ -549,8 +519,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void PushIncludeState(Stream newStream, IncludeLine includeLine)
         {
-            var previousState = new IncludeState()
-            {
+            var previousState = new IncludeState() {
                 PreviousFileName = CurrentIncludeFilename,
                 ProcessedLine = includeLine,
                 PreviousLineNumber = CurrentLineNumber,
@@ -571,8 +540,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void PopIncludeState()
         {
-            if (!InsideIncludedFile)
-            {
+            if(!InsideIncludedFile) {
                 throw new InvalidOperationException("Can't exit included file because we aren't in one");
             }
 
@@ -580,8 +548,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
             var previousState = includeStates.Pop();
 
-            if (SourceStreamReader is not null)
-            {
+            if(SourceStreamReader is not null) {
                 previousState.ProcessedLine.Lines = ProcessedLines.ToArray();
             }
 
@@ -615,8 +582,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void ExitModule()
         {
-            if (CurrentModule is null)
-            {
+            if(CurrentModule is null) {
                 throw new InvalidOperationException($"{nameof(ExitModule)} called while not in a module");
             }
 
@@ -626,13 +592,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void RegisterRootSymbols(IEnumerable<string> symbols)
         {
-            if (currentRootSymbols is null)
-            {
+            if(currentRootSymbols is null) {
                 throw new InvalidOperationException($"{nameof(RegisterRootSymbols)} called while not in a module");
             }
 
-            foreach (var symbol in symbols)
-            {
+            foreach(var symbol in symbols) {
                 currentRootSymbols.Add(symbol);
             }
         }
@@ -647,25 +611,21 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         {
             var inModule = CurrentModule is not null;
 
-            if (inModule && currentRootSymbols.Contains(symbol))
-            {
+            if(inModule && currentRootSymbols.Contains(symbol)) {
                 return symbol;
             }
 
             var isDot = symbol[0] is '.';
             var isRelativeLabel = false;
-            if (!isConstantDefinition && RelativeLabelsEnabled && isDot && LastNonRelativeLabel is not null)
-            {
+            if(!isConstantDefinition && RelativeLabelsEnabled && isDot && LastNonRelativeLabel is not null) {
                 symbol = LastNonRelativeLabel + symbol;
                 isRelativeLabel = true;
             }
-            else if (inModule)
-            {
+            else if(inModule) {
                 symbol = $"{CurrentModule}{(isDot ? "" : ".")}{symbol}";
             }
 
-            if (isRelativeLabel)
-            {
+            if(isRelativeLabel) {
                 CurrentRelativeLabels.Add(symbol);
             }
 
@@ -680,8 +640,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void RegisterNamedMacroDefinitionStart(NamedMacroDefinitionLine processedLine)
         {
-            if (MacroDefinitionState.DefiningNamedMacro)
-            {
+            if(MacroDefinitionState.DefiningNamedMacro) {
                 throw new InvalidOperationException($"{nameof(RegisterNamedMacroDefinitionStart)} is not supposed to be called while already in macro definition mode");
             }
 
@@ -691,15 +650,12 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void RegisterMacroExpansionStart(MacroExpansionLine expansionLine)
         {
-            if (expansionLine.MacroType is MacroType.Named)
-            {
-                if (!NamedMacros.ContainsKey(expansionLine.Name))
-                {
+            if(expansionLine.MacroType is MacroType.Named) {
+                if(!NamedMacros.ContainsKey(expansionLine.Name)) {
                     throw new InvalidOperationException($"{nameof(RegisterMacroExpansionStart)}: unknown named macro '{expansionLine.Name}'");
                 }
 
-                if (CurrentMacroExpansionState is not null)
-                {
+                if(CurrentMacroExpansionState is not null) {
                     previousExpansionStates.Push(CurrentMacroExpansionState);
                 }
 
@@ -709,12 +665,10 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                     previousExpansionStates.Any(s => s.MacroType is MacroType.Named) ? CurrentLineNumber : CurrentMacroExpansionState.ActualLineNumber;
                 CurrentMacroExpansionState = new NamedMacroExpansionState(expansionLine.Name, expansionLine, macroDefinition.LineTemplates, macroDefinition.Arguments.Length, expansionLine.Parameters, ln);
             }
-            else if (MacroDefinitionState.DefiningMacro)
-            {
+            else if(MacroDefinitionState.DefiningMacro) {
                 throw new InvalidOperationException($"{nameof(RegisterMacroExpansionStart)} is not supposed to be called while already in macro definition mode");
             }
-            else
-            {
+            else {
                 var ln = CurrentMacroMode is MacroMode.Expansion ? CurrentMacroExpansionState.ActualLineNumber : CurrentLineNumber;
                 MacroDefinitionState.StartDefinition(expansionLine.MacroType, expansionLine, ln + 1);
             }
@@ -722,8 +676,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public static void RegisterMacroDefinitionLine(string sourceLine, bool isMacroDefinitionOrExpansionInstruction)
         {
-            if (isMacroDefinitionOrExpansionInstruction)
-            {
+            if(isMacroDefinitionOrExpansionInstruction) {
                 MacroDefinitionState.IncreaseDepth();
             }
             MacroDefinitionState.AddLine(sourceLine);
@@ -731,41 +684,33 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public bool RegisterMacroEnd()
         {
-            if (CurrentMacroMode is MacroMode.Definition)
-            {
-                if (MacroDefinitionState.Depth > 1)
-                {
+            if(CurrentMacroMode is MacroMode.Definition) {
+                if(MacroDefinitionState.Depth > 1) {
                     MacroDefinitionState.DecreaseDepth();
                 }
-                else if (MacroDefinitionState.ProcessedLine is NamedMacroDefinitionLine nmdl)
-                {
+                else if(MacroDefinitionState.ProcessedLine is NamedMacroDefinitionLine nmdl) {
                     var lines = MacroDefinitionState.GetLines();
                     ReplaceMacroLineArgsWithPlaceholders(lines, nmdl.Arguments);
                     nmdl.LineTemplates = lines;
                     MacroDefinitionState.EndDefinition();
                 }
-                else
-                {
+                else {
                     var macroExpansionLine = (MacroExpansionLine)MacroDefinitionState.ProcessedLine;
                     MacroExpansionState expansionState;
                     var ln = MacroDefinitionState.StartLineNumber;
-                    if (macroExpansionLine.MacroType is MacroType.ReptWithCount)
-                    {
+                    if(macroExpansionLine.MacroType is MacroType.ReptWithCount) {
                         expansionState = new ReptWithCountExpansionState(macroExpansionLine, MacroDefinitionState.GetLines(), macroExpansionLine.RepetitionsCount, ln);
                     }
-                    else
-                    {
+                    else {
                         var lines = MacroDefinitionState.GetLines();
                         ReplaceMacroLineArgsWithPlaceholders(lines, new[] { macroExpansionLine.Placeholder });
                         expansionState = new ReptWithParamsExpansionState(macroExpansionLine, lines, macroExpansionLine.Parameters, ln);
                     }
 
-                    if (CurrentMacroExpansionState is null)
-                    {
+                    if(CurrentMacroExpansionState is null) {
                         IncreaseLineNumber(); //CurrentLineNumber++;
                     }
-                    else
-                    {
+                    else {
                         previousExpansionStates.Push(CurrentMacroExpansionState);
                     }
 
@@ -773,21 +718,17 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                     MacroDefinitionState.EndDefinition();
                 }
             }
-            else if (CurrentMacroMode is MacroMode.Expansion)
-            {
+            else if(CurrentMacroMode is MacroMode.Expansion) {
                 //TODO: this is never reached?
                 CurrentMacroExpansionState.ExpansionProcessedLine.Lines = CurrentMacroExpansionState.ProcessedLines.ToArray();
-                if (previousExpansionStates.Count == 0)
-                {
+                if(previousExpansionStates.Count == 0) {
                     CurrentMacroExpansionState = null;
                 }
-                else
-                {
+                else {
                     CurrentMacroExpansionState = previousExpansionStates.Pop();
                 }
             }
-            else
-            {
+            else {
                 return false;
             }
 
@@ -796,17 +737,14 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         private static void ReplaceMacroLineArgsWithPlaceholders(string[] macroLines, string[] args)
         {
-            if (args.Length == 0 || macroLines.Length == 0)
-            {
+            if(args.Length == 0 || macroLines.Length == 0) {
                 return;
             }
 
-            for (int macroLineIndex = 0; macroLineIndex < macroLines.Length; macroLineIndex++)
-            {
+            for(int macroLineIndex = 0; macroLineIndex < macroLines.Length; macroLineIndex++) {
                 var macroLine = macroLines[macroLineIndex];
                 macroLine = macroLine.Replace("{", "{{").Replace("}", "}}");
-                for (int argIndex = 0; argIndex < args.Length; argIndex++)
-                {
+                for(int argIndex = 0; argIndex < args.Length; argIndex++) {
                     macroLine = SourceLineWalker.ReplaceMacroLineArgWithPlaceholder(macroLine, args[argIndex], argIndex);
                 }
                 macroLines[macroLineIndex] = macroLine;
@@ -815,29 +753,24 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public string GetNextMacroExpansionLine()
         {
-            if (CurrentMacroExpansionState is null)
-            {
+            if(CurrentMacroExpansionState is null) {
                 return null;
             }
 
             string line;
 
-            if (!CurrentMacroExpansionState.HasMore)
-            {
+            if(!CurrentMacroExpansionState.HasMore) {
                 //If we just finished expanding a named macro but NOT from inside a REPT
-                if (CurrentMacroExpansionState.MacroType is MacroType.Named && previousExpansionStates.Count == 0)
-                {
+                if(CurrentMacroExpansionState.MacroType is MacroType.Named && previousExpansionStates.Count == 0) {
                     CurrentLineNumber++;
                 }
 
                 CurrentMacroExpansionState.ExpansionProcessedLine.Lines = CurrentMacroExpansionState.ProcessedLines.ToArray();
-                if (previousExpansionStates.Count == 0)
-                {
+                if(previousExpansionStates.Count == 0) {
                     CurrentMacroExpansionState = null;
                     line = null;
                 }
-                else
-                {
+                else {
                     CurrentMacroExpansionState = previousExpansionStates.Pop();
                     line = GetNextMacroExpansionLine();
                 }
@@ -853,34 +786,27 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         {
             bool isMacroExpansion = false;
 
-            if (processedLine is EndMacroLine || processedLine is MacroExpansionLine mel && mel.MacroType is MacroType.Named)
-            {
-                if (previousExpansionStates.Count > 0)
-                {
+            if(processedLine is EndMacroLine || processedLine is MacroExpansionLine mel && mel.MacroType is MacroType.Named) {
+                if(previousExpansionStates.Count > 0) {
                     previousExpansionStates.Peek().ProcessedLines.Add(processedLine);
                     isMacroExpansion = true;
                 }
             }
-            else
-            {
-                if (CurrentMacroExpansionState is not null)
-                {
+            else {
+                if(CurrentMacroExpansionState is not null) {
                     CurrentMacroExpansionState.ProcessedLines.Add(processedLine);
                     isMacroExpansion = true;
                 }
             }
 
-            if (isMacroExpansion)
-            {
+            if(isMacroExpansion) {
                 return;
             }
 
-            if (InPass2)
-            {
+            if(InPass2) {
                 ProcessedLines.Add(processedLine);
             }
-            else if (!streamCanSeek && !InsideIncludedFile)
-            {
+            else if(!streamCanSeek && !InsideIncludedFile) {
                 MainSourceLines.Add(processedLine.Line);
             }
         }
@@ -914,8 +840,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
         public Expression GetExpressionFor(string sourceLine, bool forDefb = false, bool isByte = false)
         {
             Expression expression;
-            if (sourceLine.Contains('$'))
-            {
+            if(sourceLine.Contains('$')) {
                 // When "$" is used as a label it refers to the current location counter,
                 // thus we can't cache the expression. "$" could also be part of a
                 // regular label or inside a string, but for simplicity we just check
@@ -925,8 +850,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 return expression;
             }
 
-            if (expressionsBySource.ContainsKey((sourceLine, forDefb)))
-            {
+            if(expressionsBySource.ContainsKey((sourceLine, forDefb))) {
                 return expressionsBySource[(sourceLine, forDefb)];
             }
 
@@ -943,8 +867,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
         public void ExitMacro(bool forceEnd)
         {
-            if (CurrentMacroExpansionState is null)
-            {
+            if(CurrentMacroExpansionState is null) {
                 throw new InvalidOperationException($"{nameof(ExitMacro)} invoked while not in macro expansion mode");
             }
 
