@@ -38,6 +38,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LK80", "LK80\LK80.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LB80", "LB80\LB80.csproj", "{40090AE2-7F1F-4D9B-A8B5-9BB959B84950}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NuGet", "NuGet", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		NuGet\LK80_NuGet_logo.png = NuGet\LK80_NuGet_logo.png
+		NuGet\N80_NuGet_logo.png = NuGet\N80_NuGet_logo.png
+		NuGet\README_LK80.md = NuGet\README_LK80.md
+		NuGet\README_N80.md = NuGet\README_N80.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +83,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{F7F80F37-5C57-406B-8CDA-A01FF02BBB82} = {49C74F4D-1B8E-41C6-A973-7123185EB696}
 		{5162D8DA-4719-43F1-9FF9-5BA9B7323011} = {F7F80F37-5C57-406B-8CDA-A01FF02BBB82}
+		{02EA681E-C7D8-13C7-8484-4AC65E1B71E8} = {49C74F4D-1B8E-41C6-A973-7123185EB696}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {18E51C46-40EE-470B-BC2F-C85520DF61B7}

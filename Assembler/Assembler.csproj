@@ -26,6 +26,7 @@
 - Fix: location pointer not properly reset when starting pass 2
 
 https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3Av1.3.3</PackageReleaseNotes>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>

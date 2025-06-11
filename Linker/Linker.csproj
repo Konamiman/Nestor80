@@ -21,6 +21,7 @@
     <PackageReleaseNotes>Add the --align-code and --align-data arguments
 
 https://github.com/Konamiman/Nestor80/pull/23</PackageReleaseNotes>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>

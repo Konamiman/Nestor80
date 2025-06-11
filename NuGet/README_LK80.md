@@ -9,10 +9,12 @@ Linkstor80 [is published](https://github.com/konamiman/Nestor80/releases) as a s
 2. Create a an array of instances of `ILinkingSequenceItem`. The classes tha implement this interface are:
 
    * `RelocatableFileReference` - refers to a relocatable file to process.
-   * `SetCodeBeforeDataMode` - instructs the linker to place the code segment before the data segment.
-   * `SetDataBeforeCodeMode` - instructs the linker to place the data segment before the code segment.
-   * `SetCodeSegmentAddress` - instructs the linker to use the provided the supplied address as the next code segment address.
-   * `SetDataSegmentAddress` - instructs the linker to use the provided the supplied address as the next data segment address.
+   * `SetCodeBeforeDataMode` - instructs the linker to switch to "code before data" linking mode (places the code segment before the data segment for each program).
+   * `SetDataBeforeCodeMode` - instructs the linker to place the "data before code" linking mode (places the data segment before the code segment for each program).
+   * `SetCodeSegmentAddress` - instructs the linker to use the provided the supplied address as the next code segment address (in "separate code and data" linking mode) or as the next program address (in the other linking modes).
+   * `SetDataSegmentAddress` - instructs the linker to switch to "separate code and data" linking mode (all code segments from all programs are linked together, and same for the data segments) and use the provided the supplied address as the next data segment address.
+   * `AlignCodeSegmentAddress ` - instructs the linker to align the code segment of the next program (or the entire program, depending on the linking mode) to an address that is a multiple of the supplied value.
+   * `AlignDataSegmentAddress` - instructs the linker to align the data segment of the next program to an address that is a multiple of the supplied value (can be used in "separate code and data" linking mode only).
 
 These classes mimic the command line arguments of the LK80 application, you can get a reference by running `LK80 --help` or by looking at [the help text in the LK80 source code](https://github.com/Konamiman/Nestor80/blob/master/LK80/Program.Help.cs).
 
