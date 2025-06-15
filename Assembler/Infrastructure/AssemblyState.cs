@@ -149,17 +149,18 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
             lastUsedSdccAreaIndex = -1;
 
             if(isSdccBuild) {
+                SwitchToLocation(0);
                 SetIsSdccBuild();
                 SwitchToSdccArea("_CODE");
             }
             else {
                 SwitchToArea(buildType != BuildType.Absolute ? AddressType.CSEG : AddressType.ASEG);
+                SwitchToLocation(0);
             }
 
             LocationPointersByArea[AddressType.CSEG] = 0;
             LocationPointersByArea[AddressType.DSEG] = 0;
             LocationPointersByArea[AddressType.ASEG] = 0;
-            SwitchToLocation(0);
 
             if(streamCanSeek) {
                 SourceStreamReader.BaseStream.Seek(0, SeekOrigin.Begin);
