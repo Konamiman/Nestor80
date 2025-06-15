@@ -229,10 +229,6 @@ namespace Konamiman.Nestor80.Assembler
         /// <exception cref="InvalidExpressionException">The supplied string doesn't represent a valid expression</exception>
         public static Expression Parse(string expressionString, bool forDefb = false, bool isByte = false)
         {
-            if(DiscardHashPrefix && expressionString[0] == '#') {
-                expressionString = expressionString[1..];
-            }
-
             if(OutputStringEncoding is null) {
                 throw new InvalidOperationException($"{nameof(Expression)}.{nameof(Parse)}: { nameof(OutputStringEncoding)} is null");
             }
@@ -267,6 +263,10 @@ namespace Konamiman.Nestor80.Assembler
                 IncreaseParsedStringPointer();
 
             var currentChar = parsedString[parsedStringPointer];
+            if(DiscardHashPrefix && currentChar == '#') {
+                IncreaseParsedStringPointer();
+                currentChar = parsedString[parsedStringPointer];
+            }
 
             if(char.IsDigit(currentChar) || currentChar is '#' or '%') {
                 ExtractNumber();
