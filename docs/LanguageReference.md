@@ -2172,7 +2172,7 @@ db 2
 ```
 
 
-### EXTRN (EXT, EXTERNAL) ®
+### EXTRN (EXT, EXTERNAL, .GLOBL) ®
 
 _Syntax:_ `EXTRN <symbol>[,<symbol>[,...]]`
 
@@ -2190,6 +2190,8 @@ call FOO
 ```
 
 Additionally, if the `--unknown-symbols-external` argument is passed to Nestor80 then any symbol that is still unknown at the end of pass 2 will be implicitly considered an external symbol.
+
+⚠ Do not confuse `.GLOBL` (alias for `EXTRN`, introduced for compatibility with the sdasz80 assembler) with `GLOBAL` (alias for [`PUBLIC`](#public-entry-global-)).
 
 See also [`PUBLIC`](#public-entry-global-).
 
@@ -2769,7 +2771,9 @@ public FOO
 FOO:
 ```
 
-See also [`EXTRN`](#extrn-ext-external-).
+⚠ Do not confuse `.GLOBL` (alias for [`EXTRN`](#extrn-ext-external-globl-), introduced for compatibility with the sdasz80 assembler) with `GLOBAL` (alias for `PUBLIC`).
+
+See also [`EXTRN`](#extrn-ext-external-globl-).
 
 
 ### REPT
