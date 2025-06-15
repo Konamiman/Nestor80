@@ -105,7 +105,7 @@ Relocatable files can't be executed, instead a linker (typically Linkstor80 for 
 It's possible to instruct Nestor80 to produce an absolute file, a MACRO-80 relocatable file or a SDCC relocatable file by using the `--build-type` command line argument, but by default Nestor80 will decide the appropriate type automatically. The decision is taken as follows:
 
 * If an [`ORG`](#org) instruction is found in the source code before a CPU instruction, a label defined as public with  `::`, or any of the following instructions: [`ASEG`](#cseg-), [`CSEG`](#cseg-), [`DSEG`](#dseg-), [`COMMON`](#common-), [`DEFB`](#defb-db-defm), [`DEFW`](#defw-dw), [`DEFS`](#defs-ds), `DC`, [`DEFZ`](#defz-dz-), [`PUBLIC`](#public-entry-global-), [`EXTRN`](#extrn-ext-external-), [`.REQUEST`](#request-), then the build type will be absolute.
-* Otherwise, if an [`AREA`](#area-area-) instruction is found before any of the above, the build type will be SDCC relocatble.
+* Otherwise, if an [`AREA`](#area-area-) instruction is found before any of the above, the build type will be SDCC relocatable.
 * Otherwise, the build type will be MACRO-80 relocatable.
 
 Put it another way, if you want your code to be automatically detected as intended to be assembled as absolute, use an [`ORG`](#org) instruction as the first "effective" source code line (so the first line except blanks, comments, macro definitions and constant definitions); if you want that automatic detection to choose the SDCC relocatable format, use an [`AREA`](#area-area-) instruction instead.
