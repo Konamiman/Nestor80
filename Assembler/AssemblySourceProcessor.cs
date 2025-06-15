@@ -820,7 +820,7 @@ namespace Konamiman.Nestor80.Assembler
 
                 if(buildType is BuildType.Sdcc) {
                     expressionPendingEvaluation.Expression.ValidateAndPostifixize();
-                    var simplifyOk = expressionPendingEvaluation.Expression.SimplifyForSdcc();
+                    var simplifyOk = referencedSymbolNames.Count() == 0 || expressionPendingEvaluation.Expression.SimplifyForSdcc();
                     if(!simplifyOk) { 
                         AddError(AssemblyErrorCode.ExpressionInvalidForSdcc, $"Invalid expression for {processedLine.Opcode.ToUpper()}: the expression is not supported by the SDCC relocatable file format");
                         continue;
