@@ -209,10 +209,13 @@ namespace Konamiman.Nestor80.Assembler
             // EXT: Alias for EXTRN
             { "EXT", ProcessExternalDeclarationLine },
 
-            // EXTRN: Alias for EXTRN
+            // EXTERNAL: Alias for EXTRN
             { "EXTERNAL", ProcessExternalDeclarationLine },
 
-            // EXTERNAL <symbol>[,<symbol>[,...]]: Declare symbols as externals
+            // .GLOBL: Alias for EXTRN
+            { ".GLOBL", ProcessExternalDeclarationLine },
+
+            // EXTERN <symbol>[,<symbol>[,...]]: Declare symbols as externals
             { "EXTRN", ProcessExternalDeclarationLine },
 
             // GLOBAL: Alias for PUBLIC
