@@ -270,6 +270,7 @@ Notation |  Radix
 ---------|-----------------
 `nnnnB`     | Binary
 `nnnnI` 🆕  | Binary
+`0bnnnn` 🆕  | Binary
 `nnnnD`  |  Decimal
 `nnnnM` 🆕  |  Decimal
 `nnnnO`  |   Octal

@@ -166,6 +166,7 @@ namespace Konamiman.Nestor80.Assembler
                     $"((?<number_hex>[0-9a-f]+)h)|" +
                     $"(0x(?<number_hex_0x>[0-9a-f]+))|" +
                     $"(%(?<number_bin_percent>[01]+))|" +
+                    $"(0b(?<number_bin_0b>[01]+))|" +
                     $"((?<number_bin>[01]+)[{extraBinarySuffix}i])|" +
                     $"((?<number_dec>[0-9]+)[{extraDecimalSuffix}m])|" +
                     $"((?<number_oct>[0-7]+)[oq])|" +
@@ -338,6 +339,7 @@ namespace Konamiman.Nestor80.Assembler
                 "number_hex_0x" => 16,
                 "number_bin" => 2,
                 "number_bin_percent" => 2,
+                "number_bin_0b" => 2,
                 "number_dec" => 10,
                 "number_oct" => 8,
                 _ => throw new InvalidOperationException($"Something weird happened in {nameof(Expression)}.{nameof(ExtractNumber)}: got unknown regex group name, {matchKey}")
