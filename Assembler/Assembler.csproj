@@ -5,9 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Konamiman.Nestor80.Assembler</RootNamespace>
-    <AssemblyVersion>1.3.3</AssemblyVersion>
-    <FileVersion>1.3.3</FileVersion>
-    <Version>1.3.3</Version>
+    <AssemblyVersion>1.3.4</AssemblyVersion>
+    <FileVersion>1.3.4</FileVersion>
+    <Version>1.3.4</Version>
     <PackageId>Nestor80</PackageId>
     <Title>Nestor80 assembler library</Title>
     <Authors>Konamiman</Authors>
@@ -20,12 +20,12 @@
     <RepositoryUrl>https://github.com/Konamiman/Nestor80</RepositoryUrl>
     <PackageIcon>N80_NuGet_logo.png</PackageIcon>
     <PackageReadmeFile></PackageReadmeFile>
-    <PackageReleaseNotes>- Add the .ALIGN instruction
-- Add the .EXTROOT and .XEXTROOT instructions
-- Fix: external symbols can't be declared as root inside modules with a ":" prefix
-- Fix: location pointer not properly reset when starting pass 2
+    <PackageReleaseNotes>- Fix bugs related to the SDCC build type
+- Add support for the "n(ix|iy)" syntax in indexed instructions
+- Add .GLOBL as a supported alias for EXTRN
+- Add 0b as a supported prefix for binary numbers
 
-https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3Av1.3.3</PackageReleaseNotes>
+https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3Av1.3.4</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
