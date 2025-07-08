@@ -6,7 +6,7 @@ The project also includes Linkstor80 and Libstor80, which are the respective rep
 
 ## Features highlight
 
-* **Multiplatform**. Runs on any machine/OS that supports [the .NET 6 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0); of course this includes Windows, Linux and macOS.
+* **Multiplatform**. Runs on any machine/OS that supports [the .NET runtime](https://dotnet.microsoft.com/en-us/download/dotnet/) (.NET 6 or newer); of course this includes Windows, Linux and macOS.
 
 * Almost fully **compatible with [Microsoft MACRO-80](https://en.wikipedia.org/wiki/Microsoft_MACRO-80)** for Z80 code (Nestor80 can't assemble 8080 code). Most of the incompatibilites are for obscure or undocumented features.
 
@@ -94,7 +94,7 @@ See the NuGet README files of [Nestor80](NuGet/README_N80.md) and [Linkstor80](N
 ## Getting started
 
 1. Head to [the releases page](https://github.com/konamiman/Nestor80/releases) and download the appropriate Nestor80 variant for your system. Note that:
-   * The "Framework dependant" and "Portable" variants require [the .NET 6 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) to be installed. 
+   * The "Framework dependant" and "Portable" variants require [the .NET runtime](https://dotnet.microsoft.com/en-us/download/dotnet/) (.NET 6 or newer) to be installed. 
    * The "Standalone" variants don't require the .NET runtime to be installed, but they are much bigger in size (about 60MB vs about 400KB for the framework dependand variants).
    * You'll need the "Portable" variant if your system supports .NET 6 but there isn't a a native variant (standalone or framework dependant) available. To run this variant the `dotnet` tool (installed as part of the .NET runtime) needs to be used as follows: `dotnet N80.dll <arguments>`. Otherwise this variant works exactly like the native ones.
 
