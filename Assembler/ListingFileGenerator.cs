@@ -299,7 +299,7 @@ namespace Konamiman.Nestor80.Assembler
                 subtitle = slsl.Subtitle;
             }
 
-            if(macroExpansionDepthLevel > 0 && (!listMacroExpansionNotProducingOutput && processedLine.Label is null)) {
+            if(macroExpansionDepthLevel > 0 && processedLine is not IChangesLocationCounter && (!listMacroExpansionNotProducingOutput && processedLine.Label is null)) {
                 if(mainPagesChange > 0) {
                     DoPageChange(mainPagesChange);
                 }
