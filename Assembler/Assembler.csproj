@@ -5,9 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Konamiman.Nestor80.Assembler</RootNamespace>
-    <AssemblyVersion>1.3.4</AssemblyVersion>
-    <FileVersion>1.3.4</FileVersion>
-    <Version>1.3.4</Version>
+    <AssemblyVersion>1.3.5</AssemblyVersion>
+    <FileVersion>1.3.5</FileVersion>
+    <Version>1.3.5</Version>
     <PackageId>Nestor80</PackageId>
     <Title>Nestor80 assembler library</Title>
     <Authors>Konamiman</Authors>
@@ -20,12 +20,10 @@
     <RepositoryUrl>https://github.com/Konamiman/Nestor80</RepositoryUrl>
     <PackageIcon>N80_NuGet_logo.png</PackageIcon>
     <PackageReadmeFile></PackageReadmeFile>
-    <PackageReleaseNotes>- Fix bugs related to the SDCC build type
-- Add support for the "n(ix|iy)" syntax in indexed instructions
-- Add .GLOBL as a supported alias for EXTRN
-- Add 0b as a supported prefix for binary numbers
+    <PackageReleaseNotes>- Fix: ' and " interpreted as string starters when used as arguments for macros
+- Fix: DEFS inside macros not included in listings
 
-https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3Av1.3.4</PackageReleaseNotes>
+https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3Av1.3.5</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
