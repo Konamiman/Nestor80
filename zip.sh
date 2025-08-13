@@ -21,7 +21,9 @@ if [ -z "$(which zip)" ]; then
 	exit 1
 fi
 
-for APPDIR in N80 LK80 LB80; do
+PROGRAMS="${PROGRAMS:=N80 LK80 LB80}"
+
+for APPDIR in $PROGRAMS; do
 	banner " *** Program: $APPDIR *** "
 	cd $APPDIR
 	version=$(grep 'AssemblyVersion' ${APPDIR}.csproj | grep -Eo '[0-9.]+')
