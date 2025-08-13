@@ -145,7 +145,7 @@ namespace Konamiman.Nestor80.N80
 
             -dhp, --discard-hash-prefix
                 Discard any hash (#) character prefixing expressions before evaluating them,
-                for example "dw #1234" will be equivalent to "dw 1234". This is iseful when assembling
+                for example "dw #1234" will be equivalent to "dw 1234". This is useful when assembling
                 source code written for the SDAS assembler, which requires numeric literals
                 to be prefixed with #.
 
