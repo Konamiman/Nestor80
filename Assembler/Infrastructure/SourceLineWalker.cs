@@ -480,6 +480,11 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                     chars.Add(theChar);
                     continue;
                 }
+                else if(nextCharIsLiteral) {
+                    chars.Add(theChar);
+                    nextCharIsLiteral = false;
+                    continue;
+                }
                 else if (theChar == '"' || theChar == '\'')
                 {
                     insideString = true;
@@ -505,13 +510,6 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                         chars.Add(theChar);
                         continue;
                     }
-                }
-
-                if (nextCharIsLiteral)
-                {
-                    chars.Add(theChar);
-                    nextCharIsLiteral = false;
-                    continue;
                 }
 
                 if (spaceFoundAfterArg)
