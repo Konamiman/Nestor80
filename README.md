@@ -173,7 +173,7 @@ Open the Nestor80 solution, right click in the N80, LK80 or LB80 project, and cl
 
 2. Use a dedicated script
 
-If you don't have Visual Studio (or you prefer a more automated option) you'll need [the .NET SDK](https://dotnet.microsoft.com/en-us/download/dotnet/) (.NET 7 or newer) to build Nestor80. _The tools target the .NET 6 runtime, but the SDK for .NET or newer is required to build them because the source code uses C#11 syntax that isn't supported by the .NET 6 SDK._
+If you don't have Visual Studio (or you prefer a more automated option) you'll need [the .NET SDK](https://dotnet.microsoft.com/en-us/download/dotnet/) (.NET 7 or newer) to build Nestor80. _The tools target the .NET 6 runtime, but the SDK for .NET 7 or newer is required to build them because the source code uses C#11 syntax that isn't supported by the .NET 6 SDK._
 
 Open a command prompt, go to the root directory of the project and run the `build.sh` script. Running it without arguments will build all the variants, which will be located in the `N80/Release`, `LK80/Release` and `LB80/Release` directories; you can choose which tools and which variants are built by using environment variables, for example:
 
