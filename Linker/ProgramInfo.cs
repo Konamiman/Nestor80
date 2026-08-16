@@ -70,10 +70,23 @@ internal class ProgramInfo
         AbsoluteSegmentRange = HasAbsolute ? new AddressRange(AbsoluteSegmentStart, AbsoluteSegmentEnd, Assembler.AddressType.ASEG) : null;
     }
 
-    public ushort MaxSegmentEnd => 
-        HasAbsolute ? 
-        Math.Max(Math.Max(CodeSegmentEnd, DataSegmentEnd), AbsoluteSegmentEnd) :
-        Math.Max(CodeSegmentEnd, DataSegmentEnd);
+    // The "end" address of an empty segment is set to the segment start address,
+    // which points one byte past the actual end of the program
+    // (it's the address at which the segment would have started);
+    // thus for empty segments the previous address needs to be considered instead.
+    public ushort MaxSegmentEnd
+    {
+        get
+        {
+            var maxEnd = Math.Max(
+                HasCode ? CodeSegmentEnd : CodeSegmentStart - 1,
+                HasData ? DataSegmentEnd : DataSegmentStart - 1);
+            if(HasAbsolute) {
+                maxEnd = Math.Max(maxEnd, AbsoluteSegmentEnd);
+            }
+            return (ushort)Math.Max(maxEnd, 0);
+        }
+    }
 
     public ProgramData ToProgramData(Dictionary<string, ushort> allKnownSymbols)
     {
