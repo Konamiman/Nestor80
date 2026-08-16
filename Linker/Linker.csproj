@@ -18,9 +18,10 @@
     <Version>1.1.1</Version>
     <AssemblyVersion>1.1.1</AssemblyVersion>
     <FileVersion>1.1.1</FileVersion>
-    <PackageReleaseNotes>Fix one byte gap between linked programs when a segment is empty
+    <PackageReleaseNotes>- Fix one byte gap between linked programs when a segment is empty
+- Fix stray empty line printed when running at verbosity level 0
 
-https://github.com/Konamiman/Nestor80/pull/40</PackageReleaseNotes>
+https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3ALK80-v1.1.1</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
