@@ -62,7 +62,7 @@ internal partial class Program
         }
 
         if(args[0] is "-v" or "--version") {
-            Console.Write(GetProgramVersion());
+            Console.WriteLine(GetProgramVersion());
             return ERR_SUCCESS;
         }
 

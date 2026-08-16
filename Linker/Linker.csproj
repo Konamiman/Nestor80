@@ -15,12 +15,12 @@
     <RepositoryUrl>https://github.com/Konamiman/Nestor80</RepositoryUrl>
     <PackageTags>Z80;Z280</PackageTags>
     <PackageIcon>LK80_NuGet_logo.png</PackageIcon>
-    <Version>1.1.0</Version>
-    <AssemblyVersion>1.1.0</AssemblyVersion>
-    <FileVersion>1.1.0</FileVersion>
-    <PackageReleaseNotes>Add the --align-code and --align-data arguments
+    <Version>1.1.1</Version>
+    <AssemblyVersion>1.1.1</AssemblyVersion>
+    <FileVersion>1.1.1</FileVersion>
+    <PackageReleaseNotes>Fix one byte gap between linked programs when a segment is empty
 
-https://github.com/Konamiman/Nestor80/pull/23</PackageReleaseNotes>
+https://github.com/Konamiman/Nestor80/pull/40</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
