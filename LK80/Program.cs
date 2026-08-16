@@ -195,15 +195,14 @@ internal partial class Program
             return ERR_LINKING_FATAL;
         }
 
-        WriteLine();
         if(linkingResult.Errors.Length == 0) {
-            PrintProgress("Success!", 1);
+            PrintProgress("\r\nSuccess!", 1);
             PrintProgress($"Output file: {outputFilePath}", 1);
         }
         else {
             try { outputStream.Close(); } catch { }
             try { File.Delete(outputFilePath); } catch { }
-            PrintProgress("No output file generated.", 1);
+            PrintProgress("\r\nNo output file generated.", 1);
             return ERR_LINKING_ERROR;
         }
 
