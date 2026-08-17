@@ -426,6 +426,8 @@ When assembling code in the MACRO-80 relocatable format with the `--link-80-comp
 
 When assembling code in the SDCC relocatable format only a small subset of the available arithmetic operators can be used in expressions involving external references or symbols in relocatable areas. See ["SDCC relocatable file format support"](SdccFileFormatSupport.md) for the details.
 
+🆕 A symbol whose name matches the name of an operator (e.g. a label named `NUL` or `TYPE`) takes precedence over the operator when it's referenced in an expression at a place where a value is expected, as long as the symbol is already defined at the time the reference is parsed; a warning is generated both where the symbol is defined and where it's referenced. Additionally, an operator name found at a place where a value is expected, as the last token of an expression (where an operator could never be valid), is always interpreted as a symbol reference; this allows e.g. `CALL TYPE` to reference a label named `TYPE` that is defined later in the code. This last rule doesn't apply to `NUL`, which keeps its operator meaning unless a symbol with that name is defined (otherwise the common macro idiom `IF NUL ARG` would break when `ARG` is empty).
+
 The `NUL` and `TYPE` operators are special:
 
 * `NUL` works as follows: if the remaining of the source code line after the operator (not including the comment, if present) has any characters other than spaces and tabs, it will evaluate to 0; otherwise it will evaluate to 0FFFFh. This is useful mainly in the context of macro expansions.

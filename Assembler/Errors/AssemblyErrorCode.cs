@@ -30,7 +30,8 @@
         UserWarning,
         IgnoredForSdccOutput,
         IgnoredForNonSdaOutput,
-        LastWarning = UserWarning,
+        SymbolWithOperatorName,
+        LastWarning = SymbolWithOperatorName,
 
         //Normal errors
 
