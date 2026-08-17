@@ -465,8 +465,8 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            if(line.Any(ch => char.IsControl(ch) && ch != '\t')) {
-                line = new string(line.Where(ch => ch == '\t' || !char.IsControl(ch)).ToArray());
+            if(line.Any(ch => ch < ' ' && ch != '\t')) {
+                line = new string(line.Where(ch => ch == '\t' || ch >= ' ').ToArray());
             }
 
             if(state.InsideMultiLineComment) {
