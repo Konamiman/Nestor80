@@ -41,13 +41,22 @@ ME:
             Assert.IsTrue(localLabels.All(s => s.ValueArea == AddressType.CSEG));
 
             //The DEFB ME-MS lines must have been converted to link items groups
-            //(a relocatable difference stored as a byte is resolved at linking time)
+            //(a relocatable difference stored as a byte is resolved at linking time),
+            //each referencing the ME and MS addresses of its own expansion
             var expansionLines = result.ProcessedLines.OfType<MacroExpansionLine>().ToArray();
             Assert.AreEqual(2, expansionLines.Length);
-            foreach(var expansionLine in expansionLines) {
-                var defbLine = expansionLine.Lines.OfType<DefbLine>().First();
+            for(int i = 0; i < expansionLines.Length; i++) {
+                var expansionBase = (ushort)(i * 4);
+                var defbLine = expansionLines[i].Lines.OfType<DefbLine>().First();
                 var linkItemsGroup = defbLine.RelocatableParts.OfType<LinkItemsGroup>().Single();
                 Assert.AreEqual(3, linkItemsGroup.LinkItems.Length);
+
+                //ME-MS in postfix order: address of ME, address of MS, minus operator
+                Assert.IsTrue(linkItemsGroup.LinkItems[0].IsAddressReference);
+                Assert.AreEqual((AddressType.CSEG, (ushort)(expansionBase + 4)), linkItemsGroup.LinkItems[0].GetReferencedAddress());
+                Assert.IsTrue(linkItemsGroup.LinkItems[1].IsAddressReference);
+                Assert.AreEqual((AddressType.CSEG, (ushort)(expansionBase + 1)), linkItemsGroup.LinkItems[1].GetReferencedAddress());
+                Assert.AreEqual(ArithmeticOperatorCode.Minus, linkItemsGroup.LinkItems[2].ArithmeticOperator);
             }
         }
 
