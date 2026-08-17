@@ -212,6 +212,8 @@ namespace Konamiman.Nestor80.Assembler
                 state.WordArgumentTypes = wordArgTypes;
 
                 Expression.GetSymbol = GetSymbolForExpression;
+                Expression.SymbolIsDefined = SymbolIsDefinedForExpression;
+                Expression.ReportWarning = (code, message) => AddError(code, message);
                 Expression.ModularizeSymbolName = name => state.Modularize(name);
                 Expression.AllowEscapesInStrings = configuration.AllowEscapesInStrings;
                 Expression.Link80Compatibility = link80Compatibility;
@@ -1004,6 +1006,25 @@ namespace Konamiman.Nestor80.Assembler
         }
 
         /// <summary>
+        /// Check if a symbol is already defined (as a label, a constant or an external reference),
+        /// without registering it as a new unknown symbol if it isn't. This is used by the
+        /// expression parser to decide if a token that matches an operator name (e.g. NUL or TYPE)
+        /// must be interpreted as a symbol reference instead.
+        /// </summary>
+        /// <param name="name">Symbol name.</param>
+        /// <param name="isRoot">True if the symbol is referenced as root with a : prefix.</param>
+        /// <returns>True if a symbol with that name is defined.</returns>
+        private static bool SymbolIsDefinedForExpression(string name, bool isRoot)
+        {
+            if(!isRoot) {
+                name = state.Modularize(name);
+            }
+
+            var symbol = state.GetSymbol(ref name);
+            return symbol is not null && symbol.IsOfKnownType;
+        }
+
+        /// <summary>
         /// Process a label definition found while processing a source line.
         /// This is more complex than just creating a new symbol, since we must check if a symbol with the same name already exists
         /// (and if so, is it actually the same label? Does it have the same value in passes 1 and 2? Is it now referred as external
@@ -1017,7 +1038,8 @@ namespace Konamiman.Nestor80.Assembler
             }
 
             var isPublic = label.EndsWith("::");
-            var labelValue = isPublic ? label.TrimEnd(':') : state.Modularize(label.TrimEnd(':'));
+            var bareLabelName = label.TrimEnd(':');
+            var labelValue = isPublic ? bareLabelName : state.Modularize(bareLabelName);
 
             if(labelValue == "$") {
                 AddError(AssemblyErrorCode.DollarAsLabel, "'$' defined as a label, but it actually represents the current location pointer");
@@ -1027,6 +1049,11 @@ namespace Konamiman.Nestor80.Assembler
 
             if(symbol?.IsNonRelativeLabel == true) {
                 state.RegisterLastNonRelativeLabel(symbol.Name);
+            }
+
+            //The check for "symbol not defined yet" prevents the warning from being repeated in pass 2.
+            if((symbol is null || !symbol.IsOfKnownType) && Expression.IsOperatorName(bareLabelName)) {
+                AddError(AssemblyErrorCode.SymbolWithOperatorName, $"{bareLabelName.ToUpper()} is also the name of an expression operator; in expressions, the symbol will take precedence over the operator");
             }
 
             if(symbol == null) {

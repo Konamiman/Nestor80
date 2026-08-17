@@ -46,7 +46,16 @@ namespace Konamiman.Nestor80.Assembler
         private static bool extractingForDb = false;
         private static readonly List<IExpressionPart> parts = new();
         private static IExpressionPart lastExtractedPart = null;
+        private static bool parseIsContextDependent = false;
         private bool isByte;
+
+        /// <summary>
+        /// True if the expression contains a token that matches an operator name (e.g. NUL or TYPE)
+        /// at a place where an operand is expected. The decision of interpreting such a token as
+        /// a symbol reference or as an operator depends on which symbols are defined at the time
+        /// and place where the expression is parsed, so these expressions must not be cached and reused.
+        /// </summary>
+        public bool IsContextDependent { get; private set; }
 
         private static bool AtEndOfString = false;
 
@@ -88,6 +97,21 @@ namespace Konamiman.Nestor80.Assembler
         /// is declared as root with the : prefix.
         /// </summary>
         public static Func<string, bool, bool, SymbolInfo> GetSymbol { get; set; } = (_, _, _) => null;
+
+        /// <summary>
+        /// The callback to use to check if a symbol is already defined (as a label, a constant
+        /// or an external reference), without registering it as a new unknown symbol if it isn't.
+        /// The first argument is the symbol name, the second is true if the symbol
+        /// is declared as root with the : prefix.
+        /// This is used to decide if a token that matches an operator name (e.g. NUL or TYPE)
+        /// must be interpreted as a symbol reference instead.
+        /// </summary>
+        public static Func<string, bool, bool> SymbolIsDefined { get; set; } = (_, _) => false;
+
+        /// <summary>
+        /// The callback to use to report a warning generated while parsing an expression.
+        /// </summary>
+        public static Action<AssemblyErrorCode, string> ReportWarning { get; set; } = (_, _) => { };
 
         /// <summary>
         /// The callback to use to get the full "modularized" symbol name
@@ -249,13 +273,14 @@ namespace Konamiman.Nestor80.Assembler
             parsedStringLength = expressionString.Length;
             extractingForDb = forDefb;
             lastExtractedPart = null;
+            parseIsContextDependent = false;
 
             AtEndOfString = false;
 
             while(!AtEndOfString)
                 ExtractNextPart();
 
-            return new Expression(parts.ToArray(), expressionString) { isByte = isByte };
+            return new Expression(parts.ToArray(), expressionString) { isByte = isByte, IsContextDependent = parseIsContextDependent };
         }
 
         private static void ExtractNextPart()
@@ -451,6 +476,16 @@ namespace Konamiman.Nestor80.Assembler
             return char.IsLetter(theChar) || theChar is '?' or '_' or '@' or '.' or '$';
         }
 
+        /// <summary>
+        /// Check if a name matches the name of an arithmetic operator that could also be
+        /// a valid symbol name (that's all the operators except those composed of
+        /// special characters, e.g. "+").
+        /// </summary>
+        public static bool IsOperatorName(string name)
+        {
+            return string.Equals(name, "NUL", StringComparison.OrdinalIgnoreCase) || operators.ContainsKey(name);
+        }
+
         private static void ExtractString(char delimiter)
         {
             if(parsedStringPointer == parsedStringLength-1) {
@@ -555,12 +590,48 @@ namespace Konamiman.Nestor80.Assembler
                 return;
             }
 
-            if(string.Equals(symbol, "NUL", StringComparison.OrdinalIgnoreCase)) {
+            var isNulOperator = string.Equals(symbol, "NUL", StringComparison.OrdinalIgnoreCase);
+            var theOperator = operators.GetValueOrDefault(symbol);
+
+            if(isNulOperator || theOperator is not null) {
+                /*
+                 * MACRO-80 compatibility: a symbol wins over the operator of the same name when:
+                 *
+                 * - The token is found at a place where an operand is expected, and a symbol
+                 *   with that name is defined (a warning is generated in this case); or
+                 * - The token is found at a place where an operand is expected and it's the last
+                 *   token of the expression (except for NUL, whose legit usages -e.g. "IF NUL arg"
+                 *   with an empty macro argument- would break otherwise). An operator can never
+                 *   be valid there, so this allows e.g. "CALL TYPE" to reference a label named
+                 *   TYPE that is defined later in the code.
+                 */
+                var atOperandPosition = lastExtractedPart is null or ArithmeticOperator or OpeningParenthesis;
+                if(atOperandPosition && !isExternalRef) {
+                    parseIsContextDependent = true;
+                    var symbolIsDefined = SymbolIsDefined(symbol, isRoot);
+                    if(symbolIsDefined || (!isNulOperator && parsedStringPointer + match.Length >= parsedStringLength)) {
+                        if(symbolIsDefined) {
+                            ReportWarning(
+                                AssemblyErrorCode.SymbolWithOperatorName,
+                                $"{symbol.ToUpper()} is interpreted as a reference to the symbol of that name, not as the {symbol.ToUpper()} operator, because a symbol with that name is defined");
+                        }
+                        AddExpressionPart(new SymbolReference() { SymbolName = symbol, IsExternal = false, IsRoot = isRoot });
+                        IncreaseParsedStringPointer(match.Length);
+                        return;
+                    }
+                }
+            }
+
+            if(isNulOperator) {
+                if(isExternalRef) {
+                    Throw($"{symbol.ToUpper()} is an operator, can't be used as external symbol reference");
+                }
+
                 /*
                  * The NUL operator is a special case.
                  * If it's the last item in the expression it evaluates to -1.
                  * Otherwise it evaluates to 0 and the remaning of the expression is discarded.
-                 */ 
+                 */
                 IncreaseParsedStringPointer(3); //To make AtEndOfString accurate
                 var part = AtEndOfString ? Address.AbsoluteMinusOne : Address.AbsoluteZero;
                 AddExpressionPart(part);
@@ -568,7 +639,6 @@ namespace Konamiman.Nestor80.Assembler
                 return;
             }
 
-            var theOperator = operators.GetValueOrDefault(symbol);
             if(theOperator is null) {
                 var part = new SymbolReference() { SymbolName = symbol, IsExternal = isExternalRef, IsRoot = isRoot };
                 AddExpressionPart(part);

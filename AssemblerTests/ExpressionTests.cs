@@ -6,6 +6,7 @@ using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts;
 using Konamiman.Nestor80.Assembler.Expressions.ExpressionParts.ArithmeticOperators;
 using Konamiman.Nestor80.Assembler.Relocatable;
 using Konamiman.Nestor80.Assembler.Infrastructure;
+using Konamiman.Nestor80.Assembler.Errors;
 
 namespace Konamiman.Nestor80.AssemblerTests
 {
@@ -17,6 +18,8 @@ namespace Konamiman.Nestor80.AssemblerTests
         {
             Expression.OutputStringEncoding = Encoding.ASCII;
             Expression.AllowEscapesInStrings = false;
+            Expression.SymbolIsDefined = (_, _) => false;
+            Expression.ReportWarning = (_, _) => { };
         }
 
         static object[] TestNumberCases = {
@@ -206,7 +209,9 @@ namespace Konamiman.Nestor80.AssemblerTests
             new object[] { "ABCDE", new[] { SymbolReference.For("ABCDE") } },
             new object[] { "ABCDE##", new[] { SymbolReference.For("ABCDE", true) } },
             new object[] { "ABCDE0123?@._", new[] { SymbolReference.For("ABCDE0123?@._") } },
-            new object[] { "MOD", new[] { ModOperator.Instance } },
+            //An operator name found at a place where an operand is expected, as the last token
+            //of the expression, is interpreted as a symbol reference (it could never be a valid operator there).
+            new object[] { "MOD", new object[] { SymbolReference.For("MOD") } },
             new object[] { "+", new[] { UnaryPlusOperator.Instance } },
             new object[] { "3 + 4", new object[] { Address.Absolute(3), PlusOperator.Instance, Address.Absolute(4) } },
             new object[] { "-", new[] { UnaryMinusOperator.Instance } },
@@ -235,7 +240,9 @@ namespace Konamiman.Nestor80.AssemblerTests
                     XorOperator.Instance,
                     ShiftRightOperator.Instance,
                     ShiftLeftOperator.Instance,
-                    ModOperator.Instance
+                    //The last token is at a place where an operand is expected (it follows an operator)
+                    //so it's interpreted as a symbol reference.
+                    SymbolReference.For("MOD")
                 }
             },
 
@@ -685,6 +692,62 @@ namespace Konamiman.Nestor80.AssemblerTests
                 var result = exp.Evaluate();
                 Assert.AreEqual(Address.Absolute((ushort)expectedResult), result);
             }
+        }
+
+        [Test]
+        public void TestOperatorNameParsedAsSymbolWhenSymbolIsDefined()
+        {
+            var warnings = new List<string>();
+            Expression.SymbolIsDefined = (name, isRoot) =>
+                name.Equals("NUL", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("TYPE", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("AND", StringComparison.OrdinalIgnoreCase);
+            Expression.ReportWarning = (code, message) => {
+                Assert.AreEqual(AssemblyErrorCode.SymbolWithOperatorName, code);
+                warnings.Add(message);
+            };
+
+            //A defined symbol wins over the operator of the same name
+            //when found at a place where an operand is expected.
+            AssertGenerates("NUL", SymbolReference.For("NUL"));
+            AssertGenerates("NUL+1", SymbolReference.For("NUL"), PlusOperator.Instance, Address.Absolute(1));
+            AssertGenerates("1+NUL", Address.Absolute(1), PlusOperator.Instance, SymbolReference.For("NUL"));
+            AssertGenerates("TYPE", SymbolReference.For("TYPE"));
+            AssertGenerates("AND", SymbolReference.For("AND"));
+            Assert.AreEqual(5, warnings.Count);
+
+            //At a place where a binary operator is expected the operator still wins,
+            //even if a symbol with the same name is defined.
+            warnings.Clear();
+            AssertGenerates("1 AND 2", Address.Absolute(1), AndOperator.Instance, Address.Absolute(2));
+            Assert.AreEqual(0, warnings.Count);
+        }
+
+        [Test]
+        public void TestOperatorNameAtEndOfExpressionParsedAsSymbol()
+        {
+            var warningsCount = 0;
+            Expression.ReportWarning = (_, _) => warningsCount++;
+
+            //An operator name (other than NUL) found at a place where an operand is expected,
+            //as the last token of the expression, is interpreted as a symbol reference
+            //even if no symbol with that name is defined (no warning is generated in this case).
+            AssertGenerates("TYPE", SymbolReference.For("TYPE"));
+            AssertGenerates("1+TYPE", Address.Absolute(1), PlusOperator.Instance, SymbolReference.For("TYPE"));
+            AssertGenerates("HIGH", SymbolReference.For("HIGH"));
+            Assert.AreEqual(0, warningsCount);
+
+            //NUL keeps its operator meaning when no symbol with that name is defined.
+            AssertGenerates("NUL", Address.AbsoluteMinusOne);
+
+            //An operator name that isn't the last token of the expression keeps its operator meaning.
+            AssertGenerates("TYPE FOO", TypeOperator.Instance, SymbolReference.For("FOO"));
+        }
+
+        [Test]
+        public void TestNulAsExternalReferenceThrows()
+        {
+            AssertThrowsExpressionError(() => Expression.Parse("NUL##"), "NUL is an operator, can't be used as external symbol reference");
         }
 
         private static void AssertParsesToNumber(string expressionString, ushort number) =>

@@ -872,7 +872,15 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
 
             expression = Expression.Parse(sourceLine, forDefb, isByte);
             expression.ValidateAndPostifixize();
-            expressionsBySource.Add((sourceLine, forDefb), expression);
+
+            //Expressions containing a token that matches an operator name (e.g. NUL or TYPE)
+            //at a place where an operand is expected can be parsed differently depending on
+            //which symbols are defined at the time and place where they are parsed,
+            //so they can't be cached and reused.
+            if(!expression.IsContextDependent) {
+                expressionsBySource.Add((sourceLine, forDefb), expression);
+            }
+
             return expression;
         }
 

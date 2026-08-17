@@ -807,6 +807,7 @@ namespace Konamiman.Nestor80.Assembler
 
         static ProcessedSourceLine ProcessConstantDefinition(string opcode, string name, SourceLineWalker walker = null, Expression expression = null)
         {
+            var bareName = name;
             name = state.Modularize(name, true);
             var isRedefinition = !opcode.Equals("EQU", StringComparison.OrdinalIgnoreCase);
             var line = new ConstantDefinitionLine() { Name = name, IsRedefinible = isRedefinition };
@@ -814,6 +815,16 @@ namespace Konamiman.Nestor80.Assembler
             if(walker is not null && walker.AtEndOfLine) {
                 AddError(AssemblyErrorCode.MissingValue, $"{opcode.ToUpper()} must be followed by a value");
                 return line;
+            }
+
+            var symbol = state.GetSymbol(ref name);
+
+            //The warning is generated before the value evaluation so that it isn't skipped
+            //when the definition is deferred because the value can't be evaluated yet.
+            //The check for "symbol not defined yet" prevents the warning from being repeated
+            //on DEFL redefinitions or when the deferred definition is reprocessed.
+            if((symbol is null || !symbol.IsOfKnownType) && Expression.IsOperatorName(bareName)) {
+                AddError(AssemblyErrorCode.SymbolWithOperatorName, $"{bareName.ToUpper()} is also the name of an expression operator; in expressions, the symbol will take precedence over the operator");
             }
 
             Address value;
@@ -840,8 +851,6 @@ namespace Konamiman.Nestor80.Assembler
 
             line.ValueArea = value.Type;
             line.Value = value.Value;
-
-            var symbol = state.GetSymbol(ref name);
 
             if(symbol is null) {
                 if(z80RegisterNames.Contains(name, StringComparer.OrdinalIgnoreCase)) {
