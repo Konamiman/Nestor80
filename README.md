@@ -95,8 +95,8 @@ See the NuGet README files of [Nestor80](NuGet/README_N80.md) and [Linkstor80](N
 
 1. Head to [the releases page](https://konamiman.github.io/Nestor80/categorized-releases/index.html), select Nestor80 in the sidebar and download the appropriate variant for your system (from the "Assets" list in the release labeled as "Latest"). Note that:
    * The "Framework dependant" and "Portable" variants require [the .NET runtime](https://dotnet.microsoft.com/en-us/download/dotnet/) (.NET 6 or newer) to be installed. 
-   * The "Standalone" variants don't require the .NET runtime to be installed, but they are much bigger in size (about 60MB vs about 400KB for the framework dependand variants).
-   * You'll need the "Portable" variant if your system supports .NET 6 but there isn't a a native variant (standalone or framework dependant) available. To run this variant the `dotnet` tool (installed as part of the .NET runtime) needs to be used as follows: `dotnet N80.dll <arguments>`. Otherwise this variant works exactly like the native ones.
+   * The "Standalone" variants don't require the .NET runtime to be installed, but they are much bigger in size (about 60MB vs about 400KB for the framework dependant variants).
+   * You'll need the "Portable" variant if your system supports .NET 6 but there isn't a native variant (standalone or framework dependant) available. To run this variant the `dotnet` tool (installed as part of the .NET runtime) needs to be used as follows: `dotnet N80.dll <arguments>`. Otherwise this variant works exactly like the native ones.
 
 _You may want to get a standalone variant if you just want to give Nestor80 a try, but if you plan to use it regularly the framework dependant variants are recommended._
 
