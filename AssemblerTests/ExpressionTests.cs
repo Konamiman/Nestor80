@@ -713,7 +713,8 @@ namespace Konamiman.Nestor80.AssemblerTests
             AssertGenerates("NUL+1", SymbolReference.For("NUL"), PlusOperator.Instance, Address.Absolute(1));
             AssertGenerates("1+NUL", Address.Absolute(1), PlusOperator.Instance, SymbolReference.For("NUL"));
             AssertGenerates("TYPE", SymbolReference.For("TYPE"));
-            Assert.AreEqual(4, warnings.Count);
+            AssertGenerates("AND", SymbolReference.For("AND"));
+            Assert.AreEqual(5, warnings.Count);
 
             //At a place where a binary operator is expected the operator still wins,
             //even if a symbol with the same name is defined.
