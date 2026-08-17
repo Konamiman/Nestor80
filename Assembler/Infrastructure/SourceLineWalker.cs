@@ -649,6 +649,7 @@ namespace Konamiman.Nestor80.Assembler.Infrastructure
                 args.Add(theChar.ToString());
             }
 
+            SkipBlanks();
             return (args.ToArray(), delimiterNestingLevel);
         }
 
