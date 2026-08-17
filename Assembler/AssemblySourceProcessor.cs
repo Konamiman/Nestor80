@@ -525,9 +525,32 @@ namespace Konamiman.Nestor80.Assembler
 
             if(definingMacro) {
                 opcode = MaybeResolveDottedAlias(symbol);
-                
+
+                //A label field is allowed before any statement, so when the line starts with a label
+                //it's the next symbol that must be checked for the instructions that affect
+                //the definition state (e.g. "FOO: ENDM" terminates the macro just like a plain "ENDM").
+                string labelBeforeOpcode = null;
+                if(symbol.EndsWith(':') && IsValidSymbolName(symbol) && !walker.AtEndOfLine) {
+                    walker.BackupPointer();
+                    var symbolAfterLabel = MaybeResolveDottedAlias(walker.ExtractSymbol());
+                    if(string.Equals(symbolAfterLabel, "ENDM", StringComparison.OrdinalIgnoreCase) ||
+                        macroDefinitionOrExpansionInstructions.Contains(symbolAfterLabel, StringComparer.OrdinalIgnoreCase)) {
+                        labelBeforeOpcode = symbol;
+                        opcode = symbolAfterLabel;
+                    }
+                    else {
+                        walker.RestorePointer();
+                    }
+                }
+
                 var stillInMacroDefinitionMode = true;
                 if(string.Equals(opcode, "ENDM", StringComparison.InvariantCultureIgnoreCase)) {
+                    //The label is part of the macro body (it will be defined when the macro is expanded),
+                    //so it must be registered before the ENDM gets the chance to finish the definition.
+                    if(labelBeforeOpcode is not null && MacroDefinitionState.Depth == 1) {
+                        AssemblyState.RegisterMacroDefinitionLine(labelBeforeOpcode, false);
+                    }
+
                     processedLine = ProcessEndmLine(opcode, walker);
 
                     //We need to check if we are still in macro definition mode
