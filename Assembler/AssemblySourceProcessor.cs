@@ -810,7 +810,12 @@ namespace Konamiman.Nestor80.Assembler
 
             foreach(var expressionPendingEvaluation in expressionsPendingEvaluation) {
                 var referencedSymbolNames = expressionPendingEvaluation.Expression.ReferencedSymbols.Select(s => new { s.SymbolName, IsRoot = s.IsRoot || s.IsExternal });
-                var referencedSymbols = referencedSymbolNames.Select(s => state.GetSymbolWithoutLocalNameReplacement(s.IsRoot ? s.SymbolName : state.Modularize(s.SymbolName)));
+                //GetSymbol (as opposed to GetSymbolWithoutLocalNameReplacement) is needed so that
+                //references to LOCAL symbols of the macro being expanded get their converted "..number" names.
+                var referencedSymbols = referencedSymbolNames.Select(s => {
+                    var symbolName = s.IsRoot ? s.SymbolName : state.Modularize(s.SymbolName);
+                    return state.GetSymbol(ref symbolName);
+                });
                 var hasExternalReferences = false;
                 Address expressionValue = null;
 
@@ -914,9 +919,12 @@ namespace Konamiman.Nestor80.Assembler
                     items.Add(LinkItem.ForAddressReference(ad.Type, ad.Value));
                 }
                 else if(part is SymbolReference sr) {
-                    var symbol = state.GetSymbolWithoutLocalNameReplacement(state.Modularize(sr));
+                    //GetSymbol (as opposed to GetSymbolWithoutLocalNameReplacement) is needed so that
+                    //references to LOCAL symbols of the macro being expanded get their converted "..number" names.
+                    var symbolName = state.Modularize(sr);
+                    var symbol = state.GetSymbol(ref symbolName);
                     if(symbol is null) {
-                        throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: {state.Modularize(sr)} doesn't exist (this should have been catched earlier)");
+                        throw new InvalidOperationException($"{nameof(GetLinkItemsGroupFromExpression)}: {symbolName} doesn't exist (this should have been catched earlier)");
                     }
                     if(symbol.IsExternal) {
                         items.Add(LinkItem.ForExternalReference(symbol.EffectiveName));
