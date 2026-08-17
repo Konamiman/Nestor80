@@ -5,25 +5,28 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Konamiman.Nestor80.Assembler</RootNamespace>
-    <AssemblyVersion>1.3.5</AssemblyVersion>
-    <FileVersion>1.3.5</FileVersion>
-    <Version>1.3.5</Version>
+    <AssemblyVersion>1.3.6</AssemblyVersion>
+    <FileVersion>1.3.6</FileVersion>
+    <Version>1.3.6</Version>
     <PackageId>Nestor80</PackageId>
     <Title>Nestor80 assembler library</Title>
     <Authors>Konamiman</Authors>
     <Company />
     <Product>Nestor80 assembler library</Product>
     <PackageTags>Z80;Z280</PackageTags>
-    <Copyright>(c) 2025 Konamiman</Copyright>
+    <Copyright>(c) 2026 Konamiman</Copyright>
     <Description>Z80, R800 and Z280 assembler almost fully compatible with Microsoft Macro80 at the source code level. Produces absolute and relocatable binary files. Relocatable files can be linked using Linkstor80.</Description>
     <PackageProjectUrl></PackageProjectUrl>
     <RepositoryUrl>https://github.com/Konamiman/Nestor80</RepositoryUrl>
     <PackageIcon>N80_NuGet_logo.png</PackageIcon>
     <PackageReadmeFile></PackageReadmeFile>
-    <PackageReleaseNotes>- Fix: ' and " interpreted as string starters when used as arguments for macros
-- Fix: DEFS inside macros not included in listings
+    <PackageReleaseNotes>- Fix spurious warning for a comment after IRPC arguments
+- Fix "Unterminated macro" error for a label on the same line as ENDM
+- Fix silent data loss for characters 80h-9Fh in DEFB strings
+- Fix: user-defined symbols named after operators silently miscompiled or failed
+- Fix NullReferenceException for forward-referenced LOCAL macro symbols in expressions
 
-https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3Av1.3.5</PackageReleaseNotes>
+https://github.com/Konamiman/Nestor80/pulls?q=is%3Apr+milestone%3AN80-v1.3.6</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
