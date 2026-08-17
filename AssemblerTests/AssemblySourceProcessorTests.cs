@@ -9,12 +9,13 @@ namespace Konamiman.Nestor80.AssemblerTests
     public class AssemblySourceProcessorTests
     {
         [Test]
-        // Source bytes in the 80h-9Fh range decode to C1 control characters with ISO 8859-1;
-        // they must be kept in string literals so that the byte values round trip to the output.
-        public void CharsAbove7FhInStringsSurviveByteRoundTrip()
+        // Source byte 7Fh decodes to DEL and bytes in the 80h-9Fh range decode to C1 control
+        // characters with ISO 8859-1; they must be kept in string literals so that the byte
+        // values round trip to the output.
+        public void DelAndC1CharsInStringsSurviveByteRoundTrip()
         {
             var encoding = Encoding.GetEncoding(28591);
-            var sourceBytes = encoding.GetBytes("\torg 100h\r\n\tdefb \"a\u0083b\"\r\n\tend\r\n");
+            var sourceBytes = encoding.GetBytes("\torg 100h\r\n\tdefb \"a\u0083b\u007fc\"\r\n\tend\r\n");
 
             var result = AssemblySourceProcessor.Assemble(
                 new MemoryStream(sourceBytes),
@@ -25,7 +26,7 @@ namespace Konamiman.Nestor80.AssemblerTests
 
             var outputStream = new MemoryStream();
             OutputGenerator.GenerateAbsolute(result, outputStream);
-            CollectionAssert.AreEqual(new byte[] { 0x61, 0x83, 0x62 }, outputStream.ToArray());
+            CollectionAssert.AreEqual(new byte[] { 0x61, 0x83, 0x62, 0x7F, 0x63 }, outputStream.ToArray());
         }
 
         [Test]
