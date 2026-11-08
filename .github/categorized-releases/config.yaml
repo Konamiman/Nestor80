@@ -1,5 +1,9 @@
 # =============================================================================
 # Categorized Releases Configuration
+#
+# The page is generated into docs/categorized-releases by
+# .github/workflows/releases-page.yaml. Run that workflow by hand after a change
+# to this file reaches master.
 # =============================================================================
 
 defaults:
