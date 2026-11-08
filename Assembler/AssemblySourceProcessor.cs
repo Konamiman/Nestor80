@@ -922,7 +922,13 @@ namespace Konamiman.Nestor80.Assembler
                 }
             }
 
-            line.RelocatableParts = relocatables.ToArray();
+            //The line may already have relocatable parts that didn't need to be left as pending evaluation
+            //(e.g. in "DEFW label,external" only the second expression is pending), and these need to be kept.
+            //The output and listing generators expect the parts to be sorted by their location in the line.
+            line.RelocatableParts = (line.RelocatableParts ?? Array.Empty<RelocatableOutputPart>())
+                .Concat(relocatables)
+                .OrderBy(part => part.Index)
+                .ToArray();
         }
 
         /// <summary>
