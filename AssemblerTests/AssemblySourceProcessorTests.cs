@@ -98,7 +98,9 @@ namespace Konamiman.Nestor80.AssemblerTests
         [TestCase("defw bwd,ext", "defw bwd\r\n\tdefw ext")]
         [TestCase("defw ext,bwd", "defw ext\r\n\tdefw bwd")]
         [TestCase("defw 1234h,bwd,ext,5678h", "defw 1234h\r\n\tdefw bwd\r\n\tdefw ext\r\n\tdefw 5678h")]
-        public void MultiOperandDefwWithExternalsGeneratesSameOutputAsOneOperandPerLine(string multiOperandLine, string oneOperandPerLine)
+        [TestCase("defb bwd,ext", "defb bwd\r\n\tdefb ext")]
+        [TestCase("defb ext,bwd", "defb ext\r\n\tdefb bwd")]
+        public void MultiOperandDefbOrDefwWithExternalsGeneratesSameOutputAsOneOperandPerLine(string multiOperandLine, string oneOperandPerLine)
         {
             static byte[] Generate(AssemblyResult result)
             {
